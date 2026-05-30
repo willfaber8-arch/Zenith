@@ -90,9 +90,37 @@ components/
   GpaSimulator.module.css  data-tier CSS attributes for grade colour-coding; range input
                             styled via --fill-pct custom property
   ViewRouter.tsx       Two-phase fade/scale content switcher (exit 200ms → swap → enter 300ms);
-                       live views: home, uni-hub, major-hub, calendar, gpa-calc
+                       live views: home, uni-hub, major-hub, calendar, gpa-calc, aquascaping
   Topbar.tsx           Sticky 52px bar — breadcrumb, SyncIndicator, weather chip, clock, user chip
   Topbar.module.css    Glass backdrop, responsive hamburger toggle
+  AquascapingValidator.tsx   Ecosystem compatibility dashboard — two-panel layout (tank sliders +
+                             species combobox left; bioload bar + conflict feed right). 34-species
+                             library; 6-check analyzeCompatibility() engine imported from aquascapingMath.
+  AquascapingValidator.module.css  Creator's Choice --v-* local tokens; slider fill gradient; anim-scale-in
+                                   on conflict cards; pulseGlow on all-clear dot.
+  SupplierCartSimulator.tsx  Multi-vendor cart aggregation dashboard — catalog autocomplete (22 items),
+                             inline vendor reassignment, qty controls. calculatePricing() groups items by
+                             vendor, evaluates freeShippingThreshold, outputs grand total with savings line.
+                             Grand total block keyed on estimatedGrandTotal to re-trigger slideIn animation.
+  SupplierCartSimulator.module.css  Sticky breakdown panel; strikethrough FREE shipping row;
+                                    clamp()-sized display-font grand total.
+  HardscapeSimulator.tsx     20×10 grid-snapped canvas workspace — palette of 6 element types
+                             (Seiryu Stone, Dragon Stone, Spider Wood, Driftwood, Anubias, Java Fern);
+                             document-level drag via dragRef + useEffect; W/H scale controls; 4 tank
+                             presets (5G/10G/20G-L/29G). Layout persists in localStorage (key:
+                             'zenith_hardscape_v1').
+  HardscapeSimulator.module.css  Substrate dark #0b160e canvas; CSS grid-line background-image;
+                                 grab cursor; pulseGlow ring on selected element.
+  ParameterChart.tsx         Pure hand-rolled SVG line chart (no external library) — cubic bezier
+                             smooth paths, area fills, auto-scaled Y axis via niceMax(), X-axis date
+                             decimation (max 7 labels). Reads WaterLog[]; calls analyzeCycleStatus()
+                             to drive the nitrogen cycle status banner (6 CyclePhase states).
+  ParameterChart.module.css  Phase-specific border tints (amber/rose/green per CyclePhase data attr);
+                             cycleStatusCycled triggers scaleIn burst + pulseGlow dot.
+  WaterParameterLogger.tsx   IDB-backed water chemistry form — pH/NH3/NO2/NO3 sliders + number inputs
+                             with per-parameter --fill colour; useLiveQuery drives log table + embeds
+                             ParameterChart. Danger threshold colour-coding in log rows.
+  WaterParameterLogger.module.css  Two-column form+chart layout; per-param slider track via --fill CSS var.
   views/
     CalendarView.tsx        Universal Calendar — week grid, 11:59 banner, agenda, feed manager
     CalendarView.module.css
@@ -106,6 +134,11 @@ components/
     PlaceholderView.module.css
     UniHubView.tsx          University Hub orchestrator — 5-state machine (loading/selector/no-data/hub)
     UniHubView.module.css
+    AquascapingView.tsx     Three-tab Aquascaping Engine hub — tab bar persists state via display:none
+                            (not unmount). Tabs: Ecosystem Validator | Supplier Cart | Hardscape & Water Log.
+                            ZenHeading title + subtitle update reactively with activeTab state.
+    AquascapingView.module.css  tabPane { display:none } / tabPaneActive { display:block; animation: fadeIn }
+                                + .hardscapeTab column layout.
   ui/
     ZenHeading.tsx      Display heading primitive (sizes: sm / md / lg)
     ZenHeading.module.css
@@ -124,6 +157,11 @@ config/
                         Computation & Math (WolframAlpha), Reference DBs (Engineering Toolbox,
                         eFunda), Typesetting & Coding (Overleaf, GitHub, SO),
                         Hardware & Electronics (DigiKey, AllAboutCircuits)
+  aquascapingVendors.ts  VendorConfig schema + VENDOR_REGISTRY (6 vendors: Aquarium Co-Op, Flip
+                         Aquatics, The Wet Spot, AquaSwap, Buceplant, Glass Aqua) + VENDOR_MAP
+                         (O(1) lookup) + SHIPPING_TYPE_LABEL. Each vendor has shippingType
+                         ('flat_rate'|'live_animal_express'|'tier_based'), baseShippingCost,
+                         freeShippingThreshold (number|null).
 
 lib/
   AuthContext.tsx      AuthProvider + useAuth() — localStorage session management
@@ -135,7 +173,7 @@ lib/
   SyncContext.tsx      SyncProvider + useSyncStatus() — bridges ZenithSyncEngine into React tree
   ToastContext.tsx     ToastProvider + useToast() — ephemeral notification queue
   nav-config.ts        Navigation taxonomy — CategoryId, ViewId, NAV_CONFIG, tint/hover/accent maps
-  db.ts                Dexie.js v4 engine — ZenithDatabase class, 12 tables (v6), SSR-safe singleton
+  db.ts                Dexie.js v4 engine — ZenithDatabase class, 14 tables (v8), SSR-safe singleton
   supabase.ts          SSR-safe Supabase client singleton — returns null when unconfigured
   weather.ts           Open-Meteo fetch, WMO code → description mapping
   hooks/
@@ -148,12 +186,31 @@ lib/
                                 awardXp(25) on natural finish, distraction counter + toast
     useSandboxConfig.ts         localStorage widget visibility config (4 slots)
 
+types/
+  aquascaping.ts       AquaSpecies, TankInhabitant, TankConfig, CompatibilityConflict,
+                       BioloadResult, CompatibilityReport — consumed by AquascapingValidator +
+                       aquascapingMath. SpeciesType: 'fish'|'shrimp'|'snail'|'plant'.
+                       AggressionLevel: 'peaceful'|'semi-aggressive'|'aggressive'.
+
 utils/
   calendarParser.ts    Pure-TS iCal parser (zero dependencies):
   gpaMath.ts           Cornell 4.3-scale GPA engine — calcGpa(), roundGpa(), grade↔slider
                        converters, gpaTier(), fmtGpa(); zero React/Dexie imports
                        RFC 5545 line-unfolding, property parser, two-pass Intl TZ conversion,
                        11:59 PM detector, keyword-based category classifier
+  aquascapingMath.ts   34-species SPECIES_LIBRARY + analyzeCompatibility(config, inhabitants)
+                       → CompatibilityReport. Six checks: temp overlap, pH overlap, current-param
+                       vs species range, predator/prey matrix, tank size per species, bioload %.
+                       BIOLOAD_PER_GALLON = 1.5; plants carry negative bioloadRating.
+  pricingMath.ts       CartItem / VendorBucket / PricingReport types + calculatePricing(items,
+                       vendorMap) → PricingReport. Groups by assignedVendorId, evaluates
+                       freeShippingThreshold, sorts buckets (free-first then alpha), tracks
+                       savingsFromFreeShipping. round2() prevents float drift.
+  waterChemistry.ts    WaterLog interface + CyclePhase union + CycleStatus interface +
+                       analyzeCycleStatus(logs) → CycleStatus. Six phases: no_data → initial →
+                       ammonia_spike → nitrite_spike → stabilizing → cycled.
+                       ZERO_THRESHOLD = 0.25 ppm. Cycle confirmed only when hadSpike=true AND
+                       latest NH3 ≤ 0.25, NO2 ≤ 0.25, NO3 > 0.
 
 services/
   syncEngine.ts        ZenithSyncEngine — Dexie hooks + debounced drain + Supabase reconciliation
@@ -479,7 +536,7 @@ incrementSession()      // called by StudyPomodoroArena on each completed focus 
 
 ## Database (`lib/db.ts`)
 
-Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema version **6**.
+Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema version **8**.
 
 ### Tables & Indices
 
@@ -497,6 +554,8 @@ Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema versi
 | `pomodoroSessions` | `++id?` | `sessionType, completedAt, startedAt` | v5 |
 | `gpaSemesters` | `++id?` | `year, term, displayOrder, isProjected` | v6 |
 | `gpaCourses` | `++id?` | `semesterId, grade` | v6 |
+| `courseIntensityProfiles` | `++id?` | `courseCode, updatedAt` | v7 |
+| `waterLogs` | `++id?` | `logDate, createdAt` | v8 |
 
 **`CalendarFeed`** — iCal subscription: `label, url, color (hex), isActive (0|1), lastFetchedAt, createdAt`
 
@@ -522,6 +581,13 @@ interface GpaSemester { id?, name, term: 'fall'|'spring'|'summer', year,
   displayOrder: number,  // year×10 + termIndex; enables IDB chronological sort
   isProjected: 0|1 }
 interface GpaCourse   { id?, semesterId, courseCode, courseName, credits, grade }
+
+// Phase 4.3 (Water Parameter Logger) — defined in utils/waterChemistry.ts
+interface WaterLog { id?, logDate: string, pH: number,
+  ammonia: number,   // ppm NH3/NH4+, 0–8
+  nitrite: number,   // ppm NO2−, 0–5
+  nitrate: number,   // ppm NO3−, 0–160
+  notes?: string, createdAt: number }
 ```
 
 ### SSR Safety Pattern
@@ -730,6 +796,41 @@ Margin = `projectedGpa − targetGpa`. Classes applied to the margin bubble:
 
 ---
 
+## Aquascaping Engine (`components/views/AquascapingView.tsx`)
+
+Three-tab hub under Creator's Choice. All panes stay **always mounted** (display:none/block pattern) so state survives tab switches. The active pane fades in via `fadeIn` keyframe; the inactive panes are hidden with `display:none`.
+
+### Tab 1 — Ecosystem Validator
+
+```ts
+// analyzeCompatibility(config, inhabitants) lives in utils/aquascapingMath.ts
+// SPECIES_LIBRARY: 34 species (fish / shrimp / snail / plant)
+// Six conflict types: temperature | ph | predator_prey | aggression | tank_size (min tank) | tank_size (bioload)
+// Bioload: totalBioload / (gallons * 1.5) * 100 → capacityPct
+```
+
+**Bioload bar colour:**  `> 100%` → rose (critical) · `> 70%` → amber (warning) · otherwise → `--accent-green`
+
+### Tab 2 — Supplier Cart
+
+```ts
+// calculatePricing(items, vendorMap) lives in utils/pricingMath.ts
+// Buckets sorted: freeShippingUnlocked=true first, then alphabetical
+// Grand total block uses key={estimatedGrandTotal+cumulativeShippingFees} to re-trigger anim-slide-in
+```
+
+**Free shipping unlock:** bucket border changes to `rgba(82,204,163,0.30)`; shipping row shows strikethrough + "FREE" in `--accent-green`; savings row appears in grand total.
+
+### Tab 3 — Hardscape & Water Log
+
+**Canvas:** `position:relative` wrapper with `padding-bottom` aspect-ratio trick. Elements are `position:absolute` divs sized via `(w/COLS)*100%` / `(h/ROWS)*100%`. Drag uses `dragRef` + document-level `mousemove`/`mouseup` via `useEffect`. Grid lines drawn via CSS `background-image` gradients. Layout persists in `localStorage` key `zenith_hardscape_v1`.
+
+**Chart:** Pure SVG — no Recharts, no Chart.js. Smooth lines via cubic bezier `C` commands. Y-axis auto-scales using `niceMax()`. X-axis decimation: `step = max(1, ceil(n/7))`. Three series: NH3 amber `#f59e0b`, NO2 rose `#f87171`, NO3 sage `#52cca3`.
+
+**Cycle auditor:** `analyzeCycleStatus(logs)` returns a `CycleStatus` with 6 `CyclePhase` values. Banner colour and text change per phase via `data-phase` CSS attribute selector. The `cycled` phase triggers `scaleIn` animation + `pulseGlow` dot.
+
+---
+
 ## Widget Sandbox
 
 ### `useSandboxConfig` — visibility config
@@ -780,6 +881,11 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 23. **No Framer Motion** — the project has no animation library in deps. All transitions use CSS `transition` via inline styles or CSS Modules, matching the `--ease-expo` / `--ease-smooth` token curves.
 24. **GPA slider overrides** — projected course grade changes are held in a `Map<courseId, string>` React state for instant recalculation. IDB writes are debounced 150ms on `pointerup` so rapid slider drags don't flood the database.
 25. **Collapsible card animation** — use `grid-template-rows: 0fr → 1fr` with a transition on the wrapper div and `overflow: hidden` on the inner div. This is smoother than `max-height` because it doesn't require guessing a max value.
+26. **Creator's Choice theming** — Creator's Choice components define local `--v-*` tokens at the root selector (e.g., `--v-card: #141c19`, `--v-surface: #111618`, `--v-border: rgba(82,204,163,0.10)`, `--v-accent: var(--accent-green)`). Never use global `--surface-card` / `--border-subtle` in these components — the green-tinted variants are intentional.
+27. **Multi-tab pane pattern** — when a view contains multiple tabs with stateful components (e.g., AquascapingView), keep all panes always mounted and toggle `display:none`/`display:block` via CSS classes. Never use `key`-driven unmounting — it destroys cart/canvas/form state. Use `animation: fadeIn` on the active class for entrance polish.
+28. **Pure SVG charts** — the project has no charting library. Build line charts as hand-rolled SVG with cubic bezier paths (`C x1 y1 x2 y2 x y` commands for smooth curves). Use `niceMax()` to round up the Y-axis ceiling to a clean step value. Decimate X-axis labels when `n > 7`.
+29. **Hardscape canvas drag** — document-level drag (not canvas-level) is required so elements don't "slip" when the mouse moves faster than the element. Store drag start state in a `useRef` (not state) so mousemove handlers don't cause re-renders on every pixel. Use functional state updates (`setItems(prev => …)`) to avoid stale closure issues.
+30. **Water log localStorage key** — hardscape layout uses `zenith_hardscape_v1`. Always version localStorage keys so schema changes don't crash on stale data.
 
 ---
 
@@ -806,3 +912,9 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 | 3 | 3.3 | Predictive GPA simulator — Cornell 4.3 scale, What-If sliders, target bar, collapsible semester cards | ✅ |
 | 3 | 3.4 | Course Load Matrix & Cognitive Load Map — intensity sliders, stress matrix algorithm, 7-day forecast | ✅ |
 | 3 | 3.5 | AI Lecture Summarizer & Flashcard Generator — Anthropic API gateway, 3D flip deck, ingestion dock | ✅ |
+| 4 | 4.1 | Aquascaping Biological Compatibility Validator — 34-species library, 6-check engine, bioload bar, conflict feed | ✅ |
+| 4 | 4.2 | Supplier Cart Pricing Simulator — 6-vendor registry, shipping threshold evaluator, free-shipping unlock, grand total | ✅ |
+| 4 | 4.3 | Hardscape Simulator & Water Parameter Logger — 20×10 grid canvas, drag-and-drop, pure SVG chart, Nitrogen Cycle auditor | ✅ |
+| 4 | 4.4 | Trail Hunter Map Hub & GPX Exporter — Leaflet map (CartoDB Dark Matter), multi-parametric filter sidebar, 8-trail dataset, GPX 1.1 blob download | ✅ |
+| 4 | 4.5 | Hiker's Pack Checklist & Emergency Check-In — gear weight aggregator (usePackWeight), 21-item inventory, emergency FSM (INACTIVE/ACTIVE_HIKING/OVERDUE), countdown + urgency-adaptive timer card, emergency dispatch payload, TrailHunterView two-tab layout | ✅ |
+| 4 | 4.6 | Botanist Node — Cornell flora register (15 species, 3 types), seasonal calendar matrix, Spring/Autumn/Default tint system, houseplant dryness equation, yellow-slate overdue indicator, IDB watering log (ZenithOS v9) | ✅ |
