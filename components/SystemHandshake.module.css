@@ -1,0 +1,254 @@
+/* ══════════════════════════════════════════════════════════════
+   SystemHandshake — Phase 6 · Step 6.5
+   Terminal-style boot validation overlay.
+
+   Design contract:
+     PASSED  →  Ocean Sage Green  #52cca3  (var(--accent-green))
+     FAILED  →  Crimson-Slate     #ff5c5c
+     OFFLINE →  var(--text-dark)  (de-emphasised, non-blocking)
+
+   All other values use CSS custom property tokens — zero arbitrary
+   hex except the two diagnostic alert tones defined above.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Full-bleed backdrop ─────────────────────────────────────── */
+.overlay {
+  position:        fixed;
+  inset:           0;
+  z-index:         500;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         var(--sp-6);
+  background:      var(--bg-main);
+  transition:      opacity 500ms var(--ease-smooth);
+
+  /* Subtle CRT scanline texture — adds terminal depth without a library */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.055) 3px,
+    rgba(0, 0, 0, 0.055) 4px
+  );
+}
+
+/* ── Terminal panel ──────────────────────────────────────────── */
+.panel {
+  width:       min(800px, 100%);
+  font-family: var(--font-mono);
+  animation:   fadeIn 0.45s var(--ease-expo) both;
+}
+
+/* ── Header: logo row + horizontal rule ─────────────────────── */
+.header {
+  margin-bottom: var(--sp-8);
+}
+
+.logoRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.logoGlyph {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+  width:           38px;
+  height:          38px;
+  background:      var(--accent-purple);
+  color:           #0b0d13;
+  border-radius:   var(--r-sm);
+  font-family:     var(--font-display);
+  font-size:       1.125rem;
+  font-weight:     700;
+  letter-spacing:  -0.02em;
+  box-shadow:      0 0 20px rgba(124, 149, 255, 0.40);
+}
+
+.logoTitle {
+  font-family:    var(--font-display);
+  font-size:      0.875rem;
+  font-weight:    700;
+  letter-spacing: 0.20em;
+  color:          var(--text-primary);
+  line-height:    1;
+}
+
+.logoSub {
+  margin-top:     4px;
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.11em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+}
+
+.rule {
+  height:     1px;
+  background: var(--border-subtle);
+}
+
+.rule[data-type="fatal"] {
+  background: rgba(255, 92, 92, 0.22);
+}
+
+/* ── Boot init text (booting phase) ─────────────────────────── */
+.initText {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  font-size:      0.725rem;
+  letter-spacing: 0.07em;
+  color:          var(--text-muted);
+  animation:      slideIn 0.35s var(--ease-expo) both;
+}
+
+/* ── Check list container ────────────────────────────────────── */
+.checkList {
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+}
+
+/* ── Individual check row ────────────────────────────────────── */
+.checkRow {
+  display:        flex;
+  align-items:    baseline;
+  flex-wrap:      wrap;
+  font-size:      0.72rem;
+  letter-spacing: 0.05em;
+  line-height:    1.75;
+  color:          var(--text-muted);
+  animation:      slideIn 0.30s var(--ease-expo) both;
+}
+
+/* Brighten the entire line while running */
+.checkRow[data-status="running"] { color: var(--text-primary); }
+
+.bracket {
+  color:       var(--text-dark);
+  flex-shrink: 0;
+}
+
+/* checkLabel inherits .checkRow color */
+
+.arrow {
+  color:       var(--text-dark);
+  flex-shrink: 0;
+}
+
+.status[data-val="passed"]  { color: #52cca3; }
+.status[data-val="failed"]  { color: #ff5c5c; }
+.status[data-val="skipped"] { color: var(--text-dark); }
+
+.checkMsg {
+  font-size:     0.63rem;
+  letter-spacing: 0.03em;
+  color:          var(--text-dark);
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  white-space:    nowrap;
+  max-width:      340px;
+}
+
+/* ── Blinking block cursor ───────────────────────────────────── */
+.cursor {
+  display:        inline-block;
+  width:          7px;
+  height:         13px;
+  background:     var(--accent-purple);
+  margin-left:    3px;
+  vertical-align: text-bottom;
+  flex-shrink:    0;
+  animation:      cursorBlink 1s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Result block (success / fatal) ─────────────────────────── */
+.result {
+  margin-top: var(--sp-6);
+  animation:  slideIn 0.35s var(--ease-expo) both;
+}
+
+.resultLine {
+  margin:         var(--sp-3) 0 var(--sp-1);
+  font-size:      0.725rem;
+  font-weight:    500;
+  letter-spacing: 0.08em;
+  color:          var(--text-muted);
+}
+
+.resultLine[data-type="success"] { color: #52cca3; }
+.resultLine[data-type="fatal"]   { color: #ff5c5c; }
+
+.unlockLine {
+  display:        flex;
+  align-items:    center;
+  font-size:      0.7rem;
+  letter-spacing: 0.06em;
+  color:          var(--text-dark);
+}
+
+.fatalDetail {
+  margin-top:     var(--sp-2);
+  font-size:      0.68rem;
+  letter-spacing: 0.04em;
+  color:          var(--text-muted);
+  line-height:    1.65;
+}
+
+/* ── Action buttons (fatal path) ─────────────────────────────── */
+.actions {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  margin-top:     var(--sp-8);
+  max-width:      460px;
+}
+
+.retryBtn,
+.overrideBtn {
+  width:          100%;
+  padding:        var(--sp-3) var(--sp-5);
+  background:     transparent;
+  border:         1px solid;
+  border-radius:  var(--r-sm);
+  font-family:    var(--font-mono);
+  font-size:      0.72rem;
+  letter-spacing: 0.06em;
+  cursor:         pointer;
+  text-align:     left;
+  transition:
+    background    var(--dur-base) var(--ease-smooth),
+    border-color  var(--dur-base) var(--ease-smooth),
+    color         var(--dur-base) var(--ease-smooth);
+}
+
+.retryBtn {
+  border-color: var(--border-subtle);
+  color:        var(--text-muted);
+}
+
+.retryBtn:hover {
+  background:   var(--bg-hover);
+  border-color: var(--accent-purple-dim);
+  color:        var(--text-primary);
+}
+
+.overrideBtn {
+  border-color: rgba(255, 92, 92, 0.28);
+  color:        #ff5c5c;
+}
+
+.overrideBtn:hover {
+  background:   rgba(255, 92, 92, 0.09);
+  border-color: rgba(255, 92, 92, 0.52);
+}
