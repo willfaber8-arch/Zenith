@@ -40,6 +40,8 @@ import type { MentalHealthLog } from '@/utils/mentalHealthLog'
 export type { MentalHealthLog } from '@/utils/mentalHealthLog'
 import { applyXpGain, type HabitDifficulty } from '@/utils/rpgEngine'
 export type { HabitDifficulty } from '@/utils/rpgEngine'
+import type { OutboxMutation } from '@/types/syncQueue'
+export type { OutboxMutation } from '@/types/syncQueue'
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -103,6 +105,7 @@ export interface Habit {
   targetDays?:        number[]          //   0=Sun … 6=Sat (custom frequency only)
   notes?:             string            //   motivation memo / context
   createdAt:          number            //   Unix timestamp ms
+  supabaseId?:        string            //   cloud UUID injected by syncBroker on first create
 }
 
 export type HabitFrequency = 'daily' | 'weekly' | 'custom'
@@ -121,6 +124,7 @@ export interface Workout {
   type:          WorkoutType  // * indexed — category filter
   durationMins?: number       //   cardio / HIIT session length
   notes?:        string       //   form cues, RPE, mood
+  supabaseId?:   string       //   cloud UUID injected by syncBroker on first create
 }
 
 export type WorkoutType = 'strength' | 'cardio' | 'mobility' | 'sport' | 'other'
@@ -308,6 +312,7 @@ class ZenithDatabase extends Dexie {
   deliveries!:             EntityTable<DeliveryItem,          'id'>
   rpgEventLog!:            EntityTable<RpgEventLog,           'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
+  outboxMutations!:        EntityTable<OutboxMutation,        'id'>
 
   constructor() {
     super('ZenithOS')
@@ -501,6 +506,26 @@ class ZenithDatabase extends Dexie {
      */
     this.version(12).stores({
       mentalHealthLogs: '++id, logDate, createdAt',
+    })
+
+    /*
+     * Version 13 — Phase 6 · Step 6.4 (Database Synchronisation Broker)
+     *
+     * New table:
+     *   outboxMutations — write-ahead outbox for the syncBroker. Complements
+     *     the existing pendingSyncQueue (Phase 2.2) with wider table coverage
+     *     (habits + workouts), structured CREATE/UPDATE/DELETE semantics, and
+     *     bulk-batched LWW flush logic.
+     *
+     *   id         — explicit string PK (client UUID, no auto-increment)
+     *   tableName  — indexed for per-table grouping during the flush pass
+     *   action     — indexed for filtering CREATE/UPDATE/DELETE subsets
+     *   timestamp  — indexed for chronological ordering (oldest-first drain)
+     *
+     *   payload and updatedAt are non-indexed — accessed via full-record read.
+     */
+    this.version(13).stores({
+      outboxMutations: 'id, tableName, action, timestamp',
     })
   }
 }

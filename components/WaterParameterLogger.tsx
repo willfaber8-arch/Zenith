@@ -67,7 +67,6 @@ export default function WaterParameterLogger() {
   const logs = useLiveQuery<WaterLog[]>(
     () => db.waterLogs.orderBy('logDate').toArray(),
     [],
-    [],
   )
 
   /* ── Handlers ─────────────────────────────────────────────── */

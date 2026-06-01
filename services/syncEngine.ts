@@ -96,6 +96,15 @@ export class ZenithSyncEngine {
 
   get status(): SyncStatus { return this._status }
 
+  /**
+   * Public status bridge consumed by the sync broker (Phase 6.4).
+   * Allows `syncBroker.ts` to participate in the shared status stream
+   * without coupling to internal engine state.
+   */
+  reportStatus(status: SyncStatus): void {
+    this.emit(status)
+  }
+
   /* ── Initialisation ─────────────────────────────────────── */
 
   /**
