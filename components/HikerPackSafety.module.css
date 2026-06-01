@@ -1,0 +1,605 @@
+/* ════════════════════════════════════════════════════════════════
+   HikerPackSafety — Phase 4 · Step 4.5
+   Creator's Choice theme: obsidian-green surfaces + safety urgency
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Creator's Choice local design tokens ────────────────────── */
+
+.hikerPack {
+  --v-card:       #141c19;
+  --v-surface:    #111618;
+  --v-border:     rgba(82, 204, 163, 0.10);
+  --v-accent:     var(--accent-green);
+  --v-accent-dim: rgba(82, 204, 163, 0.12);
+  --v-muted:      var(--text-muted);
+  --v-text:       var(--text-primary);
+  --v-warn:       #f59e0b;
+  --v-warn-dim:   rgba(245, 158, 11, 0.12);
+  --v-critical:   #f87171;
+  --v-crit-dim:   rgba(248, 113, 113, 0.10);
+}
+
+/* ── Two-column layout ────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LEFT PANEL — Gear Inventory
+   ══════════════════════════════════════════════════════════════ */
+
+.gearPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Weight summary card */
+
+.weightCard {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.weightRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weightLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.weightValue {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--v-accent);
+  letter-spacing: 0.02em;
+}
+
+.weightBar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(82, 204, 163, 0.10);
+  overflow: hidden;
+}
+
+.weightFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--v-accent);
+  transition: width 280ms var(--ease-smooth);
+}
+
+.weightMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--v-muted);
+}
+
+/* Gear list */
+
+.gearList {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  max-height: 540px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 204, 163, 0.22) transparent;
+}
+
+.gearList::-webkit-scrollbar { width: 3px; }
+.gearList::-webkit-scrollbar-track { background: transparent; }
+.gearList::-webkit-scrollbar-thumb {
+  background: rgba(82, 204, 163, 0.20);
+  border-radius: 2px;
+}
+
+/* Category section */
+
+.catSection {
+  padding: var(--sp-2) 0;
+}
+
+.catSection + .catSection {
+  border-top: 1px solid var(--v-border);
+}
+
+.catHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-4);
+  margin-bottom: 2px;
+}
+
+.catLabel {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+  opacity: 0.65;
+}
+
+.catWeight {
+  font-size: 0.63rem;
+  color: var(--v-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gear item row */
+
+.gearItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 7px var(--sp-4);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+
+.gearItem:hover {
+  background: var(--v-accent-dim);
+}
+
+/* Custom checkbox */
+
+.checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid rgba(82, 204, 163, 0.28);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+
+.checkbox:checked {
+  background: var(--v-accent);
+  border-color: var(--v-accent);
+}
+
+.checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: 1.5px solid #111618;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.itemName {
+  flex: 1;
+  font-size: 0.84rem;
+  line-height: 1;
+  transition: color var(--dur-fast);
+}
+
+.itemName[data-packed="true"]  { color: var(--v-text); }
+.itemName[data-packed="false"] { color: var(--v-muted); }
+
+.itemWeight {
+  font-size: 0.73rem;
+  color: var(--v-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RIGHT PANEL — Safety Timer
+   ══════════════════════════════════════════════════════════════ */
+
+.safetyPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Shared card */
+
+.card {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.cardLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+/* Trail selector */
+
+.trailSelect {
+  width: 100%;
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--v-text);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ba3c4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  transition: border-color var(--dur-fast);
+}
+
+.trailSelect:focus { border-color: rgba(82, 204, 163, 0.35); }
+.trailSelect:disabled { opacity: 0.45; cursor: not-allowed; }
+.trailSelect option { background: #111618; }
+
+.trailMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: 0.775rem;
+  color: var(--v-muted);
+}
+
+.metaSep { opacity: 0.4; }
+
+/* Difficulty badges */
+
+.diffBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.diff_easy      { color: #52cca3; background: rgba(82, 204, 163, 0.12); }
+.diff_moderate  { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.diff_strenuous { color: #f87171; background: rgba(248, 113, 113, 0.12); }
+
+/* Return window inputs */
+
+.returnRow {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.timeGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  transition: border-color var(--dur-fast);
+}
+
+.timeGroup:focus-within { border-color: rgba(82, 204, 163, 0.35); }
+
+.timeInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--v-text);
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  width: 44px;
+  text-align: center;
+}
+
+.timeUnit {
+  font-size: 0.73rem;
+  color: var(--v-muted);
+}
+
+/* Initialize button */
+
+.initBtn {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--v-accent-dim);
+  border: 1px solid rgba(82, 204, 163, 0.28);
+  border-radius: var(--r-md);
+  color: var(--v-accent);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background  var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+.initBtn:hover:not(:disabled) {
+  background: rgba(82, 204, 163, 0.20);
+  border-color: rgba(82, 204, 163, 0.50);
+  box-shadow: 0 0 20px rgba(82, 204, 163, 0.07);
+}
+
+.initBtn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.initHint {
+  font-size: 0.73rem;
+  color: var(--v-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Timer card (high-urgency adaptive) ───────────────────────── */
+
+.timerCard {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-5);
+  transition: border-color 500ms var(--ease-smooth), box-shadow 500ms var(--ease-smooth);
+}
+
+.timerCard[data-urgency="warning"] {
+  border-color: rgba(245, 158, 11, 0.38);
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.05);
+}
+
+.timerCard[data-urgency="critical"] {
+  border-color: rgba(248, 113, 113, 0.55);
+  animation: timerCritical 1.8s ease-in-out infinite;
+}
+
+.timerCard[data-urgency="overdue"] {
+  border-color: rgba(248, 113, 113, 0.70);
+  animation: timerOverdue 1.0s ease-in-out infinite;
+}
+
+@keyframes timerCritical {
+  0%, 100% { box-shadow: 0 0 16px rgba(248, 113, 113, 0.08); }
+  50%       { box-shadow: 0 0 40px rgba(248, 113, 113, 0.22); }
+}
+
+@keyframes timerOverdue {
+  0%, 100% { box-shadow: 0 0 24px rgba(248, 113, 113, 0.14); }
+  50%       { box-shadow: 0 0 56px rgba(248, 113, 113, 0.36); }
+}
+
+.timerLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+/* Big countdown display */
+
+.countdown {
+  font-family: var(--font-mono);
+  font-size: clamp(2.75rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--v-accent);
+  transition: color 500ms var(--ease-smooth);
+}
+
+.countdown[data-urgency="warning"]  { color: var(--v-warn); }
+.countdown[data-urgency="critical"] { color: var(--v-critical); }
+.countdown[data-urgency="overdue"]  { color: var(--v-critical); }
+
+.timerSub {
+  font-size: 0.8rem;
+  color: var(--v-muted);
+  text-align: center;
+}
+
+.timerSub strong {
+  color: var(--v-text);
+  font-weight: 600;
+}
+
+/* Time-remaining progress bar */
+
+.timeBar {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(82, 204, 163, 0.08);
+  overflow: hidden;
+}
+
+.timeBarFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--v-accent);
+  transition: width 1s linear, background 500ms var(--ease-smooth);
+}
+
+.timeBarFill[data-urgency="warning"]  { background: var(--v-warn); }
+.timeBarFill[data-urgency="critical"] { background: var(--v-critical); }
+
+/* Deactivate / confirm button */
+
+.deactivateBtn {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--v-accent-dim);
+  border: 1px solid rgba(82, 204, 163, 0.28);
+  border-radius: var(--r-md);
+  color: var(--v-accent);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--dur-base) var(--ease-smooth);
+}
+
+.deactivateBtn:hover:not([data-confirming="true"]) {
+  background: rgba(82, 204, 163, 0.22);
+  border-color: rgba(82, 204, 163, 0.55);
+}
+
+.deactivateBtn[data-confirming="true"] {
+  background: var(--v-warn-dim);
+  border-color: rgba(245, 158, 11, 0.42);
+  color: var(--v-warn);
+  animation: confirmPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes confirmPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+  50%       { box-shadow: 0 0 14px rgba(245, 158, 11, 0.25); }
+}
+
+/* ── Emergency card ───────────────────────────────────────────── */
+
+.emergencyCard {
+  background: rgba(248, 113, 113, 0.05);
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.emergencyHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--v-critical);
+}
+
+.emergencyDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--v-critical);
+  flex-shrink: 0;
+  animation: pulseGlow 1s ease-in-out infinite;
+}
+
+.emergencyDesc {
+  font-size: 0.83rem;
+  color: var(--v-muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.emergencyPayload {
+  background: var(--v-surface);
+  border: 1px solid rgba(248, 113, 113, 0.18);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.emergencyText {
+  font-family: var(--font-mono);
+  font-size: 0.775rem;
+  color: var(--v-critical);
+  line-height: 1.7;
+  padding: var(--sp-4);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.copyBtn {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  background: rgba(248, 113, 113, 0.08);
+  border: none;
+  border-top: 1px solid rgba(248, 113, 113, 0.14);
+  color: var(--v-critical);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--dur-fast);
+}
+
+.copyBtn:hover { background: rgba(248, 113, 113, 0.16); }
+
+/* ── Inactive placeholder ────────────────────────────────────── */
+
+.placeholder {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-10) var(--sp-6);
+  text-align: center;
+}
+
+.placeholderTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--v-text);
+  margin-bottom: var(--sp-3);
+}
+
+.placeholderBody {
+  font-size: 0.83rem;
+  color: var(--v-muted);
+  line-height: 1.7;
+  max-width: 380px;
+  margin: 0 auto;
+}

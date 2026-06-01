@@ -1,0 +1,104 @@
+/* ════════════════════════════════════════════════════════════
+   UniHubView — Phase 2 · Step 2.3
+   View-level container styles shared across all render states.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Invisible loading shell — prevents layout jump ──────── */
+
+.loadingShell {
+  min-height: 60vh;
+}
+
+/* ── Spinner-less loading state — only shown during dynamic
+   import (usually < 100 ms) ─────────────────────────────── */
+
+.loadingState {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(3.5rem, 12vh, 7rem) var(--sp-8);
+  display: flex;
+  align-items: flex-start;
+}
+
+.loadingLabel {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  animation: loadPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes loadPulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1.0; }
+}
+
+/* ── No-data (coming soon) state ─────────────────────────── */
+
+.noDataWrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(3.5rem, 12vh, 7rem) var(--sp-8) var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+.noDataHeading {
+  /* ZenHeading handles its own internal spacing */
+}
+
+.noDataActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Change university button ─────────────────────────────── */
+
+.changeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.625rem var(--sp-5);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+  transition:
+    color           var(--dur-base),
+    border-color    var(--dur-base),
+    background-color var(--dur-base),
+    transform       var(--dur-base) var(--ease-expo);
+}
+
+.changeBtn:hover {
+  color:        var(--text-primary);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+  transform:    translateX(-2px);
+}
+
+/* ── Coming-soon hint ────────────────────────────────────── */
+
+.noDataHint {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .noDataWrap,
+  .loadingState {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}

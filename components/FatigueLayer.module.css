@@ -1,0 +1,118 @@
+/* ════════════════════════════════════════════════════════════
+   FatigueLayer.module.css — Phase 5 · Step 5.6
+   Ambient visual filter system: two fixed overlays that
+   activate when isFatigued is true, plus a floating alert bar.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Desaturation overlay ──────────────────────────────────── */
+/*
+ * backdrop-filter: saturate(0.75) is applied to everything in the
+ * paint stack below z-index 589.  Using backdrop-filter instead of
+ * body { filter: ... } avoids the position:fixed containing-block
+ * regression that body-level filter creates.
+ *
+ * opacity 0→1 transition on activation; visibility collapses it
+ * fully when inactive so the backdrop-filter isn't computed.
+ */
+.filterOverlay {
+  position:        fixed;
+  inset:           0;
+  z-index:         589;
+  pointer-events:  none;
+  backdrop-filter: saturate(0.75);
+  background:      transparent;
+  transition:      opacity 1.5s ease;
+}
+
+/* ── Warm ambient tint overlay ─────────────────────────────── */
+/*
+ * A barely-perceptible amber-sepia wash using mix-blend-mode: soft-light.
+ * Stacked directly above the filter overlay to layer both effects
+ * simultaneously (desaturation + warm blue-light dampening).
+ */
+.warmOverlay {
+  position:       fixed;
+  inset:          0;
+  z-index:        590;
+  pointer-events: none;
+  background:     linear-gradient(
+    135deg,
+    rgba(255, 190, 100, 0.055) 0%,
+    rgba(255, 130, 60,  0.035) 100%
+  );
+  mix-blend-mode: soft-light;
+  transition:     opacity 1.5s ease;
+}
+
+/* ── Floating fatigue alert bar ────────────────────────────── */
+/*
+ * Centred pill at the bottom of the viewport.
+ * Positioned above both overlays (z:591) and below the recovery
+ * cockpit (z:595) and Toast (z:600).
+ * Slides in via .anim-slide-in utility class from globals.css.
+ */
+.fatigueBar {
+  position:        fixed;
+  bottom:          var(--sp-10);    /* 40 px — clears Toast (bottom: 24 px) */
+  left:            50%;
+  transform:       translateX(-50%);
+  z-index:         591;
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-3);
+  padding:         var(--sp-3) var(--sp-5);
+  background:      rgba(11, 13, 19, 0.93);
+  border:          1px solid rgba(224, 114, 58, 0.32);
+  border-radius:   var(--r-xl);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 0   0 1px rgba(224, 114, 58, 0.10);
+  backdrop-filter: blur(16px);
+  white-space:     nowrap;
+}
+
+.fatigueDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    #e0723a;
+  flex-shrink:   0;
+  animation:     pulseGlow 1.8s ease-in-out infinite;
+}
+
+.fatigueText {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    600;
+  letter-spacing: 0.10em;
+  color:          #e0a878;
+  text-transform: uppercase;
+}
+
+.recoveryBtn {
+  padding:       var(--sp-2) var(--sp-4);
+  background:    linear-gradient(
+    135deg,
+    rgba(82, 204, 163, 0.18),
+    rgba(82, 204, 163, 0.10)
+  );
+  border:        1px solid rgba(82, 204, 163, 0.38);
+  border-radius: var(--r-lg);
+  font-family:   var(--font-body);
+  font-size:     0.625rem;
+  font-weight:   600;
+  color:         var(--accent-green);
+  cursor:        pointer;
+  letter-spacing: 0.03em;
+  white-space:   nowrap;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+.recoveryBtn:hover {
+  background:   rgba(82, 204, 163, 0.26);
+  border-color: rgba(82, 204, 163, 0.62);
+  box-shadow:   0 0 14px rgba(82, 204, 163, 0.20);
+}

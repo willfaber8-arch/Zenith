@@ -1,0 +1,362 @@
+/* ════════════════════════════════════════════════════════════════
+   ForagingLog — Phase 4 · Step 4.6
+   Seasonal accent system: Spring #52cca3 | Autumn #cc8f52 | Default #7c95ff
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Creator's Choice tokens + season custom properties ──────── */
+
+.foragingLog {
+  --v-card:       #141c19;
+  --v-surface:    #111618;
+  --v-border:     rgba(82, 204, 163, 0.10);
+  --v-muted:      var(--text-muted);
+  --v-text:       var(--text-primary);
+  --v-accent:     var(--accent-green);
+
+  /* Season-reactive — overridden via inline style on the root */
+  --season-color:  #7c95ff;
+  --season-dim:    rgba(124, 149, 255, 0.11);
+  --season-border: rgba(124, 149, 255, 0.28);
+
+  /* Flora type colours */
+  --c-forage: #f59e0b;
+  --c-bloom:  #c084fc;
+  --c-foliage: #52cca3;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ── Season header ────────────────────────────────────────────── */
+
+.seasonHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.seasonBadge {
+  padding: 4px var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: var(--season-dim);
+  color: var(--season-color);
+  border: 1px solid var(--season-border);
+  transition: background 400ms var(--ease-smooth), color 400ms var(--ease-smooth), border-color 400ms var(--ease-smooth);
+  flex-shrink: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.monthTitle {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--v-text);
+}
+
+.peakCount {
+  font-size: 0.78rem;
+  color: var(--v-muted);
+}
+
+/* ── Month selector row ───────────────────────────────────────── */
+
+.monthSelector {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.monthSelector::-webkit-scrollbar { display: none; }
+
+.monthChip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--v-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--dur-fast) var(--ease-smooth),
+    color     var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.monthChip:hover:not(.monthChipSelected) {
+  background: rgba(124, 149, 255, 0.08);
+  color: var(--v-text);
+}
+
+.monthChipCurrent {
+  color: var(--v-text);
+  border-color: rgba(124, 149, 255, 0.18);
+}
+
+.monthChipSelected {
+  background: var(--chip-dim, var(--season-dim));
+  color: var(--chip-color, var(--season-color));
+  border-color: var(--chip-border, var(--season-border));
+}
+
+.chipDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  transition: background var(--dur-fast);
+}
+
+/* ── Species × month matrix ───────────────────────────────────── */
+
+.matrixContainer {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.matrixScroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 204, 163, 0.20) transparent;
+}
+
+.matrixScroll::-webkit-scrollbar { height: 3px; }
+.matrixScroll::-webkit-scrollbar-track { background: transparent; }
+.matrixScroll::-webkit-scrollbar-thumb {
+  background: rgba(82, 204, 163, 0.18);
+  border-radius: 2px;
+}
+
+.matrix {
+  min-width: 580px;
+  display: flex;
+  flex-direction: column;
+}
+
+.matrixHeaderRow {
+  display: grid;
+  grid-template-columns: 180px repeat(12, 1fr);
+  border-bottom: 1px solid var(--v-border);
+}
+
+.matrixSpeciesCol {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.matrixMonthHead {
+  padding: var(--sp-2) 0;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--v-muted);
+  transition: color 300ms, background 300ms;
+}
+
+.matrixMonthActive {
+  background: var(--season-dim);
+  color: var(--season-color);
+}
+
+.matrixRow {
+  display: grid;
+  grid-template-columns: 180px repeat(12, 1fr);
+  border-bottom: 1px solid rgba(82, 204, 163, 0.05);
+}
+
+.matrixRow:last-child { border-bottom: none; }
+
+.matrixRow:hover {
+  background: rgba(82, 204, 163, 0.03);
+}
+
+.matrixSpeciesCell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 7px var(--sp-4);
+}
+
+.matrixSpeciesName {
+  font-size: 0.75rem;
+  color: var(--v-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrixCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 0;
+  transition: background 300ms;
+}
+
+.matrixCellActive {
+  background: var(--season-dim);
+}
+
+/* Flora type dots */
+
+.typeDot, .peakDot, .legendDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.emptyDot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 149, 255, 0.12);
+}
+
+.dot_forageable_edible { background: var(--c-forage); }
+.dot_ornamental_bloom  { background: var(--c-bloom);  }
+.dot_foliage           { background: var(--c-foliage);}
+
+/* Legend */
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--v-border);
+  font-size: 0.68rem;
+  color: var(--v-muted);
+}
+
+.legendDot {
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+}
+
+/* ── Active flora cards ───────────────────────────────────────── */
+
+.activeSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.sectionLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.emptyState {
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+  font-size: 0.83rem;
+  color: var(--v-muted);
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+}
+
+.floraGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sp-4);
+}
+
+.floraCard {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  transition: border-color var(--dur-base) var(--ease-smooth);
+}
+
+/* Type-specific left accent */
+.card_forageable_edible { border-left: 3px solid rgba(245, 158, 11, 0.40); }
+.card_ornamental_bloom  { border-left: 3px solid rgba(192, 132, 252, 0.40); }
+.card_foliage           { border-left: 3px solid rgba(82, 204, 163, 0.40); }
+
+.floraCardTop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.typeBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.badge_forageable_edible { color: var(--c-forage); background: rgba(245, 158, 11, 0.12); }
+.badge_ornamental_bloom  { color: var(--c-bloom);  background: rgba(192, 132, 252, 0.12); }
+.badge_foliage           { color: var(--c-foliage);background: rgba(82, 204, 163, 0.12); }
+
+.floraName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--v-text);
+  line-height: 1.3;
+}
+
+.floraDesc {
+  font-size: 0.82rem;
+  color: var(--v-muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.floraLocations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.locChip {
+  font-size: 0.65rem;
+  color: rgba(82, 204, 163, 0.60);
+  background: rgba(82, 204, 163, 0.06);
+  border: 1px solid rgba(82, 204, 163, 0.12);
+  border-radius: 3px;
+  padding: 1px 6px;
+}

@@ -1,0 +1,223 @@
+/* ════════════════════════════════════════════════════════════
+   GritAnalyticsChart.module.css — Grit-Score Analytics Panel
+   Phase 5 · Step 5.3
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Outer card shell ─────────────────────────────────────── */
+
+.card {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5) var(--sp-6);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-4);
+  box-shadow:    var(--shadow-card);
+  position:      relative;
+  overflow:      hidden;
+}
+
+/* Periwinkle top-edge accent */
+.card::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: var(--sp-6); right: var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg, transparent, var(--accent-purple) 40%,
+    var(--accent-purple) 60%, transparent
+  );
+  opacity: 0.55;
+}
+
+/* ── Header row ───────────────────────────────────────────── */
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  flex-shrink:     0;
+}
+
+.eyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+}
+
+.currentScore {
+  display:        flex;
+  align-items:    baseline;
+  gap:            var(--sp-1);
+}
+
+.scoreNum {
+  font-family:    var(--font-display);
+  font-size:      1.75rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.04em;
+  line-height:    1;
+}
+
+.scoreUnit {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.08em;
+}
+
+/* ── SVG canvas ───────────────────────────────────────────── */
+
+.svg {
+  display: block;
+  width:   100%;
+  height:  auto;
+  overflow: visible;
+}
+
+/* ── Loading skeleton ─────────────────────────────────────── */
+
+.skeleton {
+  width:         100%;
+  height:        200px;
+  border-radius: var(--r-md);
+  background:    rgba(255, 255, 255, 0.03);
+  animation:     pulseGlow 2s ease-in-out infinite;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.emptyState {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-2);
+  height:          160px;
+  text-align:      center;
+}
+
+.emptyIcon {
+  font-size:  1.25rem;
+  opacity:    0.25;
+  line-height: 1;
+}
+
+.emptyText {
+  font-size:   0.75rem;
+  font-weight: 500;
+  color:       var(--text-dark);
+  line-height: 1.5;
+}
+
+.emptySubtext {
+  font-size:   0.625rem;
+  color:       var(--text-dark);
+  opacity:     0.6;
+  line-height: 1.5;
+  max-width:   280px;
+}
+
+/* ── Stat row (Current / 7-Day Avg / 30-Day High) ─────────── */
+
+.statRow {
+  display:         grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:             1px;
+  background:      var(--border-subtle);
+  border:          1px solid var(--border-subtle);
+  border-radius:   var(--r-md);
+  overflow:        hidden;
+}
+
+.statCell {
+  background:     var(--surface-card);
+  padding:        var(--sp-3) var(--sp-4);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+}
+
+.statCellLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+}
+
+.statCellValue {
+  font-family:    var(--font-display);
+  font-size:      1.25rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height:    1;
+}
+
+.statCellUnit {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.08em;
+}
+
+/* ── Trend callout ────────────────────────────────────────── */
+
+.trendCallout {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border:        1px solid;
+  animation:     slideIn var(--dur-slow) var(--ease-expo) both;
+}
+
+.trendDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+  animation:     pulseGlow 2.5s ease-in-out infinite;
+}
+
+.trendTag {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height:    1.4;
+}
+
+/* GAINING MOMENTUM — Ocean Sage Green */
+.trendGaining {
+  background:   rgba(82, 204, 163, 0.08);
+  border-color: rgba(82, 204, 163, 0.28);
+}
+.trendGaining .trendDot  { background: #52cca3; }
+.trendGaining .trendTag  { color: #52cca3; }
+
+/* RECOVERY CRITICAL — Yellow-Slate (matches --v-overdue in BotanistView) */
+.trendRecovering {
+  background:   rgba(201, 180, 90, 0.08);
+  border-color: rgba(201, 180, 90, 0.28);
+}
+.trendRecovering .trendDot { background: #c9b45a; }
+.trendRecovering .trendTag { color: #c9b45a; }
+
+/* HOLDING STEADY — muted neutral */
+.trendSteady {
+  background:   rgba(255, 255, 255, 0.03);
+  border-color: var(--border-subtle);
+}
+.trendSteady .trendDot { background: var(--text-dark); animation: none; }
+.trendSteady .trendTag { color: var(--text-dark); }

@@ -1,0 +1,281 @@
+/* HomeView — showcase layout (same spatial rules as former page.module.css) */
+
+/* ══════════════════════════════════════════════════════════════
+   STUDY MODE CTA  — prominent entry point between hero + widgets
+   ══════════════════════════════════════════════════════════════ */
+
+.studyModeCta {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--sp-8) var(--sp-6);
+}
+
+.studyModeCtaInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  /*
+   * Subtle periwinkle top glow — signals this is the primary
+   * action in the workspace hierarchy.
+   */
+  box-shadow:
+    0 0 0 1px var(--border-subtle),
+    0 -1px 0 0 rgba(124, 149, 255, 0.22) inset;
+  transition:
+    border-color var(--dur-base) var(--ease-smooth),
+    box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+.studyModeCtaInner:has(button:hover) {
+  border-color: var(--accent-purple-dim);
+  box-shadow:
+    0 0 0 1px var(--accent-purple-dim),
+    0 -1px 0 0 rgba(124, 149, 255, 0.32) inset,
+    0 4px 32px rgba(124, 149, 255, 0.06);
+}
+
+.studyModeCtaMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.studyModeCtaEyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  opacity: 0.8;
+}
+
+.studyModeCtaTitle {
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  max-width: 440px;
+}
+
+/* The main action button */
+.studyModeCtaBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding: 0.75rem var(--sp-6);
+  background: rgba(124, 149, 255, 0.08);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-lg);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    color        var(--dur-base),
+    border-color var(--dur-base),
+    box-shadow   var(--dur-base) var(--ease-smooth),
+    transform    var(--dur-base) var(--ease-expo);
+}
+
+.studyModeCtaBtn:hover {
+  background:   rgba(124, 149, 255, 0.16);
+  color:        #ffffff;
+  border-color: var(--accent-purple);
+  box-shadow:   0 0 24px rgba(124, 149, 255, 0.18);
+  transform:    translateY(-1px);
+}
+
+.studyModeCtaBtn:active {
+  transform: translateY(0);
+}
+
+.studyModeCtaBtn:focus-visible {
+  outline: 2px solid var(--accent-purple-dim);
+  outline-offset: 3px;
+}
+
+/* Decorative bracket characters around the label */
+.studyModeCtaBracket {
+  font-weight: 300;
+  opacity: 0.55;
+  letter-spacing: 0;
+}
+
+/* Collapse meta text on narrow screens */
+@media (max-width: 600px) {
+  .studyModeCtaInner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+
+  .studyModeCtaBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SHOWCASE  (existing styles below)
+   ══════════════════════════════════════════════════════════════ */
+
+.showcase {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--sp-8) var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ── Section wrapper ──────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.sectionLabel {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Color swatches ───────────────────────────────────────── */
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.swatchChip {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.swatchLabel {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.swatchMeta {
+  font-size: 0.5625rem;
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+/* ── Typography specimen ──────────────────────────────────── */
+
+.typePanel {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.typeRow {
+  padding: var(--sp-6) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.typeDivider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.typeTag {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.specimenDisplay {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.specimenBody {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+  max-width: 540px;
+}
+
+.specimenMono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  letter-spacing: 0.07em;
+}
+
+/* ── Card grid ────────────────────────────────────────────── */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* ── Dev reference divider ────────────────────────────────── */
+
+.devDivider {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+  margin-top:  var(--sp-4);
+}
+
+.devDivider::before,
+.devDivider::after {
+  content:    '';
+  flex:       1;
+  height:     1px;
+  background: var(--border-subtle);
+  opacity:    0.5;
+}
+
+.devLabel {
+  font-size:      0.4375rem;
+  font-weight:    600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  white-space:    nowrap;
+  opacity:        0.6;
+}

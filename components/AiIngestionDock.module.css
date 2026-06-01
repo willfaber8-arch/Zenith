@@ -1,0 +1,282 @@
+/* ════════════════════════════════════════════════════════════════
+   AiIngestionDock — Text Ingestion & AI Submission Panel
+   Phase 3 · Step 3.5
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Dock container ──────────────────────────────────────────── */
+
+.dock {
+  position:      relative;  /* anchor for drop overlay */
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5);
+  box-shadow:    var(--shadow-card);
+  transition:    border-color var(--dur-base) ease;
+}
+
+.dock.dragging {
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.03);
+}
+
+/* ── Drop overlay ────────────────────────────────────────────── */
+
+.dropOverlay {
+  position:        absolute;
+  inset:           0;
+  border-radius:   var(--r-lg);
+  background:      rgba(11, 13, 19, 0.88);
+  border:          2px dashed var(--accent-purple-dim);
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  z-index:         10;
+  pointer-events:  none;
+  animation:       fadeIn 0.18s ease both;
+}
+
+.dropIcon {
+  font-size:   2.25rem;
+  color:       var(--accent-purple);
+  line-height: 1;
+}
+
+.dropLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--accent-purple);
+}
+
+/* ── Form ────────────────────────────────────────────────────── */
+
+.form {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ── Title row ───────────────────────────────────────────────── */
+
+.titleRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+}
+
+.titleInput {
+  flex:          1;
+  padding:       6px 10px;
+  background:    rgba(124, 149, 255, 0.03);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.8125rem;
+  outline:       none;
+  transition:    border-color var(--dur-fast) ease;
+}
+
+.titleInput:focus {
+  border-color: var(--accent-purple-dim);
+}
+
+.titleInput::placeholder {
+  color: var(--text-dark);
+}
+
+.titleInput:disabled {
+  opacity: 0.5;
+}
+
+.collapseBtn {
+  flex-shrink:   0;
+  padding:       5px 10px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.4375rem;
+  font-weight:   600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor:        pointer;
+  transition:    color var(--dur-fast) ease;
+}
+
+.collapseBtn:hover {
+  color: var(--text-muted);
+}
+
+/* ── Textarea ────────────────────────────────────────────────── */
+
+.textareaWrap {
+  position: relative;
+}
+
+.textarea {
+  display:       block;
+  width:         100%;
+  padding:       var(--sp-4) var(--sp-5);
+  background:    rgba(11, 13, 19, 0.55);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.8125rem;
+  line-height:   1.65;
+  resize:        vertical;
+  outline:       none;
+  transition:    border-color var(--dur-fast) ease;
+  scrollbar-width: thin;
+}
+
+.textarea:focus {
+  border-color: rgba(124, 149, 255, 0.22);
+}
+
+.textarea::placeholder {
+  color:       var(--text-dark);
+  line-height: 1.7;
+}
+
+.textarea:disabled {
+  opacity: 0.55;
+  cursor:  not-allowed;
+}
+
+/* ── Loading overlay (inside textarea wrap) ──────────────────── */
+
+.loadingOverlay {
+  position:        absolute;
+  inset:           0;
+  border-radius:   var(--r-lg);
+  background:      rgba(11, 13, 19, 0.78);
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-4);
+  animation:       fadeIn 0.20s ease both;
+}
+
+/* Circular CSS spinner */
+.spinner {
+  width:         32px;
+  height:        32px;
+  border:        2px solid rgba(124, 149, 255, 0.15);
+  border-top:    2px solid var(--accent-purple);
+  border-radius: 50%;
+  animation:     spin 0.70s linear infinite;
+}
+
+.loadingLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+/* ── Footer row ──────────────────────────────────────────────── */
+
+.footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+}
+
+.charCount {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.04em;
+  transition:     color var(--dur-fast) ease;
+}
+
+.charCount.charOver {
+  color: #ff8fa3;
+}
+
+/* ── Submit button ───────────────────────────────────────────── */
+
+.submitBtn {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+  padding:       9px 20px;
+  background:    linear-gradient(135deg,
+    rgba(124, 149, 255, 0.18) 0%,
+    rgba(82,  204, 163, 0.10) 100%);
+  border:        1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  color:         var(--accent-purple);
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  font-weight:   600;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:
+    background     var(--dur-base) ease,
+    border-color   var(--dur-fast) ease,
+    color          var(--dur-fast) ease,
+    opacity        var(--dur-fast) ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background:   linear-gradient(135deg,
+    rgba(124, 149, 255, 0.28) 0%,
+    rgba(82,  204, 163, 0.16) 100%);
+  border-color: var(--accent-purple);
+  color:        var(--text-primary);
+}
+
+.submitBtn:disabled {
+  opacity: 0.38;
+  cursor:  not-allowed;
+}
+
+/* Small spinner inside submit button during loading */
+.btnSpinner {
+  display:       inline-block;
+  width:         12px;
+  height:        12px;
+  border:        1.5px solid rgba(124, 149, 255, 0.25);
+  border-top:    1.5px solid var(--accent-purple);
+  border-radius: 50%;
+  animation:     spin 0.65s linear infinite;
+  flex-shrink:   0;
+}
+
+/* ── Compact toggle (collapsed state) ───────────────────────── */
+
+.compactToggle {
+  width:         100%;
+  padding:       10px var(--sp-5);
+  background:    rgba(124, 149, 255, 0.04);
+  border:        1px dashed rgba(124, 149, 255, 0.14);
+  border-radius: var(--r-lg);
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.5rem;
+  font-weight:   600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor:        pointer;
+  text-align:    center;
+  transition:    color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.compactToggle:hover {
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.07);
+}

@@ -1,0 +1,10 @@
+.wrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-8);
+  padding:        var(--sp-6);
+}
+
+@media (max-width: 640px) {
+  .wrap { padding: var(--sp-4); }
+}

@@ -1,0 +1,266 @@
+/* ════════════════════════════════════════════════════════════
+   AuthGate — Phase 0 · Step 0.5
+
+   The overlay itself is transparent so the CosmosCanvas
+   and ThemeBackground show through unobstructed.
+   Only the card carries a surface background.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ──────────────────────────────────────────────── */
+
+.overlay {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  /* Subtle radial vignette draws the eye to the card */
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 40%,
+    rgba(11, 13, 19, 0.45) 100%
+  );
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+
+.card {
+  width: min(420px, calc(100vw - var(--sp-8)));
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: var(--sp-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  box-shadow:
+    0 0   0   1px var(--border-subtle),
+    0 24px 80px  rgba(0, 0, 0, 0.65),
+    0 0 160px    rgba(124, 149, 255, 0.03);
+  animation: cardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── App badge ────────────────────────────────────────────── */
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.logoMark {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: #0b0d13;
+  /* Subtle pulse glow */
+  box-shadow: 0 0 28px rgba(124, 149, 255, 0.22);
+}
+
+.logoTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.logoTitle {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.logoTag {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Tagline ──────────────────────────────────────────────── */
+
+.tagline {
+  font-size: 0.875rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ── Google button ────────────────────────────────────────── */
+
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 0.6875rem var(--sp-5);
+  background: #ffffff;
+  color: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    box-shadow 0.25s ease,
+    background  0.15s ease;
+}
+
+.googleBtn:hover:not(:disabled) {
+  background:  #f7f7f7;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
+}
+
+.googleBtn:active:not(:disabled) {
+  background: #eeeeee;
+}
+
+.googleBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  border-top-color: rgba(66, 133, 244, 0.9);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── OR divider row ───────────────────────────────────────── */
+
+.orRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.orLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.orLabel {
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Local handle form ────────────────────────────────────── */
+
+.localForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.inputLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.input {
+  width: 100%;
+  padding: 0.6875rem var(--sp-4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  caret-color: var(--accent-purple);
+}
+
+.input:focus {
+  border-color: var(--accent-purple-dim);
+  box-shadow: 0 0 0 3px rgba(124, 149, 255, 0.08);
+}
+
+.input::placeholder {
+  color: var(--text-dark);
+  opacity: 0.7;
+}
+
+.inputInvalid {
+  border-color: rgba(255, 100, 100, 0.5);
+}
+
+.inputErr {
+  font-size: 0.75rem;
+  color: rgba(255, 120, 120, 0.85);
+  margin-top: calc(var(--sp-1) * -1);
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 0.6875rem var(--sp-5);
+  background: linear-gradient(
+    120deg,
+    var(--accent-purple) 0%,
+    color-mix(in srgb, var(--accent-purple) 72%, var(--accent-green)) 100%
+  );
+  color: #0b0d13;
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.submitBtn:hover  { opacity: 0.88; }
+.submitBtn:active { transform: scale(0.98); }
+
+/* ── Footer note ──────────────────────────────────────────── */
+
+.footerNote {
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--text-dark);
+  opacity: 0.6;
+}

@@ -1,0 +1,125 @@
+/* ════════════════════════════════════════════════════════════
+   SyncIndicator — Phase 2 · Step 2.2
+   Micro-chip mounted in the Topbar right cluster.
+   Follows the same typographic scale as .weatherChip and .clock:
+     font-mono, 0.625 rem, letter-spacing 0.04–0.08 em.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Base chip ────────────────────────────────────────────── */
+
+.chip {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           3px;
+  padding:       2px 6px;
+  border-radius: var(--r-md);
+  border:        1px solid transparent;
+  background:    transparent;
+  cursor:        default;
+  user-select:   none;
+  white-space:   nowrap;
+
+  transition:
+    color            var(--dur-base) var(--ease-smooth),
+    border-color     var(--dur-base) var(--ease-smooth),
+    background-color var(--dur-base) var(--ease-smooth),
+    opacity          var(--dur-slow) var(--ease-smooth);
+}
+
+/* Reset button styles when the chip is rendered as <button> */
+button.chip {
+  cursor: pointer;
+}
+
+button.chip:hover {
+  background-color: rgba(240, 160, 75, 0.08);
+}
+
+/* ── Icon + label ─────────────────────────────────────────── */
+
+.icon {
+  font-size:   0.5rem;
+  line-height: 1;
+  display:     inline-block;
+}
+
+.label {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;    /* 9px — one step below clock (10px) */
+  font-weight:    500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── State: CLOUD_SYNCHRONIZED ────────────────────────────── */
+
+.synced {
+  color:        var(--accent-green);
+  border-color: rgba(82, 204, 163, 0.20);
+}
+
+/* ── State: SYNCING ───────────────────────────────────────── */
+
+.syncing {
+  color:        var(--accent-purple);
+  border-color: rgba(124, 149, 255, 0.20);
+}
+
+/* Pulsing ring on the icon during active sync */
+@keyframes syncPulse {
+  0%, 100% { opacity: 1.0; transform: scale(1.0); }
+  50%       { opacity: 0.3; transform: scale(0.8); }
+}
+
+.syncing .icon {
+  animation: syncPulse 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── State: SAVED_LOCALLY ─────────────────────────────────── */
+
+.local {
+  color: var(--text-dark);
+}
+
+/* ── State: OFFLINE_QUEUED ────────────────────────────────── */
+
+.queued {
+  color:        #f0a04b;           /* warm amber — distinct from purple/green */
+  border-color: rgba(240, 160, 75, 0.22);
+}
+
+/* Slow attention-pulse on the border for the queued state */
+@keyframes queueBorderPulse {
+  0%, 100% { border-color: rgba(240, 160, 75, 0.22); }
+  50%       { border-color: rgba(240, 160, 75, 0.55); }
+}
+
+.queued {
+  animation: queueBorderPulse 2.4s ease-in-out infinite;
+}
+
+/* Disable animation while hovered so it feels responsive */
+button.queued:hover {
+  animation: none;
+  border-color: rgba(240, 160, 75, 0.55);
+}
+
+/* ── Quiet dot (post-sync settled state) ──────────────────── */
+
+.quietDot {
+  display:       inline-block;
+  width:         4px;
+  height:        4px;
+  border-radius: 50%;
+  background:    var(--accent-green);
+  opacity:       0.30;
+  flex-shrink:   0;
+  transition:    opacity var(--dur-slow) var(--ease-smooth);
+}
+
+/* ── Mobile: hide text label on narrow screens ────────────── */
+
+@media (max-width: 767px) {
+  .label { display: none; }
+  .chip  { gap: 0; padding: 2px 4px; }
+}

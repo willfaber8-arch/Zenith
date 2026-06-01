@@ -1,0 +1,537 @@
+/* ════════════════════════════════════════════════════════════
+   QuestMarketplace.module.css — Quest Board + Reward Vault
+   Phase 5 · Step 5.4
+   ════════════════════════════════════════════════════════════ */
+
+/* Local design tokens — quest-specific palette */
+.marketplace {
+  --v-quest-gold:          #ccaf52;
+  --v-quest-gold-dim:      rgba(204, 175, 82, 0.10);
+  --v-quest-gold-border:   rgba(204, 175, 82, 0.30);
+  --v-quest-gold-hover:    rgba(204, 175, 82, 0.20);
+  --v-boss-ember:          #e0723a;
+  --v-boss-dim:            rgba(224, 114, 58, 0.09);
+  --v-boss-border:         rgba(224, 114, 58, 0.35);
+  --v-boss-hover:          rgba(224, 114, 58, 0.18);
+  --v-inner-card:          #0f1620;
+
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+/* ── Gold Balance Banner ───────────────────────────────────── */
+
+.balanceBanner {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+  background:      var(--surface-card);
+  border:          1px solid var(--v-quest-gold-border);
+  border-radius:   var(--r-lg);
+  padding:         var(--sp-4) var(--sp-6);
+  box-shadow:      0 0 28px rgba(204, 175, 82, 0.05),
+                   var(--shadow-card);
+  flex-wrap:       wrap;
+}
+
+.balanceLeft {
+  display:     flex;
+  align-items: baseline;
+  gap:         var(--sp-3);
+}
+
+.balanceEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.balanceValue {
+  display:        flex;
+  align-items:    baseline;
+  gap:            var(--sp-2);
+  font-family:    var(--font-display);
+  font-size:      1.875rem;
+  font-weight:    700;
+  color:          var(--v-quest-gold);
+  letter-spacing: -0.04em;
+  line-height:    1;
+}
+
+.goldGem {
+  font-size: 0.9375rem;
+  opacity:   0.75;
+}
+
+.progressChip {
+  font-size:      0.5625rem;
+  font-weight:    600;
+  letter-spacing: 0.06em;
+  color:          var(--text-muted);
+  background:     rgba(255, 255, 255, 0.03);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-sm);
+  padding:        3px var(--sp-3);
+  white-space:    nowrap;
+}
+
+/* ── Two-pane Layout ──────────────────────────────────────── */
+
+.layout {
+  display:               grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap:                   var(--sp-5);
+  align-items:           start;
+}
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* ── Panel Shell (shared) ─────────────────────────────────── */
+
+.questBoard,
+.rewardVault {
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-5) var(--sp-5) var(--sp-6);
+  box-shadow:     var(--shadow-card);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+.panelHead {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  padding-bottom: var(--sp-4);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+.panelEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.panelTitle {
+  font-family:    var(--font-display);
+  font-size:      1.125rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ── Quest Section ────────────────────────────────────────── */
+
+.questSection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.sectionLabel {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--v-quest-gold);
+}
+
+.sectionBoss {
+  color: var(--v-boss-ember);
+}
+
+.sectionDot {
+  width:         4px;
+  height:        4px;
+  border-radius: 50%;
+  background:    var(--v-quest-gold);
+  flex-shrink:   0;
+}
+
+.sectionDotBoss {
+  background: var(--v-boss-ember);
+}
+
+.emptyNote {
+  font-size:   0.6875rem;
+  color:       var(--text-dark);
+  font-style:  italic;
+  line-height: 1.5;
+  padding:     var(--sp-2) 0 var(--sp-1);
+}
+
+.questList {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+/* ── Quest Card (Daily) ───────────────────────────────────── */
+
+.questCard {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           var(--sp-3);
+  background:    var(--v-inner-card);
+  border:        1px solid var(--v-quest-gold-border);
+  border-left:   3px solid var(--v-quest-gold);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+  transition:    opacity       var(--dur-base) var(--ease-smooth),
+                 border-color  var(--dur-base) var(--ease-smooth);
+}
+
+.questCard.questDone {
+  opacity:          0.52;
+  border-color:     rgba(82, 204, 163, 0.30);
+  border-left-color: var(--accent-green);
+}
+
+/* ── Check button ─────────────────────────────────────────── */
+
+.checkBtn {
+  flex-shrink:     0;
+  width:           22px;
+  height:          22px;
+  border-radius:   50%;
+  border:          1.5px solid var(--v-quest-gold);
+  background:      transparent;
+  color:           var(--v-quest-gold);
+  font-size:       0.6875rem;
+  cursor:          pointer;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  transition:      all var(--dur-fast) var(--ease-smooth);
+  line-height:     1;
+  margin-top:      2px;
+}
+
+.checkBtn:not(:disabled):hover {
+  background:  var(--v-quest-gold-dim);
+  box-shadow:  0 0 10px rgba(204, 175, 82, 0.28);
+}
+
+.questDone .checkBtn {
+  border-color: var(--accent-green);
+  background:   rgba(82, 204, 163, 0.15);
+  color:        var(--accent-green);
+  cursor:       default;
+}
+
+/* ── Quest body ───────────────────────────────────────────── */
+
+.questBody {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  flex:           1;
+  min-width:      0;
+}
+
+.questTitle {
+  font-family:    var(--font-display);
+  font-size:      0.8125rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height:    1.2;
+}
+
+.questDone .questTitle {
+  text-decoration: line-through;
+  color:           var(--text-dark);
+}
+
+.questDesc {
+  font-size:   0.6875rem;
+  color:       var(--text-muted);
+  line-height: 1.45;
+}
+
+/* ── Reward chips (shared by quest + boss cards) ──────────── */
+
+.rewardRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  margin-top:  var(--sp-1);
+  flex-wrap:   wrap;
+}
+
+.rewardXp {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  color:          var(--accent-purple);
+  background:     rgba(124, 149, 255, 0.10);
+  border:         1px solid rgba(124, 149, 255, 0.22);
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+}
+
+.rewardGold {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  color:          var(--v-quest-gold);
+  background:     var(--v-quest-gold-dim);
+  border:         1px solid var(--v-quest-gold-border);
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+}
+
+/* ── Boss Card ────────────────────────────────────────────── */
+
+.bossCard {
+  background:     linear-gradient(145deg, var(--v-boss-dim), var(--v-inner-card) 65%);
+  border:         1px solid var(--v-boss-border);
+  border-left:    3px solid var(--v-boss-ember);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-4);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  transition:     opacity var(--dur-base) var(--ease-smooth);
+}
+
+.bossCard.questDone {
+  opacity:           0.52;
+  border-color:      rgba(82, 204, 163, 0.30);
+  border-left-color: var(--accent-green);
+}
+
+.bossHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.bossIcon {
+  font-size:   1rem;
+  color:       var(--v-boss-ember);
+  line-height: 1;
+  transition:  color var(--dur-base) var(--ease-smooth);
+}
+
+.questDone .bossIcon {
+  color: var(--accent-green);
+}
+
+.priorityBadge {
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.15em;
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+}
+
+.badgeCritical {
+  color:      #f87171;
+  background: rgba(248, 113, 113, 0.10);
+  border:     1px solid rgba(248, 113, 113, 0.25);
+}
+
+.badgeHigh {
+  color:      var(--v-boss-ember);
+  background: var(--v-boss-dim);
+  border:     1px solid var(--v-boss-border);
+}
+
+.bossTitle {
+  font-family:    var(--font-display);
+  font-size:      0.875rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height:    1.35;
+}
+
+.questDone .bossTitle {
+  text-decoration: line-through;
+  color:           var(--text-dark);
+}
+
+.bossFooter {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+  flex-wrap:       wrap;
+}
+
+.defeatBtn {
+  font-size:      0.5625rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  color:          var(--v-boss-ember);
+  background:     var(--v-boss-dim);
+  border:         1px solid var(--v-boss-border);
+  border-radius:  var(--r-sm);
+  padding:        4px var(--sp-3);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+  white-space:    nowrap;
+}
+
+.defeatBtn:not(:disabled):hover {
+  background:  var(--v-boss-hover);
+  box-shadow:  0 0 10px rgba(224, 114, 58, 0.22);
+}
+
+.defeatBtn:disabled:not(.defeated) {
+  opacity: 0.6;
+  cursor:  default;
+}
+
+.defeatBtn.defeated {
+  color:        var(--accent-green);
+  background:   rgba(82, 204, 163, 0.10);
+  border-color: rgba(82, 204, 163, 0.28);
+  cursor:       default;
+}
+
+/* ── Reward Vault ─────────────────────────────────────────── */
+
+.goldMeter {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  background:    var(--v-quest-gold-dim);
+  border:        1px solid var(--v-quest-gold-border);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+}
+
+.goldGemLarge {
+  font-size:   1.5rem;
+  color:       var(--v-quest-gold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.goldLabel {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  2px;
+}
+
+.goldValue {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    700;
+  color:          var(--v-quest-gold);
+  letter-spacing: -0.02em;
+  line-height:    1;
+}
+
+/* ── Reward Grid ──────────────────────────────────────────── */
+
+.rewardGrid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   var(--sp-3);
+}
+
+@media (max-width: 480px) {
+  .rewardGrid { grid-template-columns: 1fr; }
+}
+
+/* ── Reward Card ──────────────────────────────────────────── */
+
+.rewardCard {
+  background:     var(--v-inner-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-3);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  transition:     border-color var(--dur-base) var(--ease-smooth),
+                  opacity      var(--dur-base) var(--ease-smooth),
+                  box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+.rewardCard:not(.rewardLocked):hover {
+  border-color: var(--v-quest-gold-border);
+  box-shadow:   0 0 14px rgba(204, 175, 82, 0.07);
+}
+
+.rewardLocked {
+  opacity: 0.44;
+}
+
+.rewardFlash {
+  animation:    scaleIn var(--dur-slow) var(--ease-expo);
+  border-color: rgba(82, 204, 163, 0.45) !important;
+  box-shadow:   0 0 14px rgba(82, 204, 163, 0.10) !important;
+}
+
+.rewardEmoji {
+  font-size:   1.625rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.rewardInfo {
+  flex: 1;
+}
+
+.rewardTitle {
+  font-family:    var(--font-display);
+  font-size:      0.6875rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height:    1.25;
+}
+
+.rewardDesc {
+  font-size:    0.5625rem;
+  color:        var(--text-dark);
+  line-height:  1.45;
+  margin-top:   2px;
+}
+
+.redeemBtn {
+  align-self:     flex-start;
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.1em;
+  color:          var(--v-quest-gold);
+  background:     var(--v-quest-gold-dim);
+  border:         1px solid var(--v-quest-gold-border);
+  border-radius:  var(--r-sm);
+  padding:        3px var(--sp-2);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+  white-space:    nowrap;
+}
+
+.redeemBtn:not(.redeemDisabled):hover {
+  background: var(--v-quest-gold-hover);
+  box-shadow: 0 0 8px rgba(204, 175, 82, 0.20);
+}
+
+.redeemDisabled {
+  color:        var(--text-dark);
+  background:   rgba(255, 255, 255, 0.02);
+  border-color: var(--border-subtle);
+  cursor:       not-allowed;
+}

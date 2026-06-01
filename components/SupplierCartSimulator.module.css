@@ -1,0 +1,715 @@
+/* ════════════════════════════════════════════════════════════════
+   SupplierCartSimulator — Phase 4 · Step 4.2
+   Creator's Choice obsidian-green theme
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Creator's Choice local tokens ───────────────────────────── */
+.simulator {
+  --v-surface:    #111618;
+  --v-card:       #141c19;
+  --v-border:     rgba(82, 204, 163, 0.10);
+  --v-accent:     var(--accent-green);
+  --v-accent-dim: rgba(82, 204, 163, 0.12);
+  --v-warn:       #f59e0b;
+  --v-critical:   #f87171;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+/* ── Panel label ─────────────────────────────────────────────── */
+.panelLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADD ITEM PANEL
+   ════════════════════════════════════════════════════════════════ */
+
+.addPanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Catalog autocomplete */
+.catalogCombo {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.catalogInput {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--dur-base) ease;
+  box-sizing: border-box;
+}
+
+.catalogInput::placeholder { color: var(--text-dark); }
+.catalogInput:focus         { border-color: rgba(82, 204, 163, 0.40); }
+
+.catalogDropdown {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  left: 0;
+  right: 0;
+  background: var(--v-surface);
+  border: 1px solid rgba(82, 204, 163, 0.22);
+  border-radius: var(--r-md);
+  max-height: 268px;
+  overflow-y: auto;
+  z-index: 60;
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.64);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 204, 163, 0.20) transparent;
+}
+
+.catalogItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 76px 1fr 54px 60px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(82, 204, 163, 0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) ease;
+}
+
+.catalogItem:last-child  { border-bottom: none; }
+.catalogItemActive       { background: rgba(82, 204, 163, 0.08); }
+
+.catalogItemType {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.catalogItemName {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catalogItemPrice {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.catalogItemVendor {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  text-align: right;
+}
+
+/* Form inputs */
+.priceInput {
+  width: 88px;
+  padding: var(--sp-3) var(--sp-3);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--dur-base) ease;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+}
+
+.priceInput:focus { border-color: rgba(82, 204, 163, 0.40); }
+.priceInput::-webkit-outer-spin-button,
+.priceInput::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.qtyField {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.qtyBtn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(82, 204, 163, 0.08);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-sm);
+  color: var(--v-accent);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast) ease;
+}
+
+.qtyBtn:hover { background: rgba(82, 204, 163, 0.20); }
+
+.qtyNum {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 26px;
+  text-align: center;
+}
+
+/* Select shared base */
+.categorySelect,
+.vendorSelect {
+  padding: var(--sp-3) var(--sp-8) var(--sp-3) var(--sp-3);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--dur-base) ease, color var(--dur-fast) ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ba3c4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--sp-3) center;
+}
+
+.categorySelect:focus,
+.vendorSelect:focus {
+  border-color: rgba(82, 204, 163, 0.40);
+  color: var(--text-primary);
+}
+
+.categorySelect option,
+.vendorSelect option {
+  background: var(--v-surface);
+  color: var(--text-primary);
+}
+
+.addBtn {
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--v-accent);
+  border: none;
+  border-radius: var(--r-md);
+  color: #0b0f11;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) ease;
+}
+
+.addBtn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.addBtn:disabled {
+  opacity: 0.30;
+  cursor: not-allowed;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MAIN LAYOUT
+   ════════════════════════════════════════════════════════════════ */
+
+.mainLayout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .mainLayout { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CART PANEL
+   ════════════════════════════════════════════════════════════════ */
+
+.cartPanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+  min-height: 180px;
+}
+
+.cartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clearBtn {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.clearBtn:hover {
+  color: var(--v-critical);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.cartList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.cartRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  flex-wrap: wrap;
+}
+
+.cartRowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.cartRowCategory {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.cartRowName {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.cartRowControls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.inlineVendorSelect {
+  padding: 3px var(--sp-6) 3px var(--sp-2);
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%235c6487' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.inlineVendorSelect:focus { border-color: rgba(82, 204, 163, 0.35); color: var(--text-primary); }
+.inlineVendorSelect option { background: var(--v-surface); color: var(--text-primary); }
+
+.cartRowPrice {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cartRowSep {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-dark);
+}
+
+.cartQtyBtn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(82, 204, 163, 0.07);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-sm);
+  color: var(--v-accent);
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast) ease;
+}
+
+.cartQtyBtn:hover { background: rgba(82, 204, 163, 0.18); }
+
+.cartQtyNum {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 16px;
+  text-align: center;
+}
+
+.cartRowTotal {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 52px;
+  text-align: right;
+}
+
+.removeBtn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  padding: 0;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.removeBtn:hover {
+  color: var(--v-critical);
+  background: rgba(248, 113, 113, 0.10);
+}
+
+/* Shared empty state */
+.emptyState {
+  padding: var(--sp-8) var(--sp-5);
+  text-align: center;
+  border: 1px dashed var(--v-border);
+  border-radius: var(--r-md);
+  flex: 1;
+}
+
+.emptyTitle {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-2);
+}
+
+.emptyBody {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 280px;
+  margin-inline: auto;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BREAKDOWN PANEL
+   ════════════════════════════════════════════════════════════════ */
+
+.breakdownPanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+  position: sticky;
+  top: var(--sp-6);
+}
+
+/* Vendor buckets list */
+.buckets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.bucket {
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color var(--dur-base) ease;
+}
+
+.bucketFree {
+  border-color: rgba(82, 204, 163, 0.30);
+}
+
+.bucketHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--v-border);
+  flex-wrap: wrap;
+}
+
+.bucketName {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.bucketBadges {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.shippingTypePill {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  padding: 2px 6px;
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-sm);
+}
+
+.freeBadge {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+  background: rgba(82, 204, 163, 0.10);
+  border: 1px solid rgba(82, 204, 163, 0.30);
+  border-radius: var(--r-sm);
+  padding: 2px 7px;
+}
+
+.bucketBody {
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.bucketRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bucketRowLabel {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.bucketRowValue {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shippingFreeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+.shippingStrike {
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  text-decoration: line-through;
+  font-weight: 400;
+}
+
+.freeHint {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+  margin: var(--sp-1) 0 0;
+}
+
+.bucketFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--v-border);
+  background: rgba(82, 204, 163, 0.025);
+}
+
+.bucketFooter span:first-child {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.bucketFooter span:last-child {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GRAND TOTAL BLOCK
+   ════════════════════════════════════════════════════════════════ */
+
+.grandTotal {
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.grandRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.grandLabel {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.grandValue {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.savingsRow .grandLabel {
+  color: var(--v-accent);
+}
+
+.savingsValue {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+.grandDivider {
+  height: 1px;
+  background: var(--v-border);
+  margin: var(--sp-1) 0;
+}
+
+.grandFinal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: var(--sp-1);
+}
+
+.grandFinalLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Large display-font grand total number */
+.grandAmount {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+}

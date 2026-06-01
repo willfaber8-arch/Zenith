@@ -1,0 +1,674 @@
+/* ════════════════════════════════════════════════════════════
+   MultiplayerLobby.module.css — Cowork Focus Lobby
+   Phase 5 · Step 5.5
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Local design tokens ─────────────────────────────────── */
+
+.lobbyWrap,
+.room {
+  --v-inner:        #0f1620;
+  --v-border-live:  rgba(124, 149, 255, 0.22);
+  --v-online:       #52cca3;
+  --v-glow-host:    rgba(124, 149, 255, 0.06);
+}
+
+/* ════════════════════════════════════════════════════════════
+   LOBBY SCREEN
+   ════════════════════════════════════════════════════════════ */
+
+.lobbyWrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+/* ── Two-card grid ───────────────────────────────────────── */
+
+.lobbyGrid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   var(--sp-5);
+}
+
+@media (max-width: 640px) {
+  .lobbyGrid { grid-template-columns: 1fr; }
+}
+
+/* ── Lobby Card base ─────────────────────────────────────── */
+
+.lobbyCard {
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-6);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  position:       relative;
+  overflow:       hidden;
+  transition:     border-color var(--dur-base) var(--ease-smooth),
+                  box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+/* Create card — periwinkle top-edge glow */
+.lobbyCardCreate::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: var(--sp-6); right: var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg, transparent, var(--accent-purple) 40%,
+    var(--accent-purple) 60%, transparent
+  );
+  opacity: 0.55;
+}
+
+/* Join card — green top-edge glow */
+.lobbyCardJoin::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: var(--sp-6); right: var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg, transparent, var(--accent-green) 40%,
+    var(--accent-green) 60%, transparent
+  );
+  opacity: 0.45;
+}
+
+.lobbyCardEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.lobbyCardCreate .lobbyCardEyebrow { color: var(--accent-purple); opacity: 0.7; }
+.lobbyCardJoin   .lobbyCardEyebrow { color: var(--accent-green);  opacity: 0.7; }
+
+.lobbyCardTitle {
+  font-family:    var(--font-display);
+  font-size:      1.125rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.lobbyCardDesc {
+  font-size:   0.6875rem;
+  color:       var(--text-muted);
+  line-height: 1.55;
+  flex:        1;
+}
+
+/* ── Lobby buttons ───────────────────────────────────────── */
+
+.lobbyBtn {
+  align-self:     flex-start;
+  font-size:      0.6875rem;
+  font-weight:    600;
+  letter-spacing: 0.04em;
+  color:          var(--text-primary);
+  background:     rgba(255, 255, 255, 0.04);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-2) var(--sp-4);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+}
+
+.lobbyBtn:not(:disabled):hover {
+  background:   rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.lobbyBtn:disabled {
+  opacity: 0.45;
+  cursor:  default;
+}
+
+.lobbyBtnPrimary {
+  color:        var(--accent-purple);
+  background:   rgba(124, 149, 255, 0.08);
+  border-color: rgba(124, 149, 255, 0.25);
+}
+
+.lobbyBtnPrimary:not(:disabled):hover {
+  background:   rgba(124, 149, 255, 0.14);
+  border-color: rgba(124, 149, 255, 0.38);
+  box-shadow:   0 0 12px rgba(124, 149, 255, 0.12);
+}
+
+/* ── Join form ───────────────────────────────────────────── */
+
+.joinForm {
+  display:   flex;
+  flex-direction: column;
+  gap:       var(--sp-2);
+}
+
+.joinInput {
+  font-family:     var(--font-mono);
+  font-size:       0.8125rem;
+  font-weight:     600;
+  letter-spacing:  0.08em;
+  color:           var(--text-primary);
+  background:      var(--v-inner);
+  border:          1px solid var(--border-subtle);
+  border-radius:   var(--r-md);
+  padding:         var(--sp-2) var(--sp-3);
+  width:           100%;
+  text-transform:  uppercase;
+  transition:      border-color var(--dur-fast) var(--ease-smooth);
+  caret-color:     var(--accent-green);
+}
+
+.joinInput::placeholder {
+  color:           var(--text-dark);
+  font-weight:     400;
+  letter-spacing:  0.06em;
+  text-transform:  none;
+  opacity:         0.6;
+}
+
+.joinInput:focus {
+  outline:      none;
+  border-color: rgba(82, 204, 163, 0.45);
+}
+
+/* ── Footer notes ────────────────────────────────────────── */
+
+.errorNote {
+  font-size:     0.6875rem;
+  color:         #f87171;
+  background:    rgba(248, 113, 113, 0.08);
+  border:        1px solid rgba(248, 113, 113, 0.22);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+}
+
+.p2pNote {
+  font-size:  0.5625rem;
+  color:      var(--text-dark);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ROOM SCREEN
+   ════════════════════════════════════════════════════════════ */
+
+.room {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ── Room header ─────────────────────────────────────────── */
+
+.roomHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+  background:      var(--surface-card);
+  border:          1px solid var(--v-border-live);
+  border-radius:   var(--r-lg);
+  padding:         var(--sp-3) var(--sp-5);
+  box-shadow:      0 0 20px var(--v-glow-host);
+}
+
+.roomMeta {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+}
+
+.roomEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.roomId {
+  font-family:    var(--font-mono);
+  font-size:      0.75rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  color:          var(--accent-purple);
+  background:     rgba(124, 149, 255, 0.08);
+  border:         1px solid rgba(124, 149, 255, 0.22);
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-3);
+}
+
+.leaveBtn {
+  font-size:      0.5625rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  color:          var(--text-dark);
+  background:     rgba(255, 255, 255, 0.03);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-sm);
+  padding:        var(--sp-1) var(--sp-3);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+}
+
+.leaveBtn:hover {
+  color:        #f87171;
+  border-color: rgba(248, 113, 113, 0.35);
+  background:   rgba(248, 113, 113, 0.06);
+}
+
+/* ── Split layout ────────────────────────────────────────── */
+
+.roomLayout {
+  display:               grid;
+  grid-template-columns: 220px 1fr;
+  gap:                   var(--sp-4);
+  align-items:           start;
+}
+
+@media (max-width: 820px) {
+  .roomLayout { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PEER SIDEBAR
+   ════════════════════════════════════════════════════════════ */
+
+.peerSidebar {
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-4) var(--sp-4) var(--sp-5);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  box-shadow:     var(--shadow-card);
+}
+
+.sidebarLabel {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  padding-bottom: var(--sp-2);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+.noPeers {
+  font-size:   0.625rem;
+  color:       var(--text-dark);
+  font-style:  italic;
+  line-height: 1.5;
+}
+
+.peerList {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+/* ── Peer Card ───────────────────────────────────────────── */
+
+.peerCard {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-2) var(--sp-1);
+  border-radius: var(--r-sm);
+  transition:  background var(--dur-fast) var(--ease-smooth);
+}
+
+.peerCard:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.peerAvatar {
+  flex-shrink:     0;
+  width:           28px;
+  height:          28px;
+  border-radius:   50%;
+  border:          1px solid;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-family:     var(--font-display);
+  font-size:       0.625rem;
+  font-weight:     700;
+  line-height:     1;
+}
+
+.peerInfo {
+  display:        flex;
+  flex-direction: column;
+  gap:            1px;
+  flex:           1;
+  min-width:      0;
+}
+
+.peerName {
+  font-size:      0.625rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+}
+
+.peerTask {
+  font-size:     0.5625rem;
+  color:         var(--text-dark);
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+
+.presenceDot {
+  flex-shrink:   0;
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    var(--v-online);
+  box-shadow:    0 0 5px var(--v-online);
+}
+
+/* ── Room Code Box ───────────────────────────────────────── */
+
+.roomCodeBox {
+  margin-top:    var(--sp-2);
+  padding-top:   var(--sp-3);
+  border-top:    1px solid var(--border-subtle);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-2);
+}
+
+.roomCodeLabel {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  color:          var(--text-dark);
+}
+
+.roomCodeValue {
+  font-family:    var(--font-mono);
+  font-size:      0.8125rem;
+  font-weight:    700;
+  letter-spacing: 0.1em;
+  color:          var(--accent-purple);
+}
+
+.copyBtn {
+  align-self:     flex-start;
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+  background:     rgba(255, 255, 255, 0.03);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+}
+
+.copyBtn:hover {
+  border-color: rgba(124, 149, 255, 0.35);
+  color:        var(--accent-purple);
+}
+
+.copyBtnDone {
+  color:        var(--accent-green);
+  border-color: rgba(82, 204, 163, 0.35);
+  background:   rgba(82, 204, 163, 0.06);
+}
+
+/* ════════════════════════════════════════════════════════════
+   ROOM MAIN (Timer + Chat)
+   ════════════════════════════════════════════════════════════ */
+
+.roomMain {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ── Timer Pane ──────────────────────────────────────────── */
+
+.timerPane {
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-5) var(--sp-5) var(--sp-6);
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-4);
+  box-shadow:     var(--shadow-card);
+}
+
+.timerHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  width:           100%;
+}
+
+.timerEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.syncBadge {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  color:          var(--accent-green);
+  background:     rgba(82, 204, 163, 0.08);
+  border:         1px solid rgba(82, 204, 163, 0.22);
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+}
+
+/* ── Timer Controls ──────────────────────────────────────── */
+
+.timerControls {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  flex-wrap:   wrap;
+  justify-content: center;
+}
+
+.timerBtn {
+  font-size:      0.6875rem;
+  font-weight:    600;
+  letter-spacing: 0.04em;
+  color:          var(--text-muted);
+  background:     rgba(255, 255, 255, 0.04);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-sm);
+  padding:        var(--sp-2) var(--sp-4);
+  cursor:         pointer;
+  transition:     all var(--dur-fast) var(--ease-smooth);
+  min-width:      80px;
+}
+
+.timerBtn:hover {
+  color:        var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.14);
+  background:   rgba(255, 255, 255, 0.07);
+}
+
+.timerBtnPrimary {
+  color:        var(--accent-purple);
+  background:   rgba(124, 149, 255, 0.08);
+  border-color: rgba(124, 149, 255, 0.28);
+}
+
+.timerBtnPrimary:hover {
+  background:   rgba(124, 149, 255, 0.14);
+  border-color: rgba(124, 149, 255, 0.42);
+  box-shadow:   0 0 12px rgba(124, 149, 255, 0.12);
+}
+
+.peerNote {
+  font-size:   0.6875rem;
+  color:       var(--text-dark);
+  text-align:  center;
+  line-height: 1.5;
+  font-style:  italic;
+  max-width:   300px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   CHAT PANE
+   ════════════════════════════════════════════════════════════ */
+
+.chatPane {
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-4);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  box-shadow:     var(--shadow-card);
+}
+
+.chatLabel {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  padding-bottom: var(--sp-2);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+/* ── Chat Feed ───────────────────────────────────────────── */
+
+.chatFeed {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  max-height:     200px;
+  overflow-y:     auto;
+  overflow-x:     hidden;
+  padding-right:  var(--sp-1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 149, 255, 0.18) transparent;
+}
+
+.chatFeed::-webkit-scrollbar       { width: 3px }
+.chatFeed::-webkit-scrollbar-thumb { background: rgba(124, 149, 255, 0.18); border-radius: 3px }
+
+.chatEmpty {
+  font-size:  0.625rem;
+  color:      var(--text-dark);
+  font-style: italic;
+  text-align: center;
+  padding:    var(--sp-3) 0;
+}
+
+/* ── Chat Message ────────────────────────────────────────── */
+
+.chatMsg {
+  display:        flex;
+  align-items:    baseline;
+  gap:            var(--sp-2);
+  padding:        var(--sp-1) var(--sp-2);
+  border-radius:  var(--r-sm);
+  flex-wrap:      wrap;
+}
+
+.chatMsgOwn {
+  background:    rgba(124, 149, 255, 0.06);
+  flex-direction: row-reverse;
+}
+
+.chatName {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  color:          var(--accent-purple);
+  flex-shrink:    0;
+}
+
+.chatMsgOwn .chatName { display: none; }
+
+.chatText {
+  font-size:   0.6875rem;
+  color:       var(--text-primary);
+  line-height: 1.4;
+  word-break:  break-word;
+  flex:        1;
+}
+
+.chatTime {
+  font-family: var(--font-mono);
+  font-size:   0.5rem;
+  color:       var(--text-dark);
+  flex-shrink: 0;
+  align-self:  flex-end;
+}
+
+/* ── Chat Form ───────────────────────────────────────────── */
+
+.chatForm {
+  display: flex;
+  gap:     var(--sp-2);
+}
+
+.chatInput {
+  flex:          1;
+  font-size:     0.6875rem;
+  color:         var(--text-primary);
+  background:    var(--v-inner);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-2) var(--sp-3);
+  transition:    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.chatInput::placeholder { color: var(--text-dark); }
+
+.chatInput:focus {
+  outline:      none;
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+.chatSendBtn {
+  font-size:     0.875rem;
+  font-weight:   700;
+  color:         var(--accent-purple);
+  background:    rgba(124, 149, 255, 0.08);
+  border:        1px solid rgba(124, 149, 255, 0.25);
+  border-radius: var(--r-md);
+  padding:       0 var(--sp-3);
+  cursor:        pointer;
+  transition:    all var(--dur-fast) var(--ease-smooth);
+  min-width:     36px;
+}
+
+.chatSendBtn:not(:disabled):hover {
+  background:   rgba(124, 149, 255, 0.15);
+  border-color: rgba(124, 149, 255, 0.42);
+}
+
+.chatSendBtn:disabled {
+  opacity: 0.35;
+  cursor:  default;
+}

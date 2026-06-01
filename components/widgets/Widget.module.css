@@ -1,0 +1,390 @@
+/* ════════════════════════════════════════════════════════════
+   Widget.module.css — Shared styles for all sandbox widgets.
+   All widget components import from this single file; CSS Modules
+   namespaces the class names so there is no bleed between files.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Base card shell ──────────────────────────────────────── */
+
+.widget {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5) var(--sp-6);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-3);
+  box-shadow:    var(--shadow-card);
+  min-height:    180px;
+  position:      relative;
+  overflow:      hidden;
+}
+
+/* Subtle top-edge accent gradient (colour comes from --widget-accent) */
+.widget::before {
+  content:    '';
+  position:   absolute;
+  top:        0;
+  left:       var(--sp-6);
+  right:      var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--widget-accent, var(--accent-purple)) 40%,
+    var(--widget-accent, var(--accent-purple)) 60%,
+    transparent
+  );
+  opacity:    0.5;
+}
+
+/* ── Header row ───────────────────────────────────────────── */
+
+.widgetHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  flex-shrink:     0;
+}
+
+.widgetEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+}
+
+.widgetBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  color:          var(--widget-accent, var(--accent-purple));
+  background:     rgba(124, 149, 255, 0.10);
+  padding:        2px 6px;
+  border-radius:  99px;
+  border:         1px solid rgba(124, 149, 255, 0.18);
+}
+
+.widgetTitle {
+  font-family:    var(--font-display);
+  font-size:      0.9375rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.015em;
+  line-height:    1.2;
+  flex-shrink:    0;
+}
+
+/* ── Body area ────────────────────────────────────────────── */
+
+.widgetBody {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  min-height:     0;
+  overflow:       hidden;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.emptyState {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-4) 0;
+}
+
+.emptyIcon {
+  font-size:  1.375rem;
+  opacity:    0.35;
+  line-height: 1;
+}
+
+.emptyText {
+  font-size:   0.6875rem;
+  color:       var(--text-dark);
+  text-align:  center;
+  line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════════════════════
+   UrgentTasksWidget — task list
+   ════════════════════════════════════════════════════════════ */
+
+.taskList {
+  list-style:     none;
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+.taskRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-2) var(--sp-2);
+  border-radius: var(--r-sm);
+  transition:  background-color var(--dur-fast);
+}
+
+.taskRow:hover {
+  background-color: var(--bg-hover);
+}
+
+.taskDot {
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  flex-shrink:   0;
+  background:    var(--widget-accent, var(--accent-purple));
+  opacity:       0.55;
+}
+
+/* Priority-aware dot colour via data attribute */
+.taskRow[data-priority='critical'] .taskDot { background: #ff6b6b; opacity: 0.9; }
+.taskRow[data-priority='high']     .taskDot { background: var(--accent-purple); opacity: 0.85; }
+.taskRow[data-priority='medium']   .taskDot { background: var(--accent-green);  opacity: 0.65; }
+.taskRow[data-priority='low']      .taskDot { background: var(--text-dark);     opacity: 0.5; }
+
+.taskTitle {
+  flex:          1;
+  font-size:     0.75rem;
+  font-weight:   500;
+  color:         var(--text-muted);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.taskDue {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  letter-spacing: 0.04em;
+  color:          var(--text-dark);
+  flex-shrink:    0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   HabitSummaryWidget — SVG ring + habit rows
+   ════════════════════════════════════════════════════════════ */
+
+.ringLayout {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-6);
+  flex:            1;
+}
+
+.ringWrap {
+  position:    relative;
+  flex-shrink: 0;
+  width:       96px;
+  height:      96px;
+}
+
+.ringSvg {
+  width:  100%;
+  height: 100%;
+  /* Rotate so the arc starts at 12 o'clock */
+  transform: rotate(-90deg);
+}
+
+.ringTrack {
+  stroke: var(--border-subtle);
+}
+
+.ringProgress {
+  stroke:           var(--accent-green);
+  transition:       stroke-dashoffset 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ringCenter {
+  position:       absolute;
+  inset:          0;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ringPct {
+  font-family:    var(--font-display);
+  font-size:      1.375rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  line-height:    1;
+  letter-spacing: -0.03em;
+}
+
+.ringPctSuffix {
+  font-size:   0.625rem;
+  font-weight: 500;
+  opacity:     0.65;
+}
+
+.ringLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.08em;
+  color:          var(--text-dark);
+  margin-top:     2px;
+}
+
+.habitList {
+  list-style:     none;
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+  justify-content: center;
+}
+
+.habitRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+  padding:       3px 0;
+  border-radius: var(--r-sm);
+  opacity:       0.55;
+  transition:    opacity var(--dur-fast);
+}
+
+.habitRowDone {
+  opacity: 1;
+}
+
+.habitCheck {
+  font-size:   0.625rem;
+  width:       14px;
+  text-align:  center;
+  flex-shrink: 0;
+  color:       var(--accent-green);
+}
+
+.habitName {
+  flex:          1;
+  font-size:     0.6875rem;
+  font-weight:   500;
+  color:         var(--text-muted);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.habitStreak {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.04em;
+  color:          var(--text-dark);
+  flex-shrink:    0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PomodoroWidget — focus timer stub
+   ════════════════════════════════════════════════════════════ */
+
+.pomodoroBody {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-4);
+}
+
+.timerDisplay {
+  font-family:    var(--font-mono);
+  font-size:      clamp(1.75rem, 4vw, 2.5rem);
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  color:          var(--text-primary);
+  line-height:    1;
+}
+
+.timerLabel {
+  font-size:      0.5rem;
+  font-weight:    600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.startBtn {
+  margin-top:     var(--sp-2);
+  padding:        var(--sp-2) var(--sp-6);
+  border-radius:  var(--r-xl);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--accent-purple);
+  font-family:    var(--font-display);
+  font-size:      0.6875rem;
+  font-weight:    600;
+  letter-spacing: 0.06em;
+  cursor:         pointer;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast),
+    color            var(--dur-fast);
+}
+
+.startBtn:hover {
+  background-color: rgba(124, 149, 255, 0.10);
+  border-color:     var(--accent-purple);
+}
+
+/* ════════════════════════════════════════════════════════════
+   WeatherWidget — geolocation weather display
+   ════════════════════════════════════════════════════════════ */
+
+.weatherBody {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     flex-start;
+  justify-content: center;
+  gap:             var(--sp-3);
+}
+
+.weatherTemp {
+  font-family:    var(--font-display);
+  font-size:      clamp(2rem, 5vw, 3rem);
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.04em;
+  line-height:    1;
+}
+
+.weatherDeg {
+  font-size:   1.25rem;
+  font-weight: 400;
+  color:       var(--text-muted);
+}
+
+.weatherCondition {
+  font-size:   0.75rem;
+  font-weight: 500;
+  color:       var(--text-muted);
+  line-height: 1.4;
+}
+
+.weatherMeta {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  letter-spacing: 0.08em;
+  color:          var(--text-dark);
+}
+
+.weatherLoading {
+  font-size:   0.75rem;
+  color:       var(--text-dark);
+  font-style:  italic;
+  animation:   pulseGlow 2s ease-in-out infinite;
+}

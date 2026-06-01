@@ -1,0 +1,236 @@
+/* ════════════════════════════════════════════════════════════
+   MajorSelector — Phase 2 · Step 2.4
+   Onboarding combobox for declaring an academic major.
+   Mirrors UniSelector.module.css — same input, dropdown, and
+   badge system.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ─────────────────────────────────────────── */
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(3.5rem, 12vh, 7rem) var(--sp-8) var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+/* ── Heading block ────────────────────────────────────────── */
+
+.heading {
+  /* ZenHeading owns its internal spacing */
+}
+
+/* ── Field group ──────────────────────────────────────────── */
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.fieldLabel {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Combobox wrapper — anchors the dropdown ──────────────── */
+
+.combobox {
+  position: relative;
+}
+
+/* ── Input row ────────────────────────────────────────────── */
+
+.inputRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: var(--sp-4);
+  font-size: 1.0625rem;
+  color: var(--text-dark);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem var(--sp-10) 0.75rem 2.75rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  outline: none;
+  transition:
+    border-color var(--dur-base),
+    box-shadow   var(--dur-base);
+}
+
+.input::placeholder {
+  color: var(--text-dark);
+  opacity: 0.7;
+}
+
+.input:focus {
+  border-color: var(--accent-purple-dim);
+  box-shadow: 0 0 0 3px rgba(124, 149, 255, 0.08);
+}
+
+/* ── Clear button ─────────────────────────────────────────── */
+
+.clearBtn {
+  position: absolute;
+  right: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 0.625rem;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-fast);
+}
+
+.clearBtn:hover {
+  color: var(--text-muted);
+}
+
+/* ── Dropdown listbox ─────────────────────────────────────── */
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2) 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 0   0   1px var(--border-subtle);
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+/* ── Dropdown option ──────────────────────────────────────── */
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+
+.option:hover,
+.optionHighlighted {
+  background: var(--bg-hover);
+}
+
+.optionName {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Hint row at bottom of dropdown ──────────────────────── */
+
+.hint {
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+  opacity: 0.6;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--sp-1);
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.emptyState {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badgeLive {
+  color: var(--accent-green);
+  background: rgba(82, 204, 163, 0.08);
+  border: 1px solid rgba(82, 204, 163, 0.20);
+}
+
+.badgeSoon {
+  color: var(--text-dark);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Inline usage inside body text */
+.badgeInline {
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+/* ── Field hint ───────────────────────────────────────────── */
+
+.fieldHint {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .wrap {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}

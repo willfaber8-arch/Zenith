@@ -1,5 +1,5 @@
-import HomeScreen from '@/components/HomeScreen'
+import ViewRouter from '@/components/ViewRouter'
 
 export default function Page() {
-  return <HomeScreen />
+  return <ViewRouter />
 }

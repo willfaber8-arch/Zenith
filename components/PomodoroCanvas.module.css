@@ -1,0 +1,96 @@
+/* ════════════════════════════════════════════════════════════════
+   PomodoroCanvas — Radial countdown ring + session pips
+   Phase 3 · Step 3.2
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ──────────────────────────────────────────────── */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* ── Ring ────────────────────────────────────────────────────────── */
+
+.ringWrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  flex-shrink: 0;
+}
+
+/* Centered overlay — phase label, time, hint text */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Typography inside the ring ──────────────────────────────────── */
+
+.phaseTag {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;   /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  transition: color 400ms ease;
+  line-height: 1.4;
+}
+
+.phaseTagBreak {
+  color: var(--accent-green);
+}
+
+.timerDisplay {
+  font-family: var(--font-mono);
+  font-size: 2.25rem;   /* 36px */
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.intervalLabel {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;   /* 11px */
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+/* ── Session pips ────────────────────────────────────────────────── */
+
+.pips {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(124, 149, 255, 0.08);
+  border: 1px solid rgba(124, 149, 255, 0.15);
+  transition:
+    background  350ms ease,
+    border-color 350ms ease,
+    box-shadow  350ms ease;
+}
+
+.pipFilled {
+  background:  var(--accent-purple);
+  border-color: transparent;
+  box-shadow: 0 0 6px rgba(124, 149, 255, 0.5);
+}
