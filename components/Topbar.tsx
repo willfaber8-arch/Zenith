@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth }         from '@/lib/AuthContext'
 import { useNav }          from '@/lib/NavContext'
+import { useCopilot }      from '@/lib/CopilotContext'
 import { fetchWeather, type WeatherData } from '@/lib/weather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
@@ -49,8 +50,9 @@ interface TopbarProps {
 }
 
 export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
-  const { session }                    = useAuth()
-  const { activeView, activeCategory } = useNav()
+  const { session }                       = useAuth()
+  const { activeView, activeCategory }    = useNav()
+  const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilot()
 
   const [now,     setNow]     = useState<Date | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
@@ -167,6 +169,24 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
         <SyncIndicator />
 
         <span className={styles.divider} aria-hidden="true" />
+
+        {/* AI Co-Pilot toggle — only shown when a session is active */}
+        {session && (
+          <>
+            <button
+              type="button"
+              className={`${styles.copilotBtn} ${copilotOpen ? styles.copilotBtnActive : ''}`}
+              onClick={toggleCopilot}
+              aria-label={copilotOpen ? 'Close Co-Pilot' : 'Open AI Co-Pilot'}
+              aria-expanded={copilotOpen}
+              title="AI Co-Pilot (⌘ K)"
+            >
+              <span className={styles.copilotIcon} aria-hidden="true">◎</span>
+              <span className={styles.copilotLabel}>AI</span>
+            </button>
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
 
         {/* Live clock */}
         <time

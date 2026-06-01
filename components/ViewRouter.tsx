@@ -20,6 +20,7 @@ import GritView            from '@/components/views/GritView'
 import QuestView           from '@/components/views/QuestView'
 import FocusRoomView       from '@/components/views/FocusRoomView'
 import SlopeDayView        from '@/components/views/SlopeDayView'
+import SkillTreeView       from '@/components/views/SkillTreeView'
 
 /* ── View registry ────────────────────────────────────────── */
 
@@ -47,6 +48,7 @@ function resolveView(id: ViewId): JSX.Element {
   if (id === 'quest-matrix')  return <QuestView />
   if (id === 'focus-rooms')   return <FocusRoomView />
   if (id === 'slope-day')    return <SlopeDayView />
+  if (id === 'skill-tree')   return <SkillTreeView />
   const m = META[id]
   if (m) return <PlaceholderView title={m.title} eyebrow={m.eyebrow} />
   return <HomeView />

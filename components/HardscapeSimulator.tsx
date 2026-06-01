@@ -1,261 +1,213 @@
 'use client'
 
-/* ════════════════════════════════════════════════════════════════
-   Zenith OS — Hardscape Layout Simulator
-   Phase 4 · Step 4.3
-
-   Grid-snapped canvas workspace for planning aquarium hardscape.
-   Elements are placed by selecting a palette type, then clicking
-   the canvas. Existing elements can be repositioned by dragging.
-   All element sizes are adjustable via scale controls. Layout
-   persists in localStorage between sessions.
-   ════════════════════════════════════════════════════════════════ */
-
+import { useState, useEffect, useCallback, type CSSProperties, type MouseEvent } from 'react'
+import { useHardscapeInteraction } from '@/hooks/useHardscapeInteraction'
 import {
-  useState, useRef, useEffect, useCallback,
-  type CSSProperties, type MouseEvent,
-} from 'react'
+  PALETTE_ENTRIES, TANK_PRESETS, ELEMENT_BASE_DIMS, ELEMENT_SHAPES,
+  type HardscapeElement, type HardscapeElementType, type PaletteEntry, type TankPreset,
+} from '@/types/hardscape'
 import styles from './HardscapeSimulator.module.css'
 
-/* ── Constants ────────────────────────────────────────────────── */
+/* ── ElementShape ─────────────────────────────────────────────────
+   Renders the SVG silhouette for a given element type.
+   Used both on the canvas (full size) and in the palette shelf (preview).
+   ───────────────────────────────────────────────────────────────── */
 
-const COLS = 20
-const ROWS = 10
-const LS_KEY = 'zenith_hardscape_v1'
-
-/* ── Types ────────────────────────────────────────────────────── */
-
-type ElementType =
-  | 'seiryu-stone'
-  | 'dragon-stone'
-  | 'spider-wood'
-  | 'driftwood'
-  | 'anubias'
-  | 'java-fern'
-
-type TankPreset = '5g' | '10g' | '20g-l' | '29g'
-
-interface HardscapeItem {
-  id: string
-  type: ElementType
-  x: number   // grid column, 0-indexed
-  y: number   // grid row, 0-indexed
-  w: number   // width in grid cols (≥ 1)
-  h: number   // height in grid rows (≥ 1)
+function ElementShape({
+  type, fillColor, strokeColor,
+}: {
+  type: HardscapeElementType
+  fillColor: string
+  strokeColor: string
+}) {
+  const shape = ELEMENT_SHAPES[type]
+  return (
+    <svg
+      viewBox={shape.viewBox}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: 'block' }}
+    >
+      <path d={shape.d} fill={fillColor} stroke={strokeColor} strokeWidth="1.5" />
+      {shape.detailLines?.map((l, i) => (
+        <line
+          key={i}
+          x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+          stroke={strokeColor}
+          strokeWidth="0.8"
+          opacity={0.55}
+        />
+      ))}
+    </svg>
+  )
 }
 
-interface DragState {
-  itemId: string
-  startItemX: number
-  startItemY: number
-  startMouseX: number
-  startMouseY: number
-  itemW: number
-  itemH: number
+/* ── RotationHud ──────────────────────────────────────────────────
+   SVG ring centered on a selected element. Drag the ring or its
+   handle to set rotationAngle. Invisible wide stroke is the hit
+   target; the visible dashed ring is purely decorative.
+   ───────────────────────────────────────────────────────────────── */
+
+function RotationHud({
+  el, onRingMouseDown,
+}: {
+  el: HardscapeElement
+  onRingMouseDown: (e: React.MouseEvent) => void
+}) {
+  const RAD = 46
+  const CX  = 52
+  const CY  = 52
+  const SIZE = 104
+  // 0° = top (12-o'clock), increases clockwise
+  const angleRad = (el.rotationAngle - 90) * (Math.PI / 180)
+  const hx = CX + RAD * Math.cos(angleRad)
+  const hy = CY + RAD * Math.sin(angleRad)
+
+  return (
+    <div
+      className={styles.hudRing}
+      style={{ left: `${el.xPercent}%`, top: `${el.yPercent}%` }}
+    >
+      <svg
+        width={SIZE} height={SIZE}
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        style={{ pointerEvents: 'none', display: 'block' }}
+      >
+        {/* Wide invisible hit area for the ring */}
+        <circle
+          cx={CX} cy={CY} r={RAD}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={16}
+          style={{ pointerEvents: 'stroke', cursor: 'grab' }}
+          onMouseDown={onRingMouseDown}
+        />
+        {/* Dashed visual ring */}
+        <circle
+          cx={CX} cy={CY} r={RAD}
+          fill="none"
+          stroke="rgba(124,149,255,0.35)"
+          strokeWidth="1.5"
+          strokeDasharray="3 3"
+          style={{ pointerEvents: 'none' }}
+        />
+        {/* 0° tick at top */}
+        <line
+          x1={CX} y1={CY - RAD - 7}
+          x2={CX} y2={CY - RAD - 1}
+          stroke="rgba(124,149,255,0.60)"
+          strokeWidth="1.5"
+          style={{ pointerEvents: 'none' }}
+        />
+        {/* Rotation handle */}
+        <circle
+          cx={hx} cy={hy} r={6}
+          fill="rgba(124,149,255,0.90)"
+          stroke="rgba(255,255,255,0.45)"
+          strokeWidth="1.5"
+          style={{ pointerEvents: 'all', cursor: 'grab' }}
+          onMouseDown={onRingMouseDown}
+        />
+        {/* Angle readout */}
+        <text
+          x={CX} y={CY + 4}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="rgba(124,149,255,0.55)"
+          fontSize={9}
+          fontFamily="monospace"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {Math.round(el.rotationAngle)}°
+        </text>
+      </svg>
+    </div>
+  )
 }
 
-/* ── Config tables ────────────────────────────────────────────── */
-
-const ELEMENT_CONFIG: Record<ElementType, {
-  label: string
-  shortLabel: string
-  bg: string
-  border: string
-  defaultW: number
-  defaultH: number
-}> = {
-  'seiryu-stone': {
-    label: 'Seiryu Stone',     shortLabel: 'SEIRYU',
-    bg: 'rgba(76,102,120,0.90)',  border: 'rgba(120,160,190,0.35)',
-    defaultW: 2, defaultH: 2,
-  },
-  'dragon-stone': {
-    label: 'Dragon Stone',     shortLabel: 'DRAGON',
-    bg: 'rgba(72,62,56,0.92)',    border: 'rgba(130,110,90,0.35)',
-    defaultW: 3, defaultH: 2,
-  },
-  'spider-wood': {
-    label: 'Spider Wood',      shortLabel: 'SPIDER W',
-    bg: 'rgba(90,52,35,0.90)',    border: 'rgba(160,100,60,0.35)',
-    defaultW: 5, defaultH: 1,
-  },
-  'driftwood': {
-    label: 'Driftwood',        shortLabel: 'DRIFT',
-    bg: 'rgba(110,80,50,0.88)',   border: 'rgba(180,140,90,0.35)',
-    defaultW: 6, defaultH: 1,
-  },
-  'anubias': {
-    label: 'Anubias',          shortLabel: 'ANUBIAS',
-    bg: 'rgba(25,72,45,0.95)',    border: 'rgba(60,160,90,0.40)',
-    defaultW: 1, defaultH: 2,
-  },
-  'java-fern': {
-    label: 'Java Fern',        shortLabel: 'J.FERN',
-    bg: 'rgba(32,90,52,0.95)',    border: 'rgba(70,180,100,0.40)',
-    defaultW: 2, defaultH: 2,
-  },
-}
-
-const PALETTE_ORDER: ElementType[] = [
-  'seiryu-stone', 'dragon-stone', 'spider-wood', 'driftwood', 'anubias', 'java-fern',
-]
-
-const TANK_PRESETS: Record<TankPreset, { label: string; dims: string; ratio: number }> = {
-  '5g':    { label: '5G Pico',      dims: '16"×8"×10"',  ratio: 2.0   },
-  '10g':   { label: '10G Standard', dims: '20"×10"×12"', ratio: 2.0   },
-  '20g-l': { label: '20G Long',     dims: '30"×12"×12"', ratio: 2.5   },
-  '29g':   { label: '29G Standard', dims: '30"×12"×18"', ratio: 2.5   },
-}
-
-/* ── Component ────────────────────────────────────────────────── */
+/* ── Main component ─────────────────────────────────────────────── */
 
 export default function HardscapeSimulator() {
-  const [items,       setItems]       = useState<HardscapeItem[]>([])
-  const [selectedId,  setSelectedId]  = useState<string | null>(null)
-  const [activeTool,  setActiveTool]  = useState<ElementType | null>(null)
-  const [tankPreset,  setTankPreset]  = useState<TankPreset>('10g')
-  const [mounted,     setMounted]     = useState(false)
+  const [tankPreset,    setTankPreset]    = useState<TankPreset>('10g')
+  const [activePalette, setActivePalette] = useState<PaletteEntry | null>(null)
+  const [mounted,       setMounted]       = useState(false)
 
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const dragRef   = useRef<DragState | null>(null)
+  const {
+    elements, selectedId, isDragging, canvasRef,
+    addElement, selectElement, deleteSelected, updateScale, clearAll, loadLayout,
+    getElementMouseDown, getRotateMouseDown,
+  } = useHardscapeInteraction()
 
-  const preset = TANK_PRESETS[tankPreset]
-  const selectedItem = items.find(i => i.id === selectedId) ?? null
+  const selectedEl      = elements.find(el => el.id === selectedId) ?? null
+  const preset          = TANK_PRESETS[tankPreset]
 
-  /* ── Persistence ──────────────────────────────────────────── */
-
+  /* ── IDB auto-load on mount ─────────────────────────────────── */
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY)
-      if (raw) setItems(JSON.parse(raw))
-    } catch {}
-    setMounted(true)
-  }, [])
+    import('@/lib/db').then(({ db }) => {
+      db.aquascapeLayouts.get(1).then(layout => {
+        if (layout) {
+          loadLayout(layout)
+          setTankPreset((layout.tankPreset as TankPreset) ?? '10g')
+        }
+      }).catch(() => {})
+      setMounted(true)
+    })
+  }, [loadLayout])
 
+  /* ── IDB auto-save on change (debounced 600ms) ──────────────── */
   useEffect(() => {
     if (!mounted) return
-    try { localStorage.setItem(LS_KEY, JSON.stringify(items)) } catch {}
-  }, [items, mounted])
+    const timer = setTimeout(() => {
+      import('@/lib/db').then(({ db }) => {
+        db.aquascapeLayouts.put({
+          id: 1,
+          name: 'autosave',
+          elements,
+          tankPreset,
+          savedAt: Date.now(),
+        })
+      })
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [elements, tankPreset, mounted])
 
-  /* ── Grid helpers ─────────────────────────────────────────── */
-
-  const pixelToCell = useCallback((clientX: number, clientY: number) => {
-    if (!canvasRef.current) return { col: 0, row: 0 }
-    const rect = canvasRef.current.getBoundingClientRect()
-    const col = Math.max(0, Math.min(COLS - 1, Math.floor((clientX - rect.left)  / rect.width  * COLS)))
-    const row = Math.max(0, Math.min(ROWS - 1, Math.floor((clientY - rect.top) / rect.height * ROWS)))
-    return { col, row }
-  }, [])
-
-  /* ── Drag (document-level) ────────────────────────────────── */
-
-  const handleDocMouseMove = useCallback((e: globalThis.MouseEvent) => {
-    const drag = dragRef.current
-    if (!drag || !canvasRef.current) return
-    const rect = canvasRef.current.getBoundingClientRect()
-    const dx = Math.round((e.clientX - drag.startMouseX) / rect.width  * COLS)
-    const dy = Math.round((e.clientY - drag.startMouseY) / rect.height * ROWS)
-
-    setItems(prev => prev.map(item => {
-      if (item.id !== drag.itemId) return item
-      return {
-        ...item,
-        x: Math.max(0, Math.min(COLS - drag.itemW, drag.startItemX + dx)),
-        y: Math.max(0, Math.min(ROWS - drag.itemH, drag.startItemY + dy)),
-      }
-    }))
-  }, [])
-
-  const handleDocMouseUp = useCallback(() => { dragRef.current = null }, [])
-
-  useEffect(() => {
-    document.addEventListener('mousemove', handleDocMouseMove)
-    document.addEventListener('mouseup',   handleDocMouseUp)
-    return () => {
-      document.removeEventListener('mousemove', handleDocMouseMove)
-      document.removeEventListener('mouseup',   handleDocMouseUp)
-    }
-  }, [handleDocMouseMove, handleDocMouseUp])
-
-  /* ── Canvas interaction ───────────────────────────────────── */
-
-  const handleCanvasDown = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.target !== canvasRef.current) return  // element click handled separately
-    if (activeTool) {
-      const { col, row } = pixelToCell(e.clientX, e.clientY)
-      const cfg = ELEMENT_CONFIG[activeTool]
-      const newItem: HardscapeItem = {
-        id: crypto.randomUUID(),
-        type: activeTool,
-        x: Math.min(col, COLS - cfg.defaultW),
-        y: Math.min(row, ROWS - cfg.defaultH),
-        w: cfg.defaultW,
-        h: cfg.defaultH,
-      }
-      setItems(prev => [...prev, newItem])
-      setSelectedId(newItem.id)
-      setActiveTool(null)
+  /* ── Canvas background click ────────────────────────────────── */
+  const handleCanvasMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (e.target !== canvasRef.current) return
+    if (activePalette) {
+      const rect = canvasRef.current!.getBoundingClientRect()
+      const xPct = ((e.clientX - rect.left) / rect.width)  * 100
+      const yPct = ((e.clientY - rect.top)  / rect.height) * 100
+      addElement(activePalette, xPct, yPct)
+      setActivePalette(null)
     } else {
-      setSelectedId(null)
+      selectElement(null)
     }
-  }
+  }, [activePalette, addElement, canvasRef, selectElement])
 
-  const handleElementDown = (e: MouseEvent<HTMLDivElement>, item: HardscapeItem) => {
-    e.stopPropagation()
-    e.preventDefault()
-    setSelectedId(item.id)
-    dragRef.current = {
-      itemId:       item.id,
-      startItemX:   item.x,
-      startItemY:   item.y,
-      startMouseX:  e.clientX,
-      startMouseY:  e.clientY,
-      itemW:        item.w,
-      itemH:        item.h,
-    }
-  }
+  /* ── Palette entry lookup for canvas elements ───────────────── */
+  const getPaletteEntry = (el: HardscapeElement): PaletteEntry =>
+    PALETTE_ENTRIES.find(p => p.label === el.label)
+    ?? PALETTE_ENTRIES.find(p => p.type === el.type)!
 
-  /* ── Selected element mutations ───────────────────────────── */
-
-  const scaleSelected = (dim: 'w' | 'h', delta: number) => {
-    if (!selectedId) return
-    setItems(prev => prev.map(item => {
-      if (item.id !== selectedId) return item
-      if (dim === 'w') {
-        const nw = Math.max(1, Math.min(COLS - item.x, item.w + delta))
-        return { ...item, w: nw }
-      }
-      const nh = Math.max(1, Math.min(ROWS - item.y, item.h + delta))
-      return { ...item, h: nh }
-    }))
-  }
-
-  const deleteSelected = () => {
-    if (!selectedId) return
-    setItems(prev => prev.filter(i => i.id !== selectedId))
-    setSelectedId(null)
-  }
-
-  const clearAll = () => { setItems([]); setSelectedId(null) }
-
-  /* ── Render ──────────────────────────────────────────────── */
-
+  /* ── Render ──────────────────────────────────────────────────── */
   return (
     <div className={styles.simulator}>
 
-      {/* ── Header row ────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────── */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <span className={styles.panelLabel}>Hardscape Simulator</span>
           <div className={styles.presetRow}>
-            {(Object.keys(TANK_PRESETS) as TankPreset[]).map(p => (
+            {(Object.entries(TANK_PRESETS) as [TankPreset, typeof TANK_PRESETS[TankPreset]][]).map(([key, cfg]) => (
               <button
-                key={p}
-                className={`${styles.presetBtn} ${tankPreset === p ? styles.presetBtnActive : ''}`}
-                onClick={() => setTankPreset(p)}
+                key={key}
+                className={`${styles.presetBtn} ${tankPreset === key ? styles.presetBtnActive : ''}`}
+                onClick={() => setTankPreset(key)}
               >
-                {TANK_PRESETS[p].label}
-                <span className={styles.presetDims}>{TANK_PRESETS[p].dims}</span>
+                {cfg.label}
+                <span className={styles.presetDims}>{cfg.dims}</span>
               </button>
             ))}
           </div>
@@ -263,111 +215,148 @@ export default function HardscapeSimulator() {
         <button className={styles.clearBtn} onClick={clearAll}>Clear All</button>
       </div>
 
-      {/* ── Palette ───────────────────────────────────────────── */}
-      <div className={styles.palette}>
-        <span className={styles.paletteLabel}>Add Element:</span>
-        {PALETTE_ORDER.map(type => {
-          const cfg = ELEMENT_CONFIG[type]
-          return (
+      {/* ── Work area: shelf + canvas ─────────────────────────── */}
+      <div className={styles.workArea}>
+
+        {/* Left palette shelf */}
+        <div className={styles.shelf}>
+          <span className={styles.shelfLabel}>Elements</span>
+          {PALETTE_ENTRIES.map(entry => (
             <button
-              key={type}
-              className={`${styles.paletteBtn} ${activeTool === type ? styles.paletteBtnActive : ''}`}
-              style={{ '--el-bg': cfg.bg, '--el-border': cfg.border } as CSSProperties}
-              onClick={() => setActiveTool(prev => prev === type ? null : type)}
+              key={entry.paletteId}
+              className={`${styles.shelfItem} ${activePalette?.paletteId === entry.paletteId ? styles.shelfItemActive : ''}`}
+              onClick={() => setActivePalette(p => p?.paletteId === entry.paletteId ? null : entry)}
+              onDoubleClick={() => { addElement(entry); setActivePalette(null) }}
+              title={`Click to place ${entry.label} · Double-click to stamp at centre`}
             >
-              {cfg.label}
-            </button>
-          )
-        })}
-        {activeTool && (
-          <button className={styles.deselBtn} onClick={() => setActiveTool(null)}>
-            ✕ Cancel
-          </button>
-        )}
-        {activeTool && (
-          <span className={styles.placeHint}>
-            Click the canvas to place
-          </span>
-        )}
-      </div>
-
-      {/* ── Canvas ────────────────────────────────────────────── */}
-      <div
-        className={styles.canvasWrapper}
-        style={{ paddingBottom: `${(1 / preset.ratio) * 100}%` }}
-      >
-        <div
-          ref={canvasRef}
-          className={`${styles.canvas} ${activeTool ? styles.canvasPlacing : ''}`}
-          onMouseDown={handleCanvasDown}
-          style={{
-            backgroundSize: `${100 / COLS}% ${100 / ROWS}%`,
-          }}
-        >
-          {items.map(item => {
-            const cfg = ELEMENT_CONFIG[item.type]
-            const isSelected = item.id === selectedId
-            return (
-              <div
-                key={item.id}
-                className={`${styles.element} ${isSelected ? styles.elementSelected : ''}`}
-                style={{
-                  left:    `${(item.x / COLS) * 100}%`,
-                  top:     `${(item.y / ROWS) * 100}%`,
-                  width:   `${(item.w / COLS) * 100}%`,
-                  height:  `${(item.h / ROWS) * 100}%`,
-                  background: cfg.bg,
-                  borderColor: cfg.border,
-                } as CSSProperties}
-                onMouseDown={e => handleElementDown(e, item)}
-              >
-                <span className={styles.elementLabel}>{cfg.shortLabel}</span>
+              <div className={styles.shelfItemPreview}>
+                <ElementShape
+                  type={entry.type}
+                  fillColor={entry.fillColor}
+                  strokeColor={entry.strokeColor}
+                />
               </div>
-            )
-          })}
-
-          {/* Empty-state overlay */}
-          {items.length === 0 && !activeTool && (
-            <div className={styles.canvasEmpty}>
-              <p>Select an element from the palette above, then click here to place it.</p>
-            </div>
+              <span className={styles.shelfItemLabel}>{entry.shortLabel}</span>
+            </button>
+          ))}
+          {activePalette && (
+            <button className={styles.cancelBtn} onClick={() => setActivePalette(null)}>
+              ✕ Cancel
+            </button>
           )}
+        </div>
+
+        {/* Canvas */}
+        <div
+          className={styles.canvasWrapper}
+          style={{ paddingBottom: `${(1 / preset.aspectRatio) * 100}%` }}
+        >
+          <div
+            ref={canvasRef}
+            className={`${styles.canvas} ${activePalette ? styles.canvasPlacing : ''} ${isDragging ? styles.canvasDragging : ''}`}
+            onMouseDown={handleCanvasMouseDown}
+          >
+
+            {/* Rotation HUD — rendered below elements (z-index: 3) */}
+            {selectedEl && (
+              <RotationHud
+                el={selectedEl}
+                onRingMouseDown={getRotateMouseDown(selectedEl.id)}
+              />
+            )}
+
+            {/* Canvas elements */}
+            {elements.map(el => {
+              const dims   = ELEMENT_BASE_DIMS[el.type]
+              const entry  = getPaletteEntry(el)
+              const isSel  = el.id === selectedId
+              const wPct   = dims.wPct * el.scaleFactor
+              const hPct   = dims.hPct * el.scaleFactor
+              return (
+                <div
+                  key={el.id}
+                  className={`${styles.element} ${isSel ? styles.elementSelected : ''}`}
+                  style={{
+                    left:            `${el.xPercent - wPct / 2}%`,
+                    top:             `${el.yPercent - hPct / 2}%`,
+                    width:           `${wPct}%`,
+                    height:          `${hPct}%`,
+                    transform:       `rotate(${el.rotationAngle}deg)`,
+                    transformOrigin: 'center center',
+                    zIndex:          isSel ? 4 : 2,
+                    willChange:      'transform',
+                  } as CSSProperties}
+                  onMouseDown={getElementMouseDown(el.id)}
+                >
+                  <ElementShape
+                    type={el.type}
+                    fillColor={entry.fillColor}
+                    strokeColor={entry.strokeColor}
+                  />
+                </div>
+              )
+            })}
+
+            {/* Placing mode overlay */}
+            {activePalette && (
+              <div className={styles.placingOverlay}>
+                <span>Click to place <strong>{activePalette.label}</strong></span>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {elements.length === 0 && !activePalette && (
+              <div className={styles.emptyState}>
+                <p>Select an element from the shelf to begin laying out your hardscape.</p>
+                <p className={styles.emptyHint}>Double-click any shelf item to stamp it at centre.</p>
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
 
       {/* ── Controls bar ──────────────────────────────────────── */}
-      {selectedItem ? (
-        <div className={styles.controls}>
-          <div className={styles.controlItem}>
-            <span className={styles.controlsLabel}>
-              {ELEMENT_CONFIG[selectedItem.type].label}
-            </span>
+      {selectedEl ? (
+        <div className={styles.controlsBar}>
+          <div className={styles.selectedInfo}>
+            <span className={styles.selectedLabel}>{selectedEl.label}</span>
+            <span className={styles.rotBadge}>{Math.round(selectedEl.rotationAngle)}°</span>
           </div>
-          <div className={styles.controlGroup}>
-            <span className={styles.controlDimLabel}>W</span>
-            <button className={styles.scaleBtn} onClick={() => scaleSelected('w', -1)}>−</button>
-            <span className={styles.scaleDim}>{selectedItem.w}</span>
-            <button className={styles.scaleBtn} onClick={() => scaleSelected('w', +1)}>+</button>
-          </div>
-          <div className={styles.controlGroup}>
-            <span className={styles.controlDimLabel}>H</span>
-            <button className={styles.scaleBtn} onClick={() => scaleSelected('h', -1)}>−</button>
-            <span className={styles.scaleDim}>{selectedItem.h}</span>
-            <button className={styles.scaleBtn} onClick={() => scaleSelected('h', +1)}>+</button>
-          </div>
+
+          <label className={styles.scaleGroup}>
+            <span className={styles.scaleLabel}>Scale</span>
+            <input
+              type="range"
+              min={0.5}
+              max={2.0}
+              step={0.05}
+              value={selectedEl.scaleFactor}
+              onChange={e => updateScale(selectedEl.id, parseFloat(e.target.value))}
+              className={styles.scaleRange}
+              style={{
+                '--fill-pct': `${((selectedEl.scaleFactor - 0.5) / 1.5) * 100}%`,
+              } as CSSProperties}
+            />
+            <span className={styles.scaleValue}>{selectedEl.scaleFactor.toFixed(2)}×</span>
+          </label>
+
           <button className={styles.deleteBtn} onClick={deleteSelected}>
-            Remove Element
+            Remove
           </button>
         </div>
       ) : (
         <div className={styles.controlsHint}>
           <span>
-            {items.length > 0
-              ? 'Click an element to select it — then drag, scale, or delete.'
-              : 'Choose a palette element type above to begin building your layout.'}
+            {activePalette
+              ? `Click canvas to place ${activePalette.label} — or double-click shelf to stamp at centre.`
+              : elements.length > 0
+                ? 'Click an element to select — then drag to reposition, twist the ring to rotate, or adjust scale.'
+                : 'Choose an element type from the shelf, then click the canvas to place it.'}
           </span>
         </div>
       )}
+
     </div>
   )
 }

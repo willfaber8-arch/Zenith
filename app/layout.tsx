@@ -46,12 +46,15 @@ import { SyncProvider }       from '@/lib/SyncContext'
 import { ToastProvider }      from '@/lib/ToastContext'
 import { StudyModeProvider }  from '@/lib/StudyModeContext'
 import { FatigueProvider }    from '@/lib/FatigueContext'
+import { CopilotProvider }         from '@/lib/CopilotContext'
+import { SkillModifierProvider }   from '@/lib/SkillModifierContext'
 import ThemeBackground   from '@/components/ThemeBackground'
 import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
 import Toast             from '@/components/Toast'
 import FatigueLayer      from '@/components/FatigueLayer'
 import ErrorBoundary     from '@/components/ErrorBoundary'
+import AiCopilotSidebar  from '@/components/AiCopilotSidebar'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
 import TestBridge        from '@/components/TestBridge'
 /* Vercel observability — Phase 6.3
@@ -155,19 +158,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                    * during fatigue without restarting the RAF loop.
                    */}
                   <FatigueProvider>
-                    <ThemeBackground />
-                    <CosmosCanvas />
-                    {/* ErrorBoundary wraps the entire workspace layer.
-                        Any uncaught crash in AppContent, AppShell, or any
-                        view module renders the recovery card instead of a
-                        blank white screen.                               */}
-                    <ErrorBoundary>
-                      <AppContent>{children}</AppContent>
-                    </ErrorBoundary>
-                    <Toast />
-                    <FatigueLayer />
-                    {/* Only rendered during Playwright runs (NEXT_PUBLIC_E2E=1) */}
-                    {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
+                    {/*
+                     * CopilotProvider sits inside FatigueProvider so the
+                     * copilot can detect fatigue state in the future, and
+                     * above AppContent so both AppShell and any view can
+                     * call useCopilot() to toggle the panel.
+                     * AiCopilotSidebar renders at this level (not inside
+                     * AppShell) so its position:fixed z-index:300 is in the
+                     * root stacking context, safely above the shell (z:2)
+                     * and below Toast (z:600).
+                     */}
+                    <CopilotProvider>
+                      <SkillModifierProvider>
+                      <ThemeBackground />
+                      <CosmosCanvas />
+                      {/* ErrorBoundary wraps the entire workspace layer.
+                          Any uncaught crash in AppContent, AppShell, or any
+                          view module renders the recovery card instead of a
+                          blank white screen.                               */}
+                      <ErrorBoundary>
+                        <AppContent>{children}</AppContent>
+                      </ErrorBoundary>
+                      <Toast />
+                      <FatigueLayer />
+                      {/* AI Co-Pilot slide-over panel — auth-gated internally */}
+                      <AiCopilotSidebar />
+                      {/* Only rendered during Playwright runs (NEXT_PUBLIC_E2E=1) */}
+                      {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
+                      </SkillModifierProvider>
+                    </CopilotProvider>
                   </FatigueProvider>
                 </StudyModeProvider>
               </ToastProvider>

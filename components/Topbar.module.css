@@ -187,6 +187,59 @@
   letter-spacing: 0.01em;
 }
 
+/* ── AI Co-Pilot toggle button ────────────────────────────── */
+
+.copilotBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast),
+    color            var(--dur-fast);
+}
+
+.copilotBtn:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-purple-dim);
+}
+
+.copilotBtnActive {
+  background-color: var(--bg-active);
+  border-color: var(--accent-purple-dim);
+}
+
+.copilotIcon {
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--text-dark);
+  transition: color var(--dur-fast);
+}
+
+.copilotBtn:hover .copilotIcon,
+.copilotBtnActive .copilotIcon {
+  color: var(--accent-purple);
+}
+
+.copilotLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-dark);
+  transition: color var(--dur-fast);
+}
+
+.copilotBtn:hover .copilotLabel,
+.copilotBtnActive .copilotLabel {
+  color: var(--accent-purple);
+}
+
 /* ── Mobile responsive overrides ─────────────────────────── */
 
 @media (max-width: 767px) {

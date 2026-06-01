@@ -47,6 +47,10 @@ app/
   api/
     cal-proxy/
       route.ts         Server-side iCal CORS proxy — webcal:// normalisation, 5-min cache
+    chat/
+      route.ts         AI Co-Pilot streaming endpoint — POST /api/chat; reads LLM_API_KEY
+                       server-side; injects compiled contextPayload as Anthropic system prompt;
+                       streams UTF-8 text chunks via ReadableStream (Transfer-Encoding: chunked)
 
 components/
   AppContent.tsx       Auth-aware wrapper — orchestrates auth gate ↔ workspace transitions
@@ -94,10 +98,28 @@ components/
                        GpaMetricPanel: large GPA + tier badge + 4px target bar + margin bubble.
   GpaSimulator.module.css  data-tier CSS attributes for grade colour-coding; range input
                             styled via --fill-pct custom property
+  AiCopilotSidebar.tsx   AI Co-Pilot slide-over panel (position:fixed, z:300, right:0). Compiles
+                         14-day IDB context via compileUserContextPayload() on first open; streams
+                         Anthropic responses via fetch('/api/chat') ReadableStream; inline Markdown
+                         renderer (bold/italic/code/fenced-blocks/lists) — zero external libraries.
+                         Auth-gated; Escape to close; full-width on mobile.
+  AiCopilotSidebar.module.css  Panel slide transition 360ms ease-expo; 4 node states; cursorBlink
+                               keyframe for streaming token cursor; statusPulse on context compile.
+  SkillTreeCanvas.tsx    960×560 SVG + absolute-positioned constellation node viewport. SVG layer
+                         renders 18 cubic-bezier wire paths in 3 states (active/partial/locked).
+                         Nodes are 72px circles in 4 CSS state classes. Click → in-canvas popup
+                         with cost/prereq/effect + unlock CTA. nodeUnlockBurst keyframe on purchase.
+                         Branch CSS variables injected via local .branchScholastic/.branchErgonomic/
+                         .branchHabit classes (CSS Modules requires local class anchor — no bare
+                         [data-branch] selectors allowed).
+  SkillTreeCanvas.module.css  availablePulse + nodeUnlockBurst keyframes; 4 node state classes;
+                              popup positioning logic; branch variable injection via local classes.
   ViewRouter.tsx       Two-phase fade/scale content switcher (exit 200ms → swap → enter 300ms);
-                       live views: home, uni-hub, major-hub, calendar, gpa-calc, aquascaping
-  Topbar.tsx           Sticky 52px bar — breadcrumb, SyncIndicator, weather chip, clock, user chip
-  Topbar.module.css    Glass backdrop, responsive hamburger toggle
+                       live views: home, uni-hub, major-hub, calendar, gpa-calc, aquascaping,
+                       skill-tree (Phase 7.2)
+  Topbar.tsx           Sticky 52px bar — breadcrumb, SyncIndicator, ◎ AI Co-Pilot toggle,
+                       weather chip, clock, user chip. Consumes useCopilot() for toggle state.
+  Topbar.module.css    Glass backdrop, responsive hamburger toggle; .copilotBtn + .copilotBtnActive
   AquascapingValidator.tsx   Ecosystem compatibility dashboard — two-panel layout (tank sliders +
                              species combobox left; bioload bar + conflict feed right). 34-species
                              library; 6-check analyzeCompatibility() engine imported from aquascapingMath.
@@ -139,6 +161,12 @@ components/
     PlaceholderView.module.css
     UniHubView.tsx          University Hub orchestrator — 5-state machine (loading/selector/no-data/hub)
     UniHubView.module.css
+    SkillTreeView.tsx       Skill tree page orchestrator — ZenHeading + token status bar +
+                            active modifier chip row + SkillTreeCanvas inside card shell.
+                            Purchase outcomes surfaced via useToast(). Retroactive token init on
+                            first visit: Math.max(0, currentLevel − 1) tokens awarded.
+    SkillTreeView.module.css  Token bar, modifier chip variants (.modifierChipSchol/Ergo/Habit),
+                              canvas card shell, loading state.
     AquascapingView.tsx     Three-tab Aquascaping Engine hub — tab bar persists state via display:none
                             (not unmount). Tabs: Ecosystem Validator | Supplier Cart | Hardscape & Water Log.
                             ZenHeading title + subtitle update reactively with activeTab state.
@@ -178,7 +206,15 @@ lib/
   SyncContext.tsx      SyncProvider + useSyncStatus() — bridges ZenithSyncEngine into React tree;
                        also calls initSyncBroker() on mount (Phase 6.4)
   ToastContext.tsx     ToastProvider + useToast() — ephemeral notification queue
-  nav-config.ts        Navigation taxonomy — CategoryId, ViewId, NAV_CONFIG, tint/hover/accent maps
+  CopilotContext.tsx   CopilotProvider + useCopilot() — isOpen / open / close / toggle for the
+                       AI Co-Pilot slide-over panel (Phase 7.1). Lightweight — no IDB access.
+  SkillModifierContext.tsx  SkillModifierProvider + useSkillModifiers() — reads
+                            userProfile.unlockedSkillNodeIds via useLiveQuery, computes
+                            SkillModifiers aggregate, exposes globally. Integration points:
+                            FatigueContext (fatigueRateMultiplier), Pomodoro (pomodoroMinuteBonus),
+                            RPG/quest engine (assignmentGoldMultiplier, assignmentXpBonus, streakXpMultiplier).
+  nav-config.ts        Navigation taxonomy — CategoryId, ViewId, NAV_CONFIG, tint/hover/accent maps;
+                       'skill-tree' added to ViewId + Scholastic subcategory (Phase 7.2)
   db.ts                Dexie.js v4 engine — ZenithDatabase class, 19 tables (v13), SSR-safe singleton
   supabase.ts          SSR-safe Supabase client singleton — returns null when unconfigured
   weather.ts           Open-Meteo fetch, WMO code → description mapping
@@ -191,8 +227,18 @@ lib/
                                 epoch-based precision timing, IDB session logging on completion,
                                 awardXp(25) on natural finish, distraction counter + toast
     useSandboxConfig.ts         localStorage widget visibility config (4 slots)
+    useSkillTree.ts             Atomic skill tree acquisition engine (Phase 7.2) — useLiveQuery on
+                                userProfile; retroactive token init (currentLevel−1) on first visit;
+                                purchaseSkillNode() validates tokens + prereq + not-already-unlocked
+                                then runs single atomic db.userProfile.update(); exports standalone
+                                awardSkillToken(n) helper for level-up / quest completion callsites.
 
 types/
+  skillTree.ts        SkillNode (spec type) + SkillNodeRuntime + SkillBranch + NodeState +
+                      SkillModifiers + SkillTreeConnection; SKILL_TREE_DATA (18 nodes, 3 branches,
+                      4 tiers); SKILL_TREE_CONNECTIONS (18 wires); SKILL_TREE_MAP (O(1) lookup);
+                      computeNodeStates() + resolveNodeState() + computeModifiers() + DEFAULT_MODIFIERS;
+                      CANVAS_W=960, CANVAS_H=560, NODE_RADIUS=36 layout constants.
   syncQueue.ts         OutboxMutation interface (id, tableName, action, payload, timestamp,
                        updatedAt) + OutboxTable / OutboxAction unions + OUTBOX_CLOUD_TABLE
                        routing map (assignments→supabase_urgent_tasks, habits→supabase_habits,
@@ -203,6 +249,12 @@ types/
                        AggressionLevel: 'peaceful'|'semi-aggressive'|'aggressive'.
 
 utils/
+  aiContextBridge.ts   Async context compiler (Phase 7.1) — compileUserContextPayload() reads
+                       assignments + habits + mentalHealthLogs from IDB over a 14-day window;
+                       truncates free-text notes at 110 chars; formats a structured plain-text
+                       block (≈600–900 tokens) for injection as an Anthropic system prompt extension.
+                       Returns { compiledAt, systemPrompt, stats: ContextStats }.
+                       SSR-safe: uses dynamic import('@/lib/db') inside the async function body.
   calendarParser.ts    Pure-TS iCal parser (zero dependencies):
   gpaMath.ts           Cornell 4.3-scale GPA engine — calcGpa(), roundGpa(), grade↔slider
                        converters, gpaTier(), fmtGpa(); zero React/Dexie imports
@@ -356,6 +408,13 @@ z-index:  2   AppShell .shell           — all workspace UI, above stars
   z-index: 100  .sidebar                — within .shell stacking context
   z-index: 200  StudyLayoutContainer    — focus cockpit overlay (position:fixed, within .shell)
 z-index: 50   AuthGate wrapper          — login overlay (when unauthenticated, outside .shell)
+z-index: 299  AiCopilotSidebar backdrop — semi-transparent dimmer behind the panel
+z-index: 300  AiCopilotSidebar panel    — slide-over chat panel (root stacking context)
+z-index: 500  SystemHandshake           — boot diagnostic overlay (Phase 6.5)
+z-index: 589  FatigueLayer filter       — desaturation overlay (Phase 5.6)
+z-index: 590  FatigueLayer tint         — warm amber fatigue tint (Phase 5.6)
+z-index: 591  FatigueLayer alert bar    — floating fatigue notification (Phase 5.6)
+z-index: 595  RecoveryCockpit           — recovery session overlay (Phase 5.6)
 z-index: 600  Toast                     — notification stack, above everything
 ```
 
@@ -414,16 +473,24 @@ NavProvider
             └─ SyncProvider          (Phase 2.2 — bridges ZenithSyncEngine into React)
                  └─ ToastProvider
                       └─ StudyModeProvider   (Phase 3.1 — focus cockpit state + Escape handler)
-                           ├─ ThemeBackground   (fixed, z-index: 0)
-                           ├─ CosmosCanvas      (fixed, z-index: 1)
-                           ├─ AppContent        (auth gate ↔ workspace orchestrator)
-                           │    ├─ AuthGate     (fixed, z-index: 50, when !authed)
-                           │    └─ AppShell     (z-index: 2, when authed)
-                           │         └─ StudyLayoutContainer  (fixed, z-index: 200, when study mode)
-                           └─ Toast             (fixed, z-index: 600)
+                           └─ FatigueProvider  (Phase 5.6 — fatigue monitor + recovery context)
+                                └─ CopilotProvider      (Phase 7.1 — AI Co-Pilot open/close state)
+                                     └─ SkillModifierProvider  (Phase 7.2 — live modifier broadcast)
+                                          ├─ ThemeBackground   (fixed, z-index: 0)
+                                          ├─ CosmosCanvas      (fixed, z-index: 1)
+                                          ├─ ErrorBoundary
+                                          │    └─ AppContent   (auth gate ↔ workspace orchestrator)
+                                          │         ├─ AuthGate     (fixed, z-index: 50, when !authed)
+                                          │         └─ AppShell     (z-index: 2, when authed)
+                                          │              └─ StudyLayoutContainer (fixed, z:200)
+                                          ├─ Toast              (fixed, z-index: 600)
+                                          ├─ FatigueLayer       (z: 589–591)
+                                          └─ AiCopilotSidebar  (fixed, z-index: 300, auth-gated)
 ```
 
-`StudyModeProvider` sits inside `ToastProvider` (so cockpit can show toasts) and above `AppContent` (so both AppShell and HomeView can access it).
+`CopilotProvider` sits inside `FatigueProvider` so future fatigue-awareness integrations are possible.
+`SkillModifierProvider` wraps everything below it so any component can call `useSkillModifiers()`.
+`AiCopilotSidebar` renders at the root level (outside AppShell) so its `position:fixed` z:300 is in the root stacking context, safely above AppShell (z:2) and below Toast (z:600).
 
 ---
 
@@ -438,6 +505,7 @@ ZENITH ESSENTIALS (category: 'essentials', tint: #0d1020)
     · GPA Calculator    (view: 'gpa-calc')
     · University Hub    (view: 'uni-hub')
     · Major Hub         (view: 'major-hub')       ← Phase 2.4
+    · Skill Tree        (view: 'skill-tree')       ← Phase 7.2
   LIFE
     · Universal Calendar (view: 'calendar')
     · Workouts           (view: 'workouts')
@@ -651,6 +719,18 @@ All DB calls must be inside `useEffect`, event handlers, or `useLiveQuery` callb
 await seedUserProfile('Will')           // creates id=1 singleton if not exists
 await awardXp(50)                       // adds XP, recalculates level = floor(√(xp/100))+1
 await awardGold(10)                     // adds Zenith Gold to goldPoints balance (Phase 5.4)
+await awardHp(25)                       // adds HP, capped at 100 (Phase 5.6)
+
+// Phase 7.2 — Skill Tree (exported from hooks/useSkillTree.ts)
+import { awardSkillToken } from '@/hooks/useSkillTree'
+await awardSkillToken(1)                // increments availableSkillTokens on userProfile
+                                        // Call from: level-up handler, legendary quest completion
+```
+
+**Phase 7.2 `UserProfile` additions** (no schema version bump — non-indexed fields):
+```ts
+userProfile.unlockedSkillNodeIds?: string[]   // IDs of purchased skill nodes
+userProfile.availableSkillTokens?: number     // spendable tokens; init = max(0, currentLevel−1)
 ```
 
 ---
@@ -910,6 +990,83 @@ Three-tab hub under Creator's Choice. All panes stay **always mounted** (display
 
 ---
 
+## AI Co-Pilot (`components/AiCopilotSidebar.tsx`)
+
+Phase 7.1 — context-aware LLM chat sidebar.
+
+### Architecture
+
+```
+Client                                  Server
+──────────────────────────────          ────────────────────────────
+useCopilot() toggle                     POST /api/chat
+  ↓                                       reads LLM_API_KEY (server-only)
+AiCopilotSidebar                          injects contextPayload as system prompt
+  ↓ on first open                         streams via Anthropic SDK ReadableStream
+compileUserContextPayload()              ← UTF-8 text chunks
+  IDB: assignments + habits + mentalHealthLogs (14 days)
+  truncates notes at 110 chars
+  returns { systemPrompt, stats }
+  ↓
+fetch('/api/chat', { body: { messages, contextPayload } })
+  ↓ streams
+setMessages(prev → append chunk)
+```
+
+### Key constants (`app/api/chat/route.ts`)
+
+- `MAX_USER_MSG_CHARS = 4_000` — hard cap per user turn
+- `MAX_HISTORY_MESSAGES = 20` — sliding window
+- `MAX_TOKENS_RESPONSE = 1_024`
+- `LLM_MODEL = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'`
+
+### Usage
+
+```ts
+const { isOpen, toggle } = useCopilot()   // toggle from Topbar ◎ AI button
+```
+
+The Co-Pilot compiles its context once per sidebar open session. Calling `toggle()` a second time restores the existing conversation — messages persist until the user clicks ↺ (New Conversation).
+
+---
+
+## Skill Tree (`types/skillTree.ts`, `hooks/useSkillTree.ts`)
+
+Phase 7.2 — branching perk system with atomic IDB acquisition.
+
+### Three branches (18 nodes total, 4 tiers each)
+
+| Branch | Modifier targets | Max cumulative effect |
+|---|---|---|
+| `SCHOLASTIC_FOCUS` | `assignmentGoldMultiplier`, `pomodoroMinuteBonus`, `assignmentXpBonus` | +50% gold · +15 min · +5 XP |
+| `ERGONOMIC_RESILIENCE` | `fatigueRateMultiplier`, `deadlineHpMultiplier`, `recoveryHpBonus` | −60% fatigue · −25% HP loss · +15 HP |
+| `HABIT_MASTERY` | `streakXpMultiplier`, `streakGraceDays` | +65% streak XP · 2 grace days |
+
+### Token economy
+
+- 1 token per level-up (awarded retroactively on first visit via `Math.max(0, currentLevel−1)`)
+- 1 token per legendary/critical task archival (call `awardSkillToken()` at completion site)
+- Root nodes cost 1 · Tier 1 cost 1 · Tier 2 cost 2 · Apex cost 3 → 10 tokens to max a branch
+
+### Modifier access
+
+```ts
+const { modifiers } = useSkillModifiers()
+// modifiers.fatigueRateMultiplier — read by FatigueContext
+// modifiers.pomodoroMinuteBonus   — add to WORK_SECS in usePomodoroStateMachine
+// modifiers.assignmentGoldMultiplier — multiply in awardGold call sites
+```
+
+### Canvas layout constants
+
+```ts
+CANVAS_W = 960   CANVAS_H = 560   NODE_RADIUS = 36
+Branch x-centres: SCHOLASTIC=160, ERGONOMIC=480, HABIT=800
+Tier y positions: root=80, tier1=210, tier2=340, apex=470
+```
+
+---
+
 ## Widget Sandbox
 
 ### `useSandboxConfig` — visibility config
@@ -968,6 +1125,10 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 31. **`useLiveQuery` accepts 1–2 arguments only** (`dexie-react-hooks` v4 removed the third `defaultResult` parameter). The return type is `T | undefined`; guard every usage with `?? []` or optional chaining. Never pass a third argument — it is a compile-time type error that breaks `npm run build`.
 32. **Sync broker hooks all 4 tables** — habits and workouts now flow through `outboxMutations` via `syncBroker`. The engine's `pendingSyncQueue` continues to run for assignments/userProfile in parallel (idempotent upserts). Do not disable either hook system; they are additive by design.
 33. **Vercel deployment** — `vercel.json` + `.github/workflows/deploy.yml` are both committed. The CI pipeline validates (typecheck + Playwright) before deploying. Never push directly to Vercel outside the pipeline for production builds. GitHub Secrets required: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+34. **CSS Modules forbid bare attribute selectors** — Next.js CSS Modules requires every selector to contain at least one local class or ID. Bare `[data-branch='X']` selectors (and even `:global([data-branch='X'])`) are rejected with "not pure". The correct pattern: define local classes (`.branchScholastic`, `.branchErgonomic`) that set CSS custom properties, then apply those classes in JSX. Children read the variables via `var(--bx)` inheritance. `SkillTreeCanvas.module.css` is the canonical example.
+35. **AI Co-Pilot context is compiled once per panel open** — `compileUserContextPayload()` runs on first `isOpen → true` transition (guarded by `contextStatus === 'idle'`). Do not re-run on every render or every message. The compiled `contextPayload` string is cached in component state for the duration of the session. If the user clicks ↺ (New Conversation), `handleClear()` resets `contextStatus` to `'idle'` so the next open re-compiles fresh context.
+36. **Skill token award callsites** — call `awardSkillToken(1)` from `import { awardSkillToken } from '@/hooks/useSkillTree'` whenever a player earns a token: (a) level-up in `utils/rpgEngine.ts` `applyXpGain()`, (b) legendary quest completion in `hooks/useQuestBoard.ts` `completeQuest()`. The function is a standalone async helper — it does not require the full `useSkillTree` hook and is safe to call from non-component contexts.
+37. **Skill modifier integration points** — use `useSkillModifiers()` to read live modifier values. Do NOT read `userProfile.unlockedSkillNodeIds` directly in consumer hooks — always go through `SkillModifierContext` so updates propagate in a single reactive chain. Integration TODO callsites: `lib/FatigueContext.tsx` (fatigueRateMultiplier), `lib/hooks/usePomodoroStateMachine.ts` (pomodoroMinuteBonus added to `WORK_SECS`), `lib/db.ts` `awardGold()` (assignmentGoldMultiplier), habit streak XP calculations (streakXpMultiplier).
 
 ---
 
@@ -1013,3 +1174,6 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 | 6 | 6.2 | Automated E2E Test Suite Construction — Playwright 1.60 (`@playwright/test`), `playwright.config.ts` (workers:1, isolated context per test, `NEXT_PUBLIC_E2E=1` via webServer.env, chromium project, HTML+JUnit reporters), `components/TestBridge.tsx` (zero-UI client component mounts `window.__zenith = { db, awardXp, awardGold, seedUserProfile }` via useEffect + dispatches `zenith:bridge-ready` CustomEvent, only rendered when `NEXT_PUBLIC_E2E=1`), `types/testBridge.d.ts` (global Window augmentation), `tests/helpers/bridge.ts` (typed Playwright helpers: `injectAuth/waitForBridge/seedProfile/addAssignment/countTable/readSyncQueue/navigateTo`, expRequired formula constant), `tests/zenithCore.spec.ts` (3 suites, 7 tests): Suite 1 — auth gate bypass + workspace boot (sidebar + RpgStatusWidget ARIA); Suite 2 — S2-T1 IDB write via Dexie + `useLiveQuery` DOM assertion + `data-priority` attr; S2-T2 pendingSyncQueue schema (tableName/operation/supabaseId UUID regex/timestamp/retryCount/payload JSON fields); S2-T3 Supabase route mock + online event stability; Suite 3 — S3-T1 boss defeat → ≥75 XP delta + `currentLevel ≥ 2` + RpgStatusWidget DOM; S3-T2 exact formula contract `awardXp(75)` from 99 XP → level 2, 74 XP remainder; S3-T3 multi-level cascade +1200 XP → level 4, 297 XP | ✅ |
 | 6 | 6.1 | Production Optimization & Strict Build Hardening — `components/ErrorBoundary.tsx` (React class component, `getDerivedStateFromError` + `componentDidCatch`, two-stage recovery ladder: soft reinit → IDB flush+navigate, Slate-Indigo card with `pulseGlow` dot, dev-only stack trace panel, z-index:950 overlay), `components/ErrorBoundary.module.css` (design-token-only styles), `next.config.ts` (SWC `compiler.removeConsole` strips log/debug in prod; 8-directive CSP baseline covering Google Fonts/Open-Meteo/Supabase/PeerJS/OSM; X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, HSTS; deterministic moduleIds; async splitChunks for leaflet/peerjs/anthropic/dexie vendor bundles), `lib/logger.ts` (typed log/debug/warn/error — dev-only guards + runtime fallback), `lib/hooks/useWindowEvent.ts` (stable-ref `handlerRef` pattern guaranteeing add/remove symmetry in React 18 StrictMode), ErrorBoundary mounted in `app/layout.tsx` wrapping `AppContent` | ✅ |
 | 6 | 6.5 | Comprehensive Architecture Validation & System Handshake — `utils/systemDiagnostics.ts` (4-check sequential engine: storage layer probe counts 7 Dexie tables, Supabase endpoint HEAD ping, native RTCPeerConnection instantiation, userProfile scalar validation; `CheckResult`/`DiagnosticReport` types; `ProgressHandler` callback drives real-time UI; `skipped` status for misconfigured-but-non-fatal checks), `components/SystemHandshake.tsx` (full-screen terminal overlay z:500; 4-phase state machine: booting 900ms → scanning → success → fatal; per-check `CheckRow` sub-component animates line-by-line; 1.5s success dwell then `fadeOut` → `onUnlock()`; fatal path shows retry + force-override buttons; stable-ref `onUnlock` pattern), `components/SystemHandshake.module.css` (CRT scanline texture via `repeating-linear-gradient`; mono font; `cursorBlink` keyframe; PASSED=#52cca3, FAILED=#ff5c5c, OFFLINE=text-dark; z:500 overlay; `500ms ease-smooth` exit transition), `components/AppContent.tsx` updated (3-state `HandshakeState` machine: checking→needed→done; `sessionStorage` key `zenith_handshake_v1` persists per-session completion; `useCallback`-stabilised `handleUnlock`; workspace opacity gated on `hsState==='done'`; AppShell remains mounted during handshake so BadgeSyncEffect seeds profile in background) | ✅ |
+| 7 | 7.1 | AI-Powered Academic Co-Pilot & Vector Context Bridge — `utils/aiContextBridge.ts` (async `compileUserContextPayload()`: 14-day IDB pull from assignments + habits + mentalHealthLogs, 110-char note truncation, structured plain-text system prompt block ~600–900 tokens), `app/api/chat/route.ts` (secure streaming endpoint: LLM_API_KEY server-only, 20-msg sliding window, 4k char per-turn cap, Anthropic SDK `messages.stream()` → `ReadableStream` UTF-8 chunks, `X-Accel-Buffering: no` header), `lib/CopilotContext.tsx` (CopilotProvider + `useCopilot()` — isOpen/open/close/toggle), `components/AiCopilotSidebar.tsx` (position:fixed z:300, slide-over 380px → 100vw mobile; compiles context once on first open; streams into message thread via `ReadableStream.getReader()`; inline MarkdownBlock renderer handles ` ``` `, `##`, `**`, `\`code\``, lists, blockquotes, HR — zero external libs; `nodeUnlockBurst` → green cursor while streaming; Ctrl/Cmd+Enter submit; Escape closes), `app/layout.tsx` + `Topbar.tsx` wired (◎ AI toggle in topbar cluster, `AiCopilotSidebar` rendered at root level outside AppShell) | ✅ |
+| 7 | 7.3 | Interactive Hardscape Simulator & Drag-and-Drop Layout Canvas — `types/hardscape.ts` (HardscapeElement with xPercent/yPercent centre coords, rotationAngle, scaleFactor; AquascapeLayout IDB schema; PALETTE_ENTRIES 6 items; ELEMENT_BASE_DIMS % canvas per type; ELEMENT_SHAPES SVG path data for STONE/DRIFTWOOD/SUBSTRATE_LINE), `hooks/useHardscapeInteraction.ts` (document-level drag via dragRef + rotateRef; pxToPercent coordinate translation; boundary clamping per ELEMENT_BASE_DIMS; atan2 rotation delta from ring drag; stable useCallback factories for element + ring mousedown; loadLayout for IDB restore), `lib/db.ts` v14 (`aquascapeLayouts: '++id, name, savedAt'`; AquascapeLayout import), `components/HardscapeSimulator.tsx` (left shelf with 6 SVG mini-previews; blueprint canvas with dotted radial grid; placing-mode crosshair; RotationHud SVG ring at element centre — 46px radius, dashed track, wide transparent hit stroke, periwinkle handle at rotationAngle, inline °readout; ElementShape component reused in shelf + canvas; CSS transform rotate+scale on element divs; bottom controls bar: rotation badge + --fill-pct scale range + Remove; IDB auto-save debounced 600ms id=1 + auto-load on mount), `components/HardscapeSimulator.module.css` (blueprint dark `#080d0b` + radial-gradient dot grid; `.hudRing` pointer-events:none container; scale range with gradient fill via --fill-pct; drop-shadow filter on selected element) | ✅ |
+| 7 | 7.2 | Branching Skill Trees & Focus Perks — `types/skillTree.ts` (SkillNode spec type + SkillNodeRuntime + SkillBranch + NodeState + SkillModifiers + SkillTreeConnection; 18-node SKILL_TREE_DATA across 3 branches / 4 tiers; 18 SKILL_TREE_CONNECTIONS; SKILL_TREE_MAP O(1) lookup; `computeNodeStates()` + `resolveNodeState()` + `computeModifiers()` + DEFAULT_MODIFIERS; CANVAS_W=960, CANVAS_H=560, NODE_RADIUS=36), `hooks/useSkillTree.ts` (useLiveQuery on userProfile; retroactive token init max(0,level−1) on first visit; `purchaseSkillNode()` 3-gate validation + atomic IDB update; standalone `awardSkillToken()` export), `lib/SkillModifierContext.tsx` (SkillModifierProvider + `useSkillModifiers()` — reactive live modifier broadcast to entire tree), `components/SkillTreeCanvas.tsx` (960×560 SVG + abs-positioned canvas; 18 cubic-bezier wire paths in 3 states active/partial/locked; 72px circular nodes in 4 state classes; branch CSS vars via local `.branchScholastic/.branchErgonomic/.branchHabit` classes; in-canvas popup; `nodeUnlockBurst` keyframe sweep), `components/views/SkillTreeView.tsx` (token bar + active modifier chip row + canvas card + purchase toast feedback); `lib/db.ts` UserProfile extended with `unlockedSkillNodeIds?: string[]` + `availableSkillTokens?: number` (no schema version bump); `lib/nav-config.ts` + `ViewRouter.tsx` wired; `app/layout.tsx` SkillModifierProvider added | ✅ |

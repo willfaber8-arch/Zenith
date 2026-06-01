@@ -1,0 +1,446 @@
+/* ════════════════════════════════════════════════════════════
+   SkillTreeCanvas — Phase 7 · Step 7.2 (Phase 7.3 touch)
+   Constellation node viewport for the three-branch skill tree.
+   All tokens from design system; no hardcoded hex/font values.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Branch accent colour system ─────────────────────────────
+   Local classes inject CSS custom properties; children read
+   via var(--bx) / var(--bx-dim) / var(--bx-glow).
+   Applied in JSX via branchClass() helper.
+   ──────────────────────────────────────────────────────────── */
+
+.branchScholastic { --bx: var(--accent-purple); --bx-dim: rgba(124,149,255,0.18); --bx-glow: rgba(124,149,255,0.25); }
+.branchErgonomic  { --bx: #f59e0b;              --bx-dim: rgba(245,158, 11,0.18); --bx-glow: rgba(245,158, 11,0.25); }
+.branchHabit      { --bx: var(--accent-green);  --bx-dim: rgba( 82,204,163,0.18); --bx-glow: rgba( 82,204,163,0.25); }
+
+/* ── Outer scroll wrapper ─────────────────────────────────── */
+
+.scrollWrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: var(--sp-2);
+}
+
+/* Custom scrollbar using global utility */
+.scrollWrapper::-webkit-scrollbar       { height: 4px; }
+.scrollWrapper::-webkit-scrollbar-track { background: transparent; }
+.scrollWrapper::-webkit-scrollbar-thumb { background: var(--text-dark); border-radius: 2px; }
+
+/* ── Canvas container (fixed logical size) ────────────────── */
+
+.canvasRoot {
+  position: relative;
+  width: 960px;
+  height: 560px;
+  flex-shrink: 0;
+}
+
+/* ── SVG connection layer (full-coverage, behind nodes) ───── */
+
+.wireSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Wire states — applied as className on <path> elements */
+
+.wireActive {
+  stroke: rgba(124, 149, 255, 0.72);
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.3s;
+}
+
+.wirePartial {
+  stroke: rgba(124, 149, 255, 0.28);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  fill: none;
+  transition: stroke 0.3s;
+}
+
+.wireLocked {
+  stroke: rgba(92, 100, 135, 0.18);
+  stroke-width: 1;
+  fill: none;
+}
+
+/* ── Branch lane dividers ─────────────────────────────────── */
+
+.laneDivider {
+  stroke: rgba(92, 100, 135, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 8;
+  fill: none;
+}
+
+/* ── Branch header labels ─────────────────────────────────── */
+
+.branchHeader {
+  position: absolute;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.branchIcon {
+  font-size: 0.75rem;
+  color: var(--bx);
+  opacity: 0.7;
+}
+
+.branchLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--bx);
+  opacity: 0.6;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* ── Node card (circle button) ────────────────────────────── */
+
+.nodeCard {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-base) var(--ease-smooth),
+    border-color     var(--dur-base) var(--ease-smooth),
+    box-shadow       var(--dur-base) var(--ease-smooth),
+    transform        var(--dur-fast) var(--ease-smooth),
+    opacity          var(--dur-base) var(--ease-smooth);
+  user-select: none;
+  outline: none;
+}
+
+.nodeCard:focus-visible {
+  outline: 2px solid var(--accent-purple-dim);
+  outline-offset: 3px;
+}
+
+/* State: locked — prerequisite not met */
+.stateLocked {
+  background: rgba(11, 13, 19, 0.7);
+  border: 1.5px solid rgba(92, 100, 135, 0.15);
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* State: affordable — prereq met, but not enough tokens */
+.stateAffordable {
+  background: rgba(20, 25, 35, 0.85);
+  border: 1.5px solid rgba(92, 100, 135, 0.35);
+  opacity: 0.65;
+}
+
+.stateAffordable:hover {
+  background: rgba(20, 25, 35, 0.95);
+  border-color: rgba(92, 100, 135, 0.5);
+  transform: scale(1.04);
+}
+
+/* State: available — can be purchased right now */
+.stateAvailable {
+  background: rgba(20, 25, 35, 0.88);
+  border: 2px solid rgba(124, 149, 255, 0.55);
+  animation: availablePulse 2.8s ease-in-out infinite;
+}
+
+.stateAvailable:hover {
+  background: rgba(124, 149, 255, 0.08);
+  border-color: rgba(124, 149, 255, 0.8);
+  box-shadow: 0 0 16px rgba(124, 149, 255, 0.2);
+  transform: scale(1.07);
+  animation: none;
+}
+
+/* State: unlocked */
+.stateUnlocked {
+  background: rgba(82, 204, 163, 0.07);
+  border: 2px solid rgba(82, 204, 163, 0.55);
+  box-shadow: 0 0 14px rgba(82, 204, 163, 0.12), inset 0 0 8px rgba(82, 204, 163, 0.04);
+}
+
+.stateUnlocked:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 20px rgba(82, 204, 163, 0.2), inset 0 0 10px rgba(82, 204, 163, 0.06);
+}
+
+/* State: selected (popup open) */
+.nodeCardSelected {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(124, 149, 255, 0.5), 0 0 24px rgba(124, 149, 255, 0.2);
+  animation: none !important;
+}
+
+/* Unlock burst animation — triggered on successful purchase */
+.nodeUnlocking {
+  animation: nodeUnlockBurst 0.85s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+/* ── Node glyph and label ─────────────────────────────────── */
+
+.nodeGlyph {
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--text-dark);
+  transition: color var(--dur-base);
+}
+
+.stateLocked   .nodeGlyph  { color: var(--text-dark); opacity: 0.4; }
+.stateAffordable .nodeGlyph { color: var(--text-dark); }
+.stateAvailable .nodeGlyph  { color: var(--accent-purple); }
+.stateUnlocked  .nodeGlyph  { color: var(--accent-green); }
+
+.nodeTier {
+  font-family: var(--font-mono);
+  font-size: 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  opacity: 0.5;
+}
+
+/* ── Token cost badge (top-right of card) ─────────────────── */
+
+.costBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-main);
+  border: 1px solid rgba(124, 149, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+  pointer-events: none;
+}
+
+.stateUnlocked .costBadge {
+  border-color: rgba(82, 204, 163, 0.5);
+  color: var(--accent-green);
+  background: rgba(11, 13, 19, 0.9);
+}
+
+/* Hide cost badge on locked nodes */
+.stateLocked .costBadge {
+  opacity: 0.3;
+}
+
+/* ── Node popup ───────────────────────────────────────────── */
+
+.popup {
+  position: absolute;
+  width: 240px;
+  z-index: 20;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-card), 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: fadeIn var(--dur-fast) var(--ease-expo) both;
+  pointer-events: auto;
+}
+
+.popupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.popupTitle {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.popupBranch {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--bx);
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+  background: var(--bx-dim);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.popupDesc {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: var(--sp-3);
+}
+
+.popupEffect {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(82, 204, 163, 0.06);
+  border: 1px solid rgba(82, 204, 163, 0.18);
+  border-radius: var(--r-md);
+  margin-bottom: var(--sp-3);
+}
+
+.popupEffectIcon {
+  font-size: 0.75rem;
+  color: var(--accent-green);
+}
+
+.popupEffectLabel {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent-green);
+}
+
+.popupMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+}
+
+.popupMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.popupMetaKey {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+}
+
+.popupMetaVal {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.popupMetaVal.insufficient {
+  color: #f87171;  /* rose-400 — token deficit warning */
+}
+
+/* Unlock button */
+.unlockBtn {
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--r-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: linear-gradient(90deg, var(--accent-purple) 0%, var(--accent-green) 100%);
+  color: #0b0d13;
+  transition: filter var(--dur-fast), transform var(--dur-fast);
+}
+
+.unlockBtn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.unlockBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+/* Unlocked badge (shown instead of button when already purchased) */
+.unlockedBadge {
+  width: 100%;
+  padding: 7px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(82, 204, 163, 0.3);
+  background: rgba(82, 204, 163, 0.06);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--accent-green);
+}
+
+/* ── Backdrop to dismiss popup on outside click ───────────── */
+
+.popupBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: default;
+}
+
+/* ── Keyframes ────────────────────────────────────────────── */
+
+@keyframes availablePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 149, 255, 0); border-color: rgba(124,149,255,0.45); }
+  50%       { box-shadow: 0 0 0 5px rgba(124,149,255,0.10); border-color: rgba(124,149,255,0.75); }
+}
+
+@keyframes nodeUnlockBurst {
+  0%   {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(82, 204, 163, 0);
+    border-color: rgba(82, 204, 163, 0.3);
+  }
+  35%  {
+    transform: scale(1.14);
+    box-shadow: 0 0 0 10px rgba(82, 204, 163, 0.30);
+    border-color: rgba(82, 204, 163, 1.0);
+  }
+  65%  {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 18px rgba(82, 204, 163, 0.12);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 14px rgba(82, 204, 163, 0.12), inset 0 0 8px rgba(82, 204, 163, 0.04);
+    border-color: rgba(82, 204, 163, 0.55);
+  }
+}

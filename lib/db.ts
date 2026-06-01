@@ -42,6 +42,8 @@ import { applyXpGain, type HabitDifficulty } from '@/utils/rpgEngine'
 export type { HabitDifficulty } from '@/utils/rpgEngine'
 import type { OutboxMutation } from '@/types/syncQueue'
 export type { OutboxMutation } from '@/types/syncQueue'
+import type { AquascapeLayout } from '@/types/hardscape'
+export type { AquascapeLayout } from '@/types/hardscape'
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -266,6 +268,10 @@ export interface UserProfile {
   lastActiveAt:     number                    //   Unix timestamp ms — streak guard
   /** Slot → itemId map for the avatar customizer (Phase 5.2). Non-indexed. */
   equippedItems?:   Record<string, string>    //   e.g. { head: 'scholar_crown', ... }
+  /** Array of unlocked skill node IDs (Phase 7.2 — Skill Tree). Non-indexed. */
+  unlockedSkillNodeIds?: string[]
+  /** Spendable skill tokens — awarded on level-up and legendary task completion (Phase 7.2). */
+  availableSkillTokens?: number
 }
 
 
@@ -313,6 +319,7 @@ class ZenithDatabase extends Dexie {
   rpgEventLog!:            EntityTable<RpgEventLog,           'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
   outboxMutations!:        EntityTable<OutboxMutation,        'id'>
+  aquascapeLayouts!:       EntityTable<AquascapeLayout,       'id'>
 
   constructor() {
     super('ZenithOS')
@@ -526,6 +533,20 @@ class ZenithDatabase extends Dexie {
      */
     this.version(13).stores({
       outboxMutations: 'id, tableName, action, timestamp',
+    })
+
+    /*
+     * Version 14 — Phase 7 · Step 7.3 (Interactive Hardscape Simulator)
+     *
+     * New table:
+     *   aquascapeLayouts — saved hardscape canvas configurations.
+     *     name and savedAt indexed for list/sort queries.
+     *     elements is a non-indexed array of HardscapeElement objects;
+     *     stored as a structured clone (no serialisation needed).
+     *     id=1 is reserved for the auto-save session slot.
+     */
+    this.version(14).stores({
+      aquascapeLayouts: '++id, name, savedAt',
     })
   }
 }

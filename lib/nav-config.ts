@@ -18,6 +18,7 @@ export type ViewId =
   | 'grit-analytics'
   | 'quest-matrix'
   | 'focus-rooms'
+  | 'skill-tree'
   // Essentials → Life
   | 'calendar'
   | 'workouts'
@@ -73,6 +74,7 @@ export const NAV_CONFIG: NavCategory[] = [
           { id: 'grit-analytics', label: 'Grit Analytics',     category: 'essentials' },
           { id: 'quest-matrix',  label: 'Quest Matrix',       category: 'essentials' },
           { id: 'focus-rooms',   label: 'Focus Rooms',        category: 'essentials' },
+          { id: 'skill-tree',    label: 'Skill Tree',         category: 'essentials' },
         ],
       },
       {
