@@ -26,6 +26,7 @@ import {
   type ReactNode,
 } from 'react'
 import { getSyncEngine, type SyncStatus } from '@/services/syncEngine'
+import { initSyncBroker }                from '@/services/syncBroker'
 
 /* ── Context shape ──────────────────────────────────────────── */
 
@@ -58,6 +59,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
      * then drains any items left over from a previous offline session.
      */
     engine.init()
+
+    /*
+     * initSyncBroker() launches the Phase 6.4 outbox broker.
+     * Idempotent — safe alongside engine.init()'s own hook registration.
+     * Hooks habits + workouts (not covered by the engine) into outboxMutations,
+     * and also registers additive hooks for assignments + userProfile.
+     */
+    initSyncBroker()
 
     /*
      * subscribe() emits the current status immediately on subscription

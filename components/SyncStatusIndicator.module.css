@@ -1,0 +1,130 @@
+/* ════════════════════════════════════════════════════════════
+   SyncStatusIndicator — Phase 6 · Step 6.4
+   Full-panel ambient status readout.
+
+   Layout contract:
+     • Fixed height (26px) so surrounding sidebar content never
+       shifts when the label length changes across states.
+     • The panel itself is transparent; it inherits whatever
+       background the parent surface provides.
+     • Text is mono, 9px — matches the topbar SyncIndicator chip
+       so the two widgets feel typographically unified.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Base panel ───────────────────────────────────────────── */
+
+.panel {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);        /* 8px */
+  height:         26px;
+  padding:        0 var(--sp-3);      /* 0 12px */
+  border-radius:  var(--r-md);
+  background:     var(--surface-card);  /* #141923 */
+  border:         1px solid var(--border-subtle);
+  overflow:       hidden;
+
+  /* Smooth cross-fade on background/border when state changes.
+     The key-driven remount handles entrance animation;
+     this transition covers the colour morph between states. */
+  transition:
+    border-color     var(--dur-base) var(--ease-smooth),
+    background-color var(--dur-base) var(--ease-smooth);
+}
+
+/* ── Status dot ───────────────────────────────────────────── */
+
+.dot {
+  flex-shrink:   0;
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  transition:    background-color var(--dur-base) var(--ease-smooth);
+}
+
+.dotGreen  { background: var(--accent-green); }
+.dotPurple { background: var(--accent-purple); }
+.dotSlate  { background: var(--text-dark); }
+
+/* ── Label typography ─────────────────────────────────────── */
+
+.label {
+  display:        flex;
+  align-items:    baseline;
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;       /* 9px — matches SyncIndicator.label */
+  font-weight:    500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  min-width:      0;
+}
+
+.bracket {
+  color:   var(--text-dark);       /* #5c6487 — deliberately dim */
+  opacity: 0.6;
+}
+
+.prefix {
+  color:   var(--text-muted);      /* #9ba3c4 */
+}
+
+/* ── State-specific status text colours ───────────────────── */
+
+.stateSyncedText {
+  color: var(--accent-green);      /* #52cca3 */
+}
+
+.stateSyncingText {
+  color: var(--accent-purple);     /* #7c95ff */
+}
+
+.stateLocalText {
+  color: var(--text-dark);         /* #5c6487 */
+}
+
+.stateOfflineText {
+  color: var(--text-muted);        /* #9ba3c4 — low-contrast, non-alarming */
+}
+
+/* ── Panel border accent per state ────────────────────────── */
+
+.stateSynced {
+  border-color: rgba(82, 204, 163, 0.18);
+}
+
+.stateSyncing {
+  border-color: rgba(124, 149, 255, 0.18);
+}
+
+.stateLocal {
+  border-color: rgba(92, 100, 135, 0.20);
+}
+
+.stateOffline {
+  border-color: rgba(155, 163, 196, 0.15);
+}
+
+/* ── Dot pulse on SYNCING ─────────────────────────────────── */
+
+@keyframes brokerPulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.7); }
+}
+
+.stateSyncing .dot {
+  animation: brokerPulse 1.3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Border shimmer on OFFLINE ────────────────────────────── */
+
+@keyframes offlinePulse {
+  0%, 100% { border-color: rgba(155, 163, 196, 0.15); }
+  50%       { border-color: rgba(155, 163, 196, 0.35); }
+}
+
+.stateOffline {
+  animation: offlinePulse 3s ease-in-out infinite;
+}
