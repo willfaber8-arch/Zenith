@@ -18,6 +18,7 @@ Zenith is a **local-first, minimalist Next.js life dashboard**. No backend, no r
 | Cloud persistence | Supabase (PostgreSQL) — `@supabase/supabase-js` |
 | Weather | Open-Meteo API (no key, browser geolocation) |
 | Fonts | Plus Jakarta Sans + Space Grotesk (Google Fonts via `next/font`) |
+| Observability | `@vercel/analytics` (pageviews) + `@vercel/speed-insights` (LCP/INP/CLS) |
 | Runtime | Node.js v24.16.0, npm 11.13.0 |
 
 > **Tailwind v4 note:** No `tailwind.config.js` is used or processed. All design tokens live in `app/globals.css` under `@theme`. The file `tailwind.config.ts` exists as a reference/documentation artifact only.
@@ -74,6 +75,10 @@ components/
   StudyLayoutContainer.module.css  Added .distractionRow/.distractionBtn (amber) + .distractionCount
   SyncIndicator.tsx    Topbar sync status chip — 4 states, quiet dot after 3s synced
   SyncIndicator.module.css  syncPulse + queueBorderPulse keyframes, 4 color states
+  SyncStatusIndicator.tsx   Full-panel ambient status widget (Phase 6.4) — 26px fixed height,
+                            key={status} remount replays anim-slide-in, bracketed label format
+                            [ SYSTEM STATUS: … ], 4-state colour system (green/periwinkle/slate/muted)
+  SyncStatusIndicator.module.css  brokerPulse dot animation + offlinePulse border shimmer
   ThemeBackground.tsx  Fixed morphing background div (500ms category tint transition)
   ThemeBackground.module.css  z-index: 0
   Toast.tsx            Fixed bottom-right notification stack (always renders, id="toast-container")
@@ -170,10 +175,11 @@ lib/
   StudyModeContext.tsx StudyModeProvider + useStudyMode() — isStudyModeActive boolean,
                        sessionCount, enterStudyWorkspace(), exitStudyWorkspace(),
                        incrementSession(); global Escape key handler; body scroll lock
-  SyncContext.tsx      SyncProvider + useSyncStatus() — bridges ZenithSyncEngine into React tree
+  SyncContext.tsx      SyncProvider + useSyncStatus() — bridges ZenithSyncEngine into React tree;
+                       also calls initSyncBroker() on mount (Phase 6.4)
   ToastContext.tsx     ToastProvider + useToast() — ephemeral notification queue
   nav-config.ts        Navigation taxonomy — CategoryId, ViewId, NAV_CONFIG, tint/hover/accent maps
-  db.ts                Dexie.js v4 engine — ZenithDatabase class, 14 tables (v8), SSR-safe singleton
+  db.ts                Dexie.js v4 engine — ZenithDatabase class, 19 tables (v13), SSR-safe singleton
   supabase.ts          SSR-safe Supabase client singleton — returns null when unconfigured
   weather.ts           Open-Meteo fetch, WMO code → description mapping
   hooks/
@@ -187,6 +193,10 @@ lib/
     useSandboxConfig.ts         localStorage widget visibility config (4 slots)
 
 types/
+  syncQueue.ts         OutboxMutation interface (id, tableName, action, payload, timestamp,
+                       updatedAt) + OutboxTable / OutboxAction unions + OUTBOX_CLOUD_TABLE
+                       routing map (assignments→supabase_urgent_tasks, habits→supabase_habits,
+                       userProfile→supabase_user_profiles, workouts→supabase_workouts)
   aquascaping.ts       AquaSpecies, TankInhabitant, TankConfig, CompatibilityConflict,
                        BioloadResult, CompatibilityReport — consumed by AquascapingValidator +
                        aquascapingMath. SpeciesType: 'fish'|'shrimp'|'snail'|'plant'.
@@ -213,7 +223,14 @@ utils/
                        latest NH3 ≤ 0.25, NO2 ≤ 0.25, NO3 > 0.
 
 services/
-  syncEngine.ts        ZenithSyncEngine — Dexie hooks + debounced drain + Supabase reconciliation
+  syncEngine.ts        ZenithSyncEngine — Dexie hooks + debounced drain + Supabase reconciliation;
+                       reportStatus(status) public bridge consumed by syncBroker (Phase 6.4)
+  syncBroker.ts        Phase 6.4 outbox broker — initSyncBroker() + processOutboxQueue();
+                       registers Dexie creating/updating/deleting hooks on all 4 tables;
+                       supabaseId injected on habits + workouts creating hooks; 2 s debounce;
+                       per-table batch flush: one SELECT IN for LWW check, one bulk upsert,
+                       one bulk delete; MAX_RETRIES=3 retirement; shares SyncStatus stream
+                       via getSyncEngine().reportStatus()
 
 components/
   BadgeSyncEffect.tsx  Zero-render — seeds userProfile on auth + calls useLiveAssignmentBadges
@@ -228,10 +245,22 @@ components/
 
 supabase/
   migrations/
-    20260529000001_phase2_cloud_schema.sql  3 tables, trigger, RLS policies, indices
+    20260529000001_phase2_cloud_schema.sql  3 tables (user_profiles, urgent_tasks, calendar_feeds),
+                                            trigger, RLS policies, indices
+    20260601000001_phase64_extended_sync_schema.sql  supabase_habits + supabase_workouts;
+                                            updated_at triggers (reuses handle_profile_updated_at),
+                                            RLS (4 policies each), 4 performance indices
 
 tailwind.config.ts     Reference doc only — token → class mapping table, font upgrade notes
 .env.local.example     Supabase env var template
+vercel.json            Edge cache manifest — s-maxage=31536000 immutable on /_next/static/;
+                       1-year cache on fonts/media; no-store on /api/; s-maxage=0+swr=60 on
+                       HTML shell; SPA rewrite for deep-link refresh safety
+.github/
+  workflows/
+    deploy.yml         5-stage CI/CD: checkout+npm-cache → npm ci → next build typecheck →
+                       Playwright E2E (Chromium, browser-binary cache) → Vercel CLI prod deploy
+                       (gated on success() + push to main); artifacts uploaded 14 days
 ```
 
 ---
@@ -536,7 +565,7 @@ incrementSession()      // called by StudyPomodoroArena on each completed focus 
 
 ## Database (`lib/db.ts`)
 
-Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema version **8**.
+Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema version **13**.
 
 ### Tables & Indices
 
@@ -556,6 +585,11 @@ Dexie.js v4 wraps IndexedDB. Database name: **`ZenithOS`**, current schema versi
 | `gpaCourses` | `++id?` | `semesterId, grade` | v6 |
 | `courseIntensityProfiles` | `++id?` | `courseCode, updatedAt` | v7 |
 | `waterLogs` | `++id?` | `logDate, createdAt` | v8 |
+| `houseplants` | `++id?` | `plantName, lastWateredDate` | v9 |
+| `deliveries` | `++id?` | `carrier, status, estimatedArrival, createdAt` | v10 |
+| `rpgEventLog` | `++id?` | `&eventKey` (unique), `processedAt` | v11 |
+| `mentalHealthLogs` | `++id?` | `logDate, createdAt` | v12 |
+| `outboxMutations` | `id` (string UUID) | `tableName, action, timestamp` | v13 |
 
 **`CalendarFeed`** — iCal subscription: `label, url, color (hex), isActive (0|1), lastFetchedAt, createdAt`
 
@@ -588,6 +622,13 @@ interface WaterLog { id?, logDate: string, pH: number,
   nitrite: number,   // ppm NO2−, 0–5
   nitrate: number,   // ppm NO3−, 0–160
   notes?: string, createdAt: number }
+
+// Phase 6.4 (Sync Broker) — defined in types/syncQueue.ts
+// Habit and Workout interfaces gained supabaseId?: string (injected by broker on creating hook)
+type OutboxTable  = 'assignments' | 'habits' | 'userProfile' | 'workouts'
+type OutboxAction = 'CREATE' | 'UPDATE' | 'DELETE'
+interface OutboxMutation { id: string, tableName: OutboxTable, action: OutboxAction,
+  payload: Record<string, unknown>, timestamp: number, updatedAt: string }
 ```
 
 ### SSR Safety Pattern
@@ -641,6 +682,43 @@ const { status, triggerSync } = useSyncStatus()
 5. Reconciliation: checks `navigator.onLine` → checks Supabase session → **deduplicates queue** → flushes each item. Failed items increment `retryCount`; items exhausting `MAX_RETRIES = 3` are retired.
 6. **LWW for `userProfile`**: fetches remote `updated_at` before upserting — skips upload if remote is newer.
 7. A `window 'online'` listener triggers an immediate drain when connectivity restores.
+
+---
+
+## Sync Broker (`services/syncBroker.ts`)
+
+Phase 6.4 companion to the engine. Extends sync coverage to **habits** and **workouts** and adds bulk-batched LWW upserts for all four tables. Runs in parallel with the engine — both systems are idempotent.
+
+### Initialisation
+
+Called automatically from `SyncProvider` alongside `engine.init()`:
+
+```ts
+import { initSyncBroker, processOutboxQueue } from '@/services/syncBroker'
+initSyncBroker()         // registers hooks + online listener + initial drain
+await processOutboxQueue() // exposed for explicit "retry" invocation
+```
+
+### How the broker works
+
+1. **Dexie hooks** on all 4 tables write mutations to `outboxMutations` (IDB v13) via `db.outboxMutations.put()`. The `put()` call (not `add()`) naturally deduplicates same-id entries during rapid saves.
+2. `supabaseId` is injected onto `Habit` and `Workout` records in the `creating` hook — persisted back into IDB as a stable cloud identity for subsequent UPDATE and DELETE hooks.
+3. A **2 s debounced drain** calls `processOutboxQueue()`.
+4. **`processOutboxQueue()`**: guards network + session → loads queue oldest-first → LWW dedup (DELETE beats UPDATE; latest timestamp wins among UPDATEs) → groups by `tableName` → for each table: one `SELECT id, updated_at WHERE id IN (...)` to fetch all remote timestamps → filters to local-wins records → one `upsert` call for the batch → one `delete` call for DELETEs → `bulkDelete` all flushed IDs atomically.
+5. Failed items are tracked in an in-memory `Map<id, retryCount>`; exhausted items are retired (deleted from `outboxMutations`) after `MAX_RETRIES = 3`.
+6. Status is broadcast through the shared `ZenithSyncEngine` stream via `getSyncEngine().reportStatus()`.
+
+### SyncStatusIndicator
+
+Full-panel widget that reads `useSyncStatus()` and displays the verbose label:
+
+```tsx
+import SyncStatusIndicator from '@/components/SyncStatusIndicator'
+// Drop anywhere inside SyncProvider — e.g. bottom of the sidebar
+<SyncStatusIndicator />
+```
+
+Fixed 26px height (no reflow on label change). `key={status}` remount replays `anim-slide-in` on every state change. Four states: `CLOUD_SYNCHRONIZED` → green, `SYNCING` → periwinkle (pulsing dot), `SAVED_LOCALLY` → guide-slate, `OFFLINE_QUEUED` → muted-slate (border shimmer).
 
 ---
 
@@ -887,6 +965,9 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 28. **Pure SVG charts** — the project has no charting library. Build line charts as hand-rolled SVG with cubic bezier paths (`C x1 y1 x2 y2 x y` commands for smooth curves). Use `niceMax()` to round up the Y-axis ceiling to a clean step value. Decimate X-axis labels when `n > 7`.
 29. **Hardscape canvas drag** — document-level drag (not canvas-level) is required so elements don't "slip" when the mouse moves faster than the element. Store drag start state in a `useRef` (not state) so mousemove handlers don't cause re-renders on every pixel. Use functional state updates (`setItems(prev => …)`) to avoid stale closure issues.
 30. **Water log localStorage key** — hardscape layout uses `zenith_hardscape_v1`. Always version localStorage keys so schema changes don't crash on stale data.
+31. **`useLiveQuery` accepts 1–2 arguments only** (`dexie-react-hooks` v4 removed the third `defaultResult` parameter). The return type is `T | undefined`; guard every usage with `?? []` or optional chaining. Never pass a third argument — it is a compile-time type error that breaks `npm run build`.
+32. **Sync broker hooks all 4 tables** — habits and workouts now flow through `outboxMutations` via `syncBroker`. The engine's `pendingSyncQueue` continues to run for assignments/userProfile in parallel (idempotent upserts). Do not disable either hook system; they are additive by design.
+33. **Vercel deployment** — `vercel.json` + `.github/workflows/deploy.yml` are both committed. The CI pipeline validates (typecheck + Playwright) before deploying. Never push directly to Vercel outside the pipeline for production builds. GitHub Secrets required: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ---
 
@@ -927,5 +1008,7 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 | 5 | 5.5 | Multiplayer Pomodoro Focus Rooms — serverless WebRTC P2P mesh via PeerJS, `services/p2pNetwork.ts` singleton (createFocusRoom/joinFocusRoom/broadcast/teardown), host-authority sync (5 s `HOST_HEARTBEAT` + immediate `SYNC_TIME` on FSM transitions), peer force-alignment, `SyncMessage` typed protocol (SYNC_TIME/HOST_HEARTBEAT/PEER_PRESENCE/CHAT_MESSAGE), `useFocusRoom` hook (lobby state machine, chat, peer presence map), two-panel `MultiplayerLobby` (lobby cards + room screen: peer sidebar + shared PomodoroCanvas + focus chat), FNV room IDs (ZEN-MATH-932 pattern), SSR-safe dynamic PeerJS import | ✅ |
 | 5 | 5.6 | Fatigued Visual Filters & Positive Recovery Cycles — `useFatigueMonitor` (IDB live streams: continuousWorkMinutes from Pomodoro sessions, currentHealth from userProfile; thresholds: ≥90 min work OR <40 HP), `FatigueContext` + `FatigueProvider` + `useFatigue()` + exported `FatigueCtx` (SSR-safe useContext fallback), `FatigueLayer` ambient rendering layer (backdrop-filter: saturate(0.75) desaturation overlay z:589, warm amber soft-light tint z:590, floating fatigue alert bar z:591 + onset toast), `RecoveryCockpit` (z:595, epoch-based un-pausable 10-min countdown, dual concentric SVG breathing rings via CSS transform-box: fill-box scale animation, progress arc, lockout early-exit prompt, atomic Dexie reward +25 HP capped 100 + +15 Gold + success toast), `awardHp()` DB helper, CosmosCanvas speed halved when fatigued (speedRef pattern: 0.5× drift + lerp, reads FatigueCtx directly to avoid RAF restart) | ✅ |
 | 5 | 5.7 | Mental Health Mapping & Slope Day Hype Tracker — `utils/mentalHealthLog.ts` (MentalHealthLog IDB schema, 8-item MOOD_VECTORS with hue-coded presets, `evaluateMentalState` rolling 3-day burnout evaluator: stress≥8 && energy≤3 threshold, critical=2+ days, `shouldSuggestRecovery`), `utils/slopeDay.ts` (first-Thursday-of-May algorithm, `computeHypeMetrics` + 5-tier `HypePhase`: standard 1.0× / season 1.25× / countdown 1.35× / peak 1.5× / live 2.0×, `applyHypeMultiplier`, `fmtMultiplier`), IDB v12 (`mentalHealthLogs: '++id, logDate, createdAt'`), `useMentalHealthLog` hook (upsert-per-day pattern, reactive evaluation), `useSlopeDay` hook (30s tick), `useQuestBoard` modified (hypeMultiplier applied to `awardXp`/`awardGold` in `completeQuest`, hype-boost toast when multiplier >1×), `MentalHealthBurnoutBanner` (sticky notification below topbar, `position:sticky; top:0; z-index:50`, 24h localStorage dismiss, "Start Recovery" CTA via FatigueContext), `SlopeDayHypeTracker` two-pane dashboard (left: 4×2 emoji mood grid + notes textarea + 3-day stat bars; right: bold countdown DD:HH:MM + confetti canvas RAF loop using `ResizeObserver` activates for countdown/peak/live phases, periwinkle hsla particles 0.06–0.20 opacity, hype phase badge + multiplier strips + gradient progress track), nav: `slope-day` added to Life subcategory | ✅ |
+| 6 | 6.3 | Continuous Deployment Infrastructure & Vercel Edge Cache Tuning — `.github/workflows/deploy.yml` (5-stage pipeline: checkout+npm-cache, npm ci, next build typecheck, Playwright E2E with Chromium binary cache + 14-day artifact upload, Vercel CLI prod deploy gated on `success() && push to main`; concurrency cancel-in-progress), `vercel.json` (s-maxage=31536000 immutable on `/_next/static/`; 1-year cache on fonts/media; 60s+SWR on `/_next/image`; no-store on `/api/`; s-maxage=0+swr=60 on HTML shell; SPA rewrite for extension-less deep-link paths), `@vercel/analytics` + `@vercel/speed-insights` mounted in `app/layout.tsx` outside ErrorBoundary (crash-safe LCP/INP/CLS, render null outside Vercel env) | ✅ |
+| 6 | 6.4 | Database Synchronisation Broker Optimisation — `types/syncQueue.ts` (OutboxMutation schema + OUTBOX_CLOUD_TABLE map), `lib/db.ts` v13 (`outboxMutations` table; `supabaseId?` on Habit + Workout), `services/syncEngine.ts` (`reportStatus()` public bridge), `services/syncBroker.ts` (initSyncBroker + processOutboxQueue: Dexie hooks on 4 tables with supabaseId injection, 2s debounce, per-table bulk SELECT IN LWW check + single upsert call, MAX_RETRIES=3), `lib/SyncContext.tsx` (initSyncBroker wired alongside engine.init()), `components/SyncStatusIndicator.tsx` + `.module.css` (full-panel 26px widget, key={status} slide-in, bracketed label, 4-state colour system), `supabase/migrations/20260601000001_phase64_extended_sync_schema.sql` (supabase_habits + supabase_workouts, updated_at triggers, RLS, 4 indices); **build fix**: WaterParameterLogger.tsx — removed illegal third arg from `useLiveQuery` (dexie-react-hooks v4 signature is 2-arg max) | ✅ |
 | 6 | 6.2 | Automated E2E Test Suite Construction — Playwright 1.60 (`@playwright/test`), `playwright.config.ts` (workers:1, isolated context per test, `NEXT_PUBLIC_E2E=1` via webServer.env, chromium project, HTML+JUnit reporters), `components/TestBridge.tsx` (zero-UI client component mounts `window.__zenith = { db, awardXp, awardGold, seedUserProfile }` via useEffect + dispatches `zenith:bridge-ready` CustomEvent, only rendered when `NEXT_PUBLIC_E2E=1`), `types/testBridge.d.ts` (global Window augmentation), `tests/helpers/bridge.ts` (typed Playwright helpers: `injectAuth/waitForBridge/seedProfile/addAssignment/countTable/readSyncQueue/navigateTo`, expRequired formula constant), `tests/zenithCore.spec.ts` (3 suites, 7 tests): Suite 1 — auth gate bypass + workspace boot (sidebar + RpgStatusWidget ARIA); Suite 2 — S2-T1 IDB write via Dexie + `useLiveQuery` DOM assertion + `data-priority` attr; S2-T2 pendingSyncQueue schema (tableName/operation/supabaseId UUID regex/timestamp/retryCount/payload JSON fields); S2-T3 Supabase route mock + online event stability; Suite 3 — S3-T1 boss defeat → ≥75 XP delta + `currentLevel ≥ 2` + RpgStatusWidget DOM; S3-T2 exact formula contract `awardXp(75)` from 99 XP → level 2, 74 XP remainder; S3-T3 multi-level cascade +1200 XP → level 4, 297 XP | ✅ |
 | 6 | 6.1 | Production Optimization & Strict Build Hardening — `components/ErrorBoundary.tsx` (React class component, `getDerivedStateFromError` + `componentDidCatch`, two-stage recovery ladder: soft reinit → IDB flush+navigate, Slate-Indigo card with `pulseGlow` dot, dev-only stack trace panel, z-index:950 overlay), `components/ErrorBoundary.module.css` (design-token-only styles), `next.config.ts` (SWC `compiler.removeConsole` strips log/debug in prod; 8-directive CSP baseline covering Google Fonts/Open-Meteo/Supabase/PeerJS/OSM; X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, HSTS; deterministic moduleIds; async splitChunks for leaflet/peerjs/anthropic/dexie vendor bundles), `lib/logger.ts` (typed log/debug/warn/error — dev-only guards + runtime fallback), `lib/hooks/useWindowEvent.ts` (stable-ref `handlerRef` pattern guaranteeing add/remove symmetry in React 18 StrictMode), ErrorBoundary mounted in `app/layout.tsx` wrapping `AppContent` | ✅ |
