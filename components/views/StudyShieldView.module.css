@@ -1,0 +1,350 @@
+/* StudyShieldView — AI Lecture Summarizer & Flashcard Generator */
+
+.view {
+  padding:        var(--sp-8) var(--sp-8) var(--sp-16);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-8);
+  max-width:      1080px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESULTS AREA
+   ════════════════════════════════════════════════════════════════ */
+
+.results {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+/* ── Session header ──────────────────────────────────────────── */
+
+.sessionHeader {
+  display:         flex;
+  align-items:     flex-start;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+  padding-bottom:  var(--sp-4);
+  border-bottom:   1px solid var(--border-subtle);
+}
+
+.sessionMeta {
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+  min-width:      0;
+}
+
+.sessionTitle {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    600;
+  letter-spacing: -0.01em;
+  color:          var(--text-primary);
+  margin:         0;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+}
+
+.sessionDate {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.06em;
+}
+
+.clearBtn {
+  flex-shrink:   0;
+  padding:       5px 12px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.4688rem;
+  font-weight:   600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor:        pointer;
+  transition:    color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.clearBtn:hover {
+  color:        #ff8fa3;
+  border-color: rgba(255, 143, 163, 0.25);
+}
+
+/* ── Two-column layout ───────────────────────────────────────── */
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap:     var(--sp-5);
+  align-items: start;
+}
+
+/* ── Shared panel shell ──────────────────────────────────────── */
+
+.summaryPanel,
+.flashPanel {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5);
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-4);
+}
+
+.panelHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding-bottom:  var(--sp-3);
+  border-bottom:   1px solid var(--border-subtle);
+}
+
+.panelEyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.4688rem;
+  font-weight:    700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          var(--accent-purple);
+}
+
+.wordCount {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MARKDOWN SUMMARY BODY
+   Styles for the HTML injected via markdownToHtml().
+   Using .summaryBody as the cascade root keeps these styles scoped.
+   ════════════════════════════════════════════════════════════════ */
+
+.summaryBody {
+  font-family: var(--font-body);
+  font-size:   0.8125rem;
+  line-height: 1.70;
+  color:       var(--text-muted);
+  overflow-y:  auto;
+  max-height:  560px;
+  scrollbar-width: thin;
+}
+
+/* Headings */
+.summaryBody :global(h2) {
+  font-family:    var(--font-display);
+  font-size:      1rem;
+  font-weight:    700;
+  letter-spacing: -0.01em;
+  color:          var(--text-primary);
+  margin:         var(--sp-5) 0 var(--sp-2);
+  padding-bottom: var(--sp-1);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+.summaryBody :global(h3) {
+  font-family:    var(--font-display);
+  font-size:      0.875rem;
+  font-weight:    600;
+  letter-spacing: -0.01em;
+  color:          var(--text-primary);
+  margin:         var(--sp-4) 0 var(--sp-2);
+}
+
+.summaryBody :global(h4) {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin:         var(--sp-3) 0 var(--sp-1);
+}
+
+/* Paragraph */
+.summaryBody :global(p) {
+  margin: 0 0 var(--sp-3);
+}
+
+.summaryBody :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* Inline elements */
+.summaryBody :global(strong) {
+  font-weight: 600;
+  color:       var(--text-primary);
+}
+
+.summaryBody :global(em) {
+  font-style: italic;
+  color:      var(--text-muted);
+}
+
+.summaryBody :global(code) {
+  font-family:   var(--font-mono);
+  font-size:     0.75em;
+  background:    rgba(124, 149, 255, 0.07);
+  border:        1px solid rgba(124, 149, 255, 0.12);
+  border-radius: var(--r-sm);
+  padding:       1px 5px;
+  color:         var(--accent-purple);
+}
+
+/* Bullet lists */
+.summaryBody :global(ul) {
+  padding-left: var(--sp-5);
+  margin:       var(--sp-2) 0 var(--sp-3);
+  display:      flex;
+  flex-direction: column;
+  gap:          var(--sp-1);
+}
+
+.summaryBody :global(li) {
+  list-style-type: disc;
+  color:           var(--text-muted);
+}
+
+.summaryBody :global(li::marker) {
+  color: var(--accent-purple-dim);
+}
+
+/* First heading in the body needs no top margin */
+.summaryBody :global(h2:first-child),
+.summaryBody :global(h3:first-child) {
+  margin-top: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SESSION HISTORY
+   ════════════════════════════════════════════════════════════════ */
+
+.historySection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.historyTitle {
+  font-family:    var(--font-display);
+  font-size:      0.8125rem;
+  font-weight:    600;
+  letter-spacing: -0.01em;
+  color:          var(--text-dark);
+  margin:         0;
+}
+
+.historyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:     var(--sp-3);
+}
+
+.historyCard {
+  position:      relative;
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-4);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  cursor:        pointer;
+  text-align:    left;
+  width:         100%;
+  transition:
+    border-color  var(--dur-fast) ease,
+    background    var(--dur-fast) ease;
+}
+
+.historyCard:hover {
+  border-color: rgba(124, 149, 255, 0.20);
+  background:   var(--bg-hover);
+}
+
+.historyCardActive {
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.04);
+}
+
+.historyCopy {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+  min-width:      0;
+}
+
+.historyCardTitle {
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  font-weight:   500;
+  color:         var(--text-muted);
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+
+.historyCardDate {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+.historyDelete {
+  flex-shrink:  0;
+  width:        18px;
+  height:       18px;
+  display:      flex;
+  align-items:  center;
+  justify-content: center;
+  background:   transparent;
+  border:       none;
+  cursor:       pointer;
+  color:        var(--text-dark);
+  font-size:    0.875rem;
+  border-radius: var(--r-sm);
+  opacity:      0;
+  transition:
+    opacity  var(--dur-fast) ease,
+    color    var(--dur-fast) ease,
+    background var(--dur-fast) ease;
+}
+
+.historyCard:hover .historyDelete {
+  opacity: 1;
+}
+
+.historyDelete:hover {
+  color:      #ff8fa3;
+  background: rgba(255, 143, 163, 0.10);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .view {
+    padding: var(--sp-5) var(--sp-4) var(--sp-12);
+    gap:     var(--sp-6);
+  }
+
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .historyGrid {
+    grid-template-columns: 1fr;
+  }
+}

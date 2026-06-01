@@ -1,0 +1,217 @@
+/* ════════════════════════════════════════════════════════════
+   Topbar — Phase 1 · Step 1.2
+   Sticky bar at the top of the content frame. Shows active
+   view breadcrumb, live clock, weather, and user profile chip.
+   Desktop: breadcrumb + right cluster only.
+   Mobile:  adds a hamburger toggle on the left edge.
+   ════════════════════════════════════════════════════════════ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-6);
+  background: rgba(11, 13, 19, 0.88);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  animation: slideIn var(--dur-slow) var(--ease-expo) both;
+}
+
+/* ── Mobile hamburger toggle ──────────────────────────────── */
+/* Hidden by default (desktop); shown at ≤767px via media query */
+
+.menuToggle {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast);
+}
+
+.menuToggle:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-purple-dim);
+}
+
+.menuToggleActive {
+  background-color: var(--bg-active);
+  border-color: var(--accent-purple-dim);
+}
+
+.bar {
+  display: block;
+  width: 12px;
+  height: 1px;
+  background-color: var(--text-muted);
+  border-radius: 1px;
+  transition: background-color var(--dur-fast);
+}
+
+.menuToggle:hover .bar,
+.menuToggleActive .bar {
+  background-color: var(--accent-purple);
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────── */
+
+.breadcrumb {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadCat {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.breadSep {
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.breadView {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Color is set inline via activeCategory accent; animate the transition */
+  transition: color 0.35s var(--ease-expo);
+}
+
+/* ── Right status cluster ─────────────────────────────────── */
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.weatherChip {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.clock {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── User profile chip ────────────────────────────────────── */
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 3px 8px 3px 3px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: default;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast);
+}
+
+.userChip:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-purple-dim);
+}
+
+.avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.4375rem;
+  font-weight: 800;
+  color: #0b0d13;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.handle {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+/* ── Mobile responsive overrides ─────────────────────────── */
+
+@media (max-width: 767px) {
+  .topbar {
+    padding: 0 var(--sp-4);
+    gap: var(--sp-3);
+  }
+
+  .menuToggle {
+    display: flex;
+  }
+
+  /* Collapse lower-priority items on narrow screens */
+  .weatherChip {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .handle {
+    display: none;
+  }
+
+  /* Reduce cluster gap when handle is hidden */
+  .cluster {
+    gap: var(--sp-2);
+  }
+}

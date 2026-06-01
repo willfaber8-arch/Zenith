@@ -1,0 +1,303 @@
+/* ════════════════════════════════════════════════════════════════
+   WaterParameterLogger — Phase 4 · Step 4.3
+   Creator's Choice obsidian-green theme
+   ════════════════════════════════════════════════════════════════ */
+
+.logger {
+  --v-surface:    #111618;
+  --v-card:       #141c19;
+  --v-border:     rgba(82, 204, 163, 0.10);
+  --v-accent:     var(--accent-green);
+  --v-accent-dim: rgba(82, 204, 163, 0.12);
+  --v-critical:   #f87171;
+}
+
+/* ── Panel label ─────────────────────────────────────────────── */
+
+.panelLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+/* ── Two-column layout ───────────────────────────────────────── */
+
+.mainLayout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .mainLayout { grid-template-columns: 1fr; }
+}
+
+/* ── Left column ─────────────────────────────────────────────── */
+
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ── Form panel ──────────────────────────────────────────────── */
+
+.formPanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.dateInput,
+.notesInput {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color var(--dur-base) ease;
+}
+
+.dateInput:focus,
+.notesInput:focus {
+  border-color: rgba(82, 204, 163, 0.40);
+}
+
+.notesInput::placeholder { color: var(--text-dark); }
+
+/* ── Parameter slider rows ────────────────────────────────────── */
+
+.paramField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paramHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.paramValue {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--fill, var(--v-accent))     0%,
+    var(--fill, var(--v-accent))     var(--fill-pct, 0%),
+    rgba(82, 204, 163, 0.10) var(--fill-pct, 0%),
+    rgba(82, 204, 163, 0.10) 100%
+  );
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--fill, var(--v-accent));
+  border: 2px solid var(--v-card);
+  box-shadow: 0 0 0 1px var(--fill, var(--v-accent));
+  cursor: pointer;
+  transition: transform var(--dur-fast) ease;
+}
+
+.slider::-webkit-slider-thumb:hover { transform: scale(1.22); }
+.slider::-moz-range-thumb {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--fill, var(--v-accent));
+  border: 2px solid var(--v-card);
+  cursor: pointer;
+}
+
+.numInput {
+  width: 62px;
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-align: right;
+  outline: none;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.numInput:focus { border-color: rgba(82, 204, 163, 0.40); }
+.numInput::-webkit-outer-spin-button,
+.numInput::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.submitBtn {
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--v-accent);
+  border: none;
+  border-radius: var(--r-md);
+  color: #0b0f11;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) ease;
+  margin-top: var(--sp-1);
+}
+
+.submitBtn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+.submitBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Log table panel ─────────────────────────────────────────── */
+
+.tablePanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: var(--r-md);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.table th {
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  padding: var(--sp-2) var(--sp-2);
+  border-bottom: 1px solid var(--v-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--sp-2) var(--sp-2);
+  border-bottom: 1px solid rgba(82, 204, 163, 0.04);
+  color: var(--text-primary);
+  font-size: 0.6875rem;
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td { border-bottom: none; }
+
+.table tbody tr:hover td {
+  background: rgba(82, 204, 163, 0.03);
+}
+
+.dateCell {
+  color: var(--text-muted) !important;
+  font-size: 0.6rem !important;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.deleteRowBtn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  padding: 0;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.deleteRowBtn:hover {
+  color: var(--v-critical);
+  background: rgba(248, 113, 113, 0.10);
+}
+
+.moreHint {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  margin: 0;
+  text-align: right;
+}
+
+/* ── Chart panel ─────────────────────────────────────────────── */
+
+.chartPanel {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.40);
+}

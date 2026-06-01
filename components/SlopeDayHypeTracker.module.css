@@ -1,0 +1,710 @@
+/* ════════════════════════════════════════════════════════════
+   SlopeDayHypeTracker.module.css — Phase 5 · Step 5.7
+   Two-pane dashboard: Mental Health Map + Slope Day Arena
+   Local design tokens follow the Creator's Choice --v-* convention
+   but with the periwinkle + sage palette of Zenith Essentials.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Local tokens ──────────────────────────────────────────── */
+.tracker {
+  --v-card:        #141923;
+  --v-inner:       #0f1620;
+  --v-border:      rgba(124, 149, 255, 0.10);
+  --v-accent:      var(--accent-purple);
+  --v-sage:        var(--accent-green);
+  --v-gold:        #ccaf52;
+  --v-ember:       #e0723a;
+  --v-rose:        #f87171;
+  --v-muted-rose:  rgba(248, 113, 113, 0.55);
+
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+/* ── Two-pane grid ─────────────────────────────────────────── */
+.grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   var(--sp-5);
+  align-items:           start;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Shared card shell ─────────────────────────────────────── */
+.card {
+  background:    var(--v-card);
+  border:        1px solid var(--v-border);
+  border-radius: var(--r-xl);
+  padding:       var(--sp-6);
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-5);
+  position:      relative;
+  overflow:      hidden;
+}
+
+/* Top-edge accent gradient */
+.card::before {
+  content:    '';
+  position:   absolute;
+  top:        0;
+  left:       var(--sp-6);
+  right:      var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--v-accent) 40%,
+    var(--v-accent) 60%,
+    transparent
+  );
+  opacity: 0.45;
+}
+
+/* ── Card header ───────────────────────────────────────────── */
+.cardHeader {
+  display:         flex;
+  align-items:     flex-start;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+}
+
+.cardEyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+  margin-bottom:  var(--sp-1);
+}
+
+.cardTitle {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height:    1.2;
+}
+
+.cardDate {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.10em;
+  white-space:    nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════
+   LEFT PANE — MENTAL HEALTH MAP
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Mood grid ─────────────────────────────────────────────── */
+.moodGrid {
+  display:               grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:                   var(--sp-2);
+}
+
+.moodBtn {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             var(--sp-1);
+  padding:         var(--sp-3) var(--sp-2);
+  background:      rgba(255, 255, 255, 0.03);
+  border:          1px solid rgba(255, 255, 255, 0.06);
+  border-radius:   var(--r-lg);
+  cursor:          pointer;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    transform    var(--dur-fast) var(--ease-expo),
+    box-shadow   var(--dur-base) var(--ease-smooth);
+}
+
+.moodBtn:hover {
+  background:  rgba(124, 149, 255, 0.07);
+  border-color: rgba(124, 149, 255, 0.20);
+  transform:   translateY(-1px);
+}
+
+.moodBtnSelected {
+  background:  rgba(124, 149, 255, 0.13);
+  border-color: rgba(124, 149, 255, 0.40);
+  box-shadow:  0 0 12px rgba(124, 149, 255, 0.14);
+  animation:   scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stress-derived border tint for drained/stressed moods */
+.moodBtnBurnout {
+  border-color: rgba(248, 113, 113, 0.32) !important;
+}
+
+.moodEmoji {
+  font-size:   1.25rem;
+  line-height: 1;
+}
+
+.moodLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.375rem;
+  font-weight:    700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+}
+
+/* ── Notes textarea ────────────────────────────────────────── */
+.notesWrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.notesLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.notesInput {
+  width:         100%;
+  min-height:    64px;
+  background:    var(--v-inner);
+  border:        1px solid var(--v-border);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  color:         var(--text-muted);
+  line-height:   1.55;
+  resize:        vertical;
+  transition:    border-color var(--dur-base) var(--ease-smooth);
+}
+
+.notesInput::placeholder { color: var(--text-dark); }
+
+.notesInput:focus {
+  outline:      none;
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+/* ── Log button ────────────────────────────────────────────── */
+.logBtn {
+  padding:       var(--sp-3) var(--sp-5);
+  background:    linear-gradient(
+    135deg,
+    rgba(124, 149, 255, 0.20),
+    rgba(124, 149, 255, 0.12)
+  );
+  border:        1px solid rgba(124, 149, 255, 0.38);
+  border-radius: var(--r-lg);
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  font-weight:   600;
+  color:         var(--accent-purple);
+  cursor:        pointer;
+  letter-spacing: 0.02em;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    box-shadow   var(--dur-base) var(--ease-smooth),
+    opacity      var(--dur-fast) ease;
+}
+
+.logBtn:hover:not(:disabled) {
+  background:   rgba(124, 149, 255, 0.28);
+  border-color: rgba(124, 149, 255, 0.62);
+  box-shadow:   0 0 16px rgba(124, 149, 255, 0.18);
+}
+
+.logBtn:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}
+
+/* ── Divider ───────────────────────────────────────────────── */
+.divider {
+  height:     1px;
+  background: var(--v-border);
+  margin:     0 calc(-1 * var(--sp-6));
+}
+
+/* ── 3-day trend section ───────────────────────────────────── */
+.trendSection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.trendHeading {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.dayEntry {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  padding:        var(--sp-3) var(--sp-4);
+  background:     var(--v-inner);
+  border:         1px solid var(--v-border);
+  border-radius:  var(--r-md);
+}
+
+.dayEntryMissing {
+  opacity:  0.4;
+  font-style: italic;
+}
+
+.dayRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-2);
+}
+
+.dayLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.dayMood {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.dayMoodEmoji { font-size: 0.875rem; line-height: 1; }
+
+.dayMoodLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+}
+
+.dayNoLog {
+  font-family: var(--font-body);
+  font-size:   0.6875rem;
+  color:       var(--text-dark);
+}
+
+/* Stat bars */
+.statBars {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+}
+
+.statRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.statName {
+  font-family:    var(--font-mono);
+  font-size:      0.375rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  width:          40px;
+  flex-shrink:    0;
+}
+
+.statTrack {
+  flex:          1;
+  height:        4px;
+  background:    rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.statFill {
+  height:        100%;
+  border-radius: 99px;
+  transition:    width 0.4s var(--ease-expo);
+}
+
+.statFillStress { background: rgba(248, 113, 113, 0.65); }
+.statFillEnergy { background: rgba(82, 204, 163, 0.70);  }
+
+.statValue {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  color:          var(--text-dark);
+  width:          18px;
+  text-align:     right;
+  flex-shrink:    0;
+}
+
+.dayNotes {
+  font-family:  var(--font-body);
+  font-size:    0.6875rem;
+  color:        var(--text-dark);
+  line-height:  1.45;
+  font-style:   italic;
+  overflow:     hidden;
+  text-overflow: ellipsis;
+  white-space:  nowrap;
+}
+
+/* ── Today logged indicator ────────────────────────────────── */
+.todayChip {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+  padding:       var(--sp-2) var(--sp-3);
+  background:    rgba(82, 204, 163, 0.07);
+  border:        1px solid rgba(82, 204, 163, 0.22);
+  border-radius: var(--r-lg);
+  font-family:   var(--font-mono);
+  font-size:     0.4375rem;
+  font-weight:   700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:         rgba(82, 204, 163, 0.80);
+}
+
+.todayChipDot {
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    var(--v-sage);
+  animation:     pulseGlow 2s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RIGHT PANE — SLOPE DAY ARENA
+   ════════════════════════════════════════════════════════════ */
+
+/* Override card top accent for the right pane (brighter sage) */
+.arenaCard::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--v-sage) 40%,
+    var(--v-sage) 60%,
+    transparent
+  );
+  opacity: 0.50;
+}
+
+/* ── Confetti canvas overlay ───────────────────────────────── */
+.confettiCanvas {
+  position:       absolute;
+  inset:          0;
+  z-index:        1;
+  pointer-events: none;
+  border-radius:  inherit;
+}
+
+/* ── Arena content (above confetti) ───────────────────────── */
+.arenaContent {
+  position:       relative;
+  z-index:        2;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+}
+
+/* ── Slope Day header row ──────────────────────────────────── */
+.arenaHeader {
+  display:         flex;
+  align-items:     flex-start;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+}
+
+.arenaTitleBlock {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+}
+
+.arenaEyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          rgba(82, 204, 163, 0.60);
+  line-height:    1;
+}
+
+.arenaTitle {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height:    1.2;
+}
+
+.arenaDateChip {
+  padding:       var(--sp-1) var(--sp-3);
+  background:    rgba(82, 204, 163, 0.08);
+  border:        1px solid rgba(82, 204, 163, 0.22);
+  border-radius: var(--r-xl);
+  font-family:   var(--font-mono);
+  font-size:     0.4375rem;
+  font-weight:   700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:         rgba(82, 204, 163, 0.80);
+  white-space:   nowrap;
+}
+
+/* ── Countdown block ───────────────────────────────────────── */
+.countdownBlock {
+  display:         flex;
+  align-items:     flex-start;
+  gap:             var(--sp-4);
+  justify-content: center;
+}
+
+.countdownUnit {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             var(--sp-1);
+  min-width:       60px;
+}
+
+.countdownNum {
+  font-family:    var(--font-display);
+  font-size:      3.25rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.06em;
+  line-height:    1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vivid sage green when live / peak */
+.countdownNumLive  { color: rgba(82, 204, 163, 0.95); }
+.countdownNumPeak  { color: rgba(204, 175, 82, 0.95); }
+
+.countdownLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.countdownSep {
+  font-family:    var(--font-display);
+  font-size:      2.25rem;
+  font-weight:    300;
+  color:          var(--text-dark);
+  line-height:    1;
+  align-self:     flex-start;
+  margin-top:     0.4rem;
+  opacity:        0.35;
+}
+
+/* ── Live state banner ─────────────────────────────────────── */
+.liveBanner {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  padding:         var(--sp-3) var(--sp-5);
+  background:      rgba(82, 204, 163, 0.08);
+  border:          1px solid rgba(82, 204, 163, 0.35);
+  border-radius:   var(--r-xl);
+  animation:       pulseGlow 1.5s ease-in-out infinite;
+}
+
+.liveDot {
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  background:    var(--v-sage);
+  animation:     pulseGlow 1.5s ease-in-out infinite;
+}
+
+.liveText {
+  font-family:    var(--font-display);
+  font-size:      0.9375rem;
+  font-weight:    700;
+  color:          rgba(82, 204, 163, 0.90);
+  letter-spacing: -0.02em;
+}
+
+/* ── Hype phase badge ──────────────────────────────────────── */
+.hypePhase {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-2) var(--sp-4);
+  background:  rgba(255, 255, 255, 0.03);
+  border:      1px solid var(--v-border);
+  border-radius: var(--r-xl);
+  width:       fit-content;
+}
+
+.hypePhaseDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.hypePhaseDotActive {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.hypePhaseLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* ── Multiplier strips ─────────────────────────────────────── */
+.multiplierSection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.multiplierRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+  padding:         var(--sp-3) var(--sp-4);
+  background:      var(--v-inner);
+  border:          1px solid var(--v-border);
+  border-radius:   var(--r-md);
+  transition:      border-color var(--dur-base) var(--ease-smooth);
+}
+
+.multiplierRowActive {
+  border-color: rgba(124, 149, 255, 0.28);
+  background:   rgba(124, 149, 255, 0.05);
+}
+
+.multiplierIcon {
+  font-size:   0.875rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.multiplierName {
+  flex:           1;
+  font-family:    var(--font-body);
+  font-size:      0.6875rem;
+  font-weight:    500;
+  color:          var(--text-muted);
+}
+
+.multiplierValue {
+  font-family:    var(--font-mono);
+  font-size:      0.6875rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+}
+
+.multiplierValueActive  { color: var(--accent-purple); }
+.multiplierValueStandard { color: var(--text-dark);    }
+
+/* ── Hype progress track ───────────────────────────────────── */
+.hypeTrackSection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.hypeTrackLabel {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+}
+
+.hypeTrackName {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.hypeTrackPct {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+}
+
+.hypeTrack {
+  height:        6px;
+  background:    rgba(255, 255, 255, 0.05);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.hypeTrackFill {
+  height:        100%;
+  border-radius: 99px;
+  transition:    width 0.8s var(--ease-expo);
+}
+
+/* Gradient shifts from periwinkle → gold → ember → sage as you approach */
+.hypeTrackFillStandard  { background: rgba(155, 163, 196, 0.40); }
+.hypeTrackFillSeason    { background: linear-gradient(90deg, rgba(124, 149, 255, 0.70), rgba(124, 149, 255, 0.90)); }
+.hypeTrackFillCountdown { background: linear-gradient(90deg, rgba(124, 149, 255, 0.80), rgba(204, 175, 82,  0.80)); }
+.hypeTrackFillPeak      { background: linear-gradient(90deg, rgba(204, 175, 82,  0.80), rgba(224, 114, 58,  0.90)); }
+.hypeTrackFillLive      { background: linear-gradient(90deg, rgba(82,  204, 163, 0.80), rgba(82,  204, 163, 1.00)); }
+
+/* ── Past Slope Day state ──────────────────────────────────── */
+.pastCard {
+  text-align: center;
+  padding:    var(--sp-8) var(--sp-6);
+  gap:        var(--sp-3);
+}
+
+.pastIcon {
+  font-size:   2rem;
+  line-height: 1;
+  opacity:     0.4;
+}
+
+.pastText {
+  font-family:  var(--font-body);
+  font-size:    0.875rem;
+  font-weight:  500;
+  color:        var(--text-dark);
+  line-height:  1.5;
+}

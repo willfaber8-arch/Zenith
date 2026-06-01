@@ -1,0 +1,38 @@
+/* ZenHeading — Display heading with Syne geometric font */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Overline label above the heading */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+}
+
+/* Title — always Syne, always near-black leading */
+.title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.96;
+  color: var(--text-primary);
+}
+
+/* Fluid size scale using clamp() for viewport-relative scaling */
+.sm { font-size: clamp(1.5rem,  3vw, 2.25rem); }
+.md { font-size: clamp(2rem,    5vw, 3.5rem);  }
+.lg { font-size: clamp(3rem,    8vw, 6rem);    }
+
+/* Supporting paragraph below the title */
+.subtitle {
+  font-size: 1.0625rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  max-width: 440px;
+}

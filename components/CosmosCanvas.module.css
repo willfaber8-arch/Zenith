@@ -1,0 +1,22 @@
+/* ════════════════════════════════════════════════════════════
+   CosmosCanvas — Phase 0 · Step 0.2
+   Fixed background canvas: sits below all page content via
+   z-index:-1. Body's background-color propagates to the
+   viewport (CSS canvas background rule), leaving body
+   transparent so stars render above the dark surface.
+   ════════════════════════════════════════════════════════════ */
+
+.canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /*
+   * z-index: 1 — sits above ThemeBackground (z-index: 0) so stars
+   * always render in front of the morphing background tint.
+   * AppShell .shell is z-index: 2, so all UI sits above the stars.
+   */
+  z-index: 1;
+  pointer-events: none;
+  image-rendering: pixelated;
+}

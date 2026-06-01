@@ -1,0 +1,95 @@
+/* ════════════════════════════════════════════════════════════
+   GreetingHero — Phase 0 · Step 0.2
+   Full-viewport hero section housing the dynamic greeting,
+   live clock, date, and weather placeholder.
+   ════════════════════════════════════════════════════════════ */
+
+.hero {
+  padding: clamp(4rem, 14vh, 7.5rem) var(--sp-8) var(--sp-16);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Greeting block ───────────────────────────────────────── */
+
+.greetingWrap {
+  display: flex;
+  flex-direction: column;
+  /* Optical line-height tightening for multi-line display type */
+  line-height: 0.95;
+}
+
+.salutation {
+  font-family: var(--font-display);
+  font-size: clamp(1.875rem, 4.5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-muted);
+  line-height: 1;
+  margin-bottom: 0.06em;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 9vw, 7rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  /* Gradient sweep: white → accent-purple */
+  background: linear-gradient(
+    105deg,
+    var(--text-primary)   0%,
+    var(--text-primary)  52%,
+    var(--accent-purple) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Ensure the clipped area is wide enough */
+  display: inline-block;
+  line-height: 1;
+}
+
+/* ── Meta row: clock · date · weather ────────────────────── */
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+}
+
+.clock {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-purple);
+  font-style: normal;
+  /* Prevent layout shift as digits tick */
+  font-variant-numeric: tabular-nums;
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-dark);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.dateLine {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+  font-style: normal;
+}
+
+.weather {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+  opacity: 0.5;
+}

@@ -1,0 +1,147 @@
+/* ParameterChart — Phase 4 · Step 4.3 */
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Legend ──────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── SVG ─────────────────────────────────────────────────────── */
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+
+.emptyChart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  border: 1px dashed rgba(82, 204, 163, 0.10);
+  border-radius: var(--r-md);
+  padding: var(--sp-6);
+  text-align: center;
+  gap: var(--sp-2);
+}
+
+.emptyText {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.emptySubtext {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 260px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CYCLE STATUS BANNER
+   ════════════════════════════════════════════════════════════════ */
+
+.cycleStatus {
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  border: 1px solid rgba(82, 204, 163, 0.10);
+  background: rgba(82, 204, 163, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  transition: border-color 400ms ease, background 400ms ease;
+}
+
+/* Phase-specific tints */
+.cycleStatus[data-phase="no_data"]        { border-color: rgba(92,100,135,0.20); background: rgba(92,100,135,0.03); }
+.cycleStatus[data-phase="initial"]        { border-color: rgba(92,100,135,0.20); background: rgba(92,100,135,0.03); }
+.cycleStatus[data-phase="ammonia_spike"]  { border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.05); }
+.cycleStatus[data-phase="nitrite_spike"]  { border-color: rgba(248,113,113,0.22); background: rgba(248,113,113,0.05); }
+.cycleStatus[data-phase="stabilizing"]   { border-color: rgba(245,158,11,0.16); background: rgba(245,158,11,0.04); }
+
+/* Cycle complete — accent-green burst */
+.cycleStatusCycled {
+  border-color: rgba(82, 204, 163, 0.45) !important;
+  background: rgba(82, 204, 163, 0.08) !important;
+  box-shadow: 0 0 24px rgba(82, 204, 163, 0.10);
+  animation: scaleIn 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cycleStatusHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/* Pulsing dot — shown only when cycled */
+.cyclePulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.cycleMessage {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.cycleStatusCycled .cycleMessage {
+  color: var(--accent-green);
+}
+
+.cycleStatus[data-phase="ammonia_spike"] .cycleMessage  { color: #f59e0b; }
+.cycleStatus[data-phase="nitrite_spike"] .cycleMessage  { color: #f87171; }
+
+.cycleDetail {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.60;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.cycleStatusCycled .cycleDetail { color: var(--text-muted); }

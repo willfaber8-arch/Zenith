@@ -1,0 +1,977 @@
+/* ════════════════════════════════════════════════════════════════
+   GpaSimulator — Predictive Cumulative GPA Module
+   Phase 3 · Step 3.3
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ──────────────────────────────────────────── */
+
+.simulator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  max-width: 860px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GPA METRIC PANEL
+   ════════════════════════════════════════════════════════════════ */
+
+.metricPanel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-8);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* Large GPA number */
+.gpaRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.gpaNumber {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 8vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.gpaNumber[data-tier="distinction"],
+.gpaNumber[data-tier="honors"] {
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--text-primary) 60%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gpaNumber[data-tier="good"] {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--text-primary) 60%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gpaTierBadge {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  align-self: center;
+}
+
+.gpaTierBadge[data-tier="distinction"],
+.gpaTierBadge[data-tier="honors"] {
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+  border: 1px solid rgba(82, 204, 163, 0.25);
+}
+
+.gpaTierBadge[data-tier="good"] {
+  background: rgba(124, 149, 255, 0.10);
+  color: var(--accent-purple);
+  border: 1px solid rgba(124, 149, 255, 0.22);
+}
+
+.gpaTierBadge[data-tier="satisfactory"] {
+  background: rgba(155, 163, 196, 0.10);
+  color: var(--text-muted);
+  border: 1px solid rgba(155, 163, 196, 0.20);
+}
+
+.gpaTierBadge[data-tier="at-risk"] {
+  background: rgba(255, 143, 163, 0.10);
+  color: #ff8fa3;
+  border: 1px solid rgba(255, 143, 163, 0.25);
+}
+
+/* Historical vs projected breakdown */
+.gpaBreakdown {
+  display: flex;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+
+.breakdownItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.breakdownLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.breakdownValue {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-muted);
+}
+
+.breakdownValue.primary {
+  color: var(--text-primary);
+}
+
+.breakdownCredits {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+/* ── Target GPA bar ──────────────────────────────────────────── */
+
+.targetRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.targetLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.targetInput {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  width: 52px;
+  padding: 3px 6px;
+  background: rgba(124, 149, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--accent-purple);
+  text-align: center;
+  outline: none;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.targetInput:focus {
+  border-color: var(--accent-purple-dim);
+}
+
+.targetBarWrap {
+  flex: 1;
+  min-width: 160px;
+  position: relative;
+  height: 4px;
+}
+
+.targetBarTrack {
+  position: absolute;
+  inset: 0;
+  background: rgba(124, 149, 255, 0.07);
+  border-radius: 99px;
+}
+
+.targetBarFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 400ms var(--ease-expo), background 300ms ease;
+}
+
+.targetMarker {
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 14px;
+  background: var(--text-dark);
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+.targetMarkerLabel {
+  position: absolute;
+  top: 12px;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+/* Target margin bubble */
+.targetMargin {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 10px;
+  border-radius: var(--r-lg);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  transition: background 300ms ease, color 300ms ease, border-color 300ms ease;
+}
+
+.targetMargin.onTrack {
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+  border: 1px solid rgba(82, 204, 163, 0.22);
+}
+
+.targetMargin.nearMiss {
+  background: rgba(255, 179, 71, 0.08);
+  color: rgba(255, 179, 71, 0.85);
+  border: 1px solid rgba(255, 179, 71, 0.22);
+}
+
+.targetMargin.offTrack {
+  background: rgba(255, 143, 163, 0.08);
+  color: #ff8fa3;
+  border: 1px solid rgba(255, 143, 163, 0.22);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SECTION HEADERS
+   ════════════════════════════════════════════════════════════════ */
+
+.semSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sectionHint {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  margin: 0;
+  margin-top: 2px;
+}
+
+.sectionAddBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.sectionAddBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple-dim);
+  background: var(--bg-hover);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SEMESTER CARDS (COLLAPSIBLE)
+   ════════════════════════════════════════════════════════════════ */
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: border-color var(--dur-base) ease;
+}
+
+.card:hover {
+  border-color: rgba(124, 149, 255, 0.16);
+}
+
+.card.projected {
+  border-color: rgba(82, 204, 163, 0.10);
+}
+
+.card.projected:hover {
+  border-color: rgba(82, 204, 163, 0.20);
+}
+
+/* Card header — always visible, acts as the collapse toggle */
+.cardHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) ease;
+}
+
+.cardHeader:hover {
+  background: var(--bg-hover);
+}
+
+.cardHeaderChevron {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--text-dark);
+  transition: transform 260ms var(--ease-expo);
+}
+
+.cardHeaderChevron.open {
+  transform: rotate(90deg);
+}
+
+.cardHeaderInfo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.cardSemName {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.cardProjectedTag {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+  border: 1px solid rgba(82, 204, 163, 0.22);
+}
+
+.cardStats {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+}
+
+.cardGpa {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.cardCredits {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+.cardDeleteBtn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dark);
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cardHeader:hover .cardDeleteBtn,
+.card:focus-within .cardDeleteBtn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cardDeleteBtn:hover {
+  color: #ff8fa3;
+  background: rgba(255, 143, 163, 0.10);
+}
+
+/* Collapsible body — CSS grid-template-rows trick for smooth animation */
+.cardBodyWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms var(--ease-expo);
+}
+
+.cardBodyWrap.open {
+  grid-template-rows: 1fr;
+}
+
+.cardBodyInner {
+  overflow: hidden;
+}
+
+.cardBody {
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   COURSE ROWS
+   ════════════════════════════════════════════════════════════════ */
+
+.courseList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.courseRow {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2.5rem auto 1.5rem;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2);
+  border-radius: var(--r-md);
+  transition: background var(--dur-fast) ease;
+}
+
+.courseRow:hover {
+  background: var(--bg-hover);
+}
+
+.courseCode {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.courseName {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.courseCredits {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+
+/* ── Grade badge (historical — click to edit) ────────────────── */
+
+.gradeBadge {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition:
+    background  var(--dur-fast) ease,
+    color       var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.gradeBadge[data-tier="distinction"],
+.gradeBadge[data-tier="honors"] {
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+  border: 1px solid rgba(82, 204, 163, 0.22);
+}
+
+.gradeBadge[data-tier="good"] {
+  background: rgba(124, 149, 255, 0.09);
+  color: var(--accent-purple);
+  border: 1px solid rgba(124, 149, 255, 0.20);
+}
+
+.gradeBadge[data-tier="satisfactory"] {
+  background: rgba(155, 163, 196, 0.08);
+  color: var(--text-muted);
+  border: 1px solid rgba(155, 163, 196, 0.18);
+}
+
+.gradeBadge[data-tier="at-risk"] {
+  background: rgba(255, 143, 163, 0.08);
+  color: #ff8fa3;
+  border: 1px solid rgba(255, 143, 163, 0.22);
+}
+
+/* Inline grade select (historical edit mode) */
+.gradeSelect {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  background: rgba(124, 149, 255, 0.08);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-sm);
+  color: var(--accent-purple);
+  cursor: pointer;
+  outline: none;
+}
+
+/* ── Grade slider (projected courses) ────────────────────────── */
+
+.sliderCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sliderGradeLabel {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--accent-green);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.gradeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 99px;
+  cursor: pointer;
+  outline: none;
+  /* Fill computed via --fill-pct custom property */
+  background: linear-gradient(
+    to right,
+    var(--accent-green)          var(--fill-pct, 70%),
+    rgba(82, 204, 163, 0.12)     var(--fill-pct, 70%)
+  );
+  transition: background 80ms linear;
+}
+
+.gradeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 0 2px rgba(82, 204, 163, 0.22);
+  transition: transform 110ms ease, box-shadow 110ms ease;
+  cursor: grab;
+}
+
+.gradeSlider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(82, 204, 163, 0.30);
+}
+
+.gradeSlider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  border: none;
+  box-shadow: 0 0 0 2px rgba(82, 204, 163, 0.22);
+  cursor: grab;
+}
+
+/* Course delete button (shown on hover) */
+.courseDeleteBtn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dark);
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease, opacity var(--dur-fast) ease;
+}
+
+.courseRow:hover .courseDeleteBtn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.courseDeleteBtn:hover {
+  color: #ff8fa3;
+  background: rgba(255, 143, 163, 0.10);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADD FORMS (course + semester)
+   ════════════════════════════════════════════════════════════════ */
+
+.addCourseRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--sp-2);
+  animation: fadeIn var(--dur-base) var(--ease-expo) both;
+}
+
+.addSemForm {
+  background: var(--surface-card);
+  border: 1px dashed rgba(124, 149, 255, 0.20);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: flex-end;
+  animation: scaleIn var(--dur-base) var(--ease-expo) both;
+}
+
+.addSemFormProjected {
+  border-color: rgba(82, 204, 163, 0.20);
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.formInput {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 6px var(--sp-3);
+  background: rgba(124, 149, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+  min-width: 0;
+}
+
+.formInput:focus {
+  border-color: var(--accent-purple-dim);
+  background: rgba(124, 149, 255, 0.07);
+}
+
+.formInput.sm {
+  width: 70px;
+}
+
+.formInput.md {
+  width: 120px;
+}
+
+.formSelect {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 6px var(--sp-3);
+  background: rgba(124, 149, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.formSelect:focus {
+  border-color: var(--accent-purple-dim);
+}
+
+/* Credit quick-select pills */
+.creditPills {
+  display: flex;
+  gap: 3px;
+}
+
+.creditPill {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.creditPill.active {
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+.creditPill:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  border-color: rgba(124, 149, 255, 0.18);
+}
+
+/* Form action buttons */
+.formActions {
+  display: flex;
+  gap: var(--sp-2);
+  align-self: flex-end;
+}
+
+.formSubmitBtn {
+  padding: 6px 14px;
+  background: rgba(124, 149, 255, 0.12);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.formSubmitBtn:hover {
+  background: rgba(124, 149, 255, 0.20);
+  border-color: var(--accent-purple);
+  color: #fff;
+}
+
+.formSubmitBtn.green {
+  background: rgba(82, 204, 163, 0.10);
+  border-color: rgba(82, 204, 163, 0.30);
+  color: var(--accent-green);
+}
+
+.formSubmitBtn.green:hover {
+  background: rgba(82, 204, 163, 0.18);
+  border-color: var(--accent-green);
+}
+
+.formCancelBtn {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.formCancelBtn:hover {
+  color: var(--text-muted);
+  border-color: rgba(155, 163, 196, 0.30);
+}
+
+/* ── Course add trigger ─────────────────────────────────────── */
+.addCourseBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px dashed rgba(124, 149, 255, 0.15);
+  border-radius: var(--r-sm);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+  align-self: flex-start;
+  margin-top: var(--sp-1);
+}
+
+.addCourseBtn:hover {
+  color: var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background: var(--bg-hover);
+}
+
+.projected .addCourseBtn {
+  border-color: rgba(82, 204, 163, 0.15);
+}
+
+.projected .addCourseBtn:hover {
+  border-color: rgba(82, 204, 163, 0.35);
+  background: rgba(82, 204, 163, 0.05);
+  color: var(--accent-green);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EMPTY STATES
+   ════════════════════════════════════════════════════════════════ */
+
+.emptyCard {
+  background: var(--surface-card);
+  border: 1px dashed rgba(124, 149, 255, 0.12);
+  border-radius: var(--r-lg);
+  padding: var(--sp-8) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.emptyBody {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  max-width: 38ch;
+}
+
+.emptyActions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.seedBtn {
+  padding: 6px 14px;
+  background: rgba(124, 149, 255, 0.08);
+  border: 1px solid rgba(124, 149, 255, 0.18);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.seedBtn:hover {
+  background: rgba(124, 149, 255, 0.14);
+  border-color: var(--accent-purple-dim);
+  color: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .metricPanel {
+    padding: var(--sp-4) var(--sp-5);
+  }
+
+  .gpaBreakdown {
+    gap: var(--sp-5);
+  }
+
+  .courseRow {
+    grid-template-columns: 4.5rem 1fr 2rem auto 1.5rem;
+    gap: var(--sp-2);
+  }
+
+  .courseName {
+    font-size: 0.6875rem;
+  }
+
+  .addSemForm {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .targetRow {
+    flex-wrap: wrap;
+  }
+}

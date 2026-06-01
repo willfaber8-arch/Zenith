@@ -1,0 +1,17 @@
+/* ════════════════════════════════════════════════════════════
+   ThemeBackground — Phase 0 · Step 0.3
+
+   Layer order (root stacking context):
+     z-index: 0  → ThemeBackground  (background morph layer)
+     z-index: 1  → CosmosCanvas     (stars, above bg tint)
+     z-index: 2  → AppShell .shell  (all UI, above stars)
+   ════════════════════════════════════════════════════════════ */
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  /* 500ms smooth morph between category tints */
+  transition: background-color 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}

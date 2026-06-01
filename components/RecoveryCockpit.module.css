@@ -1,0 +1,309 @@
+/* ════════════════════════════════════════════════════════════
+   RecoveryCockpit.module.css — Phase 5 · Step 5.6
+   Premium recovery overlay: deep slate-indigo base, ocean sage
+   accents.  Uses the global scaleIn / pulseGlow keyframes.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Full-viewport overlay ─────────────────────────────────── */
+
+.overlay {
+  position:        fixed;
+  inset:           0;
+  z-index:         595;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background:      rgba(11, 13, 19, 0.88);
+  backdrop-filter: blur(24px) saturate(0.55);
+  transition:
+    opacity   420ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Main cockpit card ─────────────────────────────────────── */
+
+.cockpit {
+  position:        relative;
+  width:           min(480px, 92vw);
+  padding:         var(--sp-8) var(--sp-8) var(--sp-6);
+  background:      linear-gradient(
+    160deg,
+    rgba(20, 26, 38, 0.98) 0%,
+    rgba(13, 18, 28, 0.99) 100%
+  );
+  border:          1px solid rgba(82, 204, 163, 0.18);
+  border-radius:   var(--r-xl);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.80),
+    0  0   0 1px rgba(82, 204, 163, 0.07),
+    inset 0 1px 0 rgba(82, 204, 163, 0.10);
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             var(--sp-5);
+  animation:       scaleIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Ocean sage top-edge gradient rule */
+.cockpit::before {
+  content:    '';
+  position:   absolute;
+  top:        0;
+  left:       var(--sp-8);
+  right:      var(--sp-8);
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(82, 204, 163, 0.60) 35%,
+    rgba(82, 204, 163, 0.60) 65%,
+    transparent
+  );
+}
+
+/* ── Header row ─────────────────────────────────────────────── */
+
+.header {
+  width:           100%;
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          rgba(82, 204, 163, 0.55);
+  line-height:    1;
+}
+
+.closeBtn {
+  width:            26px;
+  height:           26px;
+  border-radius:    50%;
+  background:       rgba(255, 255, 255, 0.04);
+  border:           1px solid rgba(255, 255, 255, 0.07);
+  color:            var(--text-dark);
+  font-size:        0.5625rem;
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  cursor:           pointer;
+  line-height:      1;
+  transition:
+    background     var(--dur-fast) ease,
+    color          var(--dur-fast) ease,
+    border-color   var(--dur-fast) ease;
+}
+
+.closeBtn:hover {
+  background:   rgba(255, 80, 60, 0.12);
+  border-color: rgba(255, 80, 60, 0.35);
+  color:        #ff6050;
+}
+
+/* ── Breathing SVG canvas ──────────────────────────────────── */
+
+.breathCanvas {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+}
+
+.svg {
+  display:  block;
+  overflow: visible;
+}
+
+/* SVG text elements */
+.timerText {
+  font-family:    var(--font-display);
+  font-size:      22px;
+  font-weight:    700;
+  fill:           var(--text-primary);
+  letter-spacing: -0.04em;
+}
+
+.phaseLabel {
+  font-family:    var(--font-mono);
+  font-size:      6.5px;
+  font-weight:    700;
+  fill:           rgba(82, 204, 163, 0.60);
+  letter-spacing: 0.20em;
+}
+
+/* Center pulse dot */
+.centerDot {
+  animation: pulseGlow 2.2s ease-in-out infinite;
+}
+
+/* ── Breathing ring keyframes ──────────────────────────────── */
+/* scale() with transform-box: fill-box + transform-origin: center
+   ensures the circle expands around its own geometric centre,
+   not the SVG viewport centre.                                   */
+
+.ringOuter,
+.ringInner {
+  transform-box:    fill-box;
+  transform-origin: center;
+}
+
+@keyframes outerExpand {
+  from { transform: scale(0.84); opacity: 0.35; }
+  to   { transform: scale(1.16); opacity: 0.80; }
+}
+@keyframes outerContract {
+  from { transform: scale(1.16); opacity: 0.80; }
+  to   { transform: scale(0.84); opacity: 0.35; }
+}
+@keyframes innerExpand {
+  from { transform: scale(0.72); opacity: 0.55; }
+  to   { transform: scale(1.28); opacity: 1.00; }
+}
+@keyframes innerContract {
+  from { transform: scale(1.28); opacity: 1.00; }
+  to   { transform: scale(0.72); opacity: 0.55; }
+}
+
+.outerExpand   { animation: outerExpand   4s ease-in-out forwards; }
+.outerContract { animation: outerContract 4s ease-in-out forwards; }
+.innerExpand   { animation: innerExpand   4s ease-in-out forwards; }
+.innerContract { animation: innerContract 4s ease-in-out forwards; }
+
+/* ── Instruction block ──────────────────────────────────────── */
+
+.instructions {
+  text-align:     center;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.mainInstruction {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    600;
+  color:          rgba(82, 204, 163, 0.90);
+  letter-spacing: -0.02em;
+  line-height:    1.3;
+}
+
+.subInstruction {
+  font-family: var(--font-body);
+  font-size:   0.75rem;
+  font-weight: 400;
+  color:       var(--text-dark);
+  line-height: 1.65;
+  max-width:   340px;
+}
+
+/* ── Reward preview strip ───────────────────────────────────── */
+
+.rewardRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-5);
+  background:    rgba(82, 204, 163, 0.05);
+  border:        1px solid rgba(82, 204, 163, 0.11);
+  border-radius: var(--r-lg);
+}
+
+.rewardChip {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-1);
+}
+
+.rewardIcon {
+  font-size:   0.75rem;
+  line-height: 1;
+  color:       rgba(82, 204, 163, 0.70);
+}
+
+.rewardGoldIcon {
+  color: rgba(204, 175, 82, 0.80);
+}
+
+.rewardValue {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    700;
+  color:          rgba(82, 204, 163, 0.80);
+  letter-spacing: 0.06em;
+}
+
+.rewardGoldValue {
+  color: rgba(204, 175, 82, 0.85);
+}
+
+.rewardSep {
+  width:       1px;
+  height:      14px;
+  background:  rgba(82, 204, 163, 0.18);
+  flex-shrink: 0;
+}
+
+.rewardLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    600;
+  color:          var(--text-dark);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-left:    var(--sp-1);
+}
+
+/* ── Early-exit prompt ──────────────────────────────────────── */
+
+.earlyPrompt {
+  width:          100%;
+  padding:        var(--sp-4) var(--sp-5);
+  background:     rgba(224, 114, 58, 0.07);
+  border:         1px solid rgba(224, 114, 58, 0.28);
+  border-radius:  var(--r-lg);
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-3);
+}
+
+.earlyPromptText {
+  font-family: var(--font-body);
+  font-size:   0.75rem;
+  font-weight: 500;
+  color:       #e0a878;
+  text-align:  center;
+  line-height: 1.55;
+  font-style:  italic;
+}
+
+.continueBtn {
+  padding:       var(--sp-2) var(--sp-6);
+  background:    linear-gradient(
+    135deg,
+    rgba(82, 204, 163, 0.18),
+    rgba(82, 204, 163, 0.10)
+  );
+  border:        1px solid rgba(82, 204, 163, 0.38);
+  border-radius: var(--r-lg);
+  font-family:   var(--font-body);
+  font-size:     0.6875rem;
+  font-weight:   600;
+  color:         var(--accent-green);
+  cursor:        pointer;
+  letter-spacing: 0.02em;
+  transition:
+    background     var(--dur-base) var(--ease-smooth),
+    border-color   var(--dur-base) var(--ease-smooth),
+    box-shadow     var(--dur-base) var(--ease-smooth);
+}
+
+.continueBtn:hover {
+  background:   rgba(82, 204, 163, 0.26);
+  border-color: rgba(82, 204, 163, 0.65);
+  box-shadow:   0 0 18px rgba(82, 204, 163, 0.22);
+}

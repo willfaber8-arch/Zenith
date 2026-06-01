@@ -1,0 +1,244 @@
+/* ════════════════════════════════════════════════════════════════
+   HouseplantGrid — Phase 4 · Step 4.6
+   Dryness delta: calm blue-green → amber warning → yellow-slate overdue
+   ════════════════════════════════════════════════════════════════ */
+
+.houseplantGrid {
+  --v-card:     #141c19;
+  --v-surface:  #111618;
+  --v-border:   rgba(82, 204, 163, 0.10);
+  --v-accent:   var(--accent-green);
+  --v-muted:    var(--text-muted);
+  --v-text:     var(--text-primary);
+  --v-warn:     #f59e0b;
+  /* Yellow-slate overdue tone — warm but desaturated per spec */
+  --v-overdue:  #c9b45a;
+  --v-overdue-border: rgba(201, 180, 90, 0.38);
+  --v-overdue-dim:    rgba(201, 180, 90, 0.07);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ── Summary bar ──────────────────────────────────────────────── */
+
+.summaryBar {
+  display: flex;
+  gap: var(--sp-6);
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+}
+
+.summaryItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.summaryNum {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+.summaryNum[data-alert="true"] {
+  color: var(--v-overdue);
+}
+
+.summarySub {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.loading {
+  font-size: 0.875rem;
+  color: var(--v-muted);
+  padding: var(--sp-8);
+  text-align: center;
+}
+
+/* ── Plant grid ───────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* ── Plant card ───────────────────────────────────────────────── */
+
+.plantCard {
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  transition:
+    border-color 400ms var(--ease-smooth),
+    background   400ms var(--ease-smooth),
+    box-shadow   400ms var(--ease-smooth);
+}
+
+.plantCard[data-urgency="warning"] {
+  border-color: rgba(245, 158, 11, 0.30);
+}
+
+.plantCard[data-urgency="overdue"] {
+  border-color: var(--v-overdue-border);
+  background: var(--v-overdue-dim);
+  box-shadow: 0 0 20px rgba(201, 180, 90, 0.06);
+}
+
+/* Card top row */
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.plantName {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--v-text);
+  line-height: 1.2;
+}
+
+.plantSpecies {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.locationChip {
+  font-size: 0.62rem;
+  color: rgba(82, 204, 163, 0.60);
+  background: rgba(82, 204, 163, 0.06);
+  border: 1px solid rgba(82, 204, 163, 0.12);
+  border-radius: 3px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Water stats row */
+
+.waterStats {
+  display: flex;
+  gap: var(--sp-5);
+}
+
+.daysStat, .intervalStat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.daysNum {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--v-accent);
+  line-height: 1;
+  transition: color 400ms var(--ease-smooth);
+}
+
+.daysNum[data-urgency="warning"]  { color: var(--v-warn); }
+.daysNum[data-urgency="overdue"]  { color: var(--v-overdue); }
+
+.intervalNum {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--v-muted);
+  line-height: 1;
+}
+
+.daysSub {
+  font-size: 0.68rem;
+  color: var(--v-muted);
+  white-space: nowrap;
+}
+
+/* Dryness progress bar */
+
+.progressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(82, 204, 163, 0.10);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--v-accent);
+  transition:
+    width    280ms var(--ease-smooth),
+    background 400ms var(--ease-smooth);
+  min-width: 2px;
+}
+
+.progressFill[data-urgency="warning"]  { background: var(--v-warn); }
+.progressFill[data-urgency="overdue"]  { background: var(--v-overdue); }
+
+.progressLabel {
+  font-size: 0.68rem;
+  color: var(--v-muted);
+}
+
+/* Watering button */
+
+.waterBtn {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--v-border);
+  background: transparent;
+  color: var(--v-muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background    var(--dur-fast) var(--ease-smooth),
+    color         var(--dur-fast) var(--ease-smooth),
+    border-color  var(--dur-fast) var(--ease-smooth),
+    box-shadow    var(--dur-fast) var(--ease-smooth);
+}
+
+.waterBtn:hover {
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--v-accent);
+  border-color: rgba(82, 204, 163, 0.28);
+}
+
+.waterBtn[data-urgency="overdue"] {
+  background: rgba(201, 180, 90, 0.10);
+  color: var(--v-overdue);
+  border-color: var(--v-overdue-border);
+}
+
+.waterBtn[data-urgency="overdue"]:hover {
+  background: rgba(201, 180, 90, 0.18);
+  box-shadow: 0 0 12px rgba(201, 180, 90, 0.12);
+}
+
+.waterBtn[data-urgency="warning"] {
+  border-color: rgba(245, 158, 11, 0.28);
+  color: var(--v-warn);
+}
+
+.waterBtn[data-urgency="warning"]:hover {
+  background: rgba(245, 158, 11, 0.08);
+}

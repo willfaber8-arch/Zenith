@@ -1,0 +1,896 @@
+/* ════════════════════════════════════════════════════════════
+   CalendarView — Phase 2 · Step 2.5
+   Universal Calendar — week grid + 11:59 deadline banner system.
+
+   Layout overview:
+     .wrap         Outer page container
+     .header       Title + controls row
+     .feedPanel    Collapsible feed-manager card
+     .weekNav      Prev / range / next + view toggle
+     .bannerSection  11:59 deadline banners (sticky above grid)
+     .weekWrapper  Scrollable time-grid wrapper
+     .timeGrid     CSS Grid: 52px time gutter + 7 day columns
+     .agendaList   Alternative chronological list view
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Outer container ──────────────────────────────────────── */
+
+.wrap {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: clamp(2rem, 6vh, 4rem) var(--sp-8) var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ── Page header ──────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.eyebrow {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+/* ── View toggle (Week | Agenda) ──────────────────────────── */
+
+.viewToggle {
+  display: flex;
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.viewBtn {
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--r-md) - 3px);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    color       var(--dur-fast);
+}
+
+.viewBtnActive {
+  background: rgba(124, 149, 255, 0.14);
+  color:      var(--accent-purple);
+}
+
+/* ── Feed manager toggle button ───────────────────────────── */
+
+.feedToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.375rem var(--sp-4);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color            var(--dur-fast),
+    border-color     var(--dur-fast),
+    background-color var(--dur-fast);
+}
+
+.feedToggleBtn:hover {
+  color:        var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+.feedToggleBtnActive {
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.06);
+}
+
+.feedDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  flex-shrink: 0;
+}
+
+/* ── Feed manager panel ───────────────────────────────────── */
+
+.feedPanel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  animation: scaleIn 0.22s var(--ease-expo) both;
+}
+
+.feedPanelLabel {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── URL add form ─────────────────────────────────────────── */
+
+.addFeedRow {
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 200px) auto;
+  gap: var(--sp-3);
+  align-items: center;
+}
+
+.feedInput {
+  width: 100%;
+  padding: 0.625rem var(--sp-4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  outline: none;
+  transition:
+    border-color var(--dur-base),
+    box-shadow   var(--dur-base);
+}
+
+.feedInput::placeholder {
+  color: var(--text-dark);
+  opacity: 0.6;
+}
+
+.feedInput:focus {
+  border-color: var(--accent-purple-dim);
+  box-shadow:   0 0 0 3px rgba(124, 149, 255, 0.07);
+}
+
+.addFeedBtn {
+  padding: 0.625rem var(--sp-5);
+  background: rgba(124, 149, 255, 0.10);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background   var(--dur-fast),
+    color        var(--dur-fast),
+    border-color var(--dur-fast);
+}
+
+.addFeedBtn:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.18);
+  color: #fff;
+}
+
+.addFeedBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Active feeds list ────────────────────────────────────── */
+
+.feedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.feedChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  max-width: 320px;
+  min-width: 0;
+}
+
+.feedChipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.feedChipLabel {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.feedChipActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: var(--sp-1);
+}
+
+.feedChipBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--text-dark);
+  font-size: 0.625rem;
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+
+.feedChipBtn:hover {
+  color:      var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.feedChipBtnDelete:hover {
+  color: #ff8fa3;
+}
+
+.feedEmptyHint {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ── Week navigation bar ──────────────────────────────────── */
+
+.weekNav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.weekNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    color            var(--dur-fast),
+    border-color     var(--dur-fast),
+    background-color var(--dur-fast);
+}
+
+.weekNavBtn:hover {
+  color:        var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+.weekRange {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  min-width: 160px;
+}
+
+.todayBtn {
+  margin-left: auto;
+  padding: 0.3rem var(--sp-4);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color        var(--dur-fast),
+    border-color var(--dur-fast),
+    background   var(--dur-fast);
+}
+
+.todayBtn:hover {
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.05);
+}
+
+/* ══════════════════════════════════════════════════════════
+   11:59 PM DEADLINE BANNER SECTION
+   ══════════════════════════════════════════════════════════ */
+
+.bannerSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.bannerSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bannerSectionIcon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  animation: pulseGlow 2.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.bannerSectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* The 7-column banner row — one cell per day */
+.bannerRow {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  min-height: 40px;
+  padding: var(--sp-2) 0;
+}
+
+.bannerGutter {
+  /* Empty time-axis gutter — aligns with .timeGutter */
+}
+
+.bannerCell {
+  border-left: 1px solid var(--border-subtle);
+  padding: 0 var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Individual 11:59 deadline pill */
+.deadlineBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px var(--sp-3);
+  background: rgba(124, 149, 255, 0.07);
+  border: 1px solid rgba(124, 149, 255, 0.30);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  cursor: default;
+  transition:
+    background   var(--dur-fast),
+    border-color var(--dur-fast);
+}
+
+.deadlineBanner:hover {
+  background:   rgba(124, 149, 255, 0.13);
+  border-color: var(--accent-purple-dim);
+}
+
+.deadlineTime {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--accent-purple);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deadlineTitle {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   WEEK GRID
+   ══════════════════════════════════════════════════════════ */
+
+/* Outer scroll container */
+.weekWrapper {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: min(600px, 60vh);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+/* Sticky day-header row inside the scroll container */
+.weekDayHeader {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.weekDayHeaderGutter {
+  /* Empty — aligns with time gutter */
+}
+
+.weekDayHeaderCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3) var(--sp-2);
+  border-left: 1px solid var(--border-subtle);
+  gap: 3px;
+}
+
+.dayName {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.dayNumber {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-muted);
+  letter-spacing: -0.02em;
+}
+
+/* Today highlight */
+.dayHeaderToday .dayName {
+  color: var(--accent-purple);
+}
+
+.dayHeaderToday .dayNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(124, 149, 255, 0.14);
+  border-radius: 50%;
+  color: var(--accent-purple);
+}
+
+/* Main time grid */
+.timeGrid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  /* 24 hours * 60px = 1440px total height */
+}
+
+/* Time gutter — left column, full grid height */
+.timeGutter {
+  grid-column: 1;
+  grid-row: 1 / span 24;
+  position: relative;
+}
+
+.hourLabel {
+  height: 60px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-right: var(--sp-3);
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  opacity: 0.7;
+  position: relative;
+  top: -8px; /* optically offset so label sits ON the hour line */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Day columns */
+.dayColumn {
+  position: relative;
+  height: 1440px; /* 24 * 60px */
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* Horizontal hour guide lines inside each day column */
+.hourGuide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 60px;
+  border-bottom: 1px solid rgba(124, 149, 255, 0.05);
+  pointer-events: none;
+}
+
+/* Every quarter-hour: finer dotted sub-guides */
+.quarterGuide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-bottom: 1px dashed rgba(124, 149, 255, 0.03);
+  pointer-events: none;
+}
+
+/* Current-time red line */
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 143, 163, 0.70);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.nowLine::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 143, 163, 0.90);
+}
+
+/* ── Event pill ───────────────────────────────────────────── */
+
+.eventPill {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: var(--r-sm);
+  padding: 3px 6px;
+  overflow: hidden;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 18px;
+  z-index: 2;
+  transition:
+    filter    var(--dur-fast),
+    transform var(--dur-fast) var(--ease-expo);
+}
+
+.eventPill:hover {
+  z-index: 3;
+  filter: brightness(1.15);
+  transform: translateX(1px);
+}
+
+.eventPillTitle {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventPillTime {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventPillCat {
+  font-family: var(--font-mono);
+  font-size: 0.375rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.50);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════
+   AGENDA VIEW
+   ══════════════════════════════════════════════════════════ */
+
+.agendaList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.agendaDateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  animation: slideIn 0.28s var(--ease-expo) both;
+}
+
+.agendaDateLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.agendaDateText {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.agendaDateToday .agendaDateText {
+  color: var(--accent-purple);
+}
+
+.agendaDateLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.agendaEvents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+}
+
+.agendaEvent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-left-width: 2px;
+  border-radius: var(--r-md);
+  transition:
+    border-color var(--dur-fast),
+    background   var(--dur-fast);
+}
+
+.agendaEvent:hover {
+  background: rgba(124, 149, 255, 0.03);
+}
+
+.agendaEventIs1159 {
+  border-color: rgba(124, 149, 255, 0.40);
+  background: rgba(124, 149, 255, 0.04);
+}
+
+.agendaEventTime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.agendaEventTimeLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.agendaEventDeadlineTag {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(124, 149, 255, 0.12);
+  border: 1px solid rgba(124, 149, 255, 0.25);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.375rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  white-space: nowrap;
+}
+
+.agendaEventBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.agendaEventTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.agendaEventMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.agendaEventCat {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.agendaEventLocation {
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: clamp(3rem, 10vh, 5rem) var(--sp-8);
+  text-align: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+
+.emptyIcon {
+  font-size: 1.75rem;
+  opacity: 0.25;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+}
+
+.emptySubtitle {
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  line-height: 1.65;
+  max-width: 360px;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .wrap {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .addFeedRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headerRight {
+    width: 100%;
+  }
+
+  .weekRange {
+    font-size: 0.8125rem;
+    min-width: 130px;
+  }
+
+  /* Hide Sat + Sun columns to prevent overflow on mobile */
+  .weekDayHeaderCell:nth-child(n+8),
+  .dayColumn:nth-child(n+8) {
+    display: none;
+  }
+}

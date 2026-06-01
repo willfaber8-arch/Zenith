@@ -1,0 +1,192 @@
+/* ════════════════════════════════════════════════════════════
+   CharacterView.module.css — Character Sheet Layout
+   Phase 5 · Step 5.2
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ─────────────────────────────────────────── */
+
+.page {
+  padding:        var(--sp-8) var(--sp-8);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-6);
+  max-width:      1040px;
+  margin:         0 auto;
+}
+
+/* ── Two-column layout ────────────────────────────────────── */
+
+.layout {
+  display:   grid;
+  grid-template-columns: 340px 1fr;
+  gap:       var(--sp-6);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Left column: avatar + HP/EXP mini stats ─────────────── */
+
+.leftCol {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-4);
+}
+
+.avatarCard {
+  width:          100%;
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-4) var(--sp-2);
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-3);
+  box-shadow:     var(--shadow-card);
+  position:       relative;
+  overflow:       hidden;
+}
+
+/* Purple top-edge line */
+.avatarCard::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: var(--sp-6); right: var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg, transparent, var(--accent-purple) 40%,
+    var(--accent-purple) 60%, transparent
+  );
+  opacity: 0.55;
+}
+
+.charName {
+  font-family:    var(--font-display);
+  font-size:      1.125rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height:    1;
+}
+
+.charMeta {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  flex-wrap:   wrap;
+  justify-content: center;
+}
+
+.charLevel {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  color:          var(--accent-purple);
+  background:     rgba(124, 149, 255, 0.09);
+  border:         1px solid rgba(124, 149, 255, 0.20);
+  border-radius:  99px;
+  padding:        3px 10px;
+}
+
+/* ── Mini stat bars (under avatar in left col) ────────────── */
+
+.miniStats {
+  width:          100%;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  padding:        0 var(--sp-2);
+}
+
+.miniStatRow {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-3);
+}
+
+.miniStatLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  width:          24px;
+  flex-shrink:    0;
+}
+
+.miniBarTrack {
+  flex:          1;
+  height:        4px;
+  background:    rgba(255, 255, 255, 0.055);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.miniBarFill {
+  height:        100%;
+  border-radius: 99px;
+  transition:    width 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.expBar {
+  background: var(--accent-green);
+  box-shadow: 0 0 5px rgba(82, 204, 163, 0.4);
+}
+
+.hpBar {
+  --hp-crimson: #e05c7a;
+  background: var(--hp-crimson);
+  box-shadow: 0 0 5px rgba(224, 92, 122, 0.35);
+}
+
+.miniStatVal {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  color:          var(--text-dark);
+  width:          44px;
+  text-align:     right;
+  flex-shrink:    0;
+  white-space:    nowrap;
+}
+
+/* ── Right column: customizer ─────────────────────────────── */
+
+.rightCol {
+  min-width: 0;
+}
+
+/* ── HP warning banner ────────────────────────────────────── */
+
+.hpWarning {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  background:    rgba(224, 92, 122, 0.08);
+  border:        1px solid rgba(224, 92, 122, 0.25);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+  animation:     slideIn var(--dur-slow) var(--ease-expo) both;
+}
+
+.hpWarningDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    #e05c7a;
+  flex-shrink:   0;
+  animation:     pulseGlow 2.2s ease-in-out infinite;
+}
+
+.hpWarningText {
+  font-size:   0.6875rem;
+  color:       #e05c7a;
+  line-height: 1.4;
+}

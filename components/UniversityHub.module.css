@@ -1,0 +1,298 @@
+/* ════════════════════════════════════════════════════════════
+   UniversityHub — Phase 2 · Step 2.3
+   Responsive link-card grid for the loaded university workspace.
+   Palette: low-saturation Slate-Indigo (#141923 surface-card base).
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ─────────────────────────────────────────── */
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: clamp(3rem, 10vh, 5.5rem) var(--sp-8) var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+/* ── Hub header ───────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-6);
+}
+
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.eyebrow {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.uniName {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+
+.subline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-1);
+}
+
+.sublineChip {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  color: var(--text-dark);
+}
+
+.sublineDot {
+  color: var(--text-dark);
+  opacity: 0.35;
+  font-size: 0.625rem;
+}
+
+/* ── Reset / change button ────────────────────────────────── */
+
+.resetBtn {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color           var(--dur-fast),
+    border-color    var(--dur-fast),
+    background-color var(--dur-fast);
+  margin-top: var(--sp-2); /* optical alignment with uniName baseline */
+}
+
+.resetBtn:hover {
+  color:        var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+/* ── Horizontal divider ───────────────────────────────────── */
+
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0;
+}
+
+/* ── Categories container ─────────────────────────────────── */
+
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* ── Category section ─────────────────────────────────────── */
+
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.categoryLabel {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Link card grid ───────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* ── Resource link card ───────────────────────────────────── */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  background-color: var(--surface-card);   /* #141923 Slate-Indigo */
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  overflow: hidden;
+
+  /* Subtle depth shadow matching the ZenCard pattern */
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.38),
+    0 0   0   1px var(--border-subtle);
+
+  transition:
+    border-color    var(--dur-base) var(--ease-smooth),
+    box-shadow      var(--dur-base) var(--ease-smooth),
+    transform       var(--dur-base) var(--ease-expo);
+}
+
+/* Top-edge gradient accent — subtler than ZenCard, always purple */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(124, 149, 255, 0.30),
+    transparent
+  );
+  transition: opacity var(--dur-base);
+}
+
+/* ── Card hover state ────────────────────────────────────── */
+
+.card:hover {
+  border-color: var(--accent-purple-dim);
+  box-shadow:
+    0 4px 28px rgba(0, 0, 0, 0.50),
+    0 0  40px  rgba(124, 149, 255, 0.05),
+    0 0   0    1px var(--accent-purple-dim);
+  transform: translateY(-2px);
+}
+
+.card:hover::before {
+  opacity: 2;   /* intensify the top accent on hover */
+}
+
+/* Focus ring — keyboard navigation */
+.card:focus-visible {
+  outline: 2px solid var(--accent-purple-dim);
+  outline-offset: 2px;
+}
+
+/* ── Tag pill ─────────────────────────────────────────────── */
+
+.tag {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.card:hover .tag {
+  color: var(--accent-purple);
+  border-color: rgba(124, 149, 255, 0.22);
+}
+
+/* ── Card title ───────────────────────────────────────────── */
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin: 0;
+  transition: color var(--dur-base);
+}
+
+.card:hover .cardTitle {
+  color: #ffffff;
+}
+
+/* ── Card description ─────────────────────────────────────── */
+
+.cardDesc {
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  line-height: 1.65;
+  flex: 1;        /* push the link action to the bottom */
+  margin: 0;
+}
+
+/* ── Link action ──────────────────────────────────────────── */
+
+.linkAction {
+  display: block;
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-dark);
+  text-transform: uppercase;
+  transition:
+    color     var(--dur-base) var(--ease-smooth),
+    transform var(--dur-base) var(--ease-expo);
+}
+
+.card:hover .linkAction {
+  color: var(--accent-purple);
+  transform: translateX(3px);
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .wrap {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stack change button below the meta on very small screens */
+  .header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .uniName {
+    font-size: 1.375rem;
+  }
+}

@@ -1,0 +1,144 @@
+# Zenith OS — CI/CD Pipeline
+# Phase 6 · Step 6.3 — Continuous Deployment Infrastructure
+#
+# Execution model:
+#   Stage 1 — Checkout + cached Node.js environment
+#   Stage 2 — npm ci (deterministic install from lockfile)
+#   Stage 3 — next build (TypeScript type-check + production bundle)
+#   Stage 4 — Playwright E2E against dev server (chromium only, CI retries)
+#   Stage 5 — Vercel production deploy (push to main only; skipped on PRs)
+#
+# Required GitHub Secrets:
+#   NEXT_PUBLIC_SUPABASE_URL      — Supabase project API URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY — Supabase anon/public key
+#   VERCEL_TOKEN                  — Personal access token from vercel.com/account/tokens
+#   VERCEL_ORG_ID                 — Team/personal org ID from .vercel/project.json
+#   VERCEL_PROJECT_ID             — Project ID from .vercel/project.json
+#
+# To retrieve VERCEL_ORG_ID + VERCEL_PROJECT_ID locally:
+#   npx vercel link    # creates .vercel/project.json
+#   cat .vercel/project.json
+
+name: CI · Validate & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel any in-flight run for the same branch when a newer push arrives.
+# Prevents simultaneous deploys from a rapid succession of commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-deploy:
+    name: Validate → Test → Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Stage 1 · Checkout & Node.js environment ─────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20 with npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Caches ~/.npm between runs; keyed on package-lock.json hash.
+          # A matching key restores the full module cache in ~10s instead
+          # of downloading from the registry from scratch.
+          cache: 'npm'
+
+      # ── Stage 2 · Dependency installation ────────────────────────────
+      - name: Install dependencies
+        # npm ci installs strictly from package-lock.json, never updates it.
+        # This guarantees byte-for-byte reproducibility across all CI runs.
+        run: npm ci
+
+      # ── Stage 3 · TypeScript compilation + production build ───────────
+      - name: Compile TypeScript & build production bundle
+        # next build runs tsc --noEmit then produces the .next/ output.
+        # Any type error, missing import, or broken dynamic import aborts here
+        # before a single test runs — fast feedback on compilation regressions.
+        run: npm run build
+        env:
+          # Supply Supabase keys so the build doesn't warn about missing env vars.
+          # The app degrades gracefully to local-only mode when these are absent,
+          # but providing them makes the build output match production exactly.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # ── Stage 4 · Automated E2E test suite ───────────────────────────
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        with:
+          # Playwright downloads browser executables to ~/.cache/ms-playwright.
+          # Keying on the lockfile hash means the cache is invalidated only
+          # when @playwright/test itself is updated, not on every code change.
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-browsers-${{ runner.os }}-
+
+      - name: Install Playwright browser (Chromium)
+        # --with-deps installs the OS-level system libraries Chromium requires
+        # on the ubuntu-latest runner (libglib, libnss, etc.).
+        # Only chromium is installed — matching the single project in playwright.config.ts.
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E test suite
+        # playwright.config.ts handles the webServer lifecycle: it boots
+        # `npm run dev` with NEXT_PUBLIC_E2E=1, mounts TestBridge on window.__zenith,
+        # and tears everything down after the suite finishes.
+        # CI=true enables retries (1 re-run per failure) and forbids test.only leaks.
+        run: npx playwright test
+        env:
+          CI: true
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright test artifacts
+        # Upload on both pass and fail so test reports are always available.
+        # Artifacts expire after 14 days — sufficient for sprint retrospectives
+        # without accumulating unbounded storage.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            tests/playwright-report/
+            tests/playwright-results/
+          retention-days: 14
+
+      # ── Stage 5 · Production deployment (main branch push only) ───────
+      # All three deploy steps are gated on:
+      #   success()                    — every prior stage returned exit 0
+      #   github.event_name == 'push'  — skipped on pull_request events
+      #   github.ref == 'refs/heads/main' — only the main branch deploys
+
+      - name: Install Vercel CLI
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings & environment
+        # Writes .vercel/project.json and pulls production env vars so the
+        # subsequent deploy step has the correct org/project context and any
+        # Vercel-managed environment variables are resolved at the edge.
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel production
+        # --prod promotes this deployment to the primary production alias.
+        # --yes skips interactive confirmation prompts.
+        # Vercel runs `next build` on its own infrastructure using the source
+        # uploaded here, applying edge network configuration from vercel.json.
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

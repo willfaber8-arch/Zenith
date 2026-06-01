@@ -1,5 +1,199 @@
 @import "tailwindcss";
 
+/*
+ * ════════════════════════════════════════════════════════════════════
+ * ZENITH OS — GLOBAL DESIGN SYSTEM  v1.0
+ * Phase 1 · Step 1.1 — Design Token & Visual Foundations Port
+ *
+ * LOAD ORDER (do not reorder — each section depends on the prior):
+ *   1. @theme          Tailwind v4 utility registry (colors, fonts,
+ *                      radii, animation shorthands)
+ *   2. :root           CSS custom-property API consumed by components.
+ *                      Ergonomic aliases → @theme vars; non-utility
+ *                      tokens (spacing, motion, shadows, layout).
+ *   3. Reset           Box model, scheme, base element defaults.
+ *   4. @keyframes      Named animation curves referenced by @theme
+ *                      animate-* tokens and legacy anim-* classes.
+ *   5. @layer utilities Scrollbar helpers + animation stagger classes
+ *                      exposed as composable Tailwind-compatible classes.
+ * ════════════════════════════════════════════════════════════════════
+ */
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   1.  TAILWIND v4 @THEME REGISTRY
+   ───────────────────────────────────────────────────────────────────
+   Tokens defined here are injected at :root AND generate Tailwind
+   utility classes automatically:
+
+     --color-{name}   →  bg-{name}  text-{name}  border-{name}  …
+     --font-{name}    →  font-{name}
+     --radius-{name}  →  rounded-{name}
+     --animate-{name} →  animate-{name}
+
+   See tailwind.config.ts for the full token → class reference table.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@theme {
+
+  /* ── Base palette ─────────────────────────────────────────────── */
+  --color-bg-main:        #0b0d13;    /* Deep Matte Slate · Cosmos Black  */
+  --color-surface-card:   #141923;    /* Muted Indigo-Grey                */
+  --color-accent-purple:  #7c95ff;    /* Periwinkle Violet                */
+  --color-accent-green:   #52cca3;    /* Ocean Sage Green                 */
+  --color-text-primary:   #e8eaf6;    /* High-contrast Soft White         */
+  --color-text-muted:     #9ba3c4;    /* Low-contrast Slate Grey          */
+  --color-text-dark:      #5c6487;    /* Deep Slate Guide Text            */
+
+  /* ── Semantic / interactive ───────────────────────────────────── */
+  --color-hover:          rgba(124, 149, 255, 0.05);
+  --color-active:         rgba(124, 149, 255, 0.10);
+  --color-purple-dim:     rgba(124, 149, 255, 0.35);
+  --color-green-dim:      rgba(82,  204, 163, 0.35);
+  --color-border-subtle:  rgba(124, 149, 255, 0.10);
+
+  /* ── Category background tints (Step 0.3 morph system) ───────── */
+  --color-tint-essentials: #0d1020;   /* Deep Slate-Indigo               */
+  --color-tint-creator:    #090f0b;   /* Deep Obsidian-Green             */
+  --color-tint-vault:      #101010;   /* Minimal Charcoal-Grey           */
+
+  /* ── Per-category micro-interaction hover surfaces (Step 0.4) ── */
+  --color-hover-essentials: rgba(124, 149, 255, 0.12);
+  --color-hover-creator:    rgba(82,  204, 163, 0.12);
+  --color-hover-vault:      rgba(155, 163, 196, 0.15);
+
+  /* ── Typography ───────────────────────────────────────────────── */
+  /*
+   * next/font injects --font-jakarta and --font-cabinet onto <html>
+   * at runtime. The var() cascade guarantees we get the subsetted,
+   * display-swap-optimised version with system fallbacks if either
+   * isn't loaded yet.
+   *
+   * --font-display → Space Grotesk (Google Fonts stand-in for
+   *   Cabinet Grotesk / Clash Display until local font files are
+   *   sourced from https://www.fontshare.com/fonts/cabinet-grotesk)
+   * --font-sans    → Plus Jakarta Sans (Google Fonts — production ready)
+   */
+  --font-display: var(--font-cabinet), 'Space Grotesk',    ui-sans-serif, sans-serif;
+  --font-sans:    var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Cascadia Code', 'SF Mono', 'Fira Code',  ui-monospace,  monospace;
+
+  /* ── Border radii (override Tailwind defaults) ────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 22px;
+
+  /* ── Animation shorthands ─────────────────────────────────────── */
+  /*
+   * These reference @keyframes defined in section 4.
+   * Generates animate-{name} Tailwind utility classes.
+   * The --anim-delay CSS property (section 5) overrides delay per element.
+   */
+  --animate-fade-in:    fadeIn      0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in:   scaleIn     0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-in:   slideIn     0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-left: slideInLeft 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-card-enter: cardEnter   0.50s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-in:   toastIn     0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-out:  toastOut    0.38s ease                           forwards;
+  --animate-spin:       spin        0.70s linear                         infinite;
+  --animate-pulse-glow: pulseGlow   3.0s  ease-in-out                    infinite;
+
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   2.  CSS CUSTOM PROPERTY API  ( Component Layer )
+   ───────────────────────────────────────────────────────────────────
+   Ergonomic --var-name aliases consumed by all component CSS Modules.
+   Two-tier naming strategy:
+     a) Aliases → @theme tokens:  var(--bg-main) = var(--color-bg-main)
+        Single source of truth; change @theme → everything updates.
+     b) Non-utility tokens:       spacing, motion curves, shadows,
+        layout constants — not registered in @theme because Tailwind
+        doesn't need to generate classes for them.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+
+  /* ── Color aliases ────────────────────────────────────────────── */
+  --bg-main:       var(--color-bg-main);
+  --surface-card:  var(--color-surface-card);
+  --accent-purple: var(--color-accent-purple);
+  --accent-green:  var(--color-accent-green);
+  --text-primary:  var(--color-text-primary);
+  --text-muted:    var(--color-text-muted);
+  --text-dark:     var(--color-text-dark);
+
+  --bg-hover:          var(--color-hover);
+  --bg-active:         var(--color-active);
+  --accent-purple-dim: var(--color-purple-dim);
+  --accent-green-dim:  var(--color-green-dim);
+  --border-subtle:     var(--color-border-subtle);
+
+  /* Composite shadow (can't live in @theme — not a single value) */
+  --shadow-card:
+    0 2px 24px rgba(0, 0, 0, 0.52),
+    0 0   0   1px var(--border-subtle);
+
+  /* ── Typography aliases ───────────────────────────────────────── */
+  /*
+   * --font-display is injected by @theme above; components use it directly.
+   * --font-body aliases --font-sans for backward compatibility with all
+   * Phase 0 components that reference var(--font-body).
+   */
+  --font-body: var(--font-sans);   /* backward-compat alias → Plus Jakarta Sans */
+
+  /* ── 4-point spacing scale ────────────────────────────────────── */
+  --sp-1:  0.25rem;    /*  4 px */
+  --sp-2:  0.5rem;     /*  8 px */
+  --sp-3:  0.75rem;    /* 12 px */
+  --sp-4:  1rem;       /* 16 px */
+  --sp-5:  1.25rem;    /* 20 px */
+  --sp-6:  1.5rem;     /* 24 px */
+  --sp-8:  2rem;       /* 32 px */
+  --sp-10: 2.5rem;     /* 40 px */
+  --sp-12: 3rem;       /* 48 px */
+  --sp-16: 4rem;       /* 64 px */
+
+  /* ── Border radius aliases ────────────────────────────────────── */
+  --r-sm: var(--radius-sm);   /* 4 px  */
+  --r-md: var(--radius-md);   /* 8 px  */
+  --r-lg: var(--radius-lg);   /* 14 px */
+  --r-xl: var(--radius-xl);   /* 22 px */
+
+  /* ── Motion ───────────────────────────────────────────────────── */
+  /*
+   * Three named easing curves cover all interaction types in Zenith:
+   *   --ease-expo   →  snappy deceleration; page/view entrances
+   *   --ease-smooth →  Material-style; general state transitions
+   *   --ease-nav    →  Step 0.4 spec; nav item hover (0.4 s duration)
+   */
+  --ease-expo:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-nav:    cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  --dur-fast:    110ms;
+  --dur-base:    220ms;
+  --dur-slow:    360ms;
+
+  /* Nav hover transition (Step 0.4) — consumed directly in CSS Modules */
+  --transition-nav:
+    background-color 0.4s var(--ease-nav),
+    color            0.3s ease,
+    box-shadow       0.4s var(--ease-nav);
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  --sidebar-w: 248px;
+
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   3.  GLOBAL RESET & BASE ELEMENT STYLES
+   ═══════════════════════════════════════════════════════════════════ */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -8,13 +202,195 @@
 
 html {
   height: 100%;
+  /*
+   * color-scheme: dark instructs the browser to render its own chrome
+   * (scrollbars, form controls, date pickers) in a dark style that
+   * matches our Cosmos Black surface without any custom override.
+   */
+  color-scheme: dark;
 }
 
 body {
   min-height: 100%;
-  background-color: #090909;
-  color: #f5f5f5;
-  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global default scrollbar — overridden per-container by .scrollbar-zen */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  {
+  background: var(--border-subtle);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-purple-dim); }
+::-webkit-scrollbar-corner      { background: transparent; }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   4.  KEYFRAME LIBRARY
+   ───────────────────────────────────────────────────────────────────
+   All @keyframes referenced by @theme --animate-* tokens must be
+   defined here so the generated animate-{name} classes resolve.
+   Also used directly by legacy .anim-* classes in section 5.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Entrance ─────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+/* ── Auth overlay card (Step 0.5) ─────────────────────────────────── */
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Toast notifications (Step 0.5) ──────────────────────────────── */
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px) scale(0.94); }
+  to   { opacity: 1; transform: translateX(0)    scale(1);    }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0)    scale(1);    }
+  to   { opacity: 0; transform: translateX(24px) scale(0.94); }
+}
+
+/* ── Continuous ───────────────────────────────────────────────────── */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 18px rgba(124, 149, 255, 0.15); }
+  50%       { box-shadow: 0 0 36px rgba(124, 149, 255, 0.30); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   5.  @LAYER UTILITIES — Scrollbar helpers + Animation classes
+   ───────────────────────────────────────────────────────────────────
+   Placed in Tailwind's utilities layer so they:
+     • Respond correctly to variants (hover:, dark:, etc.)
+     • Are tree-shaken when unused
+     • Can be overridden by Tailwind utilities via normal cascade
+   ═══════════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+
+  /* ── Scrollbar variants ─────────────────────────────────────────── */
+  /*
+   * .scrollbar-none   — hidden scrollbar (still scrollable)
+   * .scrollbar-zen    — themed 5px track matching surface colours
+   * .scrollbar-thin   — system thin variant (Firefox scrollbar-width)
+   */
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  .scrollbar-zen {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-subtle) transparent;
+  }
+  .scrollbar-zen::-webkit-scrollbar         { width: 5px; height: 5px; }
+  .scrollbar-zen::-webkit-scrollbar-track   { background: transparent; }
+  .scrollbar-zen::-webkit-scrollbar-thumb   {
+    background:    var(--border-subtle);
+    border-radius: 99px;
+    transition:    background var(--dur-fast) ease;
+  }
+  .scrollbar-zen::-webkit-scrollbar-thumb:hover { background: var(--accent-purple-dim); }
+  .scrollbar-zen::-webkit-scrollbar-corner      { background: transparent; }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-purple-dim) transparent;
+  }
+
+  /* ── Animation entrance helpers ─────────────────────────────────── */
+  /*
+   * Usage:  className="anim-slide-in delay-2"
+   *
+   * The --anim-delay custom property is set by .delay-* modifiers.
+   * This pattern lets delay helpers compose cleanly with any anim-*
+   * class without requiring separate class variants per delay value.
+   *
+   * These complement the Tailwind animate-* classes from @theme —
+   * use whichever is more ergonomic in context.
+   */
+
+  .anim-fade-in {
+    animation: fadeIn  var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
+  }
+  .anim-scale-in {
+    animation: scaleIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
+  }
+  .anim-slide-in {
+    animation: slideIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
+  }
+
+  /* Stagger delay modifiers — override --anim-delay per element */
+  .delay-1 { --anim-delay:  60ms; }
+  .delay-2 { --anim-delay: 140ms; }
+  .delay-3 { --anim-delay: 240ms; }
+  .delay-4 { --anim-delay: 340ms; }
+
+  /* ── Focus ring ─────────────────────────────────────────────────── */
+  /*
+   * Global accessible focus ring using the accent colour.
+   * Applied where [data-focus-ring] is set, avoiding the blanket
+   * outline-none antipattern.
+   */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
+  }
+
+  /* ── Surface helpers ────────────────────────────────────────────── */
+  /*
+   * Composable surface tints used by auth overlay + onboarding cards.
+   * Declared here so they're available as Tailwind utility classes.
+   */
+  .surface-glass {
+    background: rgba(20, 25, 35, 0.72);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .surface-card {
+    background-color: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+  }
+
 }

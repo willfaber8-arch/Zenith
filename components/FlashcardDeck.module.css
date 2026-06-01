@@ -1,0 +1,323 @@
+/* ════════════════════════════════════════════════════════════════
+   FlashcardDeck — 3D Two-Sided Flip Card System
+   Phase 3 · Step 3.5
+   ════════════════════════════════════════════════════════════════ */
+
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Header row ──────────────────────────────────────────────── */
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.counter {
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    600;
+  letter-spacing: 0.08em;
+  color:          var(--text-dark);
+  white-space:    nowrap;
+  flex-shrink:    0;
+}
+
+.progressWrap {
+  flex:          1;
+  height:        3px;
+  background:    rgba(124, 149, 255, 0.08);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.progressFill {
+  height:        100%;
+  background:    var(--accent-green);
+  border-radius: 99px;
+  transition:    width 400ms var(--ease-expo);
+}
+
+.resetBtn {
+  flex-shrink:   0;
+  padding:       3px 8px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.4375rem;
+  font-weight:   600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor:        pointer;
+  transition:    color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.resetBtn:hover {
+  color:        var(--text-muted);
+  border-color: rgba(155, 163, 196, 0.25);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   3D FLIP CARD SCENE
+   ════════════════════════════════════════════════════════════════
+
+   Technique:
+     1. .scene sets perspective so the 3D depth is perceived
+     2. .cardInner has transform-style: preserve-3d and carries the
+        flip transition on the transform property
+     3. .front is visible by default (backface-visibility: hidden
+        hides it once it has rotated past 90deg)
+     4. .back is pre-rotated 180deg and hidden by default;
+        becomes visible when .cardInner reaches 180deg rotation
+*/
+
+.scene {
+  perspective:  1200px;
+  cursor:       pointer;
+  user-select:  none;
+  border-radius: var(--r-lg);
+  /* Focusable card gets a keyboard outline */
+  outline:      none;
+}
+
+.scene:focus-visible {
+  outline:        2px solid var(--accent-purple-dim);
+  outline-offset: 3px;
+}
+
+.cardInner {
+  position:        relative;
+  width:           100%;
+  height:          220px;
+  transform-style: preserve-3d;
+  transition:      transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cardInner.flipped {
+  transform: rotateY(180deg);
+}
+
+/* ── Card faces ──────────────────────────────────────────────── */
+
+.face {
+  position:            absolute;
+  inset:               0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius:       var(--r-lg);
+  display:             flex;
+  flex-direction:      column;
+  align-items:         center;
+  justify-content:     center;
+  padding:             var(--sp-8) var(--sp-10);
+  gap:                 var(--sp-4);
+}
+
+/* Front — Question surface */
+.front {
+  background: var(--surface-card);
+  border:     1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+/* Back — Answer surface (green accent tint) */
+.back {
+  background: rgba(11, 13, 19, 0.92);
+  border:     1px solid rgba(82, 204, 163, 0.20);
+  box-shadow:
+    0 2px 24px rgba(0, 0, 0, 0.52),
+    0 0   0   1px rgba(82, 204, 163, 0.12);
+  transform:  rotateY(180deg);  /* Pre-rotate: hidden until deck flips */
+}
+
+/* ── Face tag (Q / A) ────────────────────────────────────────── */
+
+.faceTag {
+  font-family:    var(--font-display);
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding:        3px 9px;
+  border-radius:  var(--r-sm);
+  flex-shrink:    0;
+}
+
+.front .faceTag {
+  background: rgba(124, 149, 255, 0.08);
+  color:      var(--accent-purple);
+  border:     1px solid rgba(124, 149, 255, 0.16);
+}
+
+.back .faceTag {
+  background: rgba(82, 204, 163, 0.08);
+  color:      var(--accent-green);
+  border:     1px solid rgba(82, 204, 163, 0.18);
+}
+
+/* ── Card text ───────────────────────────────────────────────── */
+
+.cardText {
+  font-family: var(--font-body);
+  font-size:   0.9375rem;
+  line-height: 1.55;
+  color:       var(--text-primary);
+  text-align:  center;
+  margin:      0;
+  /* Graceful overflow for very long answers */
+  overflow-y:  auto;
+  max-height:  140px;
+  scrollbar-width: thin;
+}
+
+.back .cardText {
+  color: var(--text-muted);
+}
+
+/* ── Hint label ──────────────────────────────────────────────── */
+
+.hint {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  letter-spacing: 0.06em;
+  color:          var(--text-dark);
+  text-align:     center;
+  margin:         0;
+  text-transform: uppercase;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ════════════════════════════════════════════════════════════════ */
+
+.nav {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+}
+
+.navBtn {
+  flex-shrink:   0;
+  padding:       7px 14px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-muted);
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  font-weight:   500;
+  cursor:        pointer;
+  transition:
+    color           var(--dur-fast) ease,
+    border-color    var(--dur-fast) ease,
+    background      var(--dur-fast) ease;
+  white-space: nowrap;
+}
+
+.navBtn:hover:not(:disabled) {
+  color:        var(--text-primary);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+.navBtn:disabled {
+  opacity: 0.28;
+  cursor:  not-allowed;
+}
+
+/* ── Dot progress row ────────────────────────────────────────── */
+
+.dotRow {
+  flex:            1;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-wrap:       wrap;
+  gap:             4px;
+  overflow:        hidden;
+}
+
+.dot {
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  border:        none;
+  background:    rgba(124, 149, 255, 0.14);
+  cursor:        pointer;
+  padding:       0;
+  transition:
+    background     var(--dur-base) ease,
+    transform      var(--dur-fast) ease,
+    box-shadow     var(--dur-fast) ease;
+}
+
+.dot:hover {
+  transform:  scale(1.4);
+  background: rgba(124, 149, 255, 0.35);
+}
+
+/* Currently displayed card */
+.dotCurrent {
+  background: var(--accent-purple);
+  transform:  scale(1.2);
+  box-shadow: 0 0 6px rgba(124, 149, 255, 0.50);
+}
+
+/* Cards the user has already flipped */
+.dotReviewed:not(.dotCurrent) {
+  background: rgba(82, 204, 163, 0.40);
+}
+
+.dotOverflow {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  color:          var(--text-dark);
+  letter-spacing: 0.04em;
+  padding-left:   var(--sp-1);
+}
+
+/* ── Completion banner ───────────────────────────────────────── */
+
+.completeBanner {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-5);
+  background:    rgba(82, 204, 163, 0.05);
+  border:        1px solid rgba(82, 204, 163, 0.18);
+  border-radius: var(--r-md);
+  font-family:   var(--font-body);
+  font-size:     0.75rem;
+  color:         var(--accent-green);
+  animation:     fadeIn 0.40s var(--ease-expo) both;
+}
+
+.completeIcon {
+  font-size: 0.875rem;
+}
+
+.completeReset {
+  margin-left: auto;
+  background:  transparent;
+  border:      1px solid rgba(82, 204, 163, 0.25);
+  border-radius: var(--r-sm);
+  color:       var(--accent-green);
+  font-family: var(--font-mono);
+  font-size:   0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding:     3px 9px;
+  cursor:      pointer;
+  transition:  background var(--dur-fast) ease;
+}
+
+.completeReset:hover {
+  background: rgba(82, 204, 163, 0.10);
+}

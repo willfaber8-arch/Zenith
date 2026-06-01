@@ -1,0 +1,266 @@
+/* ════════════════════════════════════════════════════════════════
+   BrbBurnRate — Phase 4 · Step 4.7
+   Zenith Essentials theme: Slate-Indigo surfaces + purple accent
+   Status: healthy (purple) → caution (amber) → critical (rose + pulse)
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Essentials design tokens ────────────────────────────────── */
+
+.burnCard {
+  --v-card:       #141923;
+  --v-surface:    #0f1219;
+  --v-border:     rgba(124, 149, 255, 0.10);
+  --v-accent:     var(--accent-purple);
+  --v-accent-dim: rgba(124, 149, 255, 0.12);
+  --v-muted:      var(--text-muted);
+  --v-text:       var(--text-primary);
+  --v-caution:    #f59e0b;
+  --v-critical:   #f87171;
+
+  background: var(--v-card);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition:
+    border-color 400ms var(--ease-smooth),
+    box-shadow   400ms var(--ease-smooth);
+}
+
+.burnCard[data-status="caution"] {
+  border-color: rgba(245, 158, 11, 0.28);
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.04);
+}
+
+.burnCard[data-status="critical"] {
+  border-color: rgba(248, 113, 113, 0.40);
+  animation: criticalBorderPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes criticalBorderPulse {
+  0%, 100% { box-shadow: 0 0 0     rgba(248, 113, 113, 0); }
+  50%       { box-shadow: 0 0 32px rgba(248, 113, 113, 0.14); }
+}
+
+/* ── Card header ──────────────────────────────────────────────── */
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6) 0;
+}
+
+.cardEyebrow {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+  margin-bottom: 3px;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--v-text);
+}
+
+.statusBadge {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
+  transition: color 300ms, background 300ms, border-color 300ms;
+}
+
+.status_healthy  { color: var(--accent-purple); background: rgba(124,149,255,0.12); border-color: rgba(124,149,255,0.30); }
+.status_caution  { color: #f59e0b; background: rgba(245,158,11,0.12);  border-color: rgba(245,158,11,0.30);  }
+.status_critical { color: #f87171; background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.30); }
+
+/* ── Primary metric ───────────────────────────────────────────── */
+
+.metricSection {
+  padding: var(--sp-7) var(--sp-6) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+}
+
+.limitRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.limitAmount {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 5.5vw, 4.25rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--accent-purple);
+  transition: color 400ms var(--ease-smooth);
+}
+
+.limitAmount[data-status="caution"]  { color: #f59e0b; }
+.limitAmount[data-status="critical"] { color: #f87171; }
+
+.limitUnit {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--v-muted);
+  white-space: nowrap;
+}
+
+.limitSubLabel {
+  font-size: 0.78rem;
+  color: var(--v-muted);
+  letter-spacing: 0.02em;
+}
+
+.statusDesc {
+  font-size: 0.78rem;
+  color: var(--v-muted);
+  margin: 0;
+  padding: 4px 12px;
+  background: rgba(124, 149, 255, 0.05);
+  border-radius: var(--r-sm);
+}
+
+/* ── Stats row ────────────────────────────────────────────────── */
+
+.statsRow {
+  display: flex;
+  border-top: 1px solid rgba(124, 149, 255, 0.06);
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--sp-3) var(--sp-2);
+  border-right: 1px solid rgba(124, 149, 255, 0.06);
+}
+
+.statItem:last-child { border-right: none; }
+
+.statNum {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--v-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statSub {
+  font-size: 0.62rem;
+  color: var(--v-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Input section ────────────────────────────────────────────── */
+
+.inputSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid rgba(124, 149, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 700px) {
+  .inputSection { grid-template-columns: 1fr; }
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.inputLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.inputHint {
+  font-size: 0.62rem;
+  color: rgba(155, 163, 196, 0.55);
+  line-height: 1.4;
+}
+
+/* Dollar-prefixed number input */
+
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.inputWrapper:focus-within {
+  border-color: rgba(124, 149, 255, 0.36);
+}
+
+.inputPrefix {
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--v-muted);
+  flex-shrink: 0;
+  user-select: none;
+  line-height: 1;
+}
+
+.input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--v-text);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) 0;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date picker */
+
+.dateInput {
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  color: var(--v-text);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--sp-2) var(--sp-3);
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-smooth);
+  /* Tint the calendar icon to match theme */
+  color-scheme: dark;
+}
+
+.dateInput:focus {
+  border-color: rgba(124, 149, 255, 0.36);
+}

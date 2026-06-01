@@ -1,0 +1,66 @@
+/* ════════════════════════════════════════════════════════════
+   Toast — Phase 0 · Step 0.5
+   Fixed bottom-right notification stack.
+   ════════════════════════════════════════════════════════════ */
+
+.container {
+  position: fixed;
+  bottom: var(--sp-6);
+  right:  var(--sp-6);
+  z-index: 600;
+  display: flex;
+  flex-direction: column-reverse;   /* newest on top */
+  gap: var(--sp-2);
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px var(--border-subtle);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  max-width: 320px;
+  animation: toastIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.exiting {
+  animation: toastOut 0.38s ease forwards;
+}
+
+/* Type-specific left-border tint via box-shadow accent */
+.info    { box-shadow: 0 8px 32px rgba(0,0,0,.45), inset 2px 0 0 var(--accent-purple-dim); }
+.success { box-shadow: 0 8px 32px rgba(0,0,0,.45), inset 2px 0 0 rgba(82,204,163,0.45); }
+.error   { box-shadow: 0 8px 32px rgba(0,0,0,.45), inset 2px 0 0 rgba(255,100,100,0.45); }
+
+/* Dot indicator */
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.info    .dot { background: var(--accent-purple); }
+.success .dot { background: var(--accent-green);  }
+.error   .dot { background: rgba(255, 100, 100, 0.9); }
+
+/* ── Keyframes ────────────────────────────────────────────── */
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px) scale(0.94); }
+  to   { opacity: 1; transform: translateX(0)    scale(1);    }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0)    scale(1);    }
+  to   { opacity: 0; transform: translateX(24px) scale(0.94); }
+}

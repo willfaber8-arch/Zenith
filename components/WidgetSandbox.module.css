@@ -1,0 +1,325 @@
+/* ════════════════════════════════════════════════════════════
+   WidgetSandbox — Phase 1 · Step 1.4
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Section wrapper ──────────────────────────────────────── */
+
+.sandbox {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-5);
+  position:       relative;  /* anchor for the manage panel */
+}
+
+/* ── Header row ───────────────────────────────────────────── */
+
+.sandboxHeader {
+  display:         flex;
+  align-items:     flex-end;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+}
+
+.sandboxEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-1);
+}
+
+.sandboxTitle {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height:    1;
+}
+
+/* ── Manage button ────────────────────────────────────────── */
+
+.manageBtn {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  padding:        var(--sp-2) var(--sp-4);
+  border-radius:  var(--r-xl);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-dark);
+  font-family:    var(--font-display);
+  font-size:      0.6875rem;
+  font-weight:    600;
+  letter-spacing: 0.04em;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:
+    background-color var(--dur-fast),
+    color            var(--dur-fast),
+    border-color     var(--dur-fast);
+}
+
+.manageBtn:hover {
+  background-color: var(--bg-hover);
+  border-color:     var(--accent-purple-dim);
+  color:            var(--text-muted);
+}
+
+.manageBtnIcon {
+  font-size:   0.875rem;
+  line-height: 1;
+}
+
+/* ── Widget grid ──────────────────────────────────────────── */
+
+.grid {
+  display:               grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap:                   var(--sp-4);
+  align-items:           start;  /* prevents cells from stretching on exit */
+}
+
+/* ── Widget animation wrappers ────────────────────────────── */
+
+/*
+ * widgetIdle — no animation (initial page load state)
+ * widgetEnter — scale + fade in on user toggle
+ * widgetExit  — scale + fade out on user toggle
+ *
+ * The wrapper fills its grid cell completely so the animation
+ * does not distort neighbouring cells.
+ */
+
+.widgetIdle {
+  /* intentionally empty */
+}
+
+.widgetEnter {
+  animation: sandboxEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.widgetExit {
+  animation:      sandboxExit 0.22s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes sandboxEnter {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes sandboxExit {
+  from { opacity: 1; transform: scale(1)    translateY(0);   }
+  to   { opacity: 0; transform: scale(0.96) translateY(4px); }
+}
+
+/* ── Skeleton loading state ───────────────────────────────── */
+
+.skeletonGrid {
+  height:        220px;
+  border-radius: var(--r-lg);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  animation:     pulseGlow 2s ease-in-out infinite;
+  opacity:       0.45;
+}
+
+/* ── Empty-grid fallback ──────────────────────────────────── */
+
+.emptyGrid {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  min-height:      160px;
+  border:          1px dashed var(--border-subtle);
+  border-radius:   var(--r-lg);
+  padding:         var(--sp-8);
+  animation:       fadeIn var(--dur-slow) var(--ease-expo) both;
+}
+
+.emptyGridIcon {
+  font-size:  1.5rem;
+  opacity:    0.25;
+  line-height: 1;
+}
+
+.emptyGridText {
+  font-size:   0.75rem;
+  color:       var(--text-dark);
+  text-align:  center;
+  line-height: 1.6;
+}
+
+.inlineManageLink {
+  background:  transparent;
+  border:      none;
+  color:       var(--accent-purple);
+  font:        inherit;
+  cursor:      pointer;
+  padding:     0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Manage Sandbox Panel
+   ════════════════════════════════════════════════════════════ */
+
+/* Translucent backdrop — closes panel on click */
+.panelBackdrop {
+  position: fixed;
+  inset:    0;
+  z-index:  300;
+}
+
+.managePanel {
+  position:      absolute;
+  top:           calc(100% + var(--sp-2)); /* below the manage button */
+  right:         0;
+  z-index:       301;
+  width:         clamp(240px, 72vw, 320px);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.6),
+    0 0 0 1px var(--border-subtle);
+  animation:     panelEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow:      hidden;
+}
+
+@keyframes panelEnter {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* ── Panel header ─────────────────────────────────────────── */
+
+.panelHeader {
+  padding:       var(--sp-5) var(--sp-5) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.panelEyebrow {
+  font-size:      0.4375rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-1);
+}
+
+.panelTitle {
+  font-family:    var(--font-display);
+  font-size:      0.875rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Toggle rows ──────────────────────────────────────────── */
+
+.toggleList {
+  list-style:     none;
+  display:        flex;
+  flex-direction: column;
+  padding:        var(--sp-3) var(--sp-5);
+  gap:            var(--sp-1);
+}
+
+.toggleRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--sp-2) 0;
+}
+
+.toggleLabel {
+  font-size:   0.75rem;
+  font-weight: 500;
+  color:       var(--text-muted);
+}
+
+/* ── Pill toggle ──────────────────────────────────────────── */
+
+.togglePill {
+  position:      relative;
+  width:         34px;
+  height:        18px;
+  border-radius: 99px;
+  border:        none;
+  cursor:        pointer;
+  transition:    background-color 0.25s var(--ease-smooth);
+  flex-shrink:   0;
+  /* Focus ring via outline */
+  outline-offset: 2px;
+}
+
+.togglePill:focus-visible {
+  outline: 2px solid var(--accent-purple);
+}
+
+.toggleOn {
+  background-color: var(--accent-purple);
+}
+
+.toggleOff {
+  background-color: var(--border-subtle);
+}
+
+.toggleThumb {
+  position:      absolute;
+  top:           2px;
+  width:         14px;
+  height:        14px;
+  border-radius: 50%;
+  background:    var(--bg-main);
+  box-shadow:    0 1px 3px rgba(0, 0, 0, 0.4);
+  transition:    left 0.2s var(--ease-smooth);
+}
+
+.toggleOn  .toggleThumb { left: calc(100% - 16px); }
+.toggleOff .toggleThumb { left: 2px; }
+
+/* ── Done button ──────────────────────────────────────────── */
+
+.panelDone {
+  display:      block;
+  width:        calc(100% - var(--sp-10));
+  margin:       0 var(--sp-5) var(--sp-5);
+  padding:      var(--sp-2) 0;
+  border-radius: var(--r-md);
+  border:       1px solid var(--border-subtle);
+  background:   transparent;
+  color:        var(--text-muted);
+  font-family:  var(--font-display);
+  font-size:    0.6875rem;
+  font-weight:  600;
+  letter-spacing: 0.04em;
+  cursor:       pointer;
+  transition:
+    background-color var(--dur-fast),
+    color            var(--dur-fast);
+}
+
+.panelDone:hover {
+  background-color: var(--bg-hover);
+  color:            var(--text-primary);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .managePanel {
+    position:   fixed;
+    bottom:     var(--sp-6);
+    right:      var(--sp-4);
+    left:       var(--sp-4);
+    top:        auto;
+    width:      auto;
+  }
+}
