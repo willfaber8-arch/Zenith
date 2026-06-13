@@ -24,10 +24,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type GpaSemester, type GpaCourse } from '@/lib/db'
 import {
   calcGpa, fmtGpa, gpaTier, gradeTier, roundGpa,
+  gradeFromIndexScale, indexFromGradeScale,
   gradeFromIndex, indexFromGrade,
+  getGradeList, getGradePoints, getGpaMax,
   GRADES, GRADE_POINTS,
-  type GradeKey, type GpaTier,
+  type GradeKey, type GpaTier, type ScaleType,
 } from '@/utils/gpaMath'
+import type { GpaScale } from '@/config/universities'
 import styles from './GpaSimulator.module.css'
 
 /* ── Constants ───────────────────────────────────────────────── */
@@ -639,7 +642,8 @@ function GpaMetricPanel({
    MAIN EXPORT — GpaSimulator
    ════════════════════════════════════════════════════════════════ */
 
-export default function GpaSimulator() {
+export default function GpaSimulator({ gpaScale = '4.3' }: { gpaScale?: GpaScale }) {
+  const scale: ScaleType = gpaScale
   /* ── IDB data ────────────────────────────────────────────── */
   const rawSemesters = useLiveQuery(
     () => db?.gpaSemesters.orderBy('displayOrder').toArray() ?? [],
@@ -691,10 +695,10 @@ export default function GpaSimulator() {
       grade:   sliderOverrides.get(c.id!) ?? c.grade,
     }))), [projected, coursesBySem, sliderOverrides])
 
-  const historicalSummary = useMemo(() => calcGpa(historicalCourses), [historicalCourses])
+  const historicalSummary = useMemo(() => calcGpa(historicalCourses, scale), [historicalCourses, scale])
   const cumulativeSummary = useMemo(
-    () => calcGpa([...historicalCourses, ...projectedCourses]),
-    [historicalCourses, projectedCourses],
+    () => calcGpa([...historicalCourses, ...projectedCourses], scale),
+    [historicalCourses, projectedCourses, scale],
   )
 
   const isEmpty = semesters.length === 0

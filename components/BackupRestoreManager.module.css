@@ -1,0 +1,198 @@
+/* BackupRestoreManager.module.css — Phase 15.1 · Eject Button */
+
+/* ── Root panel ───────────────────────────────────────────────── */
+.panel {
+  background:    #0d0f12;
+  border:        1px solid rgba(194, 169, 128, 0.12);
+  border-radius: var(--r-lg);
+  overflow:      hidden;
+}
+
+/* ── Two-column action row ────────────────────────────────────── */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+@media (max-width: 640px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Individual action cell ───────────────────────────────────── */
+.cell {
+  padding:     var(--sp-5) var(--sp-6);
+  display:     flex;
+  flex-direction: column;
+  gap:         var(--sp-3);
+}
+
+.cell + .cell {
+  border-left: 1px solid rgba(194, 169, 128, 0.08);
+}
+
+@media (max-width: 640px) {
+  .cell + .cell {
+    border-left:  none;
+    border-top:   1px solid rgba(194, 169, 128, 0.08);
+  }
+}
+
+/* ── Cell header label ────────────────────────────────────────── */
+.cellLabel {
+  font-family:   var(--font-mono);
+  font-size:     0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:         rgba(194, 169, 128, 0.5);
+  margin:        0;
+}
+
+/* ── Cell description text ────────────────────────────────────── */
+.cellDesc {
+  font-size:   0.72rem;
+  line-height: 1.55;
+  color:       var(--text-muted);
+  margin:      0;
+  flex:        1;
+}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.ejectBtn,
+.restoreBtn {
+  display:         inline-flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-2) var(--sp-4);
+  border-radius:   var(--r-sm);
+  font-family:     var(--font-mono);
+  font-size:       0.68rem;
+  letter-spacing:  0.04em;
+  cursor:          pointer;
+  transition:
+    background  var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    color        var(--dur-base) var(--ease-smooth),
+    opacity      var(--dur-base) var(--ease-smooth);
+}
+
+/* Export — parchment outline style */
+.ejectBtn {
+  background:  transparent;
+  border:      1px solid rgba(194, 169, 128, 0.28);
+  color:       #e5c17c;
+}
+
+.ejectBtn:hover:not(:disabled) {
+  background:    rgba(194, 169, 128, 0.07);
+  border-color:  rgba(194, 169, 128, 0.50);
+}
+
+.ejectBtn:active:not(:disabled) {
+  background:  rgba(194, 169, 128, 0.13);
+}
+
+.ejectBtn:disabled,
+.restoreBtn:disabled {
+  opacity: 0.4;
+  cursor:  not-allowed;
+}
+
+/* Import — filled parchment */
+.restoreBtn {
+  background:  rgba(194, 169, 128, 0.10);
+  border:      1px solid rgba(194, 169, 128, 0.22);
+  color:       #e5c17c;
+}
+
+.restoreBtn:hover:not(:disabled) {
+  background:   rgba(194, 169, 128, 0.18);
+  border-color: rgba(194, 169, 128, 0.42);
+}
+
+.restoreBtn:active:not(:disabled) {
+  background: rgba(194, 169, 128, 0.25);
+}
+
+/* Hidden native file input */
+.fileInput {
+  display: none;
+}
+
+/* ── Status strip ─────────────────────────────────────────────── */
+.status {
+  padding:       var(--sp-3) var(--sp-6);
+  border-top:    1px solid rgba(194, 169, 128, 0.08);
+  font-family:   var(--font-mono);
+  font-size:     0.62rem;
+  letter-spacing: 0.08em;
+  min-height:    36px;
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+}
+
+/* ── Pulsing indicator dot during restore ─────────────────────── */
+.dot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.dotIdle {
+  background: rgba(194, 169, 128, 0.20);
+}
+
+.dotWorking {
+  background:       #e5c17c;
+  animation:        restorePulse 900ms ease-in-out infinite;
+}
+
+.dotSuccess {
+  background: var(--accent-green);
+}
+
+.dotError {
+  background: #ff5c5c;
+}
+
+@keyframes restorePulse {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50%      { opacity: 0.35; transform: scale(0.72); }
+}
+
+/* ── Status text ──────────────────────────────────────────────── */
+.statusIdle {
+  color: rgba(194, 169, 128, 0.35);
+}
+
+.statusWorking {
+  color: #e5c17c;
+  animation: textBreathe 1.4s ease-in-out infinite;
+}
+
+@keyframes textBreathe {
+  0%, 100% { opacity: 1;    }
+  50%      { opacity: 0.55; }
+}
+
+.statusSuccess {
+  color: var(--accent-green);
+}
+
+.statusError {
+  color:      #ff5c5c;
+  flex-wrap:  wrap;
+  line-height: 1.4;
+}
+
+/* ── Export success flash ─────────────────────────────────────── */
+.exportNote {
+  font-size:   0.65rem;
+  color:       rgba(194, 169, 128, 0.60);
+  margin:      0;
+  font-family: var(--font-mono);
+}

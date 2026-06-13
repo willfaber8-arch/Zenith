@@ -10,10 +10,27 @@ export interface Flashcard {
   answer:   string   // back face  — complete standalone sentence
 }
 
+/** A single practice test question with answer choices. */
+export interface PracticeQuestion {
+  id:       string
+  question: string
+  choices:  string[]   // A–D options
+  correct:  number     // 0-indexed index of the correct choice
+  explain:  string     // brief explanation of why it's correct
+}
+
+/** What the dock should generate */
+export interface GenerateOptions {
+  summary:      boolean
+  flashcards:   boolean
+  practiceTest: boolean
+}
+
 /** Structured response object from /api/study-ai. */
 export interface StudyAiResponse {
-  markdownSummary: string      // Markdown-formatted study summary
-  flashcards:      Flashcard[] // 10–15 review cards
+  markdownSummary: string           // Markdown-formatted study summary (may be empty string if not requested)
+  flashcards:      Flashcard[]      // review cards (may be empty array if not requested)
+  practiceTest?:   PracticeQuestion[] // MCQ test (only if requested)
 }
 
 /** Error payload returned on non-2xx. */
@@ -26,6 +43,7 @@ export interface StudySession {
   title:           string
   markdownSummary: string
   flashcards:      Flashcard[]
+  practiceTest?:   PracticeQuestion[]
   createdAt:       number   // Unix ms
   noteId?:         number   // IDB id of the quickNotes row that cached this session
 }

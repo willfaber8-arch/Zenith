@@ -25,15 +25,6 @@ export const MOCK_SESSION = {
   timestamp:    Date.now(),
 } as const
 
-/* ── RPG math constants (mirrors utils/rpgEngine.ts) ─────────── */
-
-/** EXP_Required = ceil(100 × Level^1.5) — must stay in sync with rpgEngine.ts */
-export const expRequired = (level: number): number =>
-  Math.ceil(100 * Math.pow(level, 1.5))
-
-/** Base XP for high + critical priority assignments */
-export const HIGH_PRIORITY_XP = 75
-
 /* ── Auth injection ───────────────────────────────────────────── */
 
 /**
@@ -77,30 +68,23 @@ export async function waitForBridge(page: Page): Promise<void> {
  */
 export async function seedProfile(
   page: Page,
-  opts: { expPoints?: number; currentLevel?: number; healthPoints?: number } = {},
 ): Promise<void> {
-  await page.evaluate(async (o) => {
+  await page.evaluate(async () => {
     const db = window.__zenith!.db
 
-    /* Wait for the profile row to exist (BadgeSyncEffect seeds it on mount) */
     for (let i = 0; i < 20; i++) {
       if (await db.userProfile.get(1)) break
       await new Promise(r => setTimeout(r, 100))
     }
 
-    /* Overwrite with test-controlled values */
     await db.userProfile.put({
       id:              1,
       userName:        'E2E Test Runner',
       universityName:  '',
       majorIdentifier: '',
-      expPoints:       o.expPoints    ?? 0,
-      currentLevel:    o.currentLevel ?? 1,
-      healthPoints:    o.healthPoints ?? 100,
-      goldPoints:      0,
       lastActiveAt:    Date.now(),
     })
-  }, opts)
+  })
 }
 
 /* ── Assignment management ────────────────────────────────────── */

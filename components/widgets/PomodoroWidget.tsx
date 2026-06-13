@@ -1,21 +1,14 @@
 'use client'
-/**
- * PomodoroWidget — Phase 1 stub
- * ────────────────────────────────────────────────────────────────
- * Displays the focus timer UI shell. Timer logic and session
- * persistence will be wired in Phase 2 (Study Shield module).
- * The UI is fully styled and ready to receive state from a
- * dedicated usePomodoroTimer() hook.
- */
 
 import { useState, useEffect, useRef } from 'react'
+import { useNav } from '@/lib/NavContext'
 import styles from './Widget.module.css'
 
-const FOCUS_SECS  = 25 * 60   // 25 minutes
-const BREAK_SECS  = 5  * 60   // 5 minutes
+const FOCUS_SECS = 25 * 60
+const BREAK_SECS = 5  * 60
 
 function fmtSecs(s: number): string {
-  const m = Math.floor(s / 60).toString().padStart(2, '0')
+  const m   = Math.floor(s / 60).toString().padStart(2, '0')
   const sec = (s % 60).toString().padStart(2, '0')
   return `${m}:${sec}`
 }
@@ -23,12 +16,12 @@ function fmtSecs(s: number): string {
 type Phase = 'focus' | 'break'
 
 export default function PomodoroWidget() {
-  const [phase,     setPhase]    = useState<Phase>('focus')
-  const [remaining, setRem]      = useState(FOCUS_SECS)
-  const [running,   setRunning]  = useState(false)
+  const { navigate }  = useNav()
+  const [phase,     setPhase]   = useState<Phase>('focus')
+  const [remaining, setRem]     = useState(FOCUS_SECS)
+  const [running,   setRunning] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  /* ── Tick ──────────────────────────────────────────────────── */
   useEffect(() => {
     if (!running) {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -37,7 +30,6 @@ export default function PomodoroWidget() {
     intervalRef.current = setInterval(() => {
       setRem(prev => {
         if (prev <= 1) {
-          /* Auto-switch phase */
           setPhase(p => p === 'focus' ? 'break' : 'focus')
           setRunning(false)
           return prev === 1
@@ -50,9 +42,13 @@ export default function PomodoroWidget() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggle = () => setRunning(r => !r)
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRunning(r => !r)
+  }
 
-  const handleReset = () => {
+  const handleReset = (e: React.MouseEvent) => {
+    e.stopPropagation()
     setRunning(false)
     setPhase('focus')
     setRem(FOCUS_SECS)
@@ -60,51 +56,105 @@ export default function PomodoroWidget() {
 
   return (
     <div
-      className={styles.widget}
+      className={`${styles.card} ${styles.clickable}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate('study-shield', 'essentials')}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate('study-shield', 'essentials') }}
+      aria-label="Open Study Shield"
       style={{ '--widget-accent': 'var(--accent-purple)' } as React.CSSProperties}
     >
-      <div className={styles.widgetHeader}>
-        <p className={styles.widgetEyebrow}>Focus · Session</p>
+      <div className={styles.cardHeader}>
+        <div>
+          <p className={styles.eyebrow}>Scholastic · Focus</p>
+          <p className={styles.title}>{phase === 'focus' ? 'Deep Focus' : 'Short Break'}</p>
+        </div>
         {running && (
-          <span className={styles.widgetBadge} aria-live="polite">
+          <span style={{
+            fontFamily:    'var(--font-mono)',
+            fontSize:      '0.45rem',
+            fontWeight:    700,
+            letterSpacing: '0.06em',
+            color:         'var(--accent-purple)',
+            background:    'rgba(124,149,255,0.10)',
+            padding:       '2px 6px',
+            borderRadius:  '99px',
+            border:        '1px solid rgba(124,149,255,0.18)',
+            flexShrink:    0,
+          }}>
             {phase === 'focus' ? 'FOCUS' : 'BREAK'}
           </span>
         )}
+        {!running && <span className={styles.navArrow} aria-hidden="true">→</span>}
       </div>
 
-      <p className={styles.widgetTitle}>
-        {phase === 'focus' ? 'Deep Focus' : 'Short Break'}
-      </p>
+      <div className={styles.widgetBody}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--sp-4)' }}>
+          <time
+            style={{
+              fontFamily:    'var(--font-mono)',
+              fontSize:      '2rem',
+              fontWeight:    700,
+              letterSpacing: '0.04em',
+              color:         'var(--text-primary)',
+              lineHeight:    1,
+            }}
+            aria-label={`${fmtSecs(remaining)} remaining`}
+            suppressHydrationWarning
+          >
+            {fmtSecs(remaining)}
+          </time>
+          <p style={{
+            fontFamily:    'var(--font-mono)',
+            fontSize:      '0.45rem',
+            fontWeight:    600,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color:         'var(--text-dark)',
+            paddingBottom: '4px',
+          }}>
+            {phase === 'focus' ? '25 min' : '5 min'}
+          </p>
+        </div>
 
-      <div className={styles.pomodoroBody}>
-        <time
-          className={styles.timerDisplay}
-          aria-label={`${fmtSecs(remaining)} remaining`}
-          suppressHydrationWarning
-        >
-          {fmtSecs(remaining)}
-        </time>
-
-        <p className={styles.timerLabel}>
-          {phase === 'focus' ? '25-minute block' : '5-minute break'}
-        </p>
-
-        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+        <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-1)' }}>
           <button
             type="button"
-            className={styles.startBtn}
             onClick={handleToggle}
             aria-label={running ? 'Pause timer' : 'Start focus session'}
+            style={{
+              padding:       'var(--sp-1) var(--sp-4)',
+              borderRadius:  'var(--r-xl)',
+              border:        '1px solid var(--border-subtle)',
+              background:    running ? 'rgba(124,149,255,0.10)' : 'transparent',
+              color:         'var(--accent-purple)',
+              fontFamily:    'var(--font-display)',
+              fontSize:      '0.6rem',
+              fontWeight:    600,
+              letterSpacing: '0.04em',
+              cursor:        'pointer',
+            }}
           >
-            {running ? 'Pause' : 'Start Focus'}
+            {running ? 'Pause' : 'Start'}
           </button>
           {(running || remaining !== FOCUS_SECS) && (
             <button
               type="button"
-              className={styles.startBtn}
               onClick={handleReset}
               aria-label="Reset timer"
-              style={{ opacity: 0.55 }}
+              style={{
+                padding:       'var(--sp-1) var(--sp-4)',
+                borderRadius:  'var(--r-xl)',
+                border:        '1px solid var(--border-subtle)',
+                background:    'transparent',
+                color:         'var(--text-dark)',
+                fontFamily:    'var(--font-display)',
+                fontSize:      '0.6rem',
+                fontWeight:    600,
+                letterSpacing: '0.04em',
+                cursor:        'pointer',
+                opacity:       0.6,
+              }}
             >
               Reset
             </button>

@@ -1,0 +1,553 @@
+.root {
+  padding: var(--sp-8) var(--sp-8) var(--sp-16);
+  max-width: 880px;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  margin-top: var(--sp-8);
+}
+
+/* ── Section ──────────────────────────────────────────────────── */
+
+.section {
+  background: color-mix(in srgb, var(--surface-card) 90%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-8);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sectionSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-5);
+  line-height: 1.5;
+}
+
+/* ── Theme grid ───────────────────────────────────────────────── */
+
+.themeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.themeCard {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-main) 60%, transparent);
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.themeCard:hover {
+  border-color: var(--border-subtle);
+}
+
+.themeCardOwned {
+  border-color: color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+
+.themeCardActive {
+  border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 6%, var(--surface-card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+
+.themeSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
+}
+
+.themeInfo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.themeName {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.themeTag {
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 8%, transparent);
+}
+
+.themeAction {
+  flex-shrink: 0;
+}
+
+.themeEquipped {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-green);
+}
+
+.themeBtn {
+  padding: var(--sp-1) var(--sp-4);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-green) 8%, transparent);
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.themeBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-green) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 50%, transparent);
+}
+
+.themeBtn:disabled { opacity: 0.40; cursor: not-allowed; }
+
+.themeBtnBuy {
+  border-color: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 8%, transparent);
+  color: var(--accent-purple);
+}
+
+.themeBtnBuy:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.themeBtnLocked { opacity: 0.35; }
+
+/* ── Toggle list ──────────────────────────────────────────────── */
+
+.toggleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.toggleRow:hover {
+  background: var(--bg-hover);
+}
+
+.toggleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleLabel {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.toggleHint {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--text-dark);
+}
+
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  background: color-mix(in srgb, var(--text-dark) 30%, transparent);
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: color-mix(in srgb, var(--accent-purple) 70%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 200ms var(--ease-smooth), background 200ms ease;
+}
+
+.toggleOn .toggleThumb {
+  transform: translateX(16px);
+  background: var(--accent-purple);
+}
+
+/* ── Account ──────────────────────────────────────────────────── */
+
+.fieldGroup {
+  margin-bottom: var(--sp-5);
+}
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.575rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.fieldRow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+}
+
+.textInput {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--bg-main) 80%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 180ms ease;
+}
+
+.textInput:focus {
+  border-color: var(--accent-purple-dim);
+}
+
+.textInput::placeholder { color: var(--text-dark); }
+
+.saveBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.575rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 180ms ease, border-color 180ms ease, opacity 180ms ease;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+
+.saveBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.accountRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.accountDetail {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: baseline;
+}
+
+.accountDetailLabel {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  min-width: 90px;
+}
+
+.accountDetailValue {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+/* ── Data actions ─────────────────────────────────────────────── */
+
+.dataActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+
+.dataBtn {
+  padding: var(--sp-3) var(--sp-6);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-card) 60%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.dataBtn:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 6%, var(--surface-card));
+}
+
+.dataNote {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--text-dark);
+}
+
+/* ── Keyboard shortcuts table ─────────────────────────────────── */
+
+.shortcutsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shortcutRow td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.shortcutRow:last-child td {
+  border-bottom: none;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-card) 80%, transparent);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.shortcutAction {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: var(--sp-4);
+}
+
+/* ── About grid ───────────────────────────────────────────────── */
+
+.aboutGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.aboutRow {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: baseline;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
+}
+
+.aboutRow:last-child { border-bottom: none; }
+
+.aboutLabel {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  min-width: 110px;
+}
+
+.aboutValue {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Ambient Backdrop picker ──────────────────────────────────── */
+
+.backdropSection {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.backdropLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  font-weight:    700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-1);
+}
+
+.backdropHint {
+  font-size:    0.7rem;
+  color:        var(--text-dark);
+  margin-bottom: var(--sp-3);
+  line-height:  1.5;
+}
+
+.backdropPicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.backdropBtn {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  padding:        var(--sp-3) var(--sp-4);
+  background:     transparent;
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-md);
+  cursor:         pointer;
+  text-align:     left;
+  transition:
+    background   var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.backdropBtn:hover {
+  background:   var(--bg-hover);
+  border-color: rgba(124, 149, 255, 0.20);
+}
+
+.backdropBtnActive {
+  background:   rgba(124, 149, 255, 0.07);
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+.backdropBtnLabel {
+  font-family:  var(--font-body);
+  font-size:    0.8125rem;
+  font-weight:  500;
+  color:        var(--text-primary);
+}
+
+.backdropBtnActive .backdropBtnLabel {
+  color: var(--accent-purple);
+}
+
+.backdropBtnHint {
+  font-family:  var(--font-mono);
+  font-size:    0.55rem;
+  letter-spacing: 0.06em;
+  color:        var(--text-dark);
+}
+
+/* ── Anchor hotbar ────────────────────────────────────────────── */
+
+.anchorBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding: var(--sp-3) 0;
+  margin-bottom: var(--sp-2);
+  background: color-mix(in srgb, var(--bg-main) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  scrollbar-width: none;
+}
+
+.anchorBar::-webkit-scrollbar {
+  display: none;
+}
+
+.anchorPill {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.6375rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  white-space: nowrap;
+}
+
+.anchorPill:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 35%, transparent);
+  color: var(--text-muted);
+}
+
+.anchorPillActive {
+  border-color: color-mix(in srgb, var(--accent-purple) 55%, transparent) !important;
+  background: color-mix(in srgb, var(--accent-purple) 10%, var(--surface-card)) !important;
+  color: var(--accent-purple) !important;
+}
+
+/* Sections need scroll-margin so sticky bar doesn't cover the heading */
+.section {
+  scroll-margin-top: 64px;
+}

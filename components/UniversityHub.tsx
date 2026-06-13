@@ -1,26 +1,7 @@
 'use client'
 
-/**
- * ════════════════════════════════════════════════════════════════
- * Zenith OS — UniversityHub
- * Phase 2 · Step 2.3 — Polymorphic University Search & Content Node
- *
- * Receives a fully-loaded UniversityConfig (Cornell or future schools)
- * and renders a responsive grid of resource link cards, grouped
- * into the university's functional categories.
- *
- * Card anatomy:
- *   • Tag pill      — category hint, monospace, top-left
- *   • Title         — prominent heading, display font
- *   • Description   — two-line guiding summary, muted
- *   • Link action   — "Open portal →" micro-text, accent on hover
- *
- * The entire card surface is an <a> link so the click target is
- * maximised on touch screens, with a keyboard-reachable focus ring.
- * ════════════════════════════════════════════════════════════════
- */
-
-import type { UniversityConfig, UniversityEntry } from '@/config/universities'
+import { useState } from 'react'
+import type { UniversityConfig, UniversityEntry, UniTab } from '@/config/universities'
 import styles from './UniversityHub.module.css'
 
 interface UniversityHubProps {
@@ -29,21 +10,29 @@ interface UniversityHubProps {
   onReset: () => void
 }
 
-export default function UniversityHub({
-  config,
-  entry,
-  onReset,
-}: UniversityHubProps) {
+const TAB_LABELS: Record<UniTab, string> = {
+  academics:  'Academics & Registration',
+  career:     'Career Development',
+  campus:     'Campus Life',
+  essentials: 'Essentials',
+}
 
-  /* Total link count across all categories */
-  const totalLinks = config.categories.reduce(
-    (acc, cat) => acc + cat.links.length, 0,
+export default function UniversityHub({ config, entry, onReset }: UniversityHubProps) {
+  const [activeTab, setActiveTab] = useState<UniTab>('academics')
+
+  /* Categories for the active tab */
+  const visibleCats = config.categories.filter(c => c.tab === activeTab)
+  const totalLinks  = config.categories.reduce((acc, c) => acc + c.links.length, 0)
+
+  /* Which tabs have data */
+  const availableTabs = (Object.keys(TAB_LABELS) as UniTab[]).filter(
+    tab => config.categories.some(c => c.tab === tab),
   )
 
   return (
     <div className={`${styles.wrap} anim-scale-in`}>
 
-      {/* ── Hub header ────────────────────────────────────── */}
+      {/* ── Hub header ──────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerMeta}>
           <p className={styles.eyebrow}>Scholastic · University Hub</p>
@@ -54,7 +43,6 @@ export default function UniversityHub({
             <span className={styles.sublineChip}>{totalLinks} resources</span>
           </p>
         </div>
-
         <button
           type="button"
           className={styles.resetBtn}
@@ -67,55 +55,58 @@ export default function UniversityHub({
 
       <div className={styles.divider} aria-hidden="true" />
 
-      {/* ── Category sections ─────────────────────────────── */}
-      <div className={styles.categories}>
-        {config.categories.map((cat, catIdx) => (
-          <section
-            key={cat.id}
-            className={`${styles.category} anim-slide-in`}
-            style={{ animationDelay: `${catIdx * 80}ms` }}
-            aria-labelledby={`cat-${cat.id}`}
+      {/* ── Resource sub-tabs ────────────────────────────────── */}
+      <div className={styles.resourceTabBar} role="tablist" aria-label="Resource sections">
+        {availableTabs.map(tab => (
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            className={`${styles.resourceTab} ${activeTab === tab ? styles.resourceTabActive : ''}`}
+            onClick={() => setActiveTab(tab)}
           >
-
-            <p id={`cat-${cat.id}`} className={styles.categoryLabel}>
-              {cat.label}
-            </p>
-
-            <div className={styles.grid} role="list">
-              {cat.links.map(link => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.card}
-                  role="listitem"
-                  aria-label={`${link.title} — opens in a new tab`}
-                >
-                  {/* Tag pill */}
-                  {link.tag && (
-                    <span className={styles.tag} aria-hidden="true">
-                      {link.tag}
-                    </span>
-                  )}
-
-                  {/* Title */}
-                  <h3 className={styles.cardTitle}>{link.title}</h3>
-
-                  {/* Description */}
-                  <p className={styles.cardDesc}>{link.description}</p>
-
-                  {/* Link action — accent on card hover via CSS */}
-                  <span className={styles.linkAction} aria-hidden="true">
-                    Open portal →
-                  </span>
-
-                </a>
-              ))}
-            </div>
-
-          </section>
+            {TAB_LABELS[tab]}
+          </button>
         ))}
+      </div>
+
+      {/* ── Category sections for the active tab ────────────── */}
+      <div className={styles.categories}>
+        {visibleCats.length === 0 ? (
+          <p className={styles.emptyTab}>No resources configured for this section.</p>
+        ) : (
+          visibleCats.map((cat, catIdx) => (
+            <section
+              key={cat.id}
+              className={`${styles.category} anim-slide-in`}
+              style={{ animationDelay: `${catIdx * 60}ms` }}
+              aria-labelledby={`cat-${cat.id}`}
+            >
+              <p id={`cat-${cat.id}`} className={styles.categoryLabel}>
+                {cat.label}
+              </p>
+
+              <div className={styles.grid} role="list">
+                {cat.links.map(link => (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.card}
+                    role="listitem"
+                    aria-label={`${link.title} — opens in a new tab`}
+                  >
+                    {link.tag && <span className={styles.tag} aria-hidden="true">{link.tag}</span>}
+                    <h3 className={styles.cardTitle}>{link.title}</h3>
+                    <p className={styles.cardDesc}>{link.description}</p>
+                    <span className={styles.linkAction} aria-hidden="true">Open →</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
       </div>
 
     </div>

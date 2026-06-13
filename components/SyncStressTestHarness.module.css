@@ -1,0 +1,513 @@
+/**
+ * Zenith OS — SyncStressTestHarness styles
+ * Phase 13 · Step 13.1 — Diagnostic cockpit with mineral-dark terminal aesthetic
+ *
+ * Design language:
+ *   Background:  #080b0f (deeper than surface-card)
+ *   Accent:      var(--amber-*) — parchment gold family
+ *   Typography:  var(--font-mono) throughout
+ *   Success:     var(--accent-green)
+ *   Error:       #f87171 (rose)
+ *   Warn:        #fbbf24 (warm amber)
+ *   Metric:      var(--accent-purple) tinted periwinkle
+ */
+
+/* ── Local amber token ────────────────────────────────────────── */
+.harness {
+  --amber:           rgba(229, 193, 124, 1);
+  --amber-bright:    rgba(245, 213, 150, 1);
+  --amber-mid:       rgba(229, 193, 124, 0.70);
+  --amber-dim:       rgba(229, 193, 124, 0.45);
+  --amber-ghost:     rgba(229, 193, 124, 0.22);
+  --amber-hairline:  rgba(229, 193, 124, 0.12);
+  --amber-surface:   rgba(229, 193, 124, 0.04);
+  --canvas:          #080b0f;
+  --canvas-raised:   #0d0f13;
+  --rose:            #f87171;
+  --rose-dim:        rgba(248, 113, 113, 0.20);
+  --rose-hairline:   rgba(248, 113, 113, 0.28);
+  --warn:            #fbbf24;
+  --metric:          rgba(124, 149, 255, 0.85);
+
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONTROL SHELF
+   ════════════════════════════════════════════════════════════════ */
+
+.controlShelf {
+  display:          flex;
+  flex-direction:   column;
+  gap:              var(--sp-5);
+  padding:          var(--sp-5) var(--sp-5);
+  background:       var(--canvas);
+  border:           1px solid var(--amber-hairline);
+  border-radius:    var(--r-md);
+}
+
+/* ── Sliders ──────────────────────────────────────────────────── */
+
+.sliderGroup {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.sliderLabel {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+}
+
+.sliderLabelText {
+  font-family:     var(--font-mono);
+  font-size:       0.625rem;
+  color:           var(--amber-dim);
+  text-transform:  uppercase;
+  letter-spacing:  0.10em;
+}
+
+.sliderValue {
+  font-family: var(--font-mono);
+  font-size:   0.625rem;
+  color:       var(--amber-mid);
+  min-width:   52px;
+  text-align:  right;
+}
+
+.sliderTrack {
+  position: relative;
+}
+
+/* Gradient fill driven by --fill-pct CSS custom property (set via inline style in React) */
+.slider {
+  -webkit-appearance: none;
+  appearance:         none;
+  width:              100%;
+  height:             3px;
+  border-radius:      2px;
+  background:         linear-gradient(
+    to right,
+    var(--amber-mid)    0%,
+    var(--amber-mid)    var(--fill-pct, 0%),
+    var(--amber-hairline) var(--fill-pct, 0%),
+    var(--amber-hairline) 100%
+  );
+  cursor:             pointer;
+  outline:            none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width:              14px;
+  height:             14px;
+  border-radius:      50%;
+  background:         var(--amber);
+  cursor:             pointer;
+  border:             2px solid var(--canvas);
+  box-shadow:         0 0 0 1px var(--amber-ghost);
+  transition:         box-shadow 150ms ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 3px var(--amber-ghost);
+}
+
+.slider::-moz-range-thumb {
+  width:        14px;
+  height:       14px;
+  border-radius: 50%;
+  background:   var(--amber);
+  cursor:       pointer;
+  border:       2px solid var(--canvas);
+}
+
+.slider:disabled {
+  opacity: 0.35;
+  cursor:  not-allowed;
+}
+
+.slider:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+/* ── Disconnect toggle row ────────────────────────────────────── */
+
+.toggleGroup {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  flex-wrap:   wrap;
+}
+
+.toggleGroupLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.625rem;
+  color:          var(--amber-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
+.toggle {
+  position:      relative;
+  width:          38px;
+  height:         22px;
+  border-radius:  11px;
+  background:     var(--amber-hairline);
+  border:         1px solid var(--amber-ghost);
+  cursor:         pointer;
+  transition:     background 200ms ease, border-color 200ms ease;
+  flex-shrink:    0;
+}
+
+.toggle:disabled {
+  opacity: 0.4;
+  cursor:  not-allowed;
+}
+
+.toggleOn {
+  background:   rgba(229, 193, 124, 0.20);
+  border-color: var(--amber-ghost);
+}
+
+.toggleThumb {
+  position:    absolute;
+  top:         3px;
+  left:        3px;
+  width:       14px;
+  height:      14px;
+  border-radius: 50%;
+  background:  var(--amber-dim);
+  transition:  transform 200ms ease, background 200ms ease;
+}
+
+.toggleOn .toggleThumb {
+  transform:  translateX(16px);
+  background: var(--amber);
+}
+
+.toggleWarning {
+  font-family: var(--font-mono);
+  font-size:   0.58rem;
+  color:       var(--rose);
+  letter-spacing: 0.04em;
+  animation:   warnPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes warnPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Divider between controls and action ──────────────────────── */
+.shelfDivider {
+  height:     1px;
+  background: var(--amber-hairline);
+  margin:     var(--sp-1) 0;
+}
+
+/* ── Run / Abort button ───────────────────────────────────────── */
+
+.runBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.7rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  text-align:     center;
+  width:          100%;
+  padding:        var(--sp-3) var(--sp-5);
+  border-radius:  var(--r-sm);
+  border:         1px solid var(--amber-mid);
+  background:     var(--amber);
+  color:          #0a0b0d;
+  cursor:         pointer;
+  transition:     background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.runBtn:hover:not(:disabled) {
+  background: var(--amber-bright);
+}
+
+.runBtn:active:not(:disabled) {
+  background: var(--amber-mid);
+}
+
+.runBtn:disabled {
+  opacity: 0.5;
+  cursor:  not-allowed;
+}
+
+.runBtnRunning {
+  background:   var(--rose-dim);
+  border-color: var(--rose-hairline);
+  color:        var(--rose);
+}
+
+.runBtnRunning:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.30);
+}
+
+.runBtnDone {
+  opacity:  0.50;
+  cursor:   not-allowed;
+  pointer-events: none;
+}
+
+.resetBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.625rem;
+  color:          var(--amber-dim);
+  background:     transparent;
+  border:         1px solid var(--amber-hairline);
+  border-radius:  var(--r-sm);
+  padding:        var(--sp-2) var(--sp-4);
+  cursor:         pointer;
+  text-align:     center;
+  width:          100%;
+  letter-spacing: 0.04em;
+  transition:     color 160ms ease, border-color 160ms ease;
+}
+
+.resetBtn:hover {
+  color:        var(--amber-mid);
+  border-color: var(--amber-ghost);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   METRICS STRIP
+   ════════════════════════════════════════════════════════════════ */
+
+.metricsStrip {
+  display:               grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:                   var(--sp-2);
+}
+
+.metricChip {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+  padding:        var(--sp-3) var(--sp-3);
+  background:     var(--canvas);
+  border:         1px solid var(--amber-hairline);
+  border-radius:  var(--r-sm);
+}
+
+.metricLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--amber-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height:    1;
+}
+
+.metricValue {
+  font-family: var(--font-mono);
+  font-size:   0.85rem;
+  font-weight: 500;
+  color:       var(--amber-dim);
+  line-height: 1.1;
+}
+
+.metricValueActive {
+  color:     var(--rose);
+  animation: metricPulse 1s ease-in-out infinite;
+}
+
+.metricValuePass {
+  color: var(--accent-green);
+}
+
+.metricValueFail {
+  color: var(--rose);
+}
+
+.metricValuePending {
+  color: var(--amber-ghost);
+}
+
+@keyframes metricPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TERMINAL LOG
+   ════════════════════════════════════════════════════════════════ */
+
+.terminal {
+  background:    var(--canvas);
+  border:        1px solid var(--amber-hairline);
+  border-radius: var(--r-md);
+  padding:       var(--sp-4) var(--sp-4);
+  max-height:    296px;
+  overflow-y:    auto;
+  display:       flex;
+  flex-direction: column;
+  gap:           2px;
+
+  /* Thin amber scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--amber-hairline) transparent;
+}
+
+.terminal::-webkit-scrollbar       { width: 4px; }
+.terminal::-webkit-scrollbar-track { background: transparent; }
+.terminal::-webkit-scrollbar-thumb { background: var(--amber-hairline); border-radius: 2px; }
+.terminal::-webkit-scrollbar-thumb:hover { background: var(--amber-ghost); }
+
+/* Every log row is a three-column flex row */
+.logLine {
+  display:     flex;
+  align-items: baseline;
+  gap:         var(--sp-2);
+  line-height: 1.55;
+}
+
+.logTimestamp {
+  font-family: var(--font-mono);
+  font-size:   0.55rem;
+  color:       rgba(229, 193, 124, 0.18);
+  flex-shrink: 0;
+  width:       84px;
+  user-select: none;
+}
+
+.logPrefix {
+  font-family: var(--font-mono);
+  font-size:   0.58rem;
+  flex-shrink: 0;
+  width:       66px;
+}
+
+.logMessage {
+  font-family:  var(--font-mono);
+  font-size:    0.60rem;
+  word-break:   break-word;
+  line-height:  1.5;
+}
+
+/* ── Level colour variants ────────────────────────────────────── */
+
+/* harness — primary amber (phase boundaries) */
+.logLineHarness .logPrefix  { color: var(--amber-mid); }
+.logLineHarness .logMessage { color: var(--amber);      }
+
+/* info — dim amber (routine progress) */
+.logLineInfo .logPrefix  { color: var(--amber-ghost); }
+.logLineInfo .logMessage { color: var(--amber-dim);   }
+
+/* warn — bright warm yellow */
+.logLineWarn .logPrefix  { color: var(--warn); }
+.logLineWarn .logMessage { color: var(--warn); }
+
+/* error — rose */
+.logLineError .logPrefix  { color: var(--rose); }
+.logLineError .logMessage { color: var(--rose); }
+
+/* success — green */
+.logLineSuccess .logPrefix  { color: var(--accent-green); }
+.logLineSuccess .logMessage { color: var(--accent-green); }
+
+/* metric — periwinkle-adjacent purple */
+.logLineMetric .logPrefix  { color: var(--metric); }
+.logLineMetric .logMessage { color: var(--metric); }
+
+/* cursor-blink row */
+.logLineCursor {
+  padding-top: 2px;
+}
+
+.cursor {
+  display:          inline-block;
+  font-family:      var(--font-mono);
+  font-size:        0.65rem;
+  color:            var(--amber-mid);
+  animation:        cursorBlink 800ms step-end infinite;
+  user-select:      none;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESULT CARD
+   ════════════════════════════════════════════════════════════════ */
+
+.resultCard {
+  border-radius: var(--r-md);
+  padding:       var(--sp-5);
+  border:        1px solid;
+  animation:     resultReveal 320ms var(--ease-expo) both;
+}
+
+@keyframes resultReveal {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+.resultCardPass {
+  background:   color-mix(in srgb, var(--accent-green) 4%, var(--canvas));
+  border-color: color-mix(in srgb, var(--accent-green) 22%, transparent);
+}
+
+.resultCardFail {
+  background:   color-mix(in srgb, var(--rose) 4%, var(--canvas));
+  border-color: var(--rose-hairline);
+}
+
+.resultHeader {
+  font-family:    var(--font-mono);
+  font-size:      0.65rem;
+  font-weight:    700;
+  letter-spacing: 0.04em;
+  margin-bottom:  var(--sp-4);
+  line-height:    1.4;
+}
+
+.resultCardPass .resultHeader { color: var(--accent-green); }
+.resultCardFail .resultHeader { color: var(--rose); }
+
+.resultGrid {
+  display:               grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:                   var(--sp-3);
+}
+
+.resultStat {
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+}
+
+.resultStatLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--amber-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.resultStatValue {
+  font-family:  var(--font-mono);
+  font-size:    0.88rem;
+  font-weight:  500;
+  color:        var(--amber-mid);
+}
+
+/* ── Responsive: collapse 4-col → 2-col on narrow containers ─── */
+
+@media (max-width: 560px) {
+  .metricsStrip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .resultGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

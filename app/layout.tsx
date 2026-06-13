@@ -1,42 +1,43 @@
 /**
  * Zenith OS — Root Layout
  * Phase 1 · Step 1.1 — Design Token & Visual Foundations Port
+ * Phase 15 · Step 15.3 — Font Self-Hosting (CDN-free, zero CLS)
  *
  * FONT STRATEGY
  * ─────────────────────────────────────────────────────────────
- * Two Google Fonts loaded via next/font for zero-layout-shift,
- * automatic subset optimisation, and self-hosting:
+ * Both fonts are served from /public/fonts/ via next/font/local.
+ * No runtime Google CDN request — zero external font dependency.
+ * adjustFontFallback: 'Arial' instructs Next.js to auto-compute
+ * size-adjust / ascent-override / descent-override fallback metrics
+ * so the system font placeholder matches the web font geometry.
+ * Combined with display: 'swap', this eliminates layout shift (CLS = 0).
  *
- *   --font-jakarta  →  Plus Jakarta Sans
- *     Geometric humanist sans. Dense utility interfaces, task lists,
- *     data labels, and body copy. Variable range 200–800.
+ *   --font-jakarta  →  Plus Jakarta Sans (weights 300–800)
+ *     Geometric humanist sans. Utility interfaces, task lists,
+ *     data labels, and body copy.
+ *     Files: /public/fonts/plus-jakarta-sans/*.woff2
  *
- *   --font-cabinet  →  Space Grotesk  (Cabinet Grotesk stand-in)
+ *   --font-cabinet  →  Space Grotesk (weights 300–700)
  *     Geometric display sans with distinctive x-height. Headings,
- *     hero metrics, and prominent labels. Weight range 300–700.
+ *     hero metrics, and prominent labels.
+ *     Files: /public/fonts/space-grotesk/*.woff2
  *
- *     TO UPGRADE to Cabinet Grotesk or Clash Display:
- *       1. Download .woff2 files from https://www.fontshare.com/fonts/cabinet-grotesk
- *       2. Place them in /public/fonts/cabinet-grotesk/
- *       3. Replace the spaceGrotesk declaration below with:
+ * TO ACQUIRE FONT FILES:
+ *   Run: powershell scripts/download-fonts.ps1
+ *   This downloads all 11 .woff2 files from Google Fonts and places
+ *   them in the correct /public/fonts/ subdirectories.
  *
- *          import localFont from 'next/font/local'
- *          const cabinetGrotesk = localFont({
- *            src: [
- *              { path: '../public/fonts/cabinet-grotesk/CabinetGrotesk-Medium.woff2',     weight: '500' },
- *              { path: '../public/fonts/cabinet-grotesk/CabinetGrotesk-Bold.woff2',       weight: '700' },
- *              { path: '../public/fonts/cabinet-grotesk/CabinetGrotesk-Extrabold.woff2',  weight: '800' },
- *            ],
- *            variable: '--font-cabinet',
- *            display: 'swap',
- *          })
+ *   OR upgrade --font-cabinet to Cabinet Grotesk (Fontshare):
+ *     1. Download .woff2 files from https://www.fontshare.com/fonts/cabinet-grotesk
+ *     2. Place in /public/fonts/cabinet-grotesk/
+ *     3. Update the spaceGrotesk src array paths below.
  *
- * Both fonts expose CSS variables on <html> that are consumed by the
+ * Both fonts expose CSS variables on <html> consumed by the
  * @theme → --font-display / --font-sans cascade in globals.css.
  */
 
 import type { Metadata, Viewport } from 'next'
-import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
 import { NavProvider }        from '@/lib/NavContext'
@@ -45,13 +46,19 @@ import { AuthProvider }       from '@/lib/AuthContext'
 import { SyncProvider }       from '@/lib/SyncContext'
 import { ToastProvider }      from '@/lib/ToastContext'
 import { StudyModeProvider }  from '@/lib/StudyModeContext'
-import { FatigueProvider }    from '@/lib/FatigueContext'
+import { CopilotProvider }         from '@/lib/CopilotContext'
+import { ContextMenuProvider }    from '@/lib/ContextMenuContext'
 import ThemeBackground   from '@/components/ThemeBackground'
 import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
 import Toast             from '@/components/Toast'
-import FatigueLayer      from '@/components/FatigueLayer'
 import ErrorBoundary     from '@/components/ErrorBoundary'
+import AiCopilotSidebar  from '@/components/AiCopilotSidebar'
+import ThemeApplicator          from '@/components/ThemeApplicator'
+import TutorialSpotlight         from '@/components/TutorialSpotlight'
+import { LazyBackgroundCanvasManager as BackgroundCanvasManager } from '@/lib/dynamicViews'
+import OnboardingCinematic       from '@/components/OnboardingCinematic'
+import CursorTrailManager        from '@/components/CursorTrailManager'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
 import TestBridge        from '@/components/TestBridge'
 /* Vercel observability — Phase 6.3
@@ -64,23 +71,29 @@ import { Analytics }     from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
 /* ── Plus Jakarta Sans — body / utility text ──────────────────── */
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable:  '--font-jakarta',
-  subsets:   ['latin'],
-  display:   'swap',
-  weight:    ['300', '400', '500', '600', '700', '800'],
-  fallback:  ['ui-sans-serif', 'system-ui', 'sans-serif'],
+/* Variable font: single .woff2 encodes the full 300–800 weight axis. */
+const plusJakartaSans = localFont({
+  src: [
+    { path: '../public/fonts/plus-jakarta-sans/PlusJakartaSans-Variable.woff2', weight: '300 800', style: 'normal' },
+  ],
+  variable:             '--font-jakarta',
+  display:              'swap',
+  adjustFontFallback:   'Arial',   // Next.js auto-computes size-adjust / ascent-override / descent-override
+  fallback:             ['ui-sans-serif', 'system-ui', 'sans-serif'],
 })
 
 /* ── Space Grotesk — display / heading text ───────────────────── */
-const spaceGrotesk = Space_Grotesk({
-  variable:  '--font-cabinet',   /* named --font-cabinet so globals.css @theme
-                                    resolves transparently when real Cabinet
-                                    Grotesk files are swapped in later         */
-  subsets:   ['latin'],
-  display:   'swap',
-  weight:    ['300', '400', '500', '600', '700'],
-  fallback:  ['ui-sans-serif', 'sans-serif'],
+/* Variable font: single .woff2 encodes the full 300–700 weight axis. */
+const spaceGrotesk = localFont({
+  src: [
+    { path: '../public/fonts/space-grotesk/SpaceGrotesk-Variable.woff2', weight: '300 700', style: 'normal' },
+  ],
+  variable:             '--font-cabinet',   /* --font-cabinet so globals.css @theme resolves
+                                               transparently; swap to Cabinet Grotesk by
+                                               updating the src path above                   */
+  display:              'swap',
+  adjustFontFallback:   'Arial',
+  fallback:             ['ui-sans-serif', 'sans-serif'],
 })
 
 /* ── App metadata ─────────────────────────────────────────────── */
@@ -97,7 +110,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor:   '#0b0d13',   /* --color-bg-main — tints the mobile browser chrome */
+  themeColor:   '#0d0f12',   /* --color-bg-main — tints the mobile browser chrome */
   colorScheme:  'dark',
   width:        'device-width',
   initialScale: 1,
@@ -123,12 +136,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
          *   ToastProvider — ephemeral notification queue
          *
          * FIXED-POSITION LAYER STACK (root stacking context):
-         *   ThemeBackground  z-index:  0  — category bg tint (500 ms transition)
-         *   CosmosCanvas     z-index:  1  — particle star field (always visible)
+         *   ThemeBackground        z-index:  0  — category bg tint (500 ms transition)
+         *   BackgroundCanvasManager z-index: 0  — animated canvas art (starfield / rain / grid)
+         *   CosmosCanvas           z-index:  1  — particle star field (always visible)
          *   AppContent
          *     AuthGate       z-index: 50  — login overlay (when unauthenticated)
          *     AppShell       z-index:  2  — full workspace (when authenticated)
-         *   Toast            z-index: 600 — notification stack
+         *   Toast               z-index:  600 — notification stack
+         *   OnboardingCinematic z-index: 9999 — first-session boot cinematic (self-removes)
+         *   CursorTrailManager  z-index: 9000 — parchment-gold dust trail (pointer-events:none)
          */}
         <NavProvider>
           <NavBadgeProvider>
@@ -146,29 +162,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                  * so both AppShell and HomeView can access the context.
                  */}
                 <StudyModeProvider>
-                  {/*
-                   * FatigueProvider sits inside ToastProvider so
-                   * FatigueLayer can call useToast(), and inside
-                   * StudyModeProvider so recovery state is independent
-                   * of study mode.  CosmosCanvas reads FatigueCtx
-                   * directly via useContext to slow star animations
-                   * during fatigue without restarting the RAF loop.
-                   */}
-                  <FatigueProvider>
-                    <ThemeBackground />
-                    <CosmosCanvas />
-                    {/* ErrorBoundary wraps the entire workspace layer.
-                        Any uncaught crash in AppContent, AppShell, or any
-                        view module renders the recovery card instead of a
-                        blank white screen.                               */}
-                    <ErrorBoundary>
-                      <AppContent>{children}</AppContent>
-                    </ErrorBoundary>
-                    <Toast />
-                    <FatigueLayer />
-                    {/* Only rendered during Playwright runs (NEXT_PUBLIC_E2E=1) */}
-                    {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
-                  </FatigueProvider>
+                    <CopilotProvider>
+                      <ContextMenuProvider>
+                        <ThemeApplicator />
+                        <ThemeBackground />
+                        <BackgroundCanvasManager />
+                        <CosmosCanvas />
+                        <ErrorBoundary>
+                          <AppContent>{children}</AppContent>
+                        </ErrorBoundary>
+                        <Toast />
+                        <AiCopilotSidebar />
+                        <TutorialSpotlight />
+                        <OnboardingCinematic />
+                        <CursorTrailManager />
+                        {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
+                      </ContextMenuProvider>
+                    </CopilotProvider>
                 </StudyModeProvider>
               </ToastProvider>
             </SyncProvider>

@@ -1,0 +1,832 @@
+.page {
+  padding: var(--sp-6) var(--sp-6) var(--sp-16);
+  max-width: 1200px;
+}
+
+/* ── Confetti canvas ──────────────────────────────────────── */
+.confettiCanvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 550;
+}
+
+/* ── Heading row ──────────────────────────────────────────── */
+.headingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+/* ── Daily badge ──────────────────────────────────────────── */
+.dailyBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: var(--sp-3) var(--sp-4);
+  flex-shrink: 0;
+}
+
+.dailyStats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dailyPct {
+  font-family: var(--font-display);
+  font-size:   2rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+  line-height: 1;
+}
+
+.dailyLabel {
+  font-size:      0.7rem;
+  color:          var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dailyStreak {
+  font-size:   0.72rem;
+  color:       var(--text-dark);
+  margin-top:  2px;
+}
+
+/* ── Week header ──────────────────────────────────────────── */
+.weekHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--sp-1);
+  padding: 0 var(--sp-3);
+}
+
+.weekHeaderLeft {
+  flex: 1;
+  min-width: 220px;
+}
+
+.weekDayLabels {
+  display: flex;
+  gap: var(--sp-2);
+  width: 196px;
+  justify-content: space-between;
+}
+
+.weekDayLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 20px;
+  text-align: center;
+}
+
+.weekDayLabelToday {
+  color: var(--accent-purple);
+}
+
+.weekHeaderRight {
+  width: 120px;
+}
+
+/* ── Habit list ───────────────────────────────────────────── */
+.habitList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ── Habit row ────────────────────────────────────────────── */
+.habitRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--habit-color, var(--accent-purple));
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  transition: border-color var(--dur-base) var(--ease-smooth),
+              background var(--dur-base) var(--ease-smooth);
+}
+
+.habitRowDone {
+  border-color: rgba(99, 163, 137, 0.25);   /* botanical sage green */
+  background: rgba(99, 163, 137, 0.04);
+}
+
+/* Left: circle + info */
+.habitLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.circleWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.circle {
+  display: block;
+}
+
+.plusBtn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 110ms var(--ease-smooth),
+              transform 160ms var(--ease-spring-snappy);
+}
+
+.plusBtn:hover:not(:disabled) {
+  color: var(--accent-purple);
+  transform: scale(1.15);
+}
+
+.plusBtn:disabled {
+  color: var(--accent-green);
+  cursor: default;
+}
+
+.habitInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.habitName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.habitMeta {
+  font-size: 0.7rem;
+  color: var(--text-dark);
+}
+
+/* Week dots */
+.weekDots {
+  display: flex;
+  gap: var(--sp-2);
+  width: 196px;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(124, 149, 255, 0.12);
+  border: 1px solid var(--border-subtle);
+  transition: background var(--dur-base) var(--ease-smooth);
+}
+
+.dotEmpty {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.dotDone {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.dotToday {
+  border-color: var(--accent-purple);
+}
+
+.dotToday.dotDone {
+  border-color: var(--accent-green);
+}
+
+/* Right side */
+.habitRight {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  width: 120px;
+  justify-content: flex-end;
+}
+
+.streak {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.streakHot {
+  color: #f59e0b;
+}
+
+/* (streak save removed — see toolbar / editActions for delete) */
+
+/* ── Empty state ──────────────────────────────────────────── */
+.emptyState {
+  text-align: center;
+  padding: var(--sp-12) var(--sp-6);
+}
+
+.emptyIcon {
+  font-size: 2rem;
+  color: var(--text-dark);
+  margin-bottom: var(--sp-3);
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.emptyBody {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ── Colour picker ────────────────────────────────────────── */
+.colorPickerRow {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       var(--sp-2);
+  margin-top: 2px;
+}
+
+.colorSwatch {
+  width:         26px;
+  height:        26px;
+  border-radius: 50%;
+  border:        2px solid transparent;
+  cursor:        pointer;
+  flex-shrink:   0;
+  transition: transform 160ms var(--ease-spring-snappy),
+              border-color var(--dur-fast) ease;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorSwatchActive {
+  border-color: var(--text-primary) !important;
+  transform:    scale(1.15);
+}
+
+.colorSwatchCustom {
+  position:        relative;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  overflow:        hidden;
+}
+
+.colorWheelIcon {
+  font-size:  0.85rem;
+  color:      rgba(255,255,255,0.7);
+  position:   relative;
+  z-index:    1;
+  pointer-events: none;
+}
+
+.colorWheelInput {
+  position: absolute;
+  inset:    0;
+  opacity:  0;
+  cursor:   pointer;
+  width:    100%;
+  height:   100%;
+  padding:  0;
+  border:   none;
+}
+
+.colorPreview {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  margin-top:  var(--sp-2);
+}
+
+.colorPreviewDot {
+  width:         16px;
+  height:        16px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.colorPreviewLabel {
+  font-family:  var(--font-mono);
+  font-size:    0.68rem;
+  color:        var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.toolbar {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.toolbarBtn {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+  padding:       6px 14px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-muted);
+  font-size:     0.78rem;
+  font-weight:   600;
+  cursor:        pointer;
+  transition:    all var(--dur-fast) ease;
+}
+
+.toolbarBtn:hover {
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.toolbarBtnActive {
+  background:   rgba(99, 163, 137, 0.10);   /* botanical sage green */
+  border-color: rgba(99, 163, 137, 0.35);
+  color:        var(--accent-green);
+}
+
+/* ── Heading right column ─────────────────────────────────── */
+.headingRight {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-end;
+  gap:            var(--sp-2);
+}
+
+/* ── Category section ─────────────────────────────────────── */
+.categorySection {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow:      hidden;
+  margin-bottom: var(--sp-2);
+}
+
+.categoryHeader {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  width:       100%;
+  padding:     var(--sp-3) var(--sp-4);
+  background:  transparent;
+  border:      none;
+  cursor:      pointer;
+  transition:  background var(--dur-fast) ease;
+}
+
+.categoryHeader:hover {
+  background: var(--bg-hover);
+}
+
+.categoryChevron {
+  font-size: 0.65rem;
+  color:     var(--text-dark);
+  flex-shrink: 0;
+}
+
+.categoryName {
+  font-size:      0.72rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+  flex:           1;
+  text-align:     left;
+}
+
+.categoryCount {
+  font-family:  var(--font-mono);
+  font-size:    0.68rem;
+  color:        var(--text-dark);
+  flex-shrink:  0;
+}
+
+.categoryCollapse {
+  display:    grid;
+  transition: grid-template-rows 320ms var(--ease-spring-cozy);
+}
+
+.categoryCollapseInner {
+  overflow: hidden;
+}
+
+/* ── Habit name + category badge row ─────────────────────── */
+.habitNameRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-wrap:   wrap;
+}
+
+.habitCategoryBadge {
+  font-size:     0.6rem;
+  font-weight:   600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:         var(--text-dark);
+  background:    rgba(124, 149, 255, 0.06);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding:       1px 6px;
+}
+
+/* ── Edit mode state ──────────────────────────────────────── */
+.habitRowEdit {
+  border-color: rgba(124, 149, 255, 0.18);
+  background:   rgba(124, 149, 255, 0.02);
+}
+
+.editActions {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.allTimeHigh {
+  font-size:  0.72rem;
+  color:      #f59e0b;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.editBtn {
+  font-size:     0.72rem;
+  font-weight:   600;
+  padding:       4px 10px;
+  background:    rgba(124, 149, 255, 0.08);
+  border:        1px solid var(--accent-purple-dim);
+  border-radius: var(--r-sm);
+  color:         var(--accent-purple);
+  cursor:        pointer;
+  transition:    background var(--dur-fast) ease;
+}
+
+.editBtn:hover {
+  background: rgba(124, 149, 255, 0.16);
+}
+
+.deleteBtn {
+  font-size:     0.72rem;
+  font-weight:   600;
+  padding:       4px 10px;
+  background:    rgba(248, 113, 113, 0.07);
+  border:        1px solid rgba(248, 113, 113, 0.22);
+  border-radius: var(--r-sm);
+  color:         #f87171;
+  cursor:        pointer;
+  transition:    background var(--dur-fast) ease;
+}
+
+.deleteBtn:hover {
+  background: rgba(248, 113, 113, 0.14);
+}
+
+/* ── Category picker row ──────────────────────────────────── */
+.categoryPickRow {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       var(--sp-2);
+}
+
+/* ── Add button ───────────────────────────────────────────── */
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-5);
+  background: rgba(124, 149, 255, 0.08);
+  border: 1px dashed rgba(124, 149, 255, 0.30);
+  border-radius: var(--r-xl);
+  color: var(--accent-purple);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.addBtn:hover {
+  background: rgba(124, 149, 255, 0.14);
+  border-color: rgba(124, 149, 255, 0.50);
+}
+
+.addBtnPlus {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* ── Two-column body layout ───────────────────────────────── */
+.bodyRow {
+  display: flex;
+  gap: var(--sp-6);
+  align-items: flex-start;
+}
+
+.habitColumn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Trend chart panel (right side, always visible) ──────── */
+.chartPanel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  position: sticky;
+  top: var(--sp-4);
+}
+
+.chartLabel {
+  font-size:      0.72rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+  margin-bottom:  var(--sp-3);
+}
+
+.chartSubLabel {
+  font-size:      0.68rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-2);
+}
+
+.chartDivider {
+  height:     1px;
+  background: var(--border-subtle);
+  margin:     var(--sp-3) 0;
+}
+
+.analyticsStats {
+  display:               grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:                   var(--sp-2);
+  margin-bottom:         var(--sp-1);
+}
+
+.analyticsStat {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            3px;
+  background:     rgba(124, 149, 255, 0.05);
+  border:         1px solid rgba(124, 149, 255, 0.10);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-3) var(--sp-2);
+}
+
+.analyticsStatNum {
+  font-family: var(--font-display);
+  font-size:   1.3rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+  line-height: 1;
+}
+
+.analyticsStatLabel {
+  font-size:      0.64rem;
+  font-weight:    600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  text-align:     center;
+}
+
+/* ── Modal ────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 13, 19, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+}
+
+.modal {
+  position:       fixed;
+  top:            50%;
+  left:           50%;
+  transform:      translate(-50%, -50%);
+  z-index:        401;
+  width:          min(500px, calc(100vw - 32px));
+  max-height:     calc(100vh - 64px);
+  display:        flex;
+  flex-direction: column;
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-xl);
+  overflow:       hidden;
+  animation:      scaleIn 280ms var(--ease-spring-cozy) both;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.modalHeader {
+  margin-bottom: var(--sp-5);
+}
+
+.modalEyebrow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-purple);
+  margin-bottom: 4px;
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Form */
+.form {
+  display:    flex;
+  flex-direction: column;
+  gap:        var(--sp-4);
+  overflow-y: auto;
+  padding:    var(--sp-6);
+  flex:       1;
+}
+
+.modalHeader {
+  padding:       var(--sp-5) var(--sp-6) 0;
+  margin-bottom: var(--sp-1);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.labelSub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.labelRequired {
+  color: var(--accent-purple);
+}
+
+.stepHint {
+  font-size: 0.72rem;
+  color: var(--accent-purple);
+  margin-top: var(--sp-1);
+  font-style: italic;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease-smooth);
+  outline: none;
+}
+
+.input:focus {
+  border-color: rgba(124, 149, 255, 0.50);
+}
+
+.inputSmall {
+  max-width: 100%;
+}
+
+.dayToggleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.dayChip {
+  padding: 4px 10px;
+  border-radius: var(--r-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+
+.dayChipOn {
+  background: rgba(124, 149, 255, 0.15);
+  border-color: rgba(124, 149, 255, 0.40);
+  color: var(--accent-purple);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+
+.cancelBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast);
+}
+
+.cancelBtn:hover {
+  border-color: rgba(124, 149, 255, 0.30);
+}
+
+.submitBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--accent-purple);
+  border: none;
+  color: #0b0d13;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+
+.submitBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}

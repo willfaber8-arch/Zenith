@@ -13,7 +13,7 @@
   padding: clamp(3rem, 10vh, 5.5rem) var(--sp-8) var(--sp-16);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-10);
+  gap: var(--sp-6);
 }
 
 /* ── Hub header ───────────────────────────────────────────── */
@@ -265,6 +265,45 @@
 .card:hover .linkAction {
   color: var(--accent-purple);
   transform: translateX(3px);
+}
+
+/* ── Category tab bar — matches UniversityHub resource sub-tab style ── */
+
+.categoryTabBar {
+  display:       flex;
+  flex-wrap:     wrap;
+  gap:           2px;
+  background:    rgba(11, 13, 19, 0.4);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       4px;
+  margin-bottom: var(--sp-6);
+  width:         fit-content;
+}
+
+.categoryTab {
+  padding:     6px 16px;
+  border-radius: var(--r-md);
+  background:  transparent;
+  border:      none;
+  color:       var(--text-dark);
+  font-family: var(--font-body);
+  font-size:   0.78rem;
+  font-weight: 500;
+  cursor:      pointer;
+  white-space: nowrap;
+  transition:  background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.categoryTab:hover {
+  color:      var(--text-muted);
+  background: rgba(124, 149, 255, 0.06);
+}
+
+.categoryTabActive {
+  background:  rgba(124, 149, 255, 0.14);
+  color:       var(--accent-purple);
+  font-weight: 600;
 }
 
 /* ── Mobile ───────────────────────────────────────────────── */

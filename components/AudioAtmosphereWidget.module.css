@@ -1,0 +1,371 @@
+/* ═══════════════════════════════════════════════════════════════
+   AudioAtmosphereWidget.module.css
+   Phase 14.1 · Audio Atmosphere — Lo-Fi Soundscapes
+
+   Palette: warm mineral-dark — parchment text on coal canvas.
+   All color values are hardcoded (not from design-token system) to
+   preserve the distinct "cozy cockpit" character regardless of the
+   active cosmetic theme.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Parchment palette ─────────────────────────────────────── */
+/* --atm-text:          rgba(194, 169, 128, 0.90)              */
+/* --atm-text-muted:    rgba(194, 169, 128, 0.48)              */
+/* --atm-text-dark:     rgba(194, 169, 128, 0.22)              */
+/* --atm-border:        rgba(194, 169, 128, 0.11)              */
+/* --atm-border-active: rgba(99,  163, 137, 0.26)              */
+/* --atm-accent:        #63a389  (sage green)                  */
+/* --atm-accent-dim:    rgba(99,  163, 137, 0.16)              */
+/* --atm-track-empty:   rgba(194, 169, 128, 0.08)              */
+
+/* ── Root card ─────────────────────────────────────────────── */
+
+.card {
+  background:     var(--surface-card);   /* overridden to #0d0f12 via FreeWidgetCanvas */
+  border:         1px solid rgba(194, 169, 128, 0.11);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-4) var(--sp-5);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  position:       relative;
+  overflow:       hidden;
+  transition:
+    border-color var(--dur-base) var(--ease-smooth);
+}
+
+/* Activated border tint — top-edge parchment glow */
+.card::before {
+  content:    '';
+  position:   absolute;
+  top:        0;
+  left:       var(--sp-5);
+  right:      var(--sp-5);
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(99, 163, 137, 0.45) 40%,
+    rgba(99, 163, 137, 0.45) 60%,
+    transparent
+  );
+  opacity:     0;
+  transition:  opacity var(--dur-base) var(--ease-smooth);
+}
+
+.card[data-active='true']::before { opacity: 1; }
+
+/* ── Header ─────────────────────────────────────────────────── */
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.48rem;
+  letter-spacing: 0.18em;
+  color:          rgba(194, 169, 128, 0.38);
+  text-transform: uppercase;
+}
+
+/* Live status dot — top-right corner */
+.statusDot {
+  width:         7px;
+  height:        7px;
+  border-radius: 50%;
+  background:    rgba(194, 169, 128, 0.20);
+  transition:    background var(--dur-base) var(--ease-smooth);
+  flex-shrink:   0;
+}
+
+.statusDot[data-active='true'] {
+  background:  #63a389;
+  box-shadow:  0 0 0 3px rgba(99, 163, 137, 0.20);
+  animation:   atmDotPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes atmDotPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(99, 163, 137, 0.20); }
+  50%       { box-shadow: 0 0 0 6px rgba(99, 163, 137, 0.06); }
+}
+
+/* ── Power toggle button ────────────────────────────────────── */
+
+.toggleBtn {
+  width:          100%;
+  padding:        var(--sp-2) var(--sp-3);
+  border-radius:  var(--r-md);
+  border:         1px solid rgba(194, 169, 128, 0.14);
+  background:     rgba(194, 169, 128, 0.04);
+  cursor:         pointer;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  gap:            6px;
+  transition:
+    background    var(--dur-base) var(--ease-smooth),
+    border-color  var(--dur-base) var(--ease-smooth);
+  user-select:    none;
+}
+
+.toggleBtn:hover:not(:disabled) {
+  background:   rgba(194, 169, 128, 0.07);
+  border-color: rgba(194, 169, 128, 0.22);
+}
+
+.toggleBtn:active:not(:disabled) {
+  background: rgba(194, 169, 128, 0.10);
+}
+
+/* Active state — sage green tint */
+.toggleBtn[data-active='true'] {
+  border-color: rgba(99, 163, 137, 0.30);
+  background:   rgba(99, 163, 137, 0.08);
+}
+
+.toggleBtn[data-active='true']:hover {
+  background:   rgba(99, 163, 137, 0.12);
+  border-color: rgba(99, 163, 137, 0.42);
+}
+
+.toggleBtn:disabled {
+  opacity: 0.55;
+  cursor:  wait;
+}
+
+.toggleBracket {
+  font-family:    var(--font-mono);
+  font-size:      0.75rem;
+  color:          rgba(194, 169, 128, 0.32);
+  letter-spacing: 0.04em;
+  line-height:    1;
+  flex-shrink:    0;
+}
+
+.toggleLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.66rem;
+  letter-spacing: 0.13em;
+  color:          rgba(194, 169, 128, 0.60);
+  transition:     color var(--dur-base) var(--ease-smooth);
+  line-height:    1;
+}
+
+.toggleLabel[data-active='true'] {
+  color: #63a389;
+}
+
+/* ── Section divider ────────────────────────────────────────── */
+
+.divider {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  margin-top:  var(--sp-1);
+}
+
+.dividerLine {
+  flex:        1;
+  height:      1px;
+  background:  rgba(194, 169, 128, 0.08);
+}
+
+.dividerLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.44rem;
+  letter-spacing: 0.18em;
+  color:          rgba(194, 169, 128, 0.26);
+  text-transform: uppercase;
+  flex-shrink:    0;
+}
+
+/* ── Channel rows ───────────────────────────────────────────── */
+
+.channels {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.channelRow {
+  display:        flex;
+  flex-direction: column;
+  gap:            5px;
+}
+
+.channelMeta {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.channelLeft {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.channelGlyph {
+  font-family:    var(--font-mono);
+  font-size:      0.72rem;
+  color:          rgba(194, 169, 128, 0.34);
+  line-height:    1;
+  width:          14px;
+  text-align:     center;
+  flex-shrink:    0;
+}
+
+/* Active glyph → sage green */
+.channelRow[data-channel-active='true'] .channelGlyph {
+  color: #63a389;
+  text-shadow: 0 0 6px rgba(99, 163, 137, 0.40);
+}
+
+.channelLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.14em;
+  color:          rgba(194, 169, 128, 0.55);
+  text-transform: uppercase;
+}
+
+.channelVol {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  letter-spacing: 0.06em;
+  color:          rgba(194, 169, 128, 0.34);
+  min-width:      26px;
+  text-align:     right;
+}
+
+/* ── Channel volume slider ──────────────────────────────────── */
+/* Uses --fill-pct (integer 0–100) set via inline style in React  */
+
+.slider {
+  -webkit-appearance: none;
+  appearance:         none;
+  width:              100%;
+  height:             3px;
+  border-radius:      2px;
+  outline:            none;
+  cursor:             pointer;
+  background: linear-gradient(
+    to right,
+    #63a389 0%,
+    #63a389 calc(var(--fill-pct, 0) * 1%),
+    rgba(194, 169, 128, 0.09) calc(var(--fill-pct, 0) * 1%),
+    rgba(194, 169, 128, 0.09) 100%
+  );
+  transition:
+    opacity var(--dur-fast) var(--ease-smooth);
+}
+
+.slider:disabled {
+  opacity: 0.38;
+  cursor:  default;
+}
+
+/* Webkit thumb */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance:         none;
+  width:              13px;
+  height:             13px;
+  border-radius:      50%;
+  background:         #63a389;
+  box-shadow:
+    0 0 0 2px rgba(13, 15, 18, 0.90),
+    0 0 0 3px rgba(99, 163, 137, 0.40);
+  cursor:      pointer;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-smooth),
+    transform  var(--dur-fast) var(--ease-smooth);
+}
+
+.slider:not(:disabled)::-webkit-slider-thumb:hover {
+  box-shadow:
+    0 0 0 2px rgba(13, 15, 18, 0.90),
+    0 0 0 4px rgba(99, 163, 137, 0.55);
+  transform: scale(1.15);
+}
+
+/* Firefox thumb */
+.slider::-moz-range-thumb {
+  width:        13px;
+  height:       13px;
+  border:       none;
+  border-radius: 50%;
+  background:   #63a389;
+  box-shadow:
+    0 0 0 2px rgba(13, 15, 18, 0.90),
+    0 0 0 3px rgba(99, 163, 137, 0.40);
+  cursor: pointer;
+}
+
+/* ── Waveform bars — animated VU indicator ──────────────────── */
+
+.waveform {
+  display:     flex;
+  align-items: flex-end;
+  gap:         2px;
+  height:      12px;
+  flex-shrink: 0;
+}
+
+.wavBar {
+  width:         2px;
+  border-radius: 1px;
+  background:    rgba(99, 163, 137, 0.55);
+  animation:     atmWave var(--bar-dur, 0.8s) ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+
+.wavBar:nth-child(1) { animation-delay: 0s;    --bar-dur: 0.55s; height: 30%; }
+.wavBar:nth-child(2) { animation-delay: 0.12s; --bar-dur: 0.72s; height: 55%; }
+.wavBar:nth-child(3) { animation-delay: 0.08s; --bar-dur: 0.48s; height: 80%; }
+.wavBar:nth-child(4) { animation-delay: 0.20s; --bar-dur: 0.65s; height: 45%; }
+.wavBar:nth-child(5) { animation-delay: 0.05s; --bar-dur: 0.58s; height: 30%; }
+
+@keyframes atmWave {
+  from { transform: scaleY(0.25); opacity: 0.45; }
+  to   { transform: scaleY(1.00); opacity: 1.00; }
+}
+
+/* Static bars when audio is off */
+.waveformOff .wavBar {
+  animation: none;
+  transform: scaleY(0.25);
+  opacity:   0.20;
+}
+
+/* ── Hint strip ─────────────────────────────────────────────── */
+
+.hint {
+  font-family:    var(--font-mono);
+  font-size:      0.46rem;
+  letter-spacing: 0.10em;
+  color:          rgba(194, 169, 128, 0.25);
+  text-transform: uppercase;
+  text-align:     center;
+  padding-top:    var(--sp-1);
+  animation:      atmHintIn 400ms var(--ease-expo) both;
+}
+
+@keyframes atmHintIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Card entrance ──────────────────────────────────────────── */
+
+.card {
+  animation: atmCardIn 340ms var(--ease-expo) both;
+}
+
+@keyframes atmCardIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}

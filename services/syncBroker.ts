@@ -48,6 +48,7 @@ import {
 } from '@/lib/db'
 import { getSupabaseClient } from '@/lib/supabase'
 import { getSyncEngine }     from '@/services/syncEngine'
+import { warn }              from '@/lib/logger'
 import {
   type OutboxMutation,
   type OutboxTable,
@@ -163,7 +164,7 @@ export async function processOutboxQueue(): Promise<void> {
       await _flushTableBatch(userId, tableName, mutations, supabase)
       mutations.forEach(m => flushedIds.push(m.id))
     } catch (err) {
-      console.warn(`[SyncBroker] Batch flush failed — table: ${tableName}`, err)
+      warn('SyncBroker', `Batch flush failed — table: ${tableName}`, err)
       mutations.forEach(m => failedIds.push(m.id))
     }
   }
@@ -182,7 +183,7 @@ export async function processOutboxQueue(): Promise<void> {
       if (count >= MAX_BROKER_RETRIES) {
         retireIds.push(id)
         _retryMap.delete(id)
-        console.warn(`[SyncBroker] Retiring mutation ${id} after ${MAX_BROKER_RETRIES} attempts.`)
+        warn('SyncBroker', `Retiring mutation ${id} after ${MAX_BROKER_RETRIES} attempts.`)
       } else {
         _retryMap.set(id, count)
       }
@@ -535,9 +536,6 @@ function _buildCloudRow(
         user_name:        p.userName        ?? '',
         university_name:  p.universityName  ?? '',
         major_identifier: p.majorIdentifier ?? '',
-        current_level:    p.currentLevel    ?? 1,
-        exp_points:       p.expPoints       ?? 0,
-        health_points:    p.healthPoints    ?? 100,
         // updated_at managed by Postgres trigger — never set manually
       }
     }

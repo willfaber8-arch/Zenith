@@ -80,9 +80,6 @@ export default function MajorHubView() {
         userName:        session?.userHandle ?? 'Zenith User',
         universityName:  '',
         majorIdentifier: entry.name,
-        expPoints:       0,
-        currentLevel:    1,
-        healthPoints:    100,
         lastActiveAt:    Date.now(),
       })
     }

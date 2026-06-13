@@ -1,0 +1,407 @@
+/* ════════════════════════════════════════════════════════════════
+   VocabStudySession — SM-2 Review HUD
+   Flip-card interaction + 6-grade response interface.
+   Local tokens:
+     --grade-wrong-color / bg / border  (rose tones — no global token)
+     --grade-right-color / bg / border  (green tones via --accent-green)
+   ════════════════════════════════════════════════════════════════ */
+
+.session {
+  --grade-wrong-color:  rgba(248, 113, 113, 0.92);
+  --grade-wrong-bg:     rgba(248, 113, 113, 0.07);
+  --grade-wrong-border: rgba(248, 113, 113, 0.22);
+  --grade-right-color:  var(--accent-green);
+  --grade-right-bg:     rgba(82, 204, 163, 0.07);
+  --grade-right-border: rgba(82, 204, 163, 0.22);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-8);
+  height: 100%;
+}
+
+/* ── Progress strip ─────────────────────────────────────────── */
+
+.progressStrip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+}
+
+.cardCounter {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+  min-width: 3.5rem;
+}
+
+.counterOf {
+  color: var(--text-dark);
+}
+
+.progressTrack {
+  flex: 1;
+  height: 3px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--accent-purple);
+  border-radius: 2px;
+  transition: width 320ms var(--ease-smooth);
+}
+
+.langBadge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cat-accent, var(--accent-purple));
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 30%, transparent);
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+
+/* ── Flip card container ────────────────────────────────────── */
+
+.flipContainer {
+  perspective: 1200px;
+  flex-shrink: 0;
+}
+
+.flipInner {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.flipInner.isFlipped {
+  transform: rotateY(180deg);
+  cursor: default;
+}
+
+.flipFace {
+  position: absolute;
+  inset: 0;
+  min-height: 220px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-8) var(--sp-10);
+  gap: var(--sp-3);
+  text-align: center;
+  transition: border-color 200ms var(--ease-smooth),
+              box-shadow   200ms var(--ease-smooth);
+}
+
+/* Front face — interactive hint pulse */
+.flipFront {
+  animation: hintPulse 3s ease-in-out infinite;
+}
+
+.flipInner.isFlipped .flipFront {
+  animation: none;
+}
+
+@keyframes hintPulse {
+  0%, 100% { border-color: var(--border-subtle); }
+  50%       { border-color: color-mix(in srgb, var(--accent-purple) 35%, transparent); }
+}
+
+/* Back face — revealed state */
+.flipBack {
+  transform: rotateY(180deg);
+  background: color-mix(in srgb, var(--surface-card) 94%, var(--accent-purple) 6%);
+  border-color: color-mix(in srgb, var(--accent-purple) 20%, transparent);
+  cursor: default;
+  gap: var(--sp-2);
+}
+
+/* ── Card content ───────────────────────────────────────────── */
+
+.tapHint {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin-bottom: var(--sp-2);
+}
+
+.foreignWord {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.translation {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 1.75rem);
+  font-weight: 500;
+  color: var(--accent-green);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.phonetic {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.cardDivider {
+  width: 40px;
+  height: 1px;
+  background: var(--border-subtle);
+  margin-block: var(--sp-2);
+  border: none;
+}
+
+/* ── Grade section ──────────────────────────────────────────── */
+
+.gradeSection {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 320ms var(--ease-smooth);
+  flex-shrink: 0;
+}
+
+.gradeSection.visible {
+  grid-template-rows: 1fr;
+}
+
+.gradeSectionInner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
+}
+
+.gradeLabel {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.gradeRow {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.gradeBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--sp-3) var(--sp-2);
+  min-width: 52px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 140ms var(--ease-smooth),
+              border-color 140ms var(--ease-smooth),
+              transform 120ms var(--ease-smooth);
+}
+
+.gradeBtn:hover {
+  transform: translateY(-2px);
+}
+
+.gradeBtn:active {
+  transform: translateY(0);
+}
+
+.gradeBtn.incorrect {
+  border-color: var(--grade-wrong-border);
+  background: var(--grade-wrong-bg);
+}
+
+.gradeBtn.incorrect:hover {
+  background: color-mix(in srgb, rgba(248, 113, 113, 0.07) 100%, rgba(248, 113, 113, 0.07) 0%);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.gradeBtn.correct {
+  border-color: var(--grade-right-border);
+  background: var(--grade-right-bg);
+}
+
+.gradeBtn.correct:hover {
+  background: rgba(82, 204, 163, 0.13);
+  border-color: rgba(82, 204, 163, 0.45);
+}
+
+.gradeNum {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.gradeBtn.incorrect .gradeNum {
+  color: var(--grade-wrong-color);
+}
+
+.gradeBtn.correct .gradeNum {
+  color: var(--grade-right-color);
+}
+
+.gradeDesc {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+/* ── All Done state ─────────────────────────────────────────── */
+
+.allDone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  height: 100%;
+  padding: var(--sp-10);
+  text-align: center;
+  animation: fadeIn 500ms var(--ease-expo) both;
+}
+
+.allDoneGlyph {
+  font-size: 2.5rem;
+  color: var(--accent-green);
+  animation: glyphFloat 3s ease-in-out infinite;
+}
+
+@keyframes glyphFloat {
+  0%, 100% { transform: translateY(0);    }
+  50%       { transform: translateY(-6px); }
+}
+
+.allDoneTitle {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: var(--accent-green);
+  line-height: 1.6;
+}
+
+.allDoneSubtext {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dark);
+}
+
+.allDoneActions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.allDoneBtn {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 150ms var(--ease-smooth),
+              color         150ms var(--ease-smooth);
+}
+
+.allDoneBtn:hover {
+  border-color: color-mix(in srgb, var(--accent-green) 40%, transparent);
+  color: var(--accent-green);
+}
+
+/* ── Loading state ──────────────────────────────────────────── */
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── No-cards state (deck empty) ───────────────────────────── */
+
+.emptySession {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  height: 100%;
+  padding: var(--sp-10);
+  text-align: center;
+}
+
+.emptySessionGlyph {
+  font-size: 2rem;
+  color: var(--text-dark);
+}
+
+.emptySessionText {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 260px;
+}
+
+/* ── Card exit animation ────────────────────────────────────── */
+
+@keyframes cardExit {
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateX(-16px);
+  }
+}
+
+.exiting {
+  animation: cardExit 200ms var(--ease-smooth) forwards;
+}

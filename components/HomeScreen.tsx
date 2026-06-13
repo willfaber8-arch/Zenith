@@ -74,7 +74,7 @@ export default function HomeScreen() {
 
   const weatherText =
     weatherState === 'ok' && weather
-      ? `${weather.tempC}°C  ·  ${weather.condition}`
+      ? `${weather.tempF}°F  ·  ${weather.condition}`
       : weatherState === 'error'
         ? 'Weather unavailable'
         : ''

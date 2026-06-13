@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════
-   WidgetSandbox — Phase 1 · Step 1.4
+   WidgetSandbox
    ════════════════════════════════════════════════════════════ */
 
 /* ── Section wrapper ──────────────────────────────────────── */
@@ -8,7 +8,7 @@
   display:        flex;
   flex-direction: column;
   gap:            var(--sp-5);
-  position:       relative;  /* anchor for the manage panel */
+  position:       relative;
 }
 
 /* ── Header row ───────────────────────────────────────────── */
@@ -38,7 +38,7 @@
   line-height:    1;
 }
 
-/* ── Manage button ────────────────────────────────────────── */
+/* ── Edit / Done button ───────────────────────────────────── */
 
 .manageBtn {
   display:        flex;
@@ -67,42 +67,52 @@
   color:            var(--text-muted);
 }
 
+/* "Done" variant — periwinkle tint */
+.manageBtnActive {
+  border-color:     var(--accent-purple-dim);
+  color:            var(--accent-purple);
+}
+
+.manageBtnActive:hover {
+  background-color: rgba(124, 149, 255, 0.08);
+  border-color:     var(--accent-purple);
+  color:            var(--accent-purple);
+}
+
 .manageBtnIcon {
   font-size:   0.875rem;
   line-height: 1;
 }
 
-/* ── Widget grid ──────────────────────────────────────────── */
+/* ── Masonry widget grid ──────────────────────────────────── */
 
-.grid {
-  display:               grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap:                   var(--sp-4);
-  align-items:           start;  /* prevents cells from stretching on exit */
+.masonryGrid {
+  columns:    2;
+  column-gap: var(--sp-4);
 }
 
 /* ── Widget animation wrappers ────────────────────────────── */
 
-/*
- * widgetIdle — no animation (initial page load state)
- * widgetEnter — scale + fade in on user toggle
- * widgetExit  — scale + fade out on user toggle
- *
- * The wrapper fills its grid cell completely so the animation
- * does not distort neighbouring cells.
- */
-
 .widgetIdle {
-  /* intentionally empty */
+  break-inside:  avoid;
+  margin-bottom: var(--sp-4);
 }
 
 .widgetEnter {
-  animation: sandboxEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  break-inside:  avoid;
+  margin-bottom: var(--sp-4);
+  animation:     sandboxEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .widgetExit {
+  break-inside:   avoid;
+  margin-bottom:  var(--sp-4);
   animation:      sandboxExit 0.22s ease forwards;
   pointer-events: none;
+}
+
+.widgetWide {
+  column-span: all;
 }
 
 @keyframes sandboxEnter {
@@ -142,8 +152,8 @@
 }
 
 .emptyGridIcon {
-  font-size:  1.5rem;
-  opacity:    0.25;
+  font-size:   1.5rem;
+  opacity:     0.25;
   line-height: 1;
 }
 
@@ -155,171 +165,148 @@
 }
 
 .inlineManageLink {
-  background:  transparent;
-  border:      none;
-  color:       var(--accent-purple);
-  font:        inherit;
-  cursor:      pointer;
-  padding:     0;
-  text-decoration: underline;
+  background:          transparent;
+  border:              none;
+  color:               var(--accent-purple);
+  font:                inherit;
+  cursor:              pointer;
+  padding:             0;
+  text-decoration:     underline;
   text-underline-offset: 2px;
 }
 
 /* ════════════════════════════════════════════════════════════
-   Manage Sandbox Panel
+   Edit Mode — inline drag-and-drop widget list
    ════════════════════════════════════════════════════════════ */
 
-/* Translucent backdrop — closes panel on click */
-.panelBackdrop {
-  position: fixed;
-  inset:    0;
-  z-index:  300;
-}
-
-.managePanel {
-  position:      absolute;
-  top:           calc(100% + var(--sp-2)); /* below the manage button */
-  right:         0;
-  z-index:       301;
-  width:         clamp(240px, 72vw, 320px);
-  background:    var(--surface-card);
-  border:        1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.6),
-    0 0 0 1px var(--border-subtle);
-  animation:     panelEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  overflow:      hidden;
-}
-
-@keyframes panelEnter {
-  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);    }
-}
-
-/* ── Panel header ─────────────────────────────────────────── */
-
-.panelHeader {
-  padding:       var(--sp-5) var(--sp-5) var(--sp-4);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.panelEyebrow {
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color:          var(--text-dark);
-  margin-bottom:  var(--sp-1);
-}
-
-.panelTitle {
-  font-family:    var(--font-display);
-  font-size:      0.875rem;
-  font-weight:    600;
-  color:          var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-/* ── Toggle rows ──────────────────────────────────────────── */
-
-.toggleList {
-  list-style:     none;
+.editList {
   display:        flex;
   flex-direction: column;
-  padding:        var(--sp-3) var(--sp-5);
-  gap:            var(--sp-1);
+  gap:            var(--sp-2);
+  animation:      sandboxEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.toggleRow {
-  display:         flex;
-  align-items:     center;
-  justify-content: space-between;
-  padding:         var(--sp-2) 0;
+/* ── Single widget row ────────────────────────────────────── */
+
+.editRow {
+  display:          flex;
+  align-items:      center;
+  gap:              var(--sp-3);
+  padding:          var(--sp-3) var(--sp-4);
+  background:       var(--surface-card);
+  border:           1px solid var(--border-subtle);
+  border-radius:    var(--r-md);
+  cursor:           grab;
+  user-select:      none;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast),
+    box-shadow       var(--dur-fast),
+    transform        var(--dur-fast);
 }
 
-.toggleLabel {
-  font-size:   0.75rem;
+.editRow:active {
+  cursor: grabbing;
+}
+
+.editRowDragging {
+  opacity:    0.45;
+  transform:  scale(0.98);
+  box-shadow: none;
+}
+
+.editRowDropZone {
+  border-color:     var(--accent-purple-dim);
+  background-color: rgba(124, 149, 255, 0.06);
+  box-shadow:       0 0 0 1px var(--accent-purple-dim) inset;
+}
+
+/* ── Drag handle glyph ────────────────────────────────────── */
+
+.editDragHandle {
+  font-size:   1rem;
+  line-height: 1;
+  color:       var(--text-dark);
+  flex-shrink: 0;
+  transition:  color var(--dur-fast);
+}
+
+.editRow:hover .editDragHandle {
+  color: var(--text-muted);
+}
+
+/* ── Widget name ──────────────────────────────────────────── */
+
+.editWidgetLabel {
+  flex:        1;
+  font-size:   0.8125rem;
   font-weight: 500;
   color:       var(--text-muted);
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
 }
 
-/* ── Pill toggle ──────────────────────────────────────────── */
+.editWidthBadge {
+  font-size:      0.45rem;
+  font-weight:    700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  border:         1px solid var(--border-subtle);
+  border-radius:  99px;
+  padding:        1px 6px;
+}
 
-.togglePill {
+/* ── Inline toggle switch ─────────────────────────────────── */
+
+.editToggle {
   position:      relative;
-  width:         34px;
-  height:        18px;
+  width:         36px;
+  height:        20px;
   border-radius: 99px;
   border:        none;
   cursor:        pointer;
-  transition:    background-color 0.25s var(--ease-smooth);
   flex-shrink:   0;
-  /* Focus ring via outline */
+  transition:    background-color 0.22s var(--ease-smooth);
   outline-offset: 2px;
 }
 
-.togglePill:focus-visible {
+.editToggle:focus-visible {
   outline: 2px solid var(--accent-purple);
 }
 
-.toggleOn {
+.editToggleOn {
   background-color: var(--accent-purple);
 }
 
-.toggleOff {
-  background-color: var(--border-subtle);
+.editToggleOff {
+  background-color: rgba(124, 149, 255, 0.12);
+  border:           1px solid var(--border-subtle);
 }
 
-.toggleThumb {
+.editToggleThumb {
   position:      absolute;
-  top:           2px;
+  top:           3px;
   width:         14px;
   height:        14px;
   border-radius: 50%;
   background:    var(--bg-main);
-  box-shadow:    0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow:    0 1px 3px rgba(0, 0, 0, 0.45);
   transition:    left 0.2s var(--ease-smooth);
 }
 
-.toggleOn  .toggleThumb { left: calc(100% - 16px); }
-.toggleOff .toggleThumb { left: 2px; }
+.editToggleOn  .editToggleThumb { left: calc(100% - 17px); }
+.editToggleOff .editToggleThumb { left: 3px; }
 
-/* ── Done button ──────────────────────────────────────────── */
+/* ── Bottom hint text ─────────────────────────────────────── */
 
-.panelDone {
-  display:      block;
-  width:        calc(100% - var(--sp-10));
-  margin:       0 var(--sp-5) var(--sp-5);
-  padding:      var(--sp-2) 0;
-  border-radius: var(--r-md);
-  border:       1px solid var(--border-subtle);
-  background:   transparent;
-  color:        var(--text-muted);
-  font-family:  var(--font-display);
-  font-size:    0.6875rem;
-  font-weight:  600;
-  letter-spacing: 0.04em;
-  cursor:       pointer;
-  transition:
-    background-color var(--dur-fast),
-    color            var(--dur-fast);
-}
-
-.panelDone:hover {
-  background-color: var(--bg-hover);
-  color:            var(--text-primary);
-}
-
-/* ── Responsive ───────────────────────────────────────────── */
-
-@media (max-width: 600px) {
-  .managePanel {
-    position:   fixed;
-    bottom:     var(--sp-6);
-    right:      var(--sp-4);
-    left:       var(--sp-4);
-    top:        auto;
-    width:      auto;
-  }
+.editHint {
+  font-size:   0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color:       var(--text-dark);
+  text-align:  center;
+  margin-top:  var(--sp-1);
 }

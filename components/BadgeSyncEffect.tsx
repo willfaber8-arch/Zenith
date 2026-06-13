@@ -17,6 +17,7 @@ import { useEffect }                 from 'react'
 import { useAuth }                   from '@/lib/AuthContext'
 import { seedUserProfile }           from '@/lib/db'
 import { useLiveAssignmentBadges }   from '@/lib/hooks/useLiveAssignmentBadges'
+import { warn }                      from '@/lib/logger'
 
 export default function BadgeSyncEffect() {
   const { session } = useAuth()
@@ -25,7 +26,7 @@ export default function BadgeSyncEffect() {
   useEffect(() => {
     if (!session?.userHandle) return
     seedUserProfile(session.userHandle).catch(
-      (err) => console.warn('[BadgeSyncEffect] seedUserProfile:', err),
+      (err) => warn('BadgeSyncEffect', 'seedUserProfile failed', err),
     )
   }, [session?.userHandle])
 

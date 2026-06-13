@@ -1,0 +1,357 @@
+/* ════════════════════════════════════════════════════════════════
+   DistanceTrackerWidget — Cozy Moss Distance Card
+   Phase 9 · Step 9.4
+   ════════════════════════════════════════════════════════════════
+   Color philosophy:
+     "Velvety dark moss" — very dark, slightly green-tinted card
+     background with sage green (#52cca3) as the primary accent.
+     Warm cream (#e8e0c9) for body labels. No periwinkle used here;
+     this card lives entirely in the Creator's Choice / green tier.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Outer shell ─────────────────────────────────────────────── */
+
+.card {
+  background:    #080d09;
+  border:        1px solid rgba(82, 204, 163, 0.12);
+  border-radius: var(--r-xl);
+  padding:       var(--sp-5) var(--sp-6);
+  height:        220px;
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-3);
+  position:      relative;
+  overflow:      hidden;
+
+  /* Sage top-edge shimmer */
+  box-shadow:
+    inset 0 1px 0 rgba(82, 204, 163, 0.08),
+    0 0 0 1px rgba(82, 204, 163, 0.05),
+    0 2px 16px rgba(0, 0, 0, 0.32);
+
+  transition:
+    border-color 220ms var(--ease-smooth),
+    box-shadow   220ms var(--ease-smooth);
+}
+
+.card:hover {
+  border-color: rgba(82, 204, 163, 0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(82, 204, 163, 0.12),
+    0 0 0 1px rgba(82, 204, 163, 0.09),
+    0 4px 24px rgba(0, 0, 0, 0.38);
+}
+
+/* Subtle radial background glow — centre of card, very low opacity */
+.card::before {
+  content:  '';
+  position: absolute;
+  inset:    0;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 80%,
+    rgba(82, 204, 163, 0.035) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Header row ──────────────────────────────────────────────── */
+
+.header {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+}
+
+.headerIcon {
+  font-size:   0.80rem;
+  color:       rgba(82, 204, 163, 0.50);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.headerLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          rgba(82, 204, 163, 0.42);
+}
+
+/* Stale badge — amber pill on header right */
+.staleBadge {
+  margin-left:    auto;
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          rgba(245, 158, 11, 0.80);
+  background:     rgba(245, 158, 11, 0.08);
+  border:         1px solid rgba(245, 158, 11, 0.18);
+  border-radius:  var(--r-sm);
+  padding:        2px 7px;
+  flex-shrink:    0;
+}
+
+/* ── Distance display ────────────────────────────────────────── */
+
+.distanceBlock {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  justify-content: center;
+  gap:            var(--sp-1);
+  animation:      distanceReveal 380ms var(--ease-expo) both;
+}
+
+/* Bracketed readout line */
+.distanceLine {
+  font-family:    var(--font-mono);
+  font-size:      0.72rem;
+  letter-spacing: 0.08em;
+  line-height:    1.5;
+  color:          #52cca3;   /* --accent-green: sage / teal */
+  word-break:     break-word;
+}
+
+.distanceBracket {
+  color:   rgba(82, 204, 163, 0.35);
+}
+
+.distanceValue {
+  color:      #52cca3;
+  font-weight: 600;
+}
+
+.distanceUnit {
+  color:          rgba(82, 204, 163, 0.65);
+  font-size:      0.65rem;
+  letter-spacing: 0.12em;
+}
+
+/* Cardinal bearing indicator */
+.bearingRow {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  font-family:    var(--font-mono);
+  font-size:      0.56rem;
+  letter-spacing: 0.10em;
+  color:          rgba(82, 204, 163, 0.40);
+  margin-top:     var(--sp-1);
+}
+
+.bearingArrow {
+  font-size: 0.70rem;
+}
+
+/* ── Footer — timestamp + sync button ───────────────────────── */
+
+.footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+  border-top:      1px solid rgba(82, 204, 163, 0.07);
+  padding-top:     var(--sp-3);
+  flex-shrink:     0;
+}
+
+.syncMeta {
+  font-family:    var(--font-mono);
+  font-size:      0.555rem;
+  letter-spacing: 0.06em;
+  color:          rgba(82, 204, 163, 0.35);
+  line-height:    1.5;
+}
+
+/* On-demand sync button */
+.syncBtn {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            5px;
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          rgba(82, 204, 163, 0.55);
+  background:     transparent;
+  border:         1px solid rgba(82, 204, 163, 0.14);
+  border-radius:  var(--r-sm);
+  padding:        4px 9px;
+  cursor:         pointer;
+  flex-shrink:    0;
+  transition:
+    color        180ms var(--ease-smooth),
+    border-color 180ms var(--ease-smooth),
+    background   180ms var(--ease-smooth);
+}
+
+.syncBtn:hover:not(:disabled) {
+  color:        rgba(82, 204, 163, 0.88);
+  border-color: rgba(82, 204, 163, 0.32);
+  background:   rgba(82, 204, 163, 0.07);
+}
+
+.syncBtn:active:not(:disabled) {
+  background: rgba(82, 204, 163, 0.12);
+}
+
+.syncBtn:disabled {
+  opacity: 0.40;
+  cursor:  default;
+}
+
+.syncIcon {
+  font-size:  0.70rem;
+  line-height: 1;
+  /* Rotation applied via inline style when syncing */
+}
+
+.syncIcon.spinning {
+  animation: spinCycle 900ms linear infinite;
+}
+
+/* ── Empty / no-peer state ───────────────────────────────────── */
+
+.emptyState {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  text-align:      center;
+  padding:         var(--sp-4) 0;
+  animation:       fadeIn 500ms var(--ease-expo) both;
+}
+
+.emptyGlyph {
+  font-size:   1.60rem;
+  opacity:     0.14;
+  line-height: 1;
+  user-select: none;
+}
+
+.emptyText {
+  font-family:    var(--font-mono);
+  font-size:      0.575rem;
+  letter-spacing: 0.09em;
+  color:          rgba(82, 204, 163, 0.38);
+  line-height:    1.80;
+  white-space:    pre-line;
+}
+
+/* ── Permission denied state ─────────────────────────────────── */
+
+.deniedState {
+  flex:          1;
+  display:       flex;
+  align-items:   flex-start;
+  gap:           var(--sp-3);
+  padding:       var(--sp-2) 0;
+  animation:     fadeIn 400ms var(--ease-expo) both;
+}
+
+.deniedIcon {
+  font-size:   1.1rem;
+  flex-shrink: 0;
+  opacity:     0.55;
+  line-height: 1;
+  margin-top:  1px;
+}
+
+.deniedText {
+  font-family:    var(--font-body);
+  font-size:      0.72rem;
+  line-height:    1.60;
+  color:          var(--text-muted);
+}
+
+.deniedHint {
+  display:   block;
+  font-size: 0.62rem;
+  color:     var(--text-dark);
+  margin-top: var(--sp-1);
+}
+
+/* ── Error inline strip ──────────────────────────────────────── */
+
+.errorStrip {
+  font-family:    var(--font-mono);
+  font-size:      0.56rem;
+  letter-spacing: 0.06em;
+  color:          rgba(248, 113, 113, 0.75);
+  padding:        var(--sp-2) var(--sp-3);
+  background:     rgba(248, 113, 113, 0.06);
+  border:         1px solid rgba(248, 113, 113, 0.12);
+  border-radius:  var(--r-sm);
+  flex-shrink:    0;
+}
+
+/* ── Requesting / syncing state ──────────────────────────────── */
+
+.syncingState {
+  flex:            1;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  padding:         var(--sp-3) 0;
+}
+
+.syncingDots {
+  display:  flex;
+  gap:      5px;
+}
+
+.syncingDot {
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    rgba(82, 204, 163, 0.55);
+  animation:     dotBounce 1.2s ease-in-out infinite;
+}
+
+.syncingDot:nth-child(2) { animation-delay: 0.18s; }
+.syncingDot:nth-child(3) { animation-delay: 0.36s; }
+
+.syncingLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          rgba(82, 204, 163, 0.45);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────── */
+
+@keyframes distanceReveal {
+  from {
+    opacity:   0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity:   1;
+    transform: translateY(0)   scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spinCycle {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.40; }
+  40%           { transform: scale(1.0); opacity: 1.00; }
+}

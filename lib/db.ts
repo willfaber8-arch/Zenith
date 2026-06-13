@@ -34,14 +34,26 @@ import type { WaterLog } from '@/utils/waterChemistry'
 export type { WaterLog } from '@/utils/waterChemistry'
 import type { Houseplant } from '@/types/botany'
 export type { Houseplant } from '@/types/botany'
-import type { DeliveryItem } from '@/types/finance'
-export type { DeliveryItem } from '@/types/finance'
+import type { DeliveryItem, SubscriptionItem } from '@/types/finance'
+export type { DeliveryItem, SubscriptionItem } from '@/types/finance'
+import type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
+export type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
+import type { RelationshipNote } from '@/types/relationshipNotes'
+export type { RelationshipNote } from '@/types/relationshipNotes'
+import type { PeerLocation } from '@/types/distanceTracker'
+export type { PeerLocation } from '@/types/distanceTracker'
 import type { MentalHealthLog } from '@/utils/mentalHealthLog'
 export type { MentalHealthLog } from '@/utils/mentalHealthLog'
-import { applyXpGain, type HabitDifficulty } from '@/utils/rpgEngine'
-export type { HabitDifficulty } from '@/utils/rpgEngine'
 import type { OutboxMutation } from '@/types/syncQueue'
 export type { OutboxMutation } from '@/types/syncQueue'
+import type { AquascapeLayout } from '@/types/hardscape'
+export type { AquascapeLayout } from '@/types/hardscape'
+import type { VocabDeck, VocabCard } from '@/types/vocabulary'
+export type { VocabDeck, VocabCard } from '@/types/vocabulary'
+import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
+export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
+import type { LibraryBook } from '@/types/bookTracker'
+export type { LibraryBook } from '@/types/bookTracker'
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -65,6 +77,7 @@ export interface Assignment {
   courseId:    string           // * indexed — FK-style link to a course label
   status:      AssignmentStatus // * indexed — filter by pipeline stage
   priority:    Priority         // * indexed — sort/filter by urgency
+  category?:   string           // * indexed — broad grouping label (e.g. "scholastic", "life")
   notes?:      string           //   free-text / Markdown body
   createdAt:   number           //   Unix timestamp ms
   updatedAt:   number           //   Unix timestamp ms — update on every save
@@ -96,19 +109,33 @@ export type Priority         = 'low' | 'medium' | 'high' | 'critical'
  */
 export interface Habit {
   id:                 number            // * PK — auto-increment
-  name:               string            // * indexed — display + dedup lookup
-  frequency:          HabitFrequency    // * indexed — filter by cadence
-  streakCount:        number            // * indexed — sort leaderboard / gamification
-  lastCompletedDate:  string | null     // * indexed — ISO-8601 date, null = never
-  category:           string            // * indexed — e.g. "health", "study", "social"
-  difficulty?:        HabitDifficulty   //   RPG tier; defaults to 'medium' when absent
-  targetDays?:        number[]          //   0=Sun … 6=Sat (custom frequency only)
-  notes?:             string            //   motivation memo / context
-  createdAt:          number            //   Unix timestamp ms
-  supabaseId?:        string            //   cloud UUID injected by syncBroker on first create
+  name:               string            // * indexed — display name
+  frequency:          HabitFrequency    // * indexed — 'daily' | 'specific_days'
+  streakCount:        number            // * indexed — current streak length
+  lastCompletedDate:  string | null     // * indexed — ISO-8601 date of last full completion
+  category:           string            // * indexed — e.g. "health", "study"
+  activeDays:         number[]          //   0=Sun … 6=Sat; empty = every day
+  targetCompletions:  number            //   the daily goal value (e.g. 20)
+  stepAmount?:        number            //   how much each tap adds (e.g. 5)
+  stepLabel?:         string            //   unit label for display, e.g. "oz"
+  goalDescription?:   string            //   legacy text descriptor
+  color?:             string            //   hex accent colour for the habit row
+  allTimeHighStreak?: number            //   all-time highest streak
+  streakSaveUsed?:    boolean           //   grace-period save used this streak
+  notes?:             string
+  createdAt:          number
+  supabaseId?:        string
 }
 
-export type HabitFrequency = 'daily' | 'weekly' | 'custom'
+/** Daily completion log — one row per habit per day */
+export interface HabitCompletion {
+  id?:       number   // * PK
+  habitId:   number   // * indexed — FK → Habit.id
+  date:      string   // * indexed — ISO-8601 "YYYY-MM-DD"
+  count:     number   //   how many times completed this day
+}
+
+export type HabitFrequency = 'daily' | 'specific_days'
 
 /**
  * Workout — single exercise log entry.
@@ -143,18 +170,66 @@ export interface QuickNote {
   createdAt:  number   //   Unix timestamp ms
 }
 
+/* ── Meal Planning (v17) ─────────────────────────────────────────── */
+
+export type MealType  = 'breakfast' | 'lunch' | 'dinner'
+export type PlanType  = 'home' | 'dining_out' | 'takeout' | 'delivery'
+
+export interface MealIngredient {
+  name:           string
+  quantity:       string   // e.g. "2 cups", "1 lb"
+  estimatedPrice: number   // dollars, pre-filled from price DB
+}
+
+/** One meal slot in the weekly planner (one row per day×mealType). */
+export interface MealPlanSlot {
+  id?:            number     // * PK auto-increment
+  weekStart:      string     // * indexed — ISO "YYYY-MM-DD" of that Monday
+  dayIndex:       number     // * indexed — 0=Mon … 6=Sun
+  mealType:       MealType   // * indexed
+  mealName:       string
+  planType:       PlanType
+  ingredients:    MealIngredient[]   // JSON-stored array
+  estimatedCost:     number   // dollars
+  estimatedCalories: number   // kcal (0 = not set)
+  cookMinutes:       number   // 0 for dining out
+  recipeUrl?:        string
+  notes?:            string
+}
+
+/** User-saved recipe / resource card. */
+export interface SavedMealRecipe {
+  id?:            number    // * PK auto-increment
+  title:          string    // * indexed
+  addedAt:        number    // * indexed
+  category:       string    // * indexed — e.g. 'Breakfast', 'College Dorm', 'Quick & Easy'
+  url?:           string
+  description?:   string
+  cookTime?:      number    // minutes
+  equipment?:     string    // comma-separated equipment tags
+  estimatedCost?: number
+  notes?:         string
+  // Macronutrients per serving (grams)
+  protein?:       number
+  carbs?:         number
+  fat?:           number
+  calories?:      number    // kcal per serving
+  servings?:      number    // number of servings the recipe makes
+}
+
 /**
  * CustomBookmark — user-defined URL entry for the Vault.
  * Powers: Custom Link Manager in Personalized Vault.
  */
 export interface CustomBookmark {
-  id:          number  // * PK — auto-increment
-  label:       string  // * indexed — display name / search
-  url:         string  // * indexed — dedup check
-  folderName:  string  // * indexed — folder/group filter
-  iconUrl?:    string  //   favicon or custom image URL
-  addedAt:     number  //   Unix timestamp ms
-  sortOrder?:  number  //   manual drag-reorder position
+  id:           number  // * PK — auto-increment
+  label:        string  // * indexed — display name / search
+  url:          string  // * indexed — dedup check
+  folderName:   string  // * indexed — folder/group filter
+  description?: string  //   optional short description
+  iconUrl?:     string  //   favicon or custom image URL
+  addedAt:      number  //   Unix timestamp ms
+  sortOrder?:   number  //   manual drag-reorder position
 }
 
 /**
@@ -232,19 +307,8 @@ export interface GpaCourse {
   grade:      string   // * indexed — GradeKey letter grade
 }
 
-/**
- * RpgEventLog — deduplication ledger for the RPG engine.
- * One row per processed event; the unique `eventKey` index prevents
- * the same XP award or HP penalty from firing more than once even
- * across tab reloads or concurrent sessions.
- *
- * Key format:
- *   Habit completion:        "h:<id>:<ISO-date>"
- *   Assignment completion:   "a:<id>:done"
- *   Overdue penalty (daily): "od:<id>:<ISO-date>"
- */
 export interface RpgEventLog {
-  id?:         number   // * PK — auto-increment (omit on insert)
+  id?:         number   // legacy — kept for IDB schema migration compatibility
   eventKey:    string   // * unique indexed — prevents double-processing
   processedAt: number   // * indexed — Unix ms; audit trail
 }
@@ -258,16 +322,84 @@ export interface UserProfile {
   userName:         string   // * indexed — display name sync with AuthContext
   universityName:   string   // * indexed — shown in University Hub header
   majorIdentifier:  string   // * indexed — e.g. "Computer Science", "Biology"
-  expPoints:        number   // * indexed — total XP for level calculation
-  currentLevel:     number   // * indexed — derived from expPoints but cached
-  healthPoints:     number   // * indexed — HP pool for task-failure penalties
-  goldPoints?:      number   //   Zenith Gold currency balance (Phase 5.4)
-  avatarUrl?:       string                    //   external or data-URI avatar image
-  lastActiveAt:     number                    //   Unix timestamp ms — streak guard
-  /** Slot → itemId map for the avatar customizer (Phase 5.2). Non-indexed. */
-  equippedItems?:   Record<string, string>    //   e.g. { head: 'scholar_crown', ... }
+  avatarUrl?:       string
+  lastActiveAt:     number
+  // Phase 9.2 — Letterbox keypair (JWK JSON strings, client-only, never synced)
+  letterboxPublicKeyJwk?:  string  // RSA-OAEP 2048 public key; safe to share with peers
+  letterboxPrivateKeyJwk?: string  // RSA-OAEP 2048 private key; never leaves the device
 }
 
+/**
+ * PeerMessage — decrypted letterbox message retrieved from cloud_letterbox
+ * and stored locally after the zero-retention cloud drain.
+ * Powers: Phase 9.2 async encrypted messaging relay.
+ */
+export interface PeerMessage {
+  id?:                number   // * PK — auto-increment
+  senderDisplayName:  string   // * indexed — sender's display name
+  decryptedContent:   string   //   fully decrypted message body
+  encryptedPayload:   string   //   original ciphertext (kept for audit; never re-uploaded)
+  receivedAt:         number   // * indexed — Unix ms; sort by arrival time
+  isRead:             0 | 1   // * indexed — 0 = unread, 1 = read (Dexie-safe boolean)
+}
+
+
+/**
+ * CardioSession — a single cardio workout log entry.
+ * Powers: Workouts → Cardio section. Earns Vitality Points for the Cozy Biome.
+ */
+export interface CardioSession {
+  id?:            number   // * PK — auto-increment
+  activityType:   string   // * indexed — 'run'|'walk'|'bike'|'swim'|'row'|'hike'|'yoga'|'other'
+  durationMinutes: number  // * indexed — session length in minutes
+  distance?:      number   //   optional (miles or km)
+  distanceUnit?:  'mi' | 'km'
+  caloriesBurned?: number
+  vitalityEarned: number   //   VP awarded for this session
+  notes?:         string
+  logDate:        string   // * indexed — ISO "YYYY-MM-DD"
+  completedAt:    number   // * indexed — UTC ms
+}
+
+/**
+ * PersonalEvent — user-created calendar event (not from an iCal feed).
+ * Powers: Universal Calendar personal tab (Phase 8).
+ */
+export interface PersonalEvent {
+  id:           number    // * PK — auto-increment
+  title:        string    // * indexed — event display name
+  startMs:      number    // * indexed — UTC ms
+  endMs:        number    //   UTC ms (equals startMs for all-day point events)
+  allDay:       number    // * indexed — 0 | 1
+  color:        string    //   hex accent, e.g. '#7c95ff'
+  category:     string    // * indexed — 'personal'|'scholastic'|'exam'|'life'|'general'
+  description?: string
+  createdAt:    number    //   Unix ms
+}
+
+/**
+ * TodoCategory — a user-created list category for the Calendar To-Do panel.
+ * Default categories are "Short Term" and "Long Term".
+ */
+export interface TodoCategory {
+  id:        number   // * PK — auto-increment
+  name:      string   // * indexed — category display name
+  sortOrder: number   //   controls render order (lower = first)
+  createdAt: number   //   Unix ms
+}
+
+/**
+ * TodoItem — a single task entry belonging to a TodoCategory.
+ * Powers: Universal Calendar → Tasks tab.
+ */
+export interface TodoItem {
+  id:          number    // * PK — auto-increment
+  categoryId:  number    // * indexed — FK to TodoCategory.id
+  title:       string    //   task description
+  completed:   0 | 1    // * indexed — 0 = open, 1 = done
+  dueDate?:    string    // * indexed — optional ISO "YYYY-MM-DD"
+  createdAt:   number    //   Unix ms
+}
 
 /* ════════════════════════════════════════════════════════════════
    2.  DATABASE CLASS
@@ -296,6 +428,7 @@ class ZenithDatabase extends Dexie {
   /* ── Table handles (typed via EntityTable) ───────────────── */
   assignments!:             EntityTable<Assignment,             'id'>
   habits!:                  EntityTable<Habit,                  'id'>
+  habitCompletions!:        EntityTable<HabitCompletion,        'id'>
   workouts!:                EntityTable<Workout,                'id'>
   quickNotes!:              EntityTable<QuickNote,              'id'>
   customBookmarks!:         EntityTable<CustomBookmark,         'id'>
@@ -310,9 +443,27 @@ class ZenithDatabase extends Dexie {
   waterLogs!:              EntityTable<WaterLog,              'id'>
   houseplants!:            EntityTable<Houseplant,            'id'>
   deliveries!:             EntityTable<DeliveryItem,          'id'>
-  rpgEventLog!:            EntityTable<RpgEventLog,           'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
   outboxMutations!:        EntityTable<OutboxMutation,        'id'>
+  aquascapeLayouts!:       EntityTable<AquascapeLayout,       'id'>
+  personalEvents!:         EntityTable<PersonalEvent,         'id'>
+  mealPlanSlots!:          EntityTable<MealPlanSlot,          'id'>
+  savedMealRecipes!:       EntityTable<SavedMealRecipe,       'id'>
+  cardioSessions!:         EntityTable<CardioSession,         'id'>
+  vocab_decks!:            EntityTable<VocabDeck,             'id'>
+  vocab_cards!:            EntityTable<VocabCard,             'id'>
+  cardio_runs!:            EntityTable<CardioRun,             'id'>
+  base_inventory!:         EntityTable<BaseInventory,         'resourceName'>
+  base_upgrades!:          EntityTable<BaseUpgrade,           'id'>
+  subscription_items!:          EntityTable<SubscriptionItem,         'id'>
+  peer_friends!:                EntityTable<PeerFriend,               'id'>
+  peer_leaderboard_snapshots!:  EntityTable<PeerLeaderboardSnapshot,  'peerIdString'>
+  peer_messages!:               EntityTable<PeerMessage,              'id'>
+  relationship_notes!:          EntityTable<RelationshipNote,         'id'>
+  peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
+  library_books!:               EntityTable<LibraryBook,              'id'>
+  todo_categories!:             EntityTable<TodoCategory,             'id'>
+  todo_items!:                  EntityTable<TodoItem,                 'id'>
 
   constructor() {
     super('ZenithOS')
@@ -346,9 +497,8 @@ class ZenithDatabase extends Dexie {
       customBookmarks:
         '++id, label, url, folderName',
 
-      // ── Core RPG state (singleton row, id always = 1) ──────
       userProfile:
-        'id, userName, universityName, majorIdentifier, expPoints, currentLevel, healthPoints',
+        'id, userName, universityName, majorIdentifier',
     })
 
     /*
@@ -527,6 +677,280 @@ class ZenithDatabase extends Dexie {
     this.version(13).stores({
       outboxMutations: 'id, tableName, action, timestamp',
     })
+
+    /*
+     * Version 14 — Phase 7 · Step 7.3 (Interactive Hardscape Simulator)
+     *
+     * New table:
+     *   aquascapeLayouts — saved hardscape canvas configurations.
+     *     name and savedAt indexed for list/sort queries.
+     *     elements is a non-indexed array of HardscapeElement objects;
+     *     stored as a structured clone (no serialisation needed).
+     *     id=1 is reserved for the auto-save session slot.
+     */
+    this.version(14).stores({
+      aquascapeLayouts: '++id, name, savedAt',
+    })
+
+    /*
+     * Version 15 — Advanced Habit Tracker
+     * New table: habitCompletions — one row per habit per day tracking
+     * how many times the habit was completed. Enables multi-step habits
+     * (e.g., drink water 4 times) separate from the streak logic.
+     */
+    this.version(15).stores({
+      habitCompletions: '++id, habitId, date, [habitId+date]',
+    })
+
+    /*
+     * Version 16 — Phase 8: Personal Calendar Events
+     *
+     * New table:
+     *   personalEvents — user-created calendar events (not iCal-derived).
+     *     title indexed for search queries.
+     *     startMs indexed for timeline ordering.
+     *     allDay indexed for grid vs. banner routing.
+     *     category indexed for colour-coded filtering.
+     */
+    this.version(16).stores({
+      personalEvents: '++id, title, startMs, allDay, category',
+    })
+
+    /*
+     * Version 17 — Meal Planning System
+     *
+     * New tables:
+     *   mealPlanSlots — one row per week×day×mealType slot.
+     *     weekStart indexed for querying a full week at once.
+     *     dayIndex + mealType indexed for individual slot lookup.
+     *   savedMealRecipes — user-saved recipe cards and resource links.
+     *     title + addedAt + category indexed for sorting and filtering.
+     */
+    this.version(17).stores({
+      mealPlanSlots:    '++id, weekStart, dayIndex, mealType',
+      savedMealRecipes: '++id, title, addedAt, category',
+    })
+
+    /*
+     * Version 18 — Workouts Cardio Section
+     *
+     * New table:
+     *   cardioSessions — one row per cardio workout.
+     *     activityType indexed for filtering by activity.
+     *     durationMinutes indexed for analytics queries.
+     *     logDate indexed for timeline grouping.
+     *     completedAt indexed for chronological ordering.
+     */
+    this.version(18).stores({
+      cardioSessions: '++id, activityType, durationMinutes, logDate, completedAt',
+    })
+
+    /*
+     * Version 19 — Phase 8 · Step 8.1 (Polyglot Vocab Builder)
+     *
+     * New tables:
+     *   vocab_decks — one row per language learning deck.
+     *     languageName indexed for grouping by language.
+     *     createdAt indexed for chronological list ordering.
+     *     Uses explicit string UUID PK (not auto-increment).
+     *
+     *   vocab_cards — individual flashcard entries with SM-2 state.
+     *     deckId indexed for all-cards-in-deck queries.
+     *     nextReviewTimestamp indexed for due-card filter queries
+     *     (nextReviewTimestamp <= Date.now()).
+     *     Uses explicit string UUID PK.
+     */
+    this.version(19).stores({
+      vocab_decks: 'id, languageName, createdAt',
+      vocab_cards: 'id, deckId, nextReviewTimestamp',
+    })
+
+    /*
+     * Version 20 — Phase 8 · Step 8.3 (Retro Trail Explorer & Base Builder)
+     *
+     * New tables:
+     *   cardio_runs    — one row per trail run session.
+     *     String UUID PK (no auto-increment).
+     *     status indexed for efficient active-run queries.
+     *     createdAt indexed for history ordering.
+     *
+     *   base_inventory — 3-row key/value store for resource quantities.
+     *     resourceName is the string PK ('Parchment Wood'|'River Stones'|'Iron Ore').
+     *     No secondary indices — always accessed by PK.
+     *
+     *   base_upgrades  — singleton row (id=1) tracking camp tier + step progress.
+     *     Explicit integer PK (not auto-increment). Always id=1.
+     */
+    this.version(20).stores({
+      cardio_runs:    'id, status, createdAt',
+      base_inventory: 'resourceName',
+      base_upgrades:  'id',
+    })
+
+    /*
+     * Version 21 — Phase 8 · Step 8.4 (Subscriptions Packager & Burn-Rate Analytics)
+     *
+     * New table:
+     *   subscription_items — one row per recurring expense.
+     *     id               string UUID — explicit PK (no auto-increment)
+     *     categoryBundle   indexed — groups items into named bundles
+     *     billingCycle     indexed — filter MONTHLY vs ANNUAL items
+     *     renewalDateString indexed — sort/query by upcoming renewal date
+     *
+     *   monthlyCost stores the raw per-billing-period amount entered by the
+     *   user. Call calculateTrueMonthlyCost(cost, cycle) to normalize to a
+     *   true monthly value before displaying or summing across cycles.
+     */
+    this.version(21).stores({
+      subscription_items: 'id, categoryBundle, billingCycle, renewalDateString',
+    })
+
+    /*
+     * Version 22 — Phase 9 · Step 9.1 (Serverless WebRTC Friend Ledger)
+     *
+     * New tables:
+     *   peer_friends — one row per known peer friend.
+     *     id               string UUID — explicit PK (no auto-increment)
+     *     peerIdString     indexed — WebRTC handshake key; dedup guard
+     *     connectedAt      indexed — Unix ms; sort by most-recent
+     *
+     *   peer_leaderboard_snapshots — one row per peer + one for 'self'.
+     *     peerIdString     string PK — 'self' for local user, PeerJS ID
+     *                      for each peer; one upsert per sync exchange
+     *     snapshotTimestamp indexed — temporal staleness evaluation
+     *
+     *   Rolling-window fields (weeklyStudyMinutes, monthlyStudyMinutes)
+     *   are zeroed by evaluateTemporalSnapshot() when age exceeds the
+     *   respective window. All-time fields never expire.
+     */
+    this.version(22).stores({
+      peer_friends:               'id, peerIdString, connectedAt',
+      peer_leaderboard_snapshots: 'peerIdString, snapshotTimestamp',
+    })
+
+    /*
+     * Version 23 — Phase 9 · Step 9.2 (Encrypted Async Cloud Letterbox)
+     *
+     * New table:
+     *   peer_messages — decrypted letterbox messages retrieved from Supabase
+     *     cloud_letterbox and stored locally after zero-retention cloud drain.
+     *
+     *   senderDisplayName indexed — filter/sort by sender.
+     *   receivedAt        indexed — chronological ordering (newest-first UI).
+     *   isRead            indexed — efficient unread count query.
+     *
+     *   letterboxPublicKeyJwk + letterboxPrivateKeyJwk are added as
+     *   non-indexed optional fields on userProfile (no schema change needed;
+     *   Dexie stores non-indexed fields transparently).
+     */
+    this.version(23).stores({
+      peer_messages: '++id, senderDisplayName, receivedAt, isRead',
+    })
+
+    /*
+     * Version 24 — Phase 9 · Step 9.3 (Relationship Notes Dashboard Widget)
+     *
+     * New table:
+     *   relationship_notes — unified social-message display store.
+     *     id               explicit string UUID PK (not auto-increment)
+     *     senderDisplayName indexed — filter / search by sender
+     *     timestamp        indexed — primary sort axis (newest-first)
+     *     isRead           indexed — unread indicator queries
+     *
+     *   Distinct from peer_messages (Phase 9.2) which retains the raw
+     *   encrypted payload for auditing. This table stores only the
+     *   decrypted, display-ready record.  Multiple intake sources can
+     *   write here: the letterbox broker, future WebRTC channels, etc.
+     *
+     *   source? is a non-indexed optional tag ('letterbox'|'p2p'|'manual').
+     */
+    this.version(24).stores({
+      relationship_notes: 'id, senderDisplayName, timestamp, isRead',
+    })
+
+    /*
+     * Version 25 — Phase 9 · Step 9.4 (Privacy-Preserving Geo Distance Widget)
+     *
+     * New table:
+     *   peer_locations — one row per peer + one for 'self'.
+     *     peerIdString     string PK — 'self' for own location,
+     *                      PeerJS peer ID for each remote peer.
+     *                      Mirrors the peer_leaderboard_snapshots PK convention.
+     *     lastUpdatedTimestamp indexed — staleness evaluation + sorting.
+     *
+     *   latitude / longitude are NON-INDEXED private calculation fields.
+     *   They are NEVER written to Supabase or any remote store.
+     *   They MUST NOT be rendered to the UI viewport.
+     *   They exist exclusively for the Haversine distance computation.
+     *
+     *   Rows are upserted (put) — one row per peer, updated in-place.
+     */
+    this.version(25).stores({
+      peer_locations: 'peerIdString, lastUpdatedTimestamp',
+    })
+
+    /*
+     * Version 26 — Phase 10 · Step 10.4 (Literary Ledger & Goodreads CSV Sync Vault)
+     *
+     * New table:
+     *   library_books — one row per book in the user's personal library.
+     *     id               explicit string UUID PK (no auto-increment; set
+     *                      client-side so Goodreads CSV bulk-import works atomically)
+     *     title            indexed — search and display ordering
+     *     author           indexed — search and grouping
+     *     readingStatus    indexed — filter by TO_READ | CURRENTLY_READING | COMPLETED
+     *     dateCompleted    indexed — sort Completed shelf newest-first
+     *     addedAt          indexed — default sort axis for other shelves
+     *
+     *   Non-indexed fields: isbn13, globalRating, userRating, totalPages,
+     *     readCount, dateStarted, customReviewText — accessed via full record read.
+     *
+     *   Uses bulkPut for batch Goodreads CSV import (idempotent — re-importing
+     *   the same export replaces records rather than duplicating by id).
+     */
+    this.version(26).stores({
+      library_books: 'id, title, author, readingStatus, dateCompleted, addedAt',
+    })
+
+    /*
+     * Version 27 — Calendar To-Do List (Tasks tab)
+     *
+     * New tables:
+     *   todo_categories — user-created named lists.
+     *     name      indexed — display + dedup lookup.
+     *     sortOrder non-indexed; controls render sequence.
+     *     Seeded on first Tasks-tab open with "Short Term" + "Long Term".
+     *
+     *   todo_items — individual task entries.
+     *     categoryId indexed — all-items-in-category query.
+     *     completed  indexed — efficient open/done filter (0|1).
+     *     dueDate    indexed — optional ISO date for sorting by deadline.
+     */
+    this.version(27).stores({
+      todo_categories: '++id, name',
+      todo_items:      '++id, categoryId, completed, dueDate',
+    })
+
+    /*
+     * Version 28 — Phase 15 · Step 15.3 (Index Freeze)
+     *
+     * Index additions only — no new tables, no data loss.
+     *
+     *   assignments  — adds `category` secondary index.
+     *     Enables `.where('category').equals(...)` filtering for task-type
+     *     partitioning without a full-table scan.
+     *
+     *   vocab_cards  — adds `easeFactor` secondary index.
+     *     Enables SM-2 analytics queries (e.g. find all cards with
+     *     easeFactor < 1.5 for remedial review scheduling).
+     *
+     *   library_books (v26) already has `readingStatus` + `author` indexed.
+     *   No change needed — those indices are already frozen.
+     */
+    this.version(28).stores({
+      assignments: '++id, title, dueDate, courseId, status, priority, supabaseId, category',
+      vocab_cards: 'id, deckId, nextReviewTimestamp, easeFactor',
+    })
   }
 }
 
@@ -599,10 +1023,6 @@ export async function seedUserProfile(
     userName,
     universityName:  opts.universityName  ?? '',
     majorIdentifier: opts.majorIdentifier ?? '',
-    expPoints:       opts.expPoints       ?? 0,
-    currentLevel:    opts.currentLevel    ?? 1,
-    healthPoints:    opts.healthPoints    ?? 100,
-    goldPoints:      opts.goldPoints      ?? 0,
     avatarUrl:       opts.avatarUrl,
     lastActiveAt:    Date.now(),
   }
@@ -610,27 +1030,6 @@ export async function seedUserProfile(
   return profile
 }
 
-/**
- * Awards XP to the user profile using the Phase 5 RPG math engine.
- * Handles multi-level cascades and HP restoration on level-up.
- * Formula: EXP_Required = 100 × Level^1.5 (progressive quadratic curve).
- */
-export async function awardXp(amount: number): Promise<void> {
-  await getDb().userProfile.where('id').equals(1).modify(profile => {
-    const result = applyXpGain(
-      {
-        expPoints:    profile.expPoints,
-        currentLevel: profile.currentLevel,
-        healthPoints: profile.healthPoints,
-      },
-      amount,
-    )
-    profile.expPoints    = result.expPoints
-    profile.currentLevel = result.currentLevel
-    profile.healthPoints = result.healthPoints
-    profile.lastActiveAt = Date.now()
-  })
-}
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -679,27 +1078,6 @@ export async function getUrgentTasks(): Promise<Task[]> {
   }))
 }
 
-/**
- * Restores HP to the user profile (Phase 5.6 Recovery Cycle reward).
- * Result is capped at `cap` (default 100) to prevent overflow.
- */
-export async function awardHp(amount: number, cap = 100): Promise<void> {
-  await getDb().userProfile.where('id').equals(1).modify(profile => {
-    profile.healthPoints = Math.min(cap, (profile.healthPoints ?? 0) + amount)
-    profile.lastActiveAt = Date.now()
-  })
-}
-
-/**
- * Awards Zenith Gold to the user profile (Phase 5.4 Quest Economy).
- * Handles profiles created before goldPoints existed via the ?? 0 fallback.
- */
-export async function awardGold(amount: number): Promise<void> {
-  await getDb().userProfile.where('id').equals(1).modify(profile => {
-    profile.goldPoints = (profile.goldPoints ?? 0) + amount
-    profile.lastActiveAt = Date.now()
-  })
-}
 
 /**
  * @deprecated Use `db.assignments.add()` with a full Assignment object.
@@ -726,6 +1104,87 @@ export async function addTask(
     createdAt: now,
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   5b.  RELATIONSHIP NOTES HELPERS  (Phase 9.3)
+   ════════════════════════════════════════════════════════════════ */
+
+/**
+ * Returns the single most recent RelationshipNote row, sorted by
+ * timestamp descending.  Returns undefined when the table is empty.
+ *
+ * Used by RelationshipNotesWidget for its initial render; subsequent
+ * updates are driven reactively via useLiveQuery (zero-polling).
+ */
+export async function getLatestRelationshipNote(): Promise<RelationshipNote | undefined> {
+  return getDb().relationship_notes.orderBy('timestamp').reverse().first()
+}
+
+/**
+ * Writes a new note to the relationship_notes table.
+ * Accepts a partial record; fills in id and timestamp if omitted.
+ */
+export async function addRelationshipNote(
+  note: Omit<RelationshipNote, 'id'> & { id?: string },
+): Promise<string> {
+  const id = note.id ?? crypto.randomUUID()
+  await getDb().relationship_notes.put({
+    ...note,
+    id,
+    isRead:    note.isRead    ?? false,
+    timestamp: note.timestamp ?? Date.now(),
+  })
+  return id
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   5c.  PEER LOCATION HELPERS  (Phase 9.4)
+   ────────────────────────────────────────────────────────────────
+   These helpers are the ONLY authorised write paths for the
+   peer_locations table.  Call sites must never pass raw coordinates
+   to any function that could log or transmit them remotely.
+   ════════════════════════════════════════════════════════════════ */
+
+/**
+ * Upserts the local user's current position into peer_locations.
+ * Called by useDistanceTracker on mount and on each manual sync.
+ *
+ * Privacy: the coordinates never leave the local device via this path.
+ */
+export async function storeSelfLocation(
+  latitude:  number,
+  longitude: number,
+): Promise<void> {
+  await getDb().peer_locations.put({
+    peerIdString:         'self',
+    latitude,
+    longitude,
+    lastUpdatedTimestamp: Date.now(),
+  })
+}
+
+/**
+ * Upserts a remote peer's shared coordinates received over the
+ * DTLS-encrypted WebRTC DataChannel (SyncPayload.locationLat/Lon).
+ *
+ * Called from useFriendsNetwork when a SyncPayload is received that
+ * includes locationLat + locationLon.  These coordinates are stored
+ * ONLY in local IDB — they are never forwarded to Supabase.
+ */
+export async function storePeerLocation(
+  peerIdString: string,
+  latitude:     number,
+  longitude:    number,
+): Promise<void> {
+  await getDb().peer_locations.put({
+    peerIdString,
+    latitude,
+    longitude,
+    lastUpdatedTimestamp: Date.now(),
+  })
+}
+
 
 /**
  * @deprecated Use `db.assignments.update(id, { status: 'completed' })`.

@@ -1,0 +1,414 @@
+/* ════════════════════════════════════════════════════════════════
+   RoadmapGeneratorButton — AI Task Roadmap Architect HUD
+   Local tokens:
+     --btn-accent / --btn-accent-dim  (inherits --cat-accent → purple in Scholastic)
+     --priority-high / --priority-med / --priority-low
+     --cat-academic / --cat-life
+   ════════════════════════════════════════════════════════════════ */
+
+.container {
+  --btn-accent:     var(--cat-accent, var(--accent-purple));
+  --btn-accent-dim: color-mix(in srgb, var(--btn-accent) 22%, transparent);
+  --priority-high:  rgba(248, 113, 113, 0.85);
+  --priority-med:   rgba(245, 158, 11,  0.85);
+  --priority-low:   var(--text-dark);
+  --cat-academic:   var(--accent-purple);
+  --cat-life:       var(--accent-green);
+
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow:      hidden;
+  box-shadow:    var(--shadow-card);
+}
+
+/* ── Section header ─────────────────────────────────────────── */
+
+.sectionHeader {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  padding:     var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.headerGlyph {
+  font-size:   1rem;
+  color:       var(--btn-accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.headerMeta {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+.headerEyebrow {
+  font-family:     var(--font-mono);
+  font-size:       0.55rem;
+  letter-spacing:  0.14em;
+  text-transform:  uppercase;
+  color:           var(--text-dark);
+}
+
+.headerTitle {
+  font-family:    var(--font-display);
+  font-size:      0.88rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+
+.body {
+  padding:        var(--sp-5) var(--sp-6);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ── Goal input ─────────────────────────────────────────────── */
+
+.goalLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.goalTextarea {
+  font-family:   var(--font-body);
+  font-size:     0.9rem;
+  color:         var(--text-primary);
+  background:    var(--bg-main);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+  resize:        vertical;
+  min-height:    88px;
+  width:         100%;
+  box-sizing:    border-box;
+  outline:       none;
+  line-height:   1.55;
+  transition:    border-color 150ms var(--ease-smooth);
+}
+
+.goalTextarea:focus {
+  border-color: color-mix(in srgb, var(--btn-accent) 48%, transparent);
+}
+
+.goalTextarea::placeholder {
+  color: var(--text-dark);
+}
+
+.goalTextarea:disabled {
+  opacity: 0.55;
+  cursor:  not-allowed;
+  resize:  none;
+}
+
+/* ── Footer row (char count + button) ──────────────────────── */
+
+.footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+}
+
+.charCount {
+  font-family: var(--font-mono);
+  font-size:   0.58rem;
+  color:       var(--text-dark);
+  white-space: nowrap;
+}
+
+.charCountWarn {
+  color: rgba(245, 158, 11, 0.85);
+}
+
+/* ── Generate button ────────────────────────────────────────── */
+
+.generateBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding:        var(--sp-2) var(--sp-6);
+  border-radius:  var(--r-md);
+  border:         1px solid color-mix(in srgb, var(--btn-accent) 38%, transparent);
+  background:     color-mix(in srgb, var(--btn-accent) 11%, transparent);
+  color:          var(--btn-accent);
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     background 140ms var(--ease-smooth),
+                  border-color 140ms var(--ease-smooth),
+                  opacity 140ms var(--ease-smooth);
+}
+
+.generateBtn:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--btn-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--btn-accent) 58%, transparent);
+}
+
+.generateBtn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--btn-accent) 26%, transparent);
+}
+
+.generateBtn:disabled {
+  opacity:        0.38;
+  cursor:         not-allowed;
+  pointer-events: none;
+}
+
+/* Loading state — hardware-accelerated opacity pulsation */
+.generateBtnLoading {
+  animation: architectPulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes architectPulse {
+  0%, 100% { opacity: 1;    }
+  50%       { opacity: 0.28; }
+}
+
+/* ── Not-configured inline banner ───────────────────────────── */
+
+.notConfigured {
+  display:        flex;
+  align-items:    flex-start;
+  gap:            var(--sp-3);
+  padding:        var(--sp-3) var(--sp-4);
+  background:     rgba(245, 158, 11, 0.07);
+  border:         1px solid rgba(245, 158, 11, 0.25);
+  border-radius:  var(--r-md);
+}
+
+.notConfiguredIcon  { color: rgba(245, 158, 11, 0.85); font-size: 0.8rem; }
+
+.notConfiguredText {
+  font-family: var(--font-body);
+  font-size:   0.78rem;
+  color:       var(--text-muted);
+  line-height: 1.5;
+}
+
+.notConfiguredText code {
+  font-family:   var(--font-mono);
+  font-size:     0.72rem;
+  color:         rgba(245, 158, 11, 0.9);
+  background:    rgba(245, 158, 11, 0.1);
+  padding:       1px 5px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Error banner ────────────────────────────────────────────── */
+
+.errorBanner {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-4);
+  background:    rgba(248, 113, 113, 0.07);
+  border:        1px solid rgba(248, 113, 113, 0.22);
+  border-radius: var(--r-md);
+  animation:     fadeIn 200ms ease both;
+}
+
+.errorIcon { font-size: 0.85rem; }
+
+.errorText {
+  font-family: var(--font-body);
+  font-size:   0.8rem;
+  color:       rgba(248, 113, 113, 0.9);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.errorDismiss {
+  background:   transparent;
+  border:       none;
+  color:        rgba(248, 113, 113, 0.6);
+  cursor:       pointer;
+  font-size:    1rem;
+  line-height:  1;
+  padding:      0 var(--sp-1);
+  transition:   color 120ms;
+  flex-shrink:  0;
+}
+.errorDismiss:hover { color: rgba(248, 113, 113, 0.9); }
+
+/* ── Success pane ────────────────────────────────────────────── */
+
+.successPane {
+  border-top: 1px solid var(--border-subtle);
+  animation:  fadeIn 280ms var(--ease-expo) both;
+}
+
+.successHeader {
+  display:     flex;
+  align-items: center;
+  justify-content: space-between;
+  padding:     var(--sp-3) var(--sp-6) var(--sp-3);
+  gap:         var(--sp-3);
+}
+
+.successTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--accent-green);
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+}
+
+.successCheckmark {
+  font-size: 0.75rem;
+}
+
+.successCount {
+  font-size: 0.55rem;
+  color:     var(--text-dark);
+  letter-spacing: 0.08em;
+}
+
+/* ── Task preview list ──────────────────────────────────────── */
+
+.taskList {
+  padding: 0 var(--sp-2) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.taskRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border:        1px solid transparent;
+  transition:    background 120ms, border-color 120ms;
+  /* Staggered entrance animation */
+  animation:     taskReveal 320ms var(--ease-expo) both;
+}
+
+.taskRow:hover {
+  background:   var(--bg-hover);
+  border-color: var(--border-subtle);
+}
+
+@keyframes taskReveal {
+  from {
+    opacity:   0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity:   1;
+    transform: translateX(0);
+  }
+}
+
+/* Stagger delays applied via inline style */
+
+.taskIndex {
+  font-family: var(--font-mono);
+  font-size:   0.62rem;
+  color:       var(--text-dark);
+  min-width:   16px;
+  text-align:  center;
+  flex-shrink: 0;
+}
+
+.taskTitle {
+  font-family: var(--font-body);
+  font-size:   0.84rem;
+  color:       var(--text-primary);
+  flex:        1;
+  line-height: 1.35;
+  min-width:   0;
+}
+
+.taskMeta {
+  display:    flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+}
+
+.categoryBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding:        2px 6px;
+  border-radius:  var(--r-sm);
+  border:         1px solid transparent;
+  white-space:    nowrap;
+}
+
+.categoryAcademic {
+  color:        var(--cat-academic);
+  border-color: color-mix(in srgb, var(--cat-academic) 28%, transparent);
+  background:   color-mix(in srgb, var(--cat-academic) 8%,  transparent);
+}
+
+.categoryLife {
+  color:        var(--cat-life);
+  border-color: color-mix(in srgb, var(--cat-life) 28%, transparent);
+  background:   color-mix(in srgb, var(--cat-life) 8%,  transparent);
+}
+
+.daysBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.04em;
+  color:          var(--text-muted);
+  white-space:    nowrap;
+  min-width:      28px;
+  text-align:     right;
+}
+
+.priorityDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.priorityHigh   { background: var(--priority-high); }
+.priorityMedium { background: var(--priority-med);  }
+.priorityLow    { background: var(--priority-low);  }
+
+/* ── Success actions ────────────────────────────────────────── */
+
+.successActions {
+  display:         flex;
+  justify-content: flex-end;
+  padding:         var(--sp-3) var(--sp-5) var(--sp-4);
+}
+
+.resetBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding:        var(--sp-2) var(--sp-4);
+  border-radius:  var(--r-md);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  cursor:         pointer;
+  transition:     border-color 140ms, color 140ms;
+}
+
+.resetBtn:hover {
+  border-color: color-mix(in srgb, var(--btn-accent) 40%, transparent);
+  color:        var(--btn-accent);
+}

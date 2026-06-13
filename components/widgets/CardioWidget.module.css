@@ -1,0 +1,77 @@
+.title {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statsRow {
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statNum {
+  font-family: var(--font-mono);
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.vpNum { color: #f59e0b; }
+
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 0.475rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.lastSession {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--bg-main) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.lastIcon { font-size: 1.375rem; }
+
+.lastInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lastActivity {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.lastMeta {
+  font-family: var(--font-mono);
+  font-size: 0.50rem;
+  color: var(--text-dark);
+}
+
+.empty {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery }        from 'dexie-react-hooks'
 import { useAuth }             from '@/lib/AuthContext'
 import { db }                  from '@/lib/db'
+import { fetchWeather }        from '@/lib/weather'
 import styles from './GreetingHero.module.css'
 
 function getPeriod(hour: number): string {
@@ -28,11 +29,6 @@ function fmtDate(d: Date): string {
 export default function GreetingHero() {
   const { session } = useAuth()
 
-  /*
-   * Hydrate userName from the local userProfile DB record.
-   * Falls back to the auth session handle if the profile hasn't
-   * been seeded yet (first-load race condition).
-   */
   const profile = useLiveQuery(
     async () => (db ? db.userProfile.get(1) : undefined),
     [],
@@ -41,6 +37,7 @@ export default function GreetingHero() {
     profile?.userName ?? session?.userHandle ?? '—'
 
   const [now, setNow] = useState<Date | null>(null)
+  const [tempF, setTempF] = useState<number | null>(null)
 
   useEffect(() => {
     setNow(new Date())
@@ -48,9 +45,21 @@ export default function GreetingHero() {
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const data = await fetchWeather(coords.latitude, coords.longitude)
+        if (data) setTempF(data.tempF)
+      },
+      () => {},
+      { timeout: 8000 },
+    )
+  }, [])
+
   const greeting = now ? getPeriod(now.getHours()) : 'Good evening'
-  const timeStr  = now ? fmtTime(now) : '  :  '
-  const dateStr  = now ? fmtDate(now) : ' '
+  const timeStr  = now ? fmtTime(now) : '  :  '
+  const dateStr  = now ? fmtDate(now) : ' '
 
   return (
     <section className={styles.hero} aria-label="Home greeting">
@@ -71,8 +80,9 @@ export default function GreetingHero() {
           {dateStr}
         </time>
         <span className={styles.dot} aria-hidden="true" />
-        {/* Weather slot — wired to Open-Meteo in a later step */}
-        <span className={styles.weather} aria-label="Weather">— °C</span>
+        <span className={styles.weather} aria-label="Weather" suppressHydrationWarning>
+          {tempF !== null ? `${tempF}°F` : '— °F'}
+        </span>
       </div>
 
     </section>

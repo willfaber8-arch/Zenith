@@ -1,0 +1,733 @@
+/* ════════════════════════════════════════════════════════════
+   Social Leaderboard — Phase 9.1
+   Two-column layout: left = Connection Shelf, right = Terminal
+   Token usage: --cat-* (purple in Essentials), --surface-card,
+   --border-subtle, font-mono/display/body.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Root grid ───────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-8) var(--sp-12);
+  max-width: 1100px;
+  align-items: start;
+}
+
+/* ════════════════════════════════════════════════════════════
+   LEFT — Connection Shelf
+   ════════════════════════════════════════════════════════════ */
+
+.connectionPanel {
+  position: sticky;
+  top: var(--sp-6);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Section typography */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--text-dark);
+}
+
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.countChip {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  padding: 1px 7px;
+}
+
+.panelDivider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ── Peer ID row ─────────────────────────────────────────── */
+
+.peerIdRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.peerIdText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms, border-color 140ms, color 140ms;
+}
+
+.copyBtn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.copyBtnCopied {
+  background: rgba(82, 204, 163, 0.12);
+  border-color: rgba(82, 204, 163, 0.30);
+  color: #52cca3;
+}
+
+.copyBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Connection status indicator ────────────────────────── */
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+}
+
+.statusDotInit {
+  background: #f59e0b;
+  animation: dotPulse 1.3s ease-in-out infinite;
+}
+
+.statusDotReady {
+  background: #52cca3;
+}
+
+.statusDotError {
+  background: #ff5c5c;
+}
+
+.statusDotUnavail {
+  background: var(--text-dark);
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+.statusText {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Connect form ────────────────────────────────────────── */
+
+.connectRow {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.connectInput {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 150ms;
+}
+
+.connectInput::placeholder {
+  color: var(--text-dark);
+}
+
+.connectInput:focus {
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+.connectInput:disabled {
+  opacity: 0.45;
+}
+
+.connectBtn {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(124, 149, 255, 0.12);
+  border: 1px solid rgba(124, 149, 255, 0.24);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--cat-accent, var(--accent-purple));
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+}
+
+.connectBtn:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.20);
+  border-color: rgba(124, 149, 255, 0.40);
+}
+
+.connectBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.syncMsg {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #52cca3;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.errorMsg {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #ff5c5c;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+/* ── Friends list ────────────────────────────────────────── */
+
+.friendsList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.friendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px var(--sp-2);
+  border-radius: var(--r-md);
+  transition: background 130ms;
+}
+
+.friendRow:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.friendDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: #52cca3;
+  flex-shrink: 0;
+}
+
+.friendName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removeBtn {
+  opacity: 0;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-dark);
+  font-size: 0.55rem;
+  cursor: pointer;
+  transition: background 130ms, color 130ms, opacity 130ms;
+}
+
+.friendRow:hover .removeBtn {
+  opacity: 1;
+}
+
+.removeBtn:hover {
+  background: rgba(255, 92, 92, 0.14);
+  color: #ff5c5c;
+}
+
+.emptyFriends {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+/* ── Privacy Settings ────────────────────────────────────── */
+
+.privacyToggleBtn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.privacyChevron {
+  display: inline-block;
+  font-size: 0.65rem;
+  color: var(--text-dark);
+  transition: transform 220ms var(--ease-smooth);
+  flex-shrink: 0;
+}
+
+/* grid-template-rows expand/collapse — CLAUDE.md rule 25 */
+.privacyPanel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 250ms var(--ease-smooth);
+}
+
+.privacyPanelOpen {
+  grid-template-rows: 1fr;
+}
+
+.privacyPanelInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+}
+
+.privacyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 28px;
+}
+
+.privacyRowLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.toggleInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 200ms, border-color 200ms;
+  display: block;
+}
+
+.toggleTrackOn {
+  background: rgba(124, 149, 255, 0.22);
+  border-color: rgba(124, 149, 255, 0.42);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 99px;
+  background: var(--text-dark);
+  transition: transform 200ms var(--ease-smooth), background 200ms;
+  pointer-events: none;
+}
+
+.toggleThumbOn {
+  transform: translateX(14px);
+  background: var(--cat-accent, var(--accent-purple));
+}
+
+.privacyDisclaimer {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  margin: 0;
+  padding-top: var(--sp-1);
+}
+
+/* ════════════════════════════════════════════════════════════
+   RIGHT — Leaderboard Terminal
+   ════════════════════════════════════════════════════════════ */
+
+.leaderboardPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* ── Horizon tabs ────────────────────────────────────────── */
+
+.horizonTabs {
+  display: flex;
+  gap: 3px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 4px;
+}
+
+.horizonTab {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms var(--ease-smooth), color 140ms var(--ease-smooth);
+}
+
+.horizonTab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.horizonTabActive {
+  background: rgba(124, 149, 255, 0.14);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Metric selector chips ───────────────────────────────── */
+
+.metricRow {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.metricChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 140ms var(--ease-smooth);
+}
+
+.metricChip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.metricChipActive {
+  background: rgba(124, 149, 255, 0.12);
+  border-color: rgba(124, 149, 255, 0.35);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.metricDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Leaderboard card ────────────────────────────────────── */
+
+.leaderboardCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.leaderboardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(124, 149, 255, 0.03);
+}
+
+.leaderboardTitle {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dark);
+}
+
+.refreshBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  transition: color 130ms, background 130ms;
+  line-height: 1;
+}
+
+.refreshBtn:hover {
+  color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+/* ── Leaderboard entries ─────────────────────────────────── */
+
+.leaderboardStack {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0);      }
+}
+
+.rankRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.028);
+  animation: rowIn 260ms var(--ease-expo) both;
+  transition: background 130ms;
+}
+
+.rankRow:last-child {
+  border-bottom: none;
+}
+
+.rankRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rankRowSelf {
+  background: rgba(124, 149, 255, 0.06);
+}
+
+.rankRowSelf:hover {
+  background: rgba(124, 149, 255, 0.09);
+}
+
+/* ── Rank badge ──────────────────────────────────────────── */
+
+.rankBadge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  min-width: 62px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rankGold   { background: rgba(204, 175, 82, 0.14);  color: #ccaf52;  border: 1px solid rgba(204, 175, 82, 0.25);  }
+.rankSilver { background: rgba(155, 163, 196, 0.14); color: #9ba3c4;  border: 1px solid rgba(155, 163, 196, 0.22); }
+.rankBronze { background: rgba(205, 127, 50, 0.14);  color: #cd7f32;  border: 1px solid rgba(205, 127, 50, 0.22);  }
+.rankOther  { background: rgba(255, 255, 255, 0.04); color: var(--text-dark); border: 1px solid var(--border-subtle); }
+
+/* ── Rank info column ────────────────────────────────────── */
+
+.rankInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.rankName {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selfTag {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--cat-accent, var(--accent-purple));
+  border: 1px solid rgba(124, 149, 255, 0.22);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+
+.staleTag {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.10);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Score value ─────────────────────────────────────────── */
+
+.rankScore {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Empty leaderboard state ─────────────────────────────── */
+
+.emptyLeaderboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-8);
+  text-align: center;
+}
+
+.emptyGlyph {
+  font-size: 2.5rem;
+  color: var(--text-dark);
+  opacity: 0.35;
+  line-height: 1;
+}
+
+.emptyLabel {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* ── Footer info strip ───────────────────────────────────── */
+
+.infoStrip {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 0 var(--sp-4) var(--sp-8);
+  }
+
+  .connectionPanel {
+    position: static;
+  }
+
+  .rankScore {
+    min-width: 64px;
+  }
+}

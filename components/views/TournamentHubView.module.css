@@ -1,0 +1,669 @@
+/* ════════════════════════════════════════════════════════════
+   TournamentHubView.module.css
+   Phase 12.2 — Tournament Hub  (Life · Social)
+
+   Two-tab view:
+     Wheel of Names — SVG spinner, participant list, history
+     Bracket Builder — single-elimination bracket, champion
+
+   Uses Creator's Choice --cat-accent (green / periwinkle from
+   viewport's data-category) as primary interactive accent.
+   All layout tokens follow the Zenith 4-point spacing scale.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ───────────────────────────────────────────── */
+
+.shell {
+  padding:        var(--sp-8);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-6);
+  min-height:     100%;
+}
+
+/* ── Tab bar ──────────────────────────────────────────────── */
+
+.tabBar {
+  display:     flex;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+}
+
+.tab {
+  font-family:    var(--font-mono);
+  font-size:      0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding:        var(--sp-2) var(--sp-5);
+  border-radius:  var(--r-xl);
+  border:         1px solid transparent;
+  background:     transparent;
+  color:          var(--text-muted);
+  cursor:         pointer;
+  transition:
+    background   200ms var(--ease-smooth),
+    border-color 200ms var(--ease-smooth),
+    color        200ms var(--ease-smooth);
+}
+
+.tab:hover {
+  background:   var(--bg-hover);
+  color:        var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.tabActive {
+  background:   rgba(124, 149, 255, 0.12);
+  border-color: rgba(124, 149, 255, 0.32);
+  color:        var(--accent-purple);
+}
+
+/* ── Shared content card ──────────────────────────────────── */
+
+.card {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow:      hidden;
+  box-shadow:    var(--shadow-card);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WHEEL OF NAMES
+   ═══════════════════════════════════════════════════════════ */
+
+.wheelLayout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap:     var(--sp-6);
+  flex:    1;
+  align-items: start;
+}
+
+/* ── Names panel ──────────────────────────────────────────── */
+
+.namesPanel {
+  composes: card;
+  padding:  var(--sp-5);
+  display:  flex;
+  flex-direction: column;
+  gap:      var(--sp-4);
+}
+
+.namesPanelTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.22em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+  margin-bottom:  var(--sp-1);
+}
+
+.nameInputRow {
+  display: flex;
+  gap:     var(--sp-2);
+}
+
+.nameInput {
+  flex:          1;
+  background:    var(--bg-main);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-2) var(--sp-3);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.8125rem;
+  outline:       none;
+  transition:    border-color 180ms var(--ease-smooth);
+}
+
+.nameInput:focus {
+  border-color: rgba(124, 149, 255, 0.45);
+}
+
+.nameInput::placeholder {
+  color: var(--text-dark);
+}
+
+.addBtn {
+  flex-shrink: 0;
+  padding:     var(--sp-2) var(--sp-4);
+  background:  rgba(124, 149, 255, 0.10);
+  border:      1px solid rgba(124, 149, 255, 0.28);
+  border-radius: var(--r-md);
+  color:       var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size:   0.65rem;
+  letter-spacing: 0.1em;
+  cursor:      pointer;
+  transition:  background 180ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.addBtn:hover   { background: rgba(124, 149, 255, 0.18); }
+.addBtn:active  { background: rgba(124, 149, 255, 0.26); transform: scale(0.97); }
+
+.nameList {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  max-height:     320px;
+  overflow-y:     auto;
+}
+
+.nameRow {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-2) var(--sp-3);
+  border-radius:   var(--r-sm);
+  background:      rgba(124, 149, 255, 0.03);
+  border:          1px solid transparent;
+  transition:      background 150ms var(--ease-smooth), border-color 150ms var(--ease-smooth);
+}
+
+.nameRow:hover {
+  background:   rgba(124, 149, 255, 0.07);
+  border-color: rgba(124, 149, 255, 0.10);
+}
+
+.nameDot {
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.nameText {
+  flex:        1;
+  font-family: var(--font-body);
+  font-size:   0.8125rem;
+  color:       var(--text-primary);
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameRemove {
+  opacity:     0;
+  background:  transparent;
+  border:      none;
+  color:       var(--accent-crimson);
+  cursor:      pointer;
+  font-size:   0.75rem;
+  padding:     0 var(--sp-1);
+  border-radius: var(--r-sm);
+  transition:  opacity 150ms var(--ease-smooth);
+  line-height: 1;
+}
+
+.nameRow:hover .nameRemove { opacity: 1; }
+
+.namesEmpty {
+  font-family: var(--font-mono);
+  font-size:   0.65rem;
+  color:       var(--text-dark);
+  letter-spacing: 0.12em;
+  text-align:  center;
+  padding:     var(--sp-6) 0;
+}
+
+.clearBtn {
+  align-self:  flex-start;
+  background:  transparent;
+  border:      1px solid rgba(201, 106, 106, 0.22);
+  color:       var(--accent-crimson);
+  border-radius: var(--r-md);
+  padding:     var(--sp-1) var(--sp-3);
+  font-family: var(--font-mono);
+  font-size:   0.6rem;
+  letter-spacing: 0.1em;
+  cursor:      pointer;
+  transition:  background 150ms var(--ease-smooth);
+}
+
+.clearBtn:hover { background: rgba(201, 106, 106, 0.08); }
+
+/* ── Wheel panel ──────────────────────────────────────────── */
+
+.wheelPanel {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-5);
+}
+
+.wheelContainer {
+  position: relative;
+  width:    370px;
+  height:   370px;
+  flex-shrink: 0;
+}
+
+.wheelSvg {
+  width:  100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.55));
+}
+
+/* Spinning group — CSS transition drives the animation */
+.wheelGroup {
+  transform-origin: 185px 185px;
+  transition:       transform 4.5s cubic-bezier(0.04, 0, 0.06, 1);
+  will-change:      transform;
+}
+
+/* Static ring overlay (always on top) */
+.wheelRing {
+  pointer-events: none;
+}
+
+/* Pointer triangle at top */
+.wheelPointer {
+  pointer-events: none;
+}
+
+/* Center hub cap */
+.wheelHub {
+  pointer-events: none;
+}
+
+.spinBtn {
+  font-family:    var(--font-display);
+  font-size:      0.9375rem;
+  font-weight:    600;
+  letter-spacing: 0.04em;
+  padding:        var(--sp-3) var(--sp-8);
+  background:     rgba(124, 149, 255, 0.13);
+  border:         1px solid rgba(124, 149, 255, 0.36);
+  border-radius:  var(--r-xl);
+  color:          var(--accent-purple);
+  cursor:         pointer;
+  min-width:      160px;
+  transition:
+    background   220ms var(--ease-smooth),
+    border-color 220ms var(--ease-smooth),
+    transform    160ms var(--ease-spring-snappy);
+}
+
+.spinBtn:hover   { background: rgba(124, 149, 255, 0.20); border-color: rgba(124, 149, 255, 0.56); }
+.spinBtn:active  { transform: scale(0.96); }
+.spinBtn:disabled {
+  opacity: 0.42;
+  cursor:  default;
+  pointer-events: none;
+}
+
+/* ── Winner announcement ──────────────────────────────────── */
+
+@keyframes winnerReveal {
+  from { opacity: 0; transform: scale(0.90) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.winnerBox {
+  composes: card;
+  padding:    var(--sp-4) var(--sp-6);
+  text-align: center;
+  background: rgba(99, 163, 137, 0.06);
+  border-color: rgba(99, 163, 137, 0.22);
+  animation:  winnerReveal 400ms var(--ease-spring-cozy) both;
+  min-width:  240px;
+}
+
+.winnerLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--accent-green);
+  margin-bottom:  var(--sp-1);
+}
+
+.winnerName {
+  font-family: var(--font-display);
+  font-size:   1.375rem;
+  font-weight: 600;
+  color:       var(--text-primary);
+  word-break:  break-word;
+}
+
+/* ── History strip ────────────────────────────────────────── */
+
+.historyStrip {
+  display:    flex;
+  flex-wrap:  wrap;
+  gap:        var(--sp-2);
+  align-items: center;
+  max-width:  370px;
+}
+
+.historyLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.18em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+  margin-right:   var(--sp-1);
+}
+
+.historyChip {
+  font-family: var(--font-body);
+  font-size:   0.7rem;
+  padding:     2px 10px;
+  border-radius: 99px;
+  background:  rgba(124, 149, 255, 0.07);
+  border:      1px solid rgba(124, 149, 255, 0.14);
+  color:       var(--text-muted);
+  white-space: nowrap;
+  max-width:   110px;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BRACKET BUILDER
+   ═══════════════════════════════════════════════════════════ */
+
+.bracketLayout {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-6);
+  flex:           1;
+}
+
+/* ── Setup row ────────────────────────────────────────────── */
+
+.setupRow {
+  display: flex;
+  gap:     var(--sp-5);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.setupCard {
+  composes: card;
+  padding:  var(--sp-5);
+  flex:     1;
+  min-width: 260px;
+  display:  flex;
+  flex-direction: column;
+  gap:      var(--sp-3);
+}
+
+.setupTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.20em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+}
+
+.participantTextarea {
+  width:         100%;
+  min-height:    140px;
+  background:    var(--bg-main);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3);
+  color:         var(--text-primary);
+  font-family:   var(--font-mono);
+  font-size:     0.75rem;
+  line-height:   1.6;
+  resize:        vertical;
+  outline:       none;
+  transition:    border-color 180ms var(--ease-smooth);
+}
+
+.participantTextarea:focus {
+  border-color: rgba(124, 149, 255, 0.45);
+}
+
+.participantHint {
+  font-family: var(--font-mono);
+  font-size:   0.58rem;
+  color:       var(--text-dark);
+  letter-spacing: 0.1em;
+}
+
+.generateBtn {
+  align-self: flex-start;
+  padding:    var(--sp-2) var(--sp-5);
+  background: rgba(124, 149, 255, 0.12);
+  border:     1px solid rgba(124, 149, 255, 0.32);
+  border-radius: var(--r-md);
+  color:      var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size:  0.68rem;
+  letter-spacing: 0.10em;
+  cursor:     pointer;
+  transition: background 180ms var(--ease-smooth);
+}
+
+.generateBtn:hover  { background: rgba(124, 149, 255, 0.20); }
+.generateBtn:active { transform: scale(0.97); }
+
+.resetBtn {
+  align-self: flex-start;
+  padding:    var(--sp-2) var(--sp-5);
+  background: transparent;
+  border:     1px solid rgba(201, 106, 106, 0.22);
+  border-radius: var(--r-md);
+  color:      var(--accent-crimson);
+  font-family: var(--font-mono);
+  font-size:  0.68rem;
+  letter-spacing: 0.10em;
+  cursor:     pointer;
+  transition: background 180ms var(--ease-smooth);
+}
+
+.resetBtn:hover  { background: rgba(201, 106, 106, 0.08); }
+
+/* ── Bracket display ──────────────────────────────────────── */
+
+.bracketScroll {
+  overflow-x:    auto;
+  padding-bottom: var(--sp-4);
+}
+
+.bracketRounds {
+  display:     flex;
+  gap:         0;
+  align-items: stretch;
+  min-width:   max-content;
+}
+
+.bracketRound {
+  display:        flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-width:      160px;
+  padding:        0 var(--sp-4);
+  position:       relative;
+}
+
+/* Round header label */
+.roundLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.54rem;
+  letter-spacing: 0.18em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+  text-align:     center;
+  padding-bottom: var(--sp-3);
+  border-bottom:  1px solid rgba(124, 149, 255, 0.06);
+  margin-bottom:  var(--sp-3);
+  flex-shrink:    0;
+}
+
+.bracketRoundInner {
+  display:        flex;
+  flex-direction: column;
+  justify-content: space-around;
+  flex:           1;
+  gap:            var(--sp-3);
+}
+
+/* ── Match card ───────────────────────────────────────────── */
+
+.matchCard {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  overflow:      hidden;
+  display:       flex;
+  flex-direction: column;
+}
+
+.matchSlot {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-2) var(--sp-3);
+  font-family: var(--font-body);
+  font-size:   0.8rem;
+  color:       var(--text-muted);
+  cursor:      pointer;
+  border:      none;
+  background:  transparent;
+  width:       100%;
+  text-align:  left;
+  transition:  background 140ms var(--ease-smooth), color 140ms var(--ease-smooth);
+  min-height:  36px;
+  border-top:  1px solid transparent;
+  overflow:    hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.matchSlot:first-child { border-top: none; }
+.matchSlot + .matchSlot { border-top: 1px solid rgba(124, 149, 255, 0.06); }
+
+.matchSlot:hover:not(.matchSlotBye):not(.matchSlotTbd) {
+  background: rgba(124, 149, 255, 0.08);
+  color:      var(--text-primary);
+}
+
+.matchSlotBye {
+  opacity: 0.30;
+  cursor:  default;
+  font-style: italic;
+  pointer-events: none;
+}
+
+.matchSlotTbd {
+  color:      var(--text-dark);
+  font-style: italic;
+  cursor:     default;
+  pointer-events: none;
+}
+
+.matchSlotWinner {
+  background:  rgba(99, 163, 137, 0.10);
+  color:       var(--text-primary);
+  font-weight: 500;
+}
+
+.slotDot {
+  width:         7px;
+  height:        7px;
+  border-radius: 50%;
+  flex-shrink:   0;
+  background:    rgba(124, 149, 255, 0.22);
+}
+
+.slotDotWinner {
+  background: var(--accent-green);
+}
+
+/* ── Champion banner ──────────────────────────────────────── */
+
+@keyframes championReveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.championBanner {
+  composes: card;
+  padding:    var(--sp-5) var(--sp-8);
+  display:    flex;
+  align-items: center;
+  gap:        var(--sp-5);
+  background: rgba(229, 193, 124, 0.05);
+  border-color: rgba(229, 193, 124, 0.22);
+  animation:  championReveal 460ms var(--ease-spring-cozy) both;
+}
+
+.championGlyph {
+  font-size:   2rem;
+  flex-shrink: 0;
+}
+
+.championMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.championLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.54rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--accent-warm);
+}
+
+.championName {
+  font-family: var(--font-display);
+  font-size:   1.5rem;
+  font-weight: 600;
+  color:       var(--text-primary);
+}
+
+/* ── Empty bracket state ──────────────────────────────────── */
+
+.bracketEmpty {
+  composes: card;
+  padding:    var(--sp-10) var(--sp-8);
+  text-align: center;
+  display:    flex;
+  flex-direction: column;
+  align-items: center;
+  gap:        var(--sp-4);
+}
+
+.bracketEmptyGlyph {
+  font-family: var(--font-mono);
+  font-size:   2rem;
+  color:       var(--text-dark);
+  letter-spacing: -0.04em;
+}
+
+.bracketEmptyText {
+  font-family:    var(--font-mono);
+  font-size:      0.65rem;
+  letter-spacing: 0.14em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .wheelLayout {
+    grid-template-columns: 1fr;
+  }
+  .wheelPanel {
+    order: -1;
+  }
+  .wheelContainer {
+    width:  320px;
+    height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell       { padding: var(--sp-4); }
+  .setupRow    { flex-direction: column; }
+  .wheelContainer { width: 280px; height: 280px; }
+}

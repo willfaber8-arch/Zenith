@@ -36,47 +36,53 @@
 
 @theme {
 
-  /* ── Base palette ─────────────────────────────────────────────── */
-  --color-bg-main:        #0b0d13;    /* Deep Matte Slate · Cosmos Black  */
-  --color-surface-card:   #141923;    /* Muted Indigo-Grey                */
-  --color-accent-purple:  #7c95ff;    /* Periwinkle Violet                */
-  --color-accent-green:   #52cca3;    /* Ocean Sage Green                 */
-  --color-text-primary:   #e8eaf6;    /* High-contrast Soft White         */
-  --color-text-muted:     #9ba3c4;    /* Low-contrast Slate Grey          */
-  --color-text-dark:      #5c6487;    /* Deep Slate Guide Text            */
+  /* ── Base palette (Phase 11.1 · Warm Mineral-Dark Studio) ───── */
+  --color-bg-main:          #0d0f12;    /* Warm Midnight Canvas             */
+  --color-surface-card:     #14171c;    /* Charcoal Studio Surface          */
+  --color-surface-accent:   #1c2128;    /* Elevated Warm Surface            */
+  --color-accent-purple:    #7c95ff;    /* Periwinkle — primary interactive */
+  --color-accent-green:     #63a389;    /* Botanical Sage Green             */
+  --color-accent-warm:      #e5c17c;    /* Amber-Gold · warm accent tier    */
+  --color-accent-crimson:   #c96a6a;    /* Dusty Crimson · critical accent  */
+  --color-text-primary:     #f4f1ea;    /* Warm Parchment Cream             */
+  --color-text-muted:       #b4bdd0;    /* Lichen Grey · secondary          */
+  --color-text-dark:        #7a8299;    /* Deep Mineral Slate               */
 
   /* ── Semantic / interactive ───────────────────────────────────── */
   --color-hover:          rgba(124, 149, 255, 0.05);
   --color-active:         rgba(124, 149, 255, 0.10);
   --color-purple-dim:     rgba(124, 149, 255, 0.35);
-  --color-green-dim:      rgba(82,  204, 163, 0.35);
+  --color-green-dim:      rgba(99,  163, 137, 0.35);   /* sage green dim */
   --color-border-subtle:  rgba(124, 149, 255, 0.10);
 
   /* ── Category background tints (Step 0.3 morph system) ───────── */
-  --color-tint-essentials: #0d1020;   /* Deep Slate-Indigo               */
+  --color-tint-essentials: #0e1018;   /* Warm Deep Slate-Indigo          */
   --color-tint-creator:    #090f0b;   /* Deep Obsidian-Green             */
-  --color-tint-vault:      #101010;   /* Minimal Charcoal-Grey           */
+  --color-tint-vault:      #0f1012;   /* Warm Mineral Charcoal           */
 
   /* ── Per-category micro-interaction hover surfaces (Step 0.4) ── */
   --color-hover-essentials: rgba(124, 149, 255, 0.12);
-  --color-hover-creator:    rgba(82,  204, 163, 0.12);
+  --color-hover-creator:    rgba(99,  163, 137, 0.12);  /* sage green */
   --color-hover-vault:      rgba(155, 163, 196, 0.15);
 
-  /* ── Typography ───────────────────────────────────────────────── */
+  /* ── Typography (Phase 11.1 · Warm Humanistic Studio Stack) ──── */
   /*
    * next/font injects --font-jakarta and --font-cabinet onto <html>
    * at runtime. The var() cascade guarantees we get the subsetted,
    * display-swap-optimised version with system fallbacks if either
    * isn't loaded yet.
    *
-   * --font-display → Space Grotesk (Google Fonts stand-in for
-   *   Cabinet Grotesk / Clash Display until local font files are
-   *   sourced from https://www.fontshare.com/fonts/cabinet-grotesk)
-   * --font-sans    → Plus Jakarta Sans (Google Fonts — production ready)
+   * --font-display → Space Grotesk  (soft geometric display; clean,
+   *   warm letterforms that sit well on the mineral-dark canvas.
+   *   Upgrade path: Cabinet Grotesk or Clash Display — see layout.tsx)
+   * --font-sans    → Plus Jakarta Sans  (warm, humanistic geometric sans;
+   *   approachable at small sizes, expressive at display scale)
+   * --font-mono    → Cascadia Code  (ligature-enabled; readable warmth
+   *   in data-dense panes and terminal-inspired sections)
    */
-  --font-display: var(--font-cabinet), 'Space Grotesk',    ui-sans-serif, sans-serif;
-  --font-sans:    var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono:    'Cascadia Code', 'SF Mono', 'Fira Code',  ui-monospace,  monospace;
+  --font-display: var(--font-cabinet), 'Space Grotesk', 'DM Sans',      ui-sans-serif, sans-serif;
+  --font-sans:    var(--font-jakarta), 'Plus Jakarta Sans', 'DM Sans',  ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Cascadia Code', 'JetBrains Mono', 'SF Mono',          ui-monospace,  monospace;
 
   /* ── Border radii (override Tailwind defaults) ────────────────── */
   --radius-sm: 4px;
@@ -99,6 +105,10 @@
   --animate-toast-out:  toastOut    0.38s ease                           forwards;
   --animate-spin:       spin        0.70s linear                         infinite;
   --animate-pulse-glow: pulseGlow   3.0s  ease-in-out                    infinite;
+
+  /* ── Phase 11.2 · Spring Physics animate shorthands ──────────── */
+  --animate-spring-popup:   cozy-bounce-in  450ms var(--ease-spring-cozy) forwards;
+  --animate-spring-sidebar: cozy-slide-over 500ms var(--ease-spring-cozy) forwards;
 
 }
 
@@ -131,6 +141,17 @@
   --accent-purple-dim: var(--color-purple-dim);
   --accent-green-dim:  var(--color-green-dim);
   --border-subtle:     var(--color-border-subtle);
+
+  /* ── Phase 11.1 additions ─────────────────────────────────────── */
+  /* New warm + crimson accent tiers */
+  --accent-warm:    var(--color-accent-warm);
+  --accent-crimson: var(--color-accent-crimson);
+  /* Elevated surface (modals, popovers, active panels) */
+  --surface-accent: var(--color-surface-accent);
+  /* Semantic name aliases — spec-requested alternative naming */
+  --background: var(--bg-main);       /* alias: same as --bg-main      */
+  --surface:    var(--surface-card);  /* alias: same as --surface-card  */
+  --text-main:  var(--text-primary);  /* alias: same as --text-primary  */
 
   /* Composite shadow (can't live in @theme — not a single value) */
   --shadow-card:
@@ -165,14 +186,21 @@
 
   /* ── Motion ───────────────────────────────────────────────────── */
   /*
-   * Three named easing curves cover all interaction types in Zenith:
-   *   --ease-expo   →  snappy deceleration; page/view entrances
-   *   --ease-smooth →  Material-style; general state transitions
-   *   --ease-nav    →  Step 0.4 spec; nav item hover (0.4 s duration)
+   * Five named easing curves cover all interaction types in Zenith:
+   *   --ease-expo          →  snappy deceleration; page/view entrances
+   *   --ease-smooth        →  Material-style; general state transitions
+   *   --ease-nav           →  Step 0.4 spec; nav item hover (0.4 s duration)
+   *   --ease-spring-cozy   →  Phase 11.2; soft damped spring with gentle
+   *                           overshoot (y1=1.1) — expansion panels, drawers,
+   *                           SVG rings, collapsible sections, major transitions
+   *   --ease-spring-snappy →  Phase 11.2; energetic elastic pop (y2=1.125) —
+   *                           button taps, badges, checkboxes, color swatches
    */
-  --ease-expo:   cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-nav:    cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-expo:          cubic-bezier(0.16,  1,    0.3,  1);
+  --ease-smooth:        cubic-bezier(0.4,   0,    0.2,  1);
+  --ease-nav:           cubic-bezier(0.25,  0.8,  0.25, 1);
+  --ease-spring-cozy:   cubic-bezier(0.25,  1.1,  0.4,  1.0);
+  --ease-spring-snappy: cubic-bezier(0.175, 0.885, 0.32, 1.125);
 
   --dur-fast:    110ms;
   --dur-base:    220ms;
@@ -213,6 +241,8 @@ html {
 body {
   min-height: 100%;
   background-color: var(--bg-main);
+  background-image: radial-gradient(circle, rgba(124, 149, 255, 0.055) 1px, transparent 1px);
+  background-size: 30px 30px;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 1rem;
@@ -290,6 +320,23 @@ body {
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 18px rgba(124, 149, 255, 0.15); }
   50%       { box-shadow: 0 0 36px rgba(124, 149, 255, 0.30); }
+}
+
+/* ── Phase 11.2 · Spring Physics keyframes ───────────────────────── */
+
+/* Card / panel pop-in: scale from 96 % with opacity fade — used by
+   .animate-spring-popup and dropdowns, modals, context cards.       */
+@keyframes cozy-bounce-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* Right-side panel slide: translates from 100 % (off-screen right)
+   to natural position — used by .animate-spring-sidebar for panels
+   that mount fresh rather than using the transition toggle pattern. */
+@keyframes cozy-slide-over {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0);    }
 }
 
 
@@ -381,7 +428,7 @@ body {
    * Declared here so they're available as Tailwind utility classes.
    */
   .surface-glass {
-    background: rgba(20, 25, 35, 0.72);
+    background: rgba(20, 23, 28, 0.72);    /* warm charcoal studio glass */
     backdrop-filter: blur(12px) saturate(1.4);
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
     border: 1px solid var(--border-subtle);
@@ -391,6 +438,42 @@ body {
     background-color: var(--surface-card);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
+  }
+
+  /* ── Phase 11.2 · Spring Physics transition utilities ────────── */
+  /*
+   * .transition-spring-cozy   — 400 ms soft damped spring; panels,
+   *   expansion sections, SVG rings, sliding drawers, layout shifts.
+   * .transition-spring-snappy — 200 ms elastic pop; buttons, badges,
+   *   checkboxes, color swatches, micro-interaction affordances.
+   * .animate-spring-popup     — one-shot cozy-bounce-in entrance.
+   * .animate-spring-sidebar   — one-shot cozy-slide-over entrance
+   *   (for panels that mount once, not class-toggled open/close).
+   *
+   * Usage:
+   *   className="transition-spring-cozy"   — attach to any element
+   *   className="animate-spring-popup"     — on mount, plays once
+   *   style={{ transition: ... }}          — prefer tokens inline
+   */
+
+  .transition-spring-cozy {
+    transition-property: all;
+    transition-duration: 400ms;
+    transition-timing-function: var(--ease-spring-cozy);
+  }
+
+  .transition-spring-snappy {
+    transition-property: all;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-spring-snappy);
+  }
+
+  .animate-spring-popup {
+    animation: cozy-bounce-in 450ms var(--ease-spring-cozy) forwards;
+  }
+
+  .animate-spring-sidebar {
+    animation: cozy-slide-over 500ms var(--ease-spring-cozy) forwards;
   }
 
 }

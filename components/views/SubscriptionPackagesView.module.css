@@ -1,0 +1,669 @@
+/* ════════════════════════════════════════════════════════════
+   Subscriptions Packager — Phase 8.4
+   Design tokens: --cat-* (purple in Essentials), --surface-card,
+   --border-subtle, --accent-green, font-mono/display/body.
+   ════════════════════════════════════════════════════════════ */
+
+.container {
+  padding: var(--sp-8);
+  max-width: 1100px;
+}
+
+/* ── Burn-Rate Panel ─────────────────────────────────────── */
+
+.burnPanel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  margin-bottom: var(--sp-8);
+  transition: border-color 400ms var(--ease-smooth),
+              box-shadow   400ms var(--ease-smooth);
+}
+
+.burnPanelCritical {
+  border-color: rgba(255, 92, 92, 0.30);
+  box-shadow: 0 0 0 1px rgba(255, 92, 92, 0.08) inset;
+}
+
+.burnTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--sp-4);
+}
+
+.burnOutflowBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.burnLabel {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.burnAmount {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  transition: color 400ms var(--ease-smooth);
+}
+
+.burnAmountCritical {
+  color: #ff5c5c;
+}
+
+.burnBudgetBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.burnBudgetInput {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 6px var(--sp-2);
+  transition: border-color 150ms;
+}
+
+.burnBudgetInput:focus-within {
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+.burnCurrencySymbol {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.burnThresholdField {
+  width: 72px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  text-align: right;
+  /* hide number spinners */
+  -moz-appearance: textfield;
+}
+
+.burnThresholdField::-webkit-inner-spin-button,
+.burnThresholdField::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ── Gauge Track + Fill ──────────────────────────────────── */
+
+.burnTrack {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: var(--sp-3);
+}
+
+.burnFill {
+  height: 100%;
+  width: calc(var(--fill-pct, 0) * 1%);
+  background: var(--bar-color, var(--accent-green));
+  border-radius: 99px;
+  /* Hardware-accelerated smooth fill + color morph */
+  transition: width   700ms cubic-bezier(0.25, 1, 0.5, 1),
+              background 400ms var(--ease-smooth);
+}
+
+/* ── Burn Footer ─────────────────────────────────────────── */
+
+.burnFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.burnFooterText {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  transition: color 400ms var(--ease-smooth);
+}
+
+.burnFooterCritical {
+  color: #ff5c5c;
+}
+
+.burnStatChips {
+  display: flex;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.burnChip {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+}
+
+/* ── Two-Column Content Grid ─────────────────────────────── */
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.bundlesColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.formColumn {
+  position: sticky;
+  top: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-8);
+  background: var(--surface-card);
+  border: 1px dashed rgba(124, 149, 255, 0.15);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.emptyGlyph {
+  font-size: 2.5rem;
+  color: var(--text-dark);
+  opacity: 0.4;
+  line-height: 1;
+}
+
+.emptyLabel {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* ── Bundle Cards ────────────────────────────────────────── */
+
+.bundleCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  animation: bundleIn 280ms var(--ease-expo) both;
+}
+
+@keyframes bundleIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.bundleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-5);
+  background: rgba(124, 149, 255, 0.04);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bundleNameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.bundleIcon {
+  font-size: 0.85rem;
+  color: var(--cat-accent, var(--accent-purple));
+  opacity: 0.65;
+  line-height: 1;
+}
+
+.bundleName {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bundleCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--cat-accent, var(--accent-purple));
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+.bundleTotalBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.bundleTotalLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+}
+
+.bundleTotalAmount {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bundleTotalSuffix {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* ── Subscription Item Rows ──────────────────────────────── */
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+}
+
+.itemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.028);
+  transition: background 140ms var(--ease-smooth);
+}
+
+.itemRow:last-child {
+  border-bottom: none;
+}
+
+.itemRow:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.itemMain {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.itemName {
+  font-size: 0.83rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.cycleBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+
+.cycleBadgeMonthly {
+  background: rgba(124, 149, 255, 0.10);
+  color: var(--cat-accent, var(--accent-purple));
+  border: 1px solid rgba(124, 149, 255, 0.20);
+}
+
+.cycleBadgeAnnual {
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+  border: 1px solid rgba(82, 204, 163, 0.20);
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.renewalDate {
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.renewalSoon {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.itemCost {
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 68px;
+  text-align: right;
+}
+
+.costSuffix {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-dark);
+  font-size: 0.62rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 140ms, background 140ms, color 140ms;
+}
+
+.itemRow:hover .deleteBtn {
+  opacity: 1;
+}
+
+.deleteBtn:hover {
+  background: rgba(255, 92, 92, 0.14);
+  color: #ff5c5c;
+}
+
+/* ── Add Subscription Form ───────────────────────────────── */
+
+.addForm {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.formTitle {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.fieldInput {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.83rem;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 150ms;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fieldInput:focus {
+  border-color: rgba(124, 149, 255, 0.40);
+}
+
+.fieldInput[type='date'] {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color-scheme: dark;
+}
+
+.fieldInput[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.fieldInput[type='number']::-webkit-inner-spin-button,
+.fieldInput[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.costPreview {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  color: var(--accent-green);
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* ── Billing Cycle Toggle ────────────────────────────────── */
+
+.cycleToggle {
+  display: flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.cycleBtn {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms var(--ease-smooth),
+              color     150ms var(--ease-smooth);
+}
+
+.cycleBtn + .cycleBtn {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.cycleBtnActive {
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Form Feedback ───────────────────────────────────────── */
+
+.formError {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #ff5c5c;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(124, 149, 255, 0.10);
+  border: 1px solid rgba(124, 149, 255, 0.22);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cat-accent, var(--accent-purple));
+  cursor: pointer;
+  transition: background 200ms var(--ease-smooth),
+              border-color 200ms var(--ease-smooth);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.18);
+  border-color: rgba(124, 149, 255, 0.40);
+}
+
+.submitBtn:active:not(:disabled) {
+  background: rgba(124, 149, 255, 0.24);
+}
+
+.submitBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Annual Projection Card ──────────────────────────────── */
+
+.projectionCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  animation: bundleIn 280ms var(--ease-expo) both;
+}
+
+.projectionTitle {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.projectionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.projectionLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.projectionValue {
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.projectionOver {
+  color: #ff5c5c;
+}
+
+.projectionUnder {
+  color: var(--accent-green);
+}
+
+.projectionDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: calc(var(--sp-1) * -0.5) 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 800px) {
+  .container {
+    padding: var(--sp-4);
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formColumn {
+    position: static;
+    order: -1;
+  }
+
+  .burnTopRow {
+    flex-wrap: wrap;
+    gap: var(--sp-4);
+    align-items: flex-start;
+  }
+
+  .burnAmount {
+    font-size: 1.7rem;
+  }
+}

@@ -1,0 +1,651 @@
+/* ════════════════════════════════════════════════════════════════
+   BiosphereRenderer — Step 5.2 · Automated Visual Evolution Script
+   Layout contract:
+     .container         — relative root; all slots are absolute inside
+     .assetSlot         — invisible by default; transitions to active
+     .assetSlotActive   — full opacity + scale(1) with spring curve
+     .slot*             — absolute positioning for each asset slot
+     element classes    — visual content for each individual asset
+     .stageIndicator    — top-left tier badge (always rendered)
+     .emptyState        — centred empty-environment prompt
+     Keyframes          — kelpSway · neonDrift · codeScrollLoop ·
+                          svgLinePulse · faunaStep · uptimeBlink ·
+                          botanicalSway
+
+   All colours use design-token CSS custom properties.
+   No hardcoded hex values. Attribute selectors are anchored to
+   a local class (.container[data-module='…']) — not bare selectors.
+
+   Visual layer order (z-index ascending within the container):
+     0   ambient_pulse_lines (SVG grid behind everything)
+     1   substrate_rocks     (aquarium floor)
+     2   enclosure_perimeter (zoo wireframe cage)
+     2   kelp_forest         (aquarium mid-ground)
+     2   mainframe_node      (terminal code monitor)
+     3   botanical_canopy    (zoo top-right SVG plants)
+     3   uptime_registry     (terminal top-right widget)
+     4   neon_fauna          (aquarium foreground drifters)
+     4   fauna_sprites       (zoo foreground steppers)
+     5   stageIndicator      (above all slots)
+     6   emptyState          (above everything when no assets)
+   ════════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════════════
+   ROOT CONTAINER
+   ════════════════════════════════════════════════════════════════ */
+
+.container {
+  position:      relative;
+  width:         100%;
+  height:        100%;
+  min-height:    400px;
+  background:    var(--bg-main);
+  overflow:      hidden;
+  border-radius: var(--r-lg);
+}
+
+/*
+ * Per-module background tints — very subtle colour variation to
+ * distinguish environments without breaking the Zen aesthetic.
+ * All values use color-mix() so the tint never overrides the
+ * base --bg-main token.
+ */
+.container[data-module='aquarium'] {
+  background: color-mix(in srgb, var(--bg-main) 94%, var(--accent-green));
+}
+.container[data-module='terminal'] {
+  background: color-mix(in srgb, var(--bg-main) 97%, var(--accent-purple));
+}
+.container[data-module='zoo'] {
+  background: color-mix(in srgb, var(--bg-main) 95%, var(--accent-green));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ASSET SLOT SYSTEM — the deterministic visibility engine
+   ════════════════════════════════════════════════════════════════ */
+
+/*
+ * Base state: invisible, scaled down, non-interactive.
+ * Every slot (regardless of its position class) starts here.
+ *
+ * Spring curve: cubic-bezier(0.34, 1.56, 0.64, 1)
+ *   Produces an organic overshoot-and-settle that makes asset
+ *   unlocks feel like a living system "waking up" rather than a
+ *   mechanical fade.
+ *
+ * The `will-change` hint allows the compositor to promote the
+ * element to its own layer before the transition fires,
+ * preventing any main-thread layout work during the animation.
+ */
+.assetSlot {
+  position:        absolute;
+  opacity:         0;
+  transform:       scale(0.88);
+  pointer-events:  none;
+  will-change:     opacity, transform;
+  transition:
+    opacity   700ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Active state: fully visible and interactive. */
+.assetSlotActive {
+  opacity:        1;
+  transform:      scale(1);
+  pointer-events: auto;
+}
+
+/*
+ * Bottom-anchored slots scale from the bottom edge so the growth
+ * animation feels like the asset "growing up" from the floor.
+ */
+.assetSlot.slotSubstrateRocks,
+.assetSlot.slotKelpForest {
+  transform-origin: bottom center;
+}
+
+/* Top-right anchored content scales from the top-right corner. */
+.assetSlot.slotBotanicalCanopy,
+.assetSlot.slotUptimeRegistry {
+  transform-origin: top right;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SLOT COORDINATE MAP — AQUARIUM
+   ════════════════════════════════════════════════════════════════ */
+
+/* Substrate rocks: the aquarium floor bar. */
+.slotSubstrateRocks {
+  bottom:  0;
+  left:    0;
+  right:   0;
+  height:  52px;
+  z-index: 1;
+}
+
+/* Kelp forest: left-to-centre mid-ground layer. */
+.slotKelpForest {
+  bottom:  0;
+  left:    0;
+  width:   58%;
+  height:  80%;
+  z-index: 2;
+}
+
+/* Neon fauna: upper half, full-width drifting layer. */
+.slotNeonFauna {
+  top:     8%;
+  left:    0;
+  right:   0;
+  height:  52%;
+  z-index: 4;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SLOT COORDINATE MAP — TERMINAL
+   ════════════════════════════════════════════════════════════════ */
+
+/* Ambient lines: full-bleed SVG behind all terminal content. */
+.slotAmbientLines {
+  inset:   0;
+  z-index: 0;
+}
+
+/*
+ * Mainframe node: centred monitor panel.
+ * Centred without translate (which would conflict with the scale
+ * transition) using left-percentage + explicit width.
+ * left = (100% − 82%) / 2 = 9%
+ */
+.slotMainframeNode {
+  top:     36px;
+  left:    9%;
+  width:   82%;
+  z-index: 2;
+}
+
+/* Uptime registry: compact widget in the top-right corner. */
+.slotUptimeRegistry {
+  top:     10px;
+  right:   10px;
+  z-index: 3;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SLOT COORDINATE MAP — ZOO
+   ════════════════════════════════════════════════════════════════ */
+
+/* Enclosure perimeter: full-slot wireframe cage. */
+.slotEnclosurePerimeter {
+  inset:   0;
+  z-index: 2;
+}
+
+/* Botanical canopy: top-right SVG plant cluster. */
+.slotBotanicalCanopy {
+  top:     0;
+  right:   0;
+  width:   48%;
+  height:  42%;
+  z-index: 3;
+}
+
+/* Fauna sprites: mid-to-lower stepping layer. */
+.slotFaunaSprites {
+  bottom:  18%;
+  left:    0;
+  right:   0;
+  height:  36px;
+  z-index: 4;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AQUARIUM: SUBSTRATE ROCKS
+   ════════════════════════════════════════════════════════════════ */
+
+.substrateRocks {
+  position: relative;
+  width:    100%;
+  height:   100%;
+}
+
+/* Flat base bar matching the spec's #1b2234 tint */
+.substrateFloor {
+  position:   absolute;
+  bottom:     0;
+  left:       0;
+  right:      0;
+  height:     24px;
+  background: #1b2234;
+  border-top: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
+}
+
+/*
+ * Silhouette contour bumps — three fixed rock forms.
+ * Each rock is a rounded rectangle elevated above the floor bar.
+ * The data-pos attribute drives their horizontal position via
+ * compound selectors anchored to the local .substrateContour class.
+ */
+.substrateContour {
+  position:      absolute;
+  bottom:        16px;
+  width:         28px;
+  height:        18px;
+  border-radius: 50% 50% 30% 30%;
+  background:    color-mix(in srgb, var(--text-dark) 60%, var(--bg-main));
+}
+
+.substrateContour[data-pos='left']   { left:  8%; }
+.substrateContour[data-pos='center'] { left: 42%; width: 38px; height: 22px; }
+.substrateContour[data-pos='right']  { left: 72%; }
+
+/* ════════════════════════════════════════════════════════════════
+   AQUARIUM: KELP FOREST
+   ════════════════════════════════════════════════════════════════ */
+
+.kelpForestWrap {
+  position: relative;
+  width:    100%;
+  height:   100%;
+}
+
+.kelpStalk {
+  position:        absolute;
+  bottom:          0;
+  border-radius:   3px 3px 0 0;
+  background:      color-mix(in srgb, var(--accent-green) 22%, transparent);
+  transform-origin: bottom center;
+  animation:       kelpSway 3.2s ease-in-out infinite;
+}
+
+/* At higher stages (3+), kelp sways slightly faster */
+.container[data-stage='3'] .kelpStalk,
+.container[data-stage='4'] .kelpStalk,
+.container[data-stage='5'] .kelpStalk {
+  animation-duration: 2.2s;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AQUARIUM: NEON FAUNA
+   ════════════════════════════════════════════════════════════════ */
+
+.neonFaunaWrap {
+  position: relative;
+  width:    100%;
+  height:   100%;
+  overflow: visible;
+}
+
+.neonFaunaParticle {
+  position:         absolute;
+  left:             0;
+  border-radius:    50%;
+  animation:        neonDrift linear infinite;
+  /* width / height / background / box-shadow / animation-duration
+     / animation-delay are all set inline per-particle              */
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TERMINAL: AMBIENT PULSE LINES
+   ════════════════════════════════════════════════════════════════ */
+
+.ambientLinesSvg {
+  position: absolute;
+  inset:    0;
+  width:    100%;
+  height:   100%;
+  color:    var(--accent-green);
+  animation: svgLinePulse 5s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TERMINAL: MAINFRAME NODE
+   ════════════════════════════════════════════════════════════════ */
+
+.mainframeNode {
+  background:    color-mix(in srgb, var(--surface-card) 85%, transparent);
+  border:        1px solid color-mix(in srgb, var(--accent-green) 18%, transparent);
+  border-radius: var(--r-md);
+  overflow:      hidden;
+  backdrop-filter: blur(4px);
+  box-shadow:    0 0 24px color-mix(in srgb, var(--accent-green) 6%, transparent);
+}
+
+/* Traffic-light-style title bar */
+.codeHeader {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-2) var(--sp-3);
+  background:      color-mix(in srgb, var(--bg-main) 70%, transparent);
+  border-bottom:   1px solid color-mix(in srgb, var(--accent-green) 12%, transparent);
+}
+
+.codeHeaderDot {
+  display:       inline-block;
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.dotRed   { background: color-mix(in srgb, #ff6b8a 80%, transparent); }
+.dotAmber { background: color-mix(in srgb, #ffc56a 80%, transparent); }
+.dotGreen { background: color-mix(in srgb, var(--accent-green) 80%, transparent); }
+
+.codeHeaderTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.14em;
+  color:          var(--text-dark);
+  margin-left:    var(--sp-1);
+}
+
+/* Scroll mask: clips the scrolling content to a fixed window height */
+.codeScrollMask {
+  height:   180px;
+  overflow: hidden;
+}
+
+/*
+ * Scroll inner: doubled content for seamless loop.
+ * The keyframe scrolls exactly -50% of this element's height,
+ * which equals the height of one full pass of CODE_LINES.
+ * This creates a gapless infinite scroll regardless of font size.
+ */
+.codeScrollInner {
+  animation: codeScrollLoop 28s linear infinite;
+}
+
+.codeLine {
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  line-height:    1.9;
+  color:          color-mix(in srgb, var(--accent-green) 75%, var(--text-muted));
+  padding:        0 var(--sp-3);
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TERMINAL: UPTIME REGISTRY
+   ════════════════════════════════════════════════════════════════ */
+
+.uptimeRegistry {
+  display:         flex;
+  flex-direction:  column;
+  gap:             var(--sp-1);
+  padding:         var(--sp-2) var(--sp-3);
+  background:      color-mix(in srgb, var(--surface-card) 80%, transparent);
+  border:          1px solid color-mix(in srgb, var(--accent-green) 18%, transparent);
+  border-radius:   var(--r-md);
+  backdrop-filter: blur(4px);
+  min-width:       120px;
+}
+
+.uptimeRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+}
+
+.uptimeLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.48rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.uptimeValue {
+  font-family: var(--font-mono);
+  font-size:   0.68rem;
+  font-weight: 700;
+  color:       var(--accent-green);
+  letter-spacing: 0.04em;
+}
+
+/* Blinking online indicator dot */
+.uptimeDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    var(--accent-green);
+  align-self:    flex-end;
+  margin-top:    var(--sp-1);
+  animation:     uptimeBlink 1.4s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ZOO: ENCLOSURE PERIMETER
+   ════════════════════════════════════════════════════════════════ */
+
+.enclosurePerimeter {
+  position: relative;
+  width:    100%;
+  height:   100%;
+}
+
+.enclosureCell {
+  position:      absolute;
+  border:        1px solid color-mix(in srgb, var(--accent-green) 16%, transparent);
+  border-radius: var(--r-sm);
+  /* top / left / width / height set inline per cell */
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ZOO: BOTANICAL CANOPY
+   ════════════════════════════════════════════════════════════════ */
+
+.botanicalCanopy {
+  position:        absolute;
+  inset:           0;
+  width:           100%;
+  height:          100%;
+  color:           var(--accent-green);
+  transform-origin: top right;
+  animation:       botanicalSway 7s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ZOO: FAUNA SPRITES
+   ════════════════════════════════════════════════════════════════ */
+
+.faunaSpritesWrap {
+  position: relative;
+  width:    100%;
+  height:   100%;
+}
+
+.faunaGlyph {
+  position:        absolute;
+  left:            0;
+  font-size:       0.85rem;
+  color:           color-mix(in srgb, var(--accent-green) 55%, var(--text-muted));
+  /*
+   * steps(28, end) creates discrete hop positions that simulate
+   * an animal taking individual footsteps rather than sliding.
+   * Each glyph moves from left edge (0px) to off-screen right.
+   * top / animation-delay / animation-duration set inline.
+   */
+  animation:       faunaStep steps(28, end) infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STAGE INDICATOR
+   ════════════════════════════════════════════════════════════════ */
+
+.stageIndicator {
+  position:        absolute;
+  top:             10px;
+  left:            10px;
+  z-index:         5;
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-1) var(--sp-3);
+  background:      color-mix(in srgb, var(--surface-card) 80%, transparent);
+  border:          1px solid color-mix(in srgb, var(--border-subtle) 60%, transparent);
+  border-radius:   var(--r-md);
+  backdrop-filter: blur(6px);
+  transition:      box-shadow 600ms var(--ease-smooth);
+}
+
+/* At maximum stage, add a subtle green aura */
+.container[data-stage='5'] .stageIndicator {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-green) 28%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 30%, transparent);
+}
+
+.stageTierLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  font-weight:    700;
+  letter-spacing: 0.10em;
+  color:          var(--accent-green);
+  line-height:    1;
+}
+
+.stagePips {
+  display: flex;
+  gap:     3px;
+}
+
+.stagePip {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    color-mix(in srgb, var(--text-dark) 50%, transparent);
+  transition:    background 400ms var(--ease-smooth);
+}
+
+.stagePipFilled {
+  background: var(--accent-green);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EMPTY ENVIRONMENT PROMPT
+   ════════════════════════════════════════════════════════════════ */
+
+.emptyState {
+  position:        absolute;
+  inset:           0;
+  z-index:         6;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-6);
+  /* Subtle vignette so empty state reads clearly over any tint */
+  background:      color-mix(in srgb, var(--bg-main) 70%, transparent);
+}
+
+.emptyGlyph {
+  font-size: 2.2rem;
+  color:     var(--text-dark);
+  opacity:   0.55;
+}
+
+.emptyLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.72rem;
+  font-weight:    600;
+  letter-spacing: 0.08em;
+  color:          var(--text-muted);
+  margin-top:     var(--sp-1);
+}
+
+.emptyHint {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  color:          var(--text-dark);
+  text-align:     center;
+  max-width:      210px;
+  line-height:    1.6;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   KEYFRAME LIBRARY
+   All animation curves align with the Zenith motion system.
+   ════════════════════════════════════════════════════════════════ */
+
+/*
+ * kelpSway — gentle pendulum sway from a bottom-anchored origin.
+ * Using skewX in addition to rotate gives the stalks a natural
+ * "bending under water" look without complex path animation.
+ */
+@keyframes kelpSway {
+  0%,  100% { transform: rotate(-3deg) skewX(-1deg); }
+  50%        { transform: rotate(3deg)  skewX(1deg);  }
+}
+
+/*
+ * neonDrift — continuous left-to-right drift across the aquarium.
+ * Particle starts slightly off-screen left (-20 px) and travels
+ * far enough right (460 px) to exit the container's overflow bound.
+ * The animation loops seamlessly; staggered delays create the
+ * impression of multiple independent organisms.
+ */
+@keyframes neonDrift {
+  0%   { transform: translateX(-20px);  opacity: 0; }
+  8%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(460px);  opacity: 0; }
+}
+
+/*
+ * codeScrollLoop — seamless vertical scroll for the mainframe monitor.
+ * The inner container holds CODE_LINES duplicated twice; moving
+ * exactly -50% of the total height brings us back to the visual
+ * start, creating a gapless infinite loop.
+ */
+@keyframes codeScrollLoop {
+  from { transform: translateY(0);    }
+  to   { transform: translateY(-50%); }
+}
+
+/*
+ * svgLinePulse — slow opacity oscillation for the ambient SVG grid.
+ * Values are kept very low (4–12%) to stay subliminal — the grid
+ * should feel like background texture, not a foreground element.
+ */
+@keyframes svgLinePulse {
+  0%,  100% { opacity: 0.04; }
+  50%        { opacity: 0.12; }
+}
+
+/*
+ * uptimeBlink — binary blink for the "system online" status dot.
+ * A sharp step (no ease) mimics a hardware LED indicator.
+ */
+@keyframes uptimeBlink {
+  0%,  49% { opacity: 1;   }
+  50%, 100% { opacity: 0.2; }
+}
+
+/*
+ * botanicalSway — gentle rocking motion for the SVG leaf cluster.
+ * transform-origin: top right ensures the canopy sways from its
+ * root anchor rather than from its geometric centre.
+ */
+@keyframes botanicalSway {
+  0%,  100% { transform: rotate(-2deg); }
+  50%        { transform: rotate(2deg);  }
+}
+
+/*
+ * faunaStep — discrete step-based horizontal movement.
+ * The component applies `steps(28, end)` timing so the glyph
+ * makes 28 discrete hops across 440 px (≈ 15.7 px per hop),
+ * simulating an animal taking individual footsteps.
+ * Particles are invisible beyond the container edge due to
+ * `overflow: hidden` on .container.
+ */
+@keyframes faunaStep {
+  from { transform: translateX(-24px);  }
+  to   { transform: translateX(440px);  }
+}

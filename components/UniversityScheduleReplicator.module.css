@@ -1,0 +1,457 @@
+/* UniversityScheduleReplicator.module.css — Phase 10.3 */
+
+/* ── Outer panel — matches FeedPanel card height/spacing ─────────── */
+
+.panel {
+  margin:        0 var(--sp-6) var(--sp-4);
+  padding:       var(--sp-5) var(--sp-6);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-5);
+  animation:     panelIn 260ms var(--ease-expo) both;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Panel header ─────────────────────────────────────────────────── */
+
+.panelHeader {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  padding-bottom: var(--sp-4);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+.headerMeta {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+}
+
+.eyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.45rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--accent-purple);
+  opacity:        0.8;
+  user-select:    none;
+}
+
+.title {
+  font-family:    var(--font-display);
+  font-size:      1.0625rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size:   0.75rem;
+  color:       var(--text-dark);
+  line-height: 1.65;
+  max-width:   560px;
+}
+
+/* ── Form layout ──────────────────────────────────────────────────── */
+
+.form {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+.fieldGroup {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.fieldLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.50rem;
+  font-weight:    700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+  user-select:    none;
+}
+
+/* Text input */
+.textInput {
+  font-family:  var(--font-body);
+  font-size:    0.875rem;
+  color:        var(--text-primary);
+  background:   rgba(0, 0, 0, 0.22);
+  border:       1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:      var(--sp-3) var(--sp-4);
+  outline:      none;
+  width:        100%;
+  box-sizing:   border-box;
+  transition:   border-color var(--dur-base) var(--ease-smooth);
+  caret-color:  var(--accent-purple);
+}
+
+.textInput::placeholder { color: var(--text-dark); }
+
+.textInput:focus {
+  border-color: rgba(124, 149, 255, 0.40);
+  background:   rgba(0, 0, 0, 0.30);
+}
+
+.textInput:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Schedule row: days + time ────────────────────────────────────── */
+
+.scheduleRow {
+  display:     flex;
+  align-items: flex-start;
+  gap:         var(--sp-6);
+  flex-wrap:   wrap;
+}
+
+/* Day picker pills */
+.dayPicker {
+  display: flex;
+  gap:     var(--sp-2);
+}
+
+.dayBtn {
+  width:         34px;
+  height:        34px;
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.60rem;
+  font-weight:   700;
+  letter-spacing: 0.04em;
+  cursor:        pointer;
+  transition:
+    background     var(--dur-fast) var(--ease-smooth),
+    border-color   var(--dur-fast) var(--ease-smooth),
+    color          var(--dur-fast),
+    transform      var(--dur-fast) var(--ease-expo);
+  user-select:   none;
+}
+
+.dayBtn:hover:not(:disabled) {
+  border-color: rgba(124, 149, 255, 0.30);
+  color:        var(--text-muted);
+  background:   rgba(124, 149, 255, 0.06);
+}
+
+.dayBtnOn {
+  background:   rgba(124, 149, 255, 0.16);
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+  box-shadow:   0 0 10px rgba(124, 149, 255, 0.14);
+}
+
+.dayBtnOn:hover:not(:disabled) {
+  background:   rgba(124, 149, 255, 0.22);
+  border-color: var(--accent-purple);
+}
+
+.dayBtn:disabled { opacity: 0.40; cursor: not-allowed; }
+
+/* Time inputs */
+.timePair {
+  display:     flex;
+  align-items: flex-end;
+  gap:         var(--sp-3);
+}
+
+.timeInput {
+  font-family:   var(--font-mono);
+  font-size:     0.8125rem;
+  color:         var(--text-primary);
+  background:    rgba(0, 0, 0, 0.22);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-3);
+  outline:       none;
+  width:         110px;
+  transition:    border-color var(--dur-base) var(--ease-smooth);
+  color-scheme:  dark;
+}
+
+.timeInput:focus { border-color: rgba(124, 149, 255, 0.40); }
+.timeInput:disabled { opacity: 0.40; cursor: not-allowed; }
+
+.timeSep {
+  font-size:    0.75rem;
+  color:        var(--text-dark);
+  padding-bottom: var(--sp-3);
+  flex-shrink:  0;
+}
+
+/* ── University select ────────────────────────────────────────────── */
+
+.select {
+  font-family:   var(--font-body);
+  font-size:     0.8125rem;
+  color:         var(--text-primary);
+  background:    rgba(0, 0, 0, 0.22);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3) var(--sp-4);
+  outline:       none;
+  width:         100%;
+  max-width:     360px;
+  box-sizing:    border-box;
+  transition:    border-color var(--dur-base) var(--ease-smooth);
+  cursor:        pointer;
+  color-scheme:  dark;
+}
+
+.select:focus    { border-color: rgba(124, 149, 255, 0.40); }
+.select:disabled { opacity: 0.40; cursor: not-allowed; }
+
+/* ── Semester preview strip ───────────────────────────────────────── */
+
+.semesterPreview {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  flex-wrap:   wrap;
+  padding:     var(--sp-3) var(--sp-4);
+  background:  rgba(0, 0, 0, 0.15);
+  border:      1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+
+.semesterBound {
+  font-family:   var(--font-mono);
+  font-size:     0.58rem;
+  font-weight:   700;
+  letter-spacing: 0.10em;
+  padding:       2px var(--sp-2);
+  border:        1px solid;
+  border-radius: var(--r-sm);
+  background:    rgba(0, 0, 0, 0.20);
+  /* color and border-color set via inline style per university */
+}
+
+.semesterArrow {
+  font-size:  0.65rem;
+  color:      var(--text-dark);
+  flex-shrink: 0;
+}
+
+.breakCount {
+  font-family:   var(--font-mono);
+  font-size:     0.48rem;
+  font-weight:   600;
+  letter-spacing: 0.10em;
+  color:         var(--text-dark);
+  margin-left:   var(--sp-1);
+}
+
+.breakList {
+  opacity: 0.65;
+}
+
+/* ── Submit button ────────────────────────────────────────────────── */
+
+.submitBtn {
+  width:          100%;
+  padding:        var(--sp-4) var(--sp-6);
+  border-radius:  var(--r-lg);
+  border:         1px solid var(--accent-purple-dim);
+  background:     rgba(124, 149, 255, 0.08);
+  color:          var(--accent-purple);
+  font-family:    var(--font-mono);
+  font-size:      0.60rem;
+  font-weight:    700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor:         pointer;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    color        var(--dur-base),
+    transform    var(--dur-fast) var(--ease-expo);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background:   rgba(124, 149, 255, 0.16);
+  border-color: var(--accent-purple);
+  color:        #fff;
+  transform:    translateY(-1px);
+}
+
+.submitBtn:active:not(:disabled) { transform: translateY(0); }
+
+.submitBtn:disabled {
+  opacity: 0.35;
+  cursor:  not-allowed;
+  transform: none;
+}
+
+.submitBtnRunning {
+  background:   rgba(124, 149, 255, 0.05);
+  border-color: rgba(124, 149, 255, 0.20);
+  color:        var(--text-dark);
+  cursor:       wait;
+}
+
+/* Running state content */
+.runningContent {
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  gap:         var(--sp-3);
+}
+
+@keyframes dotSpin {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+.runningDot {
+  width:         7px;
+  height:        7px;
+  border-radius: 50%;
+  background:    var(--accent-purple);
+  display:       inline-block;
+  animation:     dotSpin 1.0s ease-in-out infinite;
+  flex-shrink:   0;
+}
+
+/* ── Success panel ────────────────────────────────────────────────── */
+
+@keyframes successIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+.successPanel {
+  display:     flex;
+  align-items: flex-start;
+  gap:         var(--sp-5);
+  padding:     var(--sp-5) var(--sp-6);
+  background:  rgba(82, 204, 163, 0.05);
+  border:      1px solid rgba(82, 204, 163, 0.20);
+  border-radius: var(--r-lg);
+  animation:   successIn 340ms var(--ease-expo) both;
+}
+
+.successIcon {
+  width:          36px;
+  height:         36px;
+  border-radius:  50%;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  font-size:      0.875rem;
+  font-weight:    700;
+  color:          #fff;
+  flex-shrink:    0;
+  /* background set via inline style per university color */
+}
+
+.successBody {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  min-width:      0;
+}
+
+.successTitle {
+  font-family:    var(--font-display);
+  font-size:      0.9375rem;
+  font-weight:    700;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.successMeta {
+  font-size:   0.75rem;
+  color:       var(--text-muted);
+  line-height: 1.6;
+}
+
+.successMeta strong { color: var(--accent-green); }
+
+.dateRange {
+  font-family: var(--font-mono);
+  font-size:   0.60rem;
+  color:       var(--text-dark);
+}
+
+.successHint {
+  font-size:   0.70rem;
+  color:       var(--text-dark);
+  line-height: 1.65;
+}
+
+.successHint em {
+  font-style: normal;
+  color:      var(--text-muted);
+}
+
+.successActions {
+  display:   flex;
+  gap:       var(--sp-3);
+  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.viewBtn {
+  padding:       var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  border:        1px solid rgba(82, 204, 163, 0.35);
+  background:    rgba(82, 204, 163, 0.08);
+  color:         var(--accent-green);
+  font-family:   var(--font-mono);
+  font-size:     0.55rem;
+  font-weight:   700;
+  letter-spacing: 0.10em;
+  cursor:        pointer;
+  transition:    all var(--dur-fast) var(--ease-smooth);
+}
+
+.viewBtn:hover {
+  background:   rgba(82, 204, 163, 0.16);
+  border-color: var(--accent-green);
+}
+
+.scheduleAnotherBtn {
+  padding:       var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.55rem;
+  font-weight:   700;
+  letter-spacing: 0.10em;
+  cursor:        pointer;
+  transition:    all var(--dur-fast) var(--ease-smooth);
+}
+
+.scheduleAnotherBtn:hover {
+  color:        var(--text-muted);
+  border-color: rgba(155, 163, 196, 0.30);
+  background:   var(--bg-hover);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .panel { margin: 0 var(--sp-4) var(--sp-4); padding: var(--sp-4); }
+  .scheduleRow { flex-direction: column; gap: var(--sp-4); }
+  .select { max-width: 100%; }
+  .successPanel { flex-direction: column; }
+}

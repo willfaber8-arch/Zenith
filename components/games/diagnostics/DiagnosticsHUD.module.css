@@ -1,0 +1,320 @@
+/* ════════════════════════════════════════════════════════════════
+   DiagnosticsHUD — Games Tab · Step 7.3
+   Instrumentation Overlay Styles
+
+   The HUD container is `position: absolute` anchored to the
+   bottom-right corner of its nearest positioned ancestor (the
+   Games Tab shell or the arcade pane).  Internal layout uses
+   flex-column so the panel stacks above the toggle button.
+
+   All colours use design tokens — zero hardcoded hex.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Outer anchor container ──────────────────────────────────── */
+/* Matches spec: absolute bottom-4 right-4 z-50               */
+
+.hudRoot {
+  position:       absolute;
+  bottom:         1rem;      /* bottom-4 */
+  right:          1rem;      /* right-4  */
+  z-index:        50;
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-end;
+  gap:            6px;
+  /* Isolate stacking context so the panel slides above the button */
+  isolation:      isolate;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TOGGLE BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.toggleBtn {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            5px;
+  padding:        4px 12px;
+  border-radius:  var(--r-xl);
+  border:         1px solid color-mix(in srgb, var(--accent-purple) 28%, transparent);
+  background:     color-mix(in srgb, var(--accent-purple) 10%, var(--bg-main));
+  color:          var(--accent-purple);
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor:         pointer;
+  transition:     background 200ms var(--ease-smooth),
+                  border-color 200ms var(--ease-smooth);
+  white-space:    nowrap;
+  user-select:    none;
+}
+
+.toggleBtn:hover {
+  background:   color-mix(in srgb, var(--accent-purple) 18%, var(--bg-main));
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.toggleDot {
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    var(--accent-purple);
+  flex-shrink:   0;
+  animation:     hudDotPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes hudDotPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PANEL CONTAINER
+   ════════════════════════════════════════════════════════════════ */
+
+.panel {
+  width:           272px;
+  max-height:      460px;
+  overflow-y:      auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-purple) 30%, transparent) transparent;
+
+  background:    var(--surface-card);
+  border:        1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  border-radius: var(--r-md);
+  box-shadow:    0 8px 32px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.30);
+
+  animation: panelReveal 220ms var(--ease-expo) both;
+}
+
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PANEL SECTION ANATOMY
+   ════════════════════════════════════════════════════════════════ */
+
+/* Shared section wrapper */
+.section {
+  padding:       var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 45%, transparent);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+/* Section heading */
+.sectionTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.50rem;
+  font-weight:    700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-2);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §A  DB TELEMETRY SECTION
+   ════════════════════════════════════════════════════════════════ */
+
+.telemetryRow {
+  display:        flex;
+  align-items:    center;
+  justify-content: space-between;
+  gap:            var(--sp-2);
+  margin-bottom:  3px;
+}
+
+.telemetryRow:last-child {
+  margin-bottom: 0;
+}
+
+.telemetryKey {
+  font-family: var(--font-mono);
+  font-size:   0.575rem;
+  color:       var(--text-muted);
+  flex:        1;
+  min-width:   0;
+  white-space: nowrap;
+}
+
+.telemetryVal {
+  font-family:  var(--font-mono);
+  font-size:    0.60rem;
+  font-weight:  700;
+  color:        var(--accent-green);
+  letter-spacing: 0.02em;
+  flex-shrink:  0;
+  white-space:  nowrap;
+}
+
+/* Warning colour when latency is high (applied via className) */
+.telemetryValSlow {
+  color: rgba(255, 185, 90, 0.90);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §B  RESOURCE CAPACITY SECTION
+   ════════════════════════════════════════════════════════════════ */
+
+.resourceRows {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+}
+
+.resourceRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.resourceName {
+  font-family: var(--font-mono);
+  font-size:   0.55rem;
+  color:       var(--text-muted);
+  flex:        1;
+  min-width:   0;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resourcePct {
+  font-family:  var(--font-mono);
+  font-size:    0.55rem;
+  font-weight:  700;
+  color:        var(--text-dark);
+  flex-shrink:  0;
+  min-width:    34px;
+  text-align:   right;
+}
+
+.resourceBarTrack {
+  width:         64px;
+  height:        3px;
+  border-radius: 99px;
+  background:    color-mix(in srgb, var(--text-dark) 25%, transparent);
+  flex-shrink:   0;
+  overflow:      hidden;
+}
+
+.resourceBarFill {
+  height:        100%;
+  border-radius: 99px;
+  background:    var(--cat-accent);
+  width:         var(--fill-pct, 0%);
+  transition:    width 500ms var(--ease-smooth);
+}
+
+.resourceBarFillCapped {
+  background: #f87171;  /* rose — over-capacity fill */
+}
+
+/* localStorage memory footnote */
+.memFootnote {
+  font-family:  var(--font-mono);
+  font-size:    0.52rem;
+  color:        var(--text-dark);
+  margin-top:   var(--sp-2);
+  letter-spacing: 0.04em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §C  OVERRIDE CONTROLS SECTION
+   ════════════════════════════════════════════════════════════════ */
+
+.overrideGrid {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.overrideBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: flex-start;
+  gap:             var(--sp-2);
+  width:           100%;
+  padding:         var(--sp-2) var(--sp-3);
+  border-radius:   var(--r-sm);
+  border:          1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+  background:      color-mix(in srgb, var(--bg-main) 60%, transparent);
+  color:           var(--text-muted);
+  font-family:     var(--font-mono);
+  font-size:       0.55rem;
+  font-weight:     600;
+  letter-spacing:  0.06em;
+  text-align:      left;
+  cursor:          pointer;
+  transition:      background 180ms var(--ease-smooth),
+                   border-color 180ms var(--ease-smooth),
+                   color 180ms var(--ease-smooth);
+}
+
+.overrideBtn:hover {
+  background:   color-mix(in srgb, var(--cat-accent) 8%, var(--bg-main));
+  border-color: color-mix(in srgb, var(--cat-accent) 25%, transparent);
+  color:        var(--cat-accent);
+}
+
+.overrideBtn:disabled {
+  opacity:        0.45;
+  cursor:         not-allowed;
+  pointer-events: none;
+}
+
+.overrideBtnDanger:hover {
+  background:   color-mix(in srgb, #f87171 8%, var(--bg-main));
+  border-color: color-mix(in srgb, #f87171 22%, transparent);
+  color:        #f87171;
+}
+
+.overrideGlyph {
+  font-size:   0.70rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §D  EXCEPTIONS SECTION
+   ════════════════════════════════════════════════════════════════ */
+
+.exceptionCount {
+  font-family:  var(--font-mono);
+  font-size:    0.575rem;
+  font-weight:  700;
+  color:        var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.exceptionCountNonZero {
+  color: rgba(255, 185, 90, 0.90);
+}
+
+.lastPayloadBlock {
+  font-family:   var(--font-mono);
+  font-size:     0.50rem;
+  line-height:   1.6;
+  color:         var(--accent-purple);
+  background:    color-mix(in srgb, var(--accent-purple) 4%, var(--bg-main));
+  border:        1px solid color-mix(in srgb, var(--accent-purple) 10%, transparent);
+  border-radius: var(--r-sm);
+  padding:       var(--sp-2) var(--sp-3);
+  white-space:   pre-wrap;
+  word-break:    break-word;
+  max-height:    80px;
+  overflow-y:    auto;
+}
+
+.noExceptions {
+  font-family:  var(--font-mono);
+  font-size:    0.52rem;
+  color:        var(--text-dark);
+}

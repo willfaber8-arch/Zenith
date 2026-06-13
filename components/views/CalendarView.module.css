@@ -152,6 +152,7 @@
   flex-direction: column;
   gap: var(--sp-5);
   animation: scaleIn 0.22s var(--ease-expo) both;
+  overflow: hidden;
 }
 
 .feedPanelLabel {
@@ -166,13 +167,14 @@
 
 .addFeedRow {
   display: grid;
-  grid-template-columns: 1fr minmax(140px, 200px) auto;
+  grid-template-columns: 1fr minmax(120px, 180px) auto;
   gap: var(--sp-3);
   align-items: center;
 }
 
 .feedInput {
   width: 100%;
+  min-width: 0;
   padding: 0.625rem var(--sp-4);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-subtle);
@@ -867,7 +869,10 @@
     padding-left:  var(--sp-4);
     padding-right: var(--sp-4);
   }
+}
 
+/* Stack feed inputs at viewports where sidebar + content makes 3 columns too cramped */
+@media (max-width: 1100px) {
   .addFeedRow {
     grid-template-columns: 1fr;
   }
@@ -893,4 +898,748 @@
   .dayColumn:nth-child(n+8) {
     display: none;
   }
+}
+
+/* ── Calendar source tab bar ──────────────────────────────── */
+
+.calTabBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-6) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.calTab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.calTab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.calTabActive {
+  background: rgba(124,149,255,0.12);
+  border-color: rgba(124,149,255,0.35);
+  color: var(--accent-purple);
+}
+
+.calTabDot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.calTabCount {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(82,204,163,0.15);
+  color: var(--accent-green);
+  border-radius: 99px;
+  padding: 1px 5px;
+}
+
+.newEventBtn {
+  margin-left: auto;
+  padding: 5px 14px;
+  background: rgba(124,149,255,0.10);
+  border: 1px dashed rgba(124,149,255,0.35);
+  border-radius: var(--r-xl);
+  color: var(--accent-purple);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  white-space: nowrap;
+}
+
+.newEventBtn:hover {
+  background: rgba(124,149,255,0.18);
+  border-color: rgba(124,149,255,0.55);
+}
+
+/* ── Event create/edit modal ──────────────────────────────── */
+
+.eventModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11,13,19,0.72);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+}
+
+.eventModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 401;
+  width: min(480px, calc(100vw - 32px));
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  animation: scaleIn 220ms var(--ease-expo) both;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.eventModalHeader { margin-bottom: var(--sp-5); }
+
+.eventModalEyebrow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-purple);
+  margin-bottom: 4px;
+}
+
+.eventModalTitle {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.eventModalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.evField { display: flex; flex-direction: column; gap: 4px; }
+
+.evLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.evRow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-end;
+}
+
+.evRow .evField { flex: 1; }
+
+.evCheckRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: 8px;
+  cursor: pointer;
+}
+
+.evInput {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color var(--dur-fast) ease;
+  width: 100%;
+}
+
+.evInput:focus { border-color: rgba(124,149,255,0.50); }
+.evInput option { background: var(--surface-card); }
+
+.evColorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: 2px;
+}
+
+.evColorSwatch {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.evColorSwatch:hover { transform: scale(1.15); }
+.evColorSwatchActive { border-color: var(--text-primary) !important; transform: scale(1.15); }
+
+.evColorSwatchCustom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.evActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+
+.evCancelBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.evCancelBtn:hover { border-color: rgba(124,149,255,0.30); }
+
+.evSaveBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--accent-purple);
+  border: none;
+  color: #0b0d13;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) ease;
+}
+
+.evSaveBtn:disabled { opacity: 0.4; cursor: default; }
+.evSaveBtn:hover:not(:disabled) { opacity: 0.88; }
+/* ══════════════════════════════════════════════════════════
+   MONTH GRID VIEW
+   ══════════════════════════════════════════════════════════ */
+
+.monthGrid {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.monthColHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(124, 149, 255, 0.03);
+}
+
+.monthColHeader {
+  padding: var(--sp-3) var(--sp-2);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.monthCells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.monthCell {
+  position: relative;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--sp-2);
+  min-height: 100px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background var(--dur-fast) ease;
+}
+
+.monthCell:nth-child(7n) {
+  border-right: none;
+}
+
+.monthCell:nth-last-child(-n+7) {
+  border-bottom: none;
+}
+
+.monthCell:hover {
+  background: var(--bg-hover);
+}
+
+.monthCell:focus {
+  outline: none;
+  background: var(--bg-active);
+}
+
+.monthCellOut {
+  opacity: 0.28;
+}
+
+.monthCellToday {
+  background: rgba(124, 149, 255, 0.04);
+}
+
+.monthCellNum {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-left: auto;
+  letter-spacing: -0.02em;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.monthCellNumToday {
+  background: rgba(124, 149, 255, 0.18);
+  color: var(--accent-purple);
+}
+
+.monthEvtList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.monthEvt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-width: 0;
+  transition: filter var(--dur-fast) ease;
+}
+
+.monthEvt:hover {
+  filter: brightness(1.2);
+}
+
+.monthEvtTime {
+  font-family: var(--font-mono);
+  font-size: 0.375rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.60);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.monthEvtTitle {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.90);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.monthEvtMore {
+  font-family: var(--font-mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  padding: 1px 5px;
+}
+
+@media (max-width: 640px) {
+  .monthCell {
+    min-height: 64px;
+    padding: var(--sp-1);
+  }
+
+  .monthEvtTime {
+    display: none;
+  }
+
+  .monthEvtTitle {
+    font-size: 0.5rem;
+  }
+}
+/* ── Schedule tab layout ──────────────────────────────────── */
+
+.scheduleTabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cognitiveLoadSection {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--sp-6);
+}
+
+.cognitiveLoadHeader {
+  padding: 0 var(--sp-6) var(--sp-4);
+}
+
+.cognitiveLoadEyebrow {
+  font-size:      0.5rem;
+  font-weight:    700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+/* ── Tasks panel ──────────────────────────────────────────── */
+
+.tasksPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  animation: scaleIn 0.22s var(--ease-expo) both;
+}
+
+.tasksPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.tasksPanelTitle {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.addCategoryBtn {
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.addCategoryBtn:hover {
+  color: var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background: var(--bg-hover);
+}
+
+/* New category inline input form */
+.newCategoryRow {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(124,149,255,0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+
+.newCategoryInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+}
+
+.newCategoryInput::placeholder {
+  color: var(--text-dark);
+}
+
+.newCategoryConfirm {
+  padding: 4px 12px;
+  background: rgba(124,149,255,0.12);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.newCategoryCancel {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Category section */
+.taskCategory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+
+.taskCategoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.taskCategoryName {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.taskCategoryCount {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-dark);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  padding: 1px 6px;
+}
+
+.deleteCategoryBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  opacity: 0.5;
+  transition: color var(--dur-fast), opacity var(--dur-fast);
+  margin-left: auto;
+}
+
+.deleteCategoryBtn:hover {
+  color: #ff8fa3;
+  opacity: 1;
+}
+
+/* Task items list */
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.taskItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  transition: background var(--dur-fast);
+}
+
+.taskItem:hover {
+  background: rgba(255,255,255,0.025);
+}
+
+.taskItem:hover .deleteTaskBtn {
+  opacity: 1;
+}
+
+.taskCheckbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  background: transparent;
+}
+
+.taskCheckbox:hover {
+  border-color: var(--accent-purple-dim);
+}
+
+.taskCheckboxDone {
+  border-color: var(--accent-purple);
+  background: var(--accent-purple);
+}
+
+.taskCheckMark {
+  font-size: 9px;
+  color: #fff;
+  line-height: 1;
+}
+
+.taskTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskTitleDone {
+  text-decoration: line-through;
+  color: var(--text-dark);
+}
+
+.taskDueDate {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.taskDueDateOverdue {
+  color: #ff8fa3;
+}
+
+.deleteTaskBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  opacity: 0;
+  transition: color var(--dur-fast), opacity var(--dur-fast);
+  flex-shrink: 0;
+}
+
+.deleteTaskBtn:hover {
+  color: #ff8fa3;
+}
+
+/* Add task row */
+.addTaskRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-subtle);
+  transition: border-color var(--dur-fast);
+}
+
+.addTaskRow:focus-within {
+  border-color: var(--accent-purple-dim);
+}
+
+.addTaskInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+}
+
+.addTaskInput::placeholder {
+  color: var(--text-dark);
+}
+
+.addTaskDateInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  cursor: pointer;
+  color-scheme: dark;
+  flex-shrink: 0;
+}
+
+.addTaskSubmit {
+  padding: 4px 10px;
+  background: rgba(124,149,255,0.10);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.addTaskSubmit:hover:not(:disabled) {
+  background: rgba(124,149,255,0.18);
+  color: #fff;
+}
+
+.addTaskSubmit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Empty tasks hint */
+.tasksEmpty {
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--text-dark);
+  font-size: 0.8125rem;
+  font-style: italic;
 }

@@ -1,200 +1,272 @@
-/**
- * ════════════════════════════════════════════════════════════════
- * Zenith OS — Cornell University Resource Configuration
- * Phase 2 · Step 2.3 — Polymorphic University Search & Content Node
- *
- * Loaded on-demand via dynamic import in config/universities/index.ts.
- * This file is NOT included in the main JS bundle — it is fetched
- * only when a user with universityName = "Cornell University" opens
- * the University Hub view.
- *
- * Data coverage:
- *   14 resource links across three functional categories:
- *     · Academics & Registration  (6 links)
- *     · Career Development        (3 links)
- *     · Campus Life & Essentials  (5 links)
- *
- * Link verification note:
- *   All URLs reference publicly documented Cornell web services.
- *   Portal access requires a valid Cornell NetID — links open in
- *   a new tab with rel="noopener noreferrer" for security isolation.
- * ════════════════════════════════════════════════════════════════
- */
-
 import type { UniversityConfig } from './index'
 
 export const CORNELL: UniversityConfig = {
-  id:        'cornell',
-  name:      'Cornell University',
-  shortName: 'Cornell',
-  location:  'Ithaca, NY',
+  id:           'cornell',
+  name:         'Cornell University',
+  shortName:    'Cornell',
+  location:     'Ithaca, NY',
+  gpaScale:     '4.3',
+  currencyName: 'Big Red Bucks',
 
   categories: [
 
-    /* ══════════════════════════════════════════════════════════
-       CATEGORY 1 — ACADEMICS & REGISTRATION
-       Covers: enrollment management, academic record, LMS,
-       degree progress, advising pipelines, and key dates.
-       ══════════════════════════════════════════════════════════ */
+    // ── ACADEMICS & REGISTRATION ─────────────────────────────
     {
       id:    'academics',
       label: 'Academics & Registration',
+      tab:   'academics',
       links: [
-
         {
           id:    'student-center',
           title: 'Student Center',
           tag:   'Portal',
-          description:
-            'Central hub for enrollment, bursar account management, real-time grade tracking, financial aid, and official degree progress — the single authoritative record of your academic standing at Cornell.',
+          description: 'Central hub for enrollment, bursar account, grade tracking, financial aid, and degree progress — the authoritative record of your academic standing.',
           url: 'https://studentcenter.cornell.edu',
         },
-
         {
           id:    'canvas',
           title: 'Canvas LMS',
           tag:   'LMS',
-          description:
-            'Access all enrolled course pages, assignment submissions, grading rubrics, professor announcements, and semester syllabi in one centralised learning management workspace.',
+          description: 'Course pages, assignment submissions, grading rubrics, professor announcements, and syllabi in one centralised learning management workspace.',
           url: 'https://canvas.cornell.edu',
         },
-
         {
           id:    'registrar',
           title: 'Office of the Registrar',
           tag:   'Admin',
-          description:
-            'Manage course add/drop requests before deadline windows, order official transcripts, download enrollment verification letters, and file academic forms such as late withdrawals.',
+          description: 'Manage add/drop requests, order official transcripts, enrollment verification letters, and file academic forms such as late withdrawals.',
           url: 'https://registrar.cornell.edu',
         },
-
         {
           id:    'dars',
           title: 'Degree Audit (DARS)',
           tag:   'Audit',
-          description:
-            'Real-time audit of progress toward graduation requirements — tracks major, minor, and distribution credits completed, remaining, and in-progress across every enrolled semester.',
+          description: 'Real-time audit of graduation requirements — tracks major, minor, and distribution credits completed, remaining, and in-progress.',
           url: 'https://da.cornell.edu',
         },
-
         {
           id:    'chatter',
           title: 'Cornell Chatter',
           tag:   'Advising',
-          description:
-            'Book academic advising appointments with your college counselor, request peer tutoring through the Learning Strategies Center, and manage any active advising cases or academic holds.',
+          description: 'Book academic advising appointments, request peer tutoring through the Learning Strategies Center, and manage advising cases or academic holds.',
           url: 'https://chatter.cornell.edu',
         },
-
         {
           id:    'academic-calendar',
           title: 'Academic Calendar',
           tag:   'Calendar',
-          description:
-            'Official semester timeline: first day of classes, add/drop deadlines, mid-term and final exam schedules, university holidays, and tuition payment due dates by academic year.',
+          description: 'Semester timeline: first day, add/drop deadlines, mid-term and final exam schedules, university holidays, and tuition payment due dates.',
           url: 'https://registrar.cornell.edu/academic-calendar',
         },
-
+        {
+          id:    'library',
+          title: 'Cornell Library',
+          tag:   'Library',
+          description: 'Access Olin, Uris, Mann and all Cornell digital library collections, journal databases, citation managers, and interlibrary loan services.',
+          url: 'https://library.cornell.edu',
+        },
+        {
+          id:    'class-roster',
+          title: 'Class Roster',
+          tag:   'Courses',
+          description: 'Search and browse available course sections by term, department, instructor, and time slot. View syllabi and prerequisites before registration.',
+          url: 'https://classes.cornell.edu',
+        },
+        {
+          id:    'gradescope',
+          title: 'Gradescope',
+          tag:   'Grading',
+          description: 'Submit assignments, receive annotated feedback, and view rubric-based grades. Widely adopted in STEM departments for problem sets, exams, and programming submissions.',
+          url: 'https://www.gradescope.com',
+        },
+        {
+          id:    'piazza',
+          title: 'Piazza — Class Q&A',
+          tag:   'Q&A',
+          description: 'Asynchronous class discussion forum used across CS, ECE, and math courses. Ask questions, get peer and TA answers, and search solved problems from prior semesters.',
+          url: 'https://piazza.com',
+        },
       ],
     },
 
-    /* ══════════════════════════════════════════════════════════
-       CATEGORY 2 — CAREER DEVELOPMENT
-       Covers: on-campus and off-campus employment searches,
-       engineering recruiting cycles, co-op pathways, and
-       professional development resources.
-       ══════════════════════════════════════════════════════════ */
+    // ── CAREER DEVELOPMENT ──────────────────────────────────
     {
       id:    'career',
       label: 'Career Development',
+      tab:   'career',
       links: [
-
         {
           id:    'handshake',
           title: 'Cornell Handshake',
           tag:   'Jobs',
-          description:
-            'Primary recruiting platform for on-campus employment, paid internships, corporate engineering career fairs, co-op program listings, and full-time new-grad positions across every industry vertical.',
+          description: 'Primary recruiting platform for internships, corporate engineering fairs, co-op listings, and full-time new-grad positions across every industry.',
           url: 'https://cornell.joinhandshake.com',
         },
-
         {
           id:    'career-services',
           title: 'Cornell Career Services',
           tag:   'Services',
-          description:
-            'Schedule resume review appointments, book mock technical or behavioural interview sessions, browse employer information events, and access the alumni career directory network.',
+          description: 'Resume reviews, mock interview sessions, employer info events, and the alumni career directory network.',
           url: 'https://careers.cornell.edu',
         },
-
         {
           id:    'cornell-tech',
           title: 'Cornell Tech Hub',
           tag:   'Innovation',
-          description:
-            'Graduate technology programs, startup studio resources, and innovation ecosystem listings from the NYC Roosevelt Island campus — relevant for graduate pathways and entrepreneurship tracks.',
+          description: 'Graduate technology programs, startup studio resources, and innovation ecosystem listings from the NYC Roosevelt Island campus.',
           url: 'https://tech.cornell.edu',
         },
-
+        {
+          id:    'linkedin-cornell',
+          title: 'Cornell on LinkedIn',
+          tag:   'Network',
+          description: 'Connect with the 270 000+ Cornell alumni network for mentorship, referrals, and industry networking across every sector.',
+          url: 'https://www.linkedin.com/school/cornell-university/',
+        },
+        {
+          id:    'eship',
+          title: 'eLab Entrepreneurship',
+          tag:   'Startup',
+          description: "Cornell's flagship startup accelerator — apply for funding, mentorship, and co-working space at the McGovern Family Center for Venture Development.",
+          url: 'https://eship.cornell.edu',
+        },
+        {
+          id:    'glassdoor-cornell',
+          title: 'Glassdoor — Company Reviews',
+          tag:   'Research',
+          description: 'Research prospective employers with salary data, interview question reports, and employee culture reviews before applying or negotiating offers.',
+          url: 'https://www.glassdoor.com',
+        },
+        {
+          id:    'levels-fyi',
+          title: 'Levels.fyi — Tech Salary Data',
+          tag:   'Compensation',
+          description: 'Crowdsourced compensation data at major tech companies — total compensation breakdowns by level, role, and location. Essential reference before your first offer negotiation.',
+          url: 'https://www.levels.fyi',
+        },
       ],
     },
 
-    /* ══════════════════════════════════════════════════════════
-       CATEGORY 3 — CAMPUS LIFE & ESSENTIALS
-       Covers: university directories, daily dining services,
-       Big Red Bucks balance management, student health,
-       and recreational facilities.
-       ══════════════════════════════════════════════════════════ */
+    // ── CAMPUS LIFE ─────────────────────────────────────────
     {
       id:    'campus',
-      label: 'Campus Life & Essentials',
+      label: 'Campus Life',
+      tab:   'campus',
       links: [
-
-        {
-          id:    'cuinfo',
-          title: 'CUinfo Portal',
-          tag:   'Directory',
-          description:
-            'University-wide reference directory covering campus phone listings, building locations, department contacts, emergency information, and Cornell administrative resource navigation.',
-          url: 'https://cuinfo.cornell.edu',
-        },
-
         {
           id:    'dining',
           title: 'Cornell Dining',
           tag:   'Dining',
-          description:
-            'Browse daily menus across all residential dining halls, view central café hours, check food allergen labels, and plan meals around nutritional targets with seasonal menu schedules.',
+          description: 'Daily menus across all residential dining halls, café hours, allergen labels, and nutritional data with seasonal menu schedules.',
           url: 'https://dining.cornell.edu',
         },
-
         {
           id:    'hfs',
           title: 'Big Red Bucks (BRB)',
           tag:   'Account',
-          description:
-            'Manage your dining dollar account — add funds to your BRB balance, review transaction history, set up auto-reload thresholds, and monitor remaining meal plan allocations per semester.',
+          description: 'Manage your BRB balance — add funds, review transactions, set up auto-reload, and monitor meal-plan allocations per semester.',
           url: 'https://hfs.cornell.edu',
         },
-
-        {
-          id:    'health',
-          title: 'Cornell Health',
-          tag:   'Health',
-          description:
-            'Book primary care, mental health counselling, and specialist appointments; view immunisation records and lab results; manage Cornell student health insurance enrollment and claims.',
-          url: 'https://health.cornell.edu',
-        },
-
         {
           id:    'recreation',
           title: 'Cornell RecWell',
           tag:   'Fitness',
-          description:
-            'Register for intramural sports leagues, browse group fitness class schedules, check fitness centre open-swim hours, and explore club sport rosters and outdoor recreation programmes.',
+          description: 'Intramural sports, group fitness class schedules, fitness-centre open-swim hours, and club sport rosters.',
           url: 'https://recreation.cornell.edu',
         },
+        {
+          id:    'student-orgs',
+          title: 'Student Organizations',
+          tag:   'Orgs',
+          description: 'Browse over 1 000 registered clubs and organisations. Find, join, or create a club through the Cornell Involvement Office.',
+          url: 'https://orgsync.com/home/network/cornell',
+        },
+        {
+          id:    'campus-groups',
+          title: 'Campus Activities',
+          tag:   'Events',
+          description: 'Discover campus events, cultural programming, speaker series, and student-run performances through the Office of Campus Activities.',
+          url: 'https://campusactivities.cornell.edu',
+        },
+        {
+          id:    'cornell-athletics',
+          title: 'Cornell Athletics',
+          tag:   'Athletics',
+          description: 'Men\'s and women\'s varsity sport schedules, club sport information, tickets for home events, and intramural recreation opportunities for all Cornell students.',
+          url: 'https://cornellbigred.com',
+        },
+        {
+          id:    'slope-day-cornell',
+          title: 'Cornell Events Calendar',
+          tag:   'Events',
+          description: 'Complete university events feed — lectures, concerts, exhibitions, and department colloquia. Searchable by date, venue, and topic across all Cornell colleges.',
+          url: 'https://events.cornell.edu',
+        },
+      ],
+    },
 
+    // ── ESSENTIALS ──────────────────────────────────────────
+    {
+      id:    'essentials',
+      label: 'Essentials',
+      tab:   'essentials',
+      links: [
+        {
+          id:    'health',
+          title: 'Cornell Health',
+          tag:   'Health',
+          description: 'Primary care, mental health counseling, and specialist appointments; immunisation records; and student health insurance enrollment and claims.',
+          url: 'https://health.cornell.edu',
+        },
+        {
+          id:    'cuinfo',
+          title: 'CUinfo Directory',
+          tag:   'Directory',
+          description: 'University-wide reference: campus phone listings, building locations, department contacts, and emergency information.',
+          url: 'https://cuinfo.cornell.edu',
+        },
+        {
+          id:    'it-helpdesk',
+          title: 'Cornell IT Help',
+          tag:   'IT',
+          description: 'Submit IT support tickets, access Cornell VPN, manage NetID password, set up two-step login (Duo), and download licensed software.',
+          url: 'https://it.cornell.edu',
+        },
+        {
+          id:    'tcat',
+          title: 'TCAT Bus System',
+          tag:   'Transit',
+          description: 'Tompkins Consolidated Area Transit routes serving campus and Ithaca — free for Cornell students with your student ID on local routes.',
+          url: 'https://tcatbus.com',
+        },
+        {
+          id:    'housing',
+          title: 'Campus Housing',
+          tag:   'Housing',
+          description: 'Apply for on-campus housing, view available residence halls, manage room assignments, and access maintenance requests.',
+          url: 'https://housing.cornell.edu',
+        },
+        {
+          id:    'financial-aid',
+          title: 'Financial Aid Office',
+          tag:   'Finance',
+          description: 'Manage FAFSA, view scholarship and grant awards, set up direct deposit for refunds, and appeal aid packages.',
+          url: 'https://finaid.cornell.edu',
+        },
+        {
+          id:    'campus-safety',
+          title: 'Cornell Campus Safety',
+          tag:   'Safety',
+          description: 'Cornell Police non-emergency line, Blue Light emergency station map, Escort Service (607-255-2802), and campus safety alerts. Safety resource for evenings on North Campus.',
+          url: 'https://police.cornell.edu',
+        },
+        {
+          id:    'cornell-store',
+          title: 'Cornell Store & Textbooks',
+          tag:   'Textbooks',
+          description: 'Purchase and rent required course textbooks. Compare digital and physical options, look up your course booklist, and access Cornell branded merchandise.',
+          url: 'https://www.cornellstore.com',
+        },
       ],
     },
 
