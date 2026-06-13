@@ -44,7 +44,7 @@ export default function StudyStreakWidget() {
       onClick={() => navigate('study-shield', 'essentials')}
       role="button"
       tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && navigate('study-shield', 'essentials')}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate('study-shield', 'essentials') }}
       aria-label="Study Streak — go to Study Shield"
       style={{ '--widget-accent': 'var(--accent-purple)' } as React.CSSProperties}
     >
