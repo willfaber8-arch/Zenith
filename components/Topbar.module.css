@@ -15,7 +15,7 @@
   align-items: center;
   gap: var(--sp-4);
   padding: 0 var(--sp-6);
-  background: rgba(11, 13, 19, 0.88);
+  background: var(--topbar-bg);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   border-bottom: 1px solid var(--border-subtle);
@@ -267,4 +267,32 @@
   .cluster {
     gap: var(--sp-2);
   }
+}
+
+/* ── Light / dark mode toggle ─────────────────────────────── */
+
+.themeToggleBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  border-radius:   var(--r-md);
+  border:          1px solid var(--border-subtle);
+  background:      transparent;
+  cursor:          pointer;
+  font-size:       0.875rem;
+  line-height:     1;
+  color:           var(--text-dark);
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast),
+    color            var(--dur-fast);
+  flex-shrink:     0;
+}
+
+.themeToggleBtn:hover {
+  background-color: var(--bg-hover);
+  border-color:     var(--accent-purple-dim);
+  color:            var(--accent-purple);
 }

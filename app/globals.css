@@ -219,6 +219,76 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════
+   CATEGORY TINT VARS — consumed by ThemeBackground
+   Defined here so light mode can override them.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --tint-home:       #0d0f12;
+  --tint-essentials: #0e1018;
+  --tint-creator:    #090f0b;
+  --tint-vault:      #0f1012;
+  --topbar-bg:       rgba(13, 15, 18, 0.88);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT MODE — html[data-color-scheme='light']
+   Overrides :root aliases. Components never need to know which
+   scheme is active; they always read var(--bg-main) etc.
+   ═══════════════════════════════════════════════════════════════════ */
+
+html[data-color-scheme='light'] {
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg-main:        #f2f4fc;
+  --surface-card:   #ffffff;
+  --surface-accent: #e8ecf8;
+  --background:     #f2f4fc;
+  --surface:        #ffffff;
+
+  /* Text */
+  --text-primary: #181a2e;
+  --text-muted:   #464870;
+  --text-dark:    #8890b4;
+  --text-main:    #181a2e;
+
+  /* Accents — more saturated for visibility on light bg */
+  --accent-purple:     #4f66f0;
+  --accent-green:      #27966c;
+  --accent-purple-dim: rgba(79, 102, 240, 0.20);
+  --accent-green-dim:  rgba(39, 150, 108, 0.20);
+  --accent-warm:       #bf8010;
+  --accent-crimson:    #b84040;
+
+  /* Borders & interactions */
+  --border-subtle: rgba(24, 26, 46, 0.12);
+  --bg-hover:      rgba(79, 102, 240, 0.07);
+  --bg-active:     rgba(79, 102, 240, 0.13);
+
+  /* Shadow */
+  --shadow-card:
+    0 2px 12px rgba(20, 24, 60, 0.10),
+    0 0   0   1px var(--border-subtle);
+
+  /* Category tints — light pastel versions */
+  --tint-home:       #f2f4fc;
+  --tint-essentials: #edf0fd;
+  --tint-creator:    #edf6f1;
+  --tint-vault:      #f2f3f8;
+
+  /* Topbar */
+  --topbar-bg: rgba(242, 244, 252, 0.94);
+}
+
+/* CosmosCanvas stars are white — too invisible on light bg; dim them */
+html[data-color-scheme='light'] canvas.cosmosCanvas {
+  opacity: 0.06;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
    3.  GLOBAL RESET & BASE ELEMENT STYLES
    ═══════════════════════════════════════════════════════════════════ */
 
