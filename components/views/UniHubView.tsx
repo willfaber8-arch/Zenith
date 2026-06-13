@@ -1,180 +1,356 @@
 'use client'
 
-/**
- * ════════════════════════════════════════════════════════════════
- * Zenith OS — UniHubView
- * Phase 2 · Step 2.3 — Polymorphic University Search & Content Node
- *
- * Orchestrator view for the University Hub module. Reads
- * universityName from userProfile (IndexedDB via useLiveQuery)
- * and conditionally renders one of four states:
- *
- *   Loading         → blank shell (brief, profile hydrates fast)
- *   No university   → <UniSelector>     (onboarding autocomplete)
- *   Coming soon     → <UniNoData>        (university not yet mapped)
- *   Hub ready       → <UniversityHub>   (resource link grid)
- *
- * The hub transitions from selector to grid via a key-driven
- * remount, which replays the anim-scale-in entrance animation
- * every time the active institution changes.
- * ════════════════════════════════════════════════════════════════
- */
-
 import { useState, useEffect, useCallback } from 'react'
-import { useLiveQuery }  from 'dexie-react-hooks'
-import { useAuth }       from '@/lib/AuthContext'
-import { db }            from '@/lib/db'
-import ZenHeading        from '@/components/ui/ZenHeading'
-import UniSelector       from '@/components/UniSelector'
-import UniversityHub     from '@/components/UniversityHub'
+import { useLiveQuery }   from 'dexie-react-hooks'
+import { useAuth }        from '@/lib/AuthContext'
+import { db }             from '@/lib/db'
+import ZenHeading         from '@/components/ui/ZenHeading'
+import UniSelector        from '@/components/UniSelector'
+import MajorSelector      from '@/components/MajorSelector'
+import UniversityHub      from '@/components/UniversityHub'
+import MajorHub           from '@/components/MajorHub'
+import GpaSimulator       from '@/components/GpaSimulator'
+import BrbBurnRate              from '@/components/BrbBurnRate'
+import DeliveriesLogger         from '@/components/DeliveriesLogger'
+import SubscriptionPackagesView from './SubscriptionPackagesView'
 import {
   UNIVERSITY_REGISTRY,
   getUniversityConfig,
   type UniversityConfig,
   type UniversityEntry,
 } from '@/config/universities'
+import {
+  MAJOR_REGISTRY,
+  getMajorConfig,
+  type MajorConfig,
+  type MajorEntry,
+} from '@/config/majors'
+import type { GpaScale } from '@/config/universities'
 import styles from './UniHubView.module.css'
+
+type TopTab = 'uni-resources' | 'major-resources' | 'gpa' | 'finances'
+
+/* ── Setup state machine ──────────────────────────────────────
+   Onboarding has three mini-steps shown on the start screen:
+     step 1 → pick university
+     step 2 → pick major  (after uni is chosen)
+     done   → show hub
+   ─────────────────────────────────────────────────────────── */
 
 export default function UniHubView() {
   const { session } = useAuth()
+  const [activeTab, setActiveTab]     = useState<TopTab>('uni-resources')
+  const [setupStep, setSetupStep]     = useState<'uni' | 'major' | 'done'>('done')
 
-  /* ── Live profile from IndexedDB ────────────────────────── */
+  /* ── Live profile ─────────────────────────────────────────── */
   const profile = useLiveQuery(
     async () => (db ? db.userProfile.get(1) : undefined),
     [],
   )
 
-  /* ── Registry entry for the stored universityName ────────── */
+  /* ── Derived registry entries ─────────────────────────────── */
   const uniEntry: UniversityEntry | null = profile?.universityName
-    ? (UNIVERSITY_REGISTRY.find(
-        u => u.name.toLowerCase() === profile.universityName.toLowerCase(),
+    ? (UNIVERSITY_REGISTRY.find(u =>
+        u.name.toLowerCase() === profile.universityName.toLowerCase()
       ) ?? null)
     : null
 
-  /* ── Lazy-loaded UniversityConfig ────────────────────────── */
-  const [uniConfig,      setUniConfig]      = useState<UniversityConfig | null>(null)
-  const [configLoading,  setConfigLoading]  = useState(false)
+  const majorEntry: MajorEntry | null = profile?.majorIdentifier
+    ? (MAJOR_REGISTRY.find(m =>
+        m.name.toLowerCase() === profile.majorIdentifier.toLowerCase() ||
+        m.id.toLowerCase()   === profile.majorIdentifier.toLowerCase()
+      ) ?? null)
+    : null
+
+  /* ── Lazy-loaded configs ──────────────────────────────────── */
+  const [uniConfig,     setUniConfig]     = useState<UniversityConfig | null>(null)
+  const [majorConfig,   setMajorConfig]   = useState<MajorConfig | null>(null)
+  const [configLoading, setConfigLoading] = useState(false)
 
   useEffect(() => {
-    if (!uniEntry?.hasData) {
-      setUniConfig(null)
-      return
-    }
+    if (!uniEntry?.hasData) { setUniConfig(null); return }
     setConfigLoading(true)
     getUniversityConfig(uniEntry.id)
-      .then(cfg  => { setUniConfig(cfg);   setConfigLoading(false) })
-      .catch(()  => { setUniConfig(null);  setConfigLoading(false) })
+      .then(cfg  => { setUniConfig(cfg);  setConfigLoading(false) })
+      .catch(()  => { setUniConfig(null); setConfigLoading(false) })
   }, [uniEntry?.id, uniEntry?.hasData])
 
-  /* ── DB write helpers ────────────────────────────────────── */
+  useEffect(() => {
+    if (!majorEntry?.hasData) { setMajorConfig(null); return }
+    getMajorConfig(majorEntry.id)
+      .then(cfg  => { setMajorConfig(cfg);  })
+      .catch(()  => { setMajorConfig(null); })
+  }, [majorEntry?.id, majorEntry?.hasData])
 
-  const handleSelect = useCallback(async (entry: UniversityEntry) => {
+  /* ── Determine setup step ─────────────────────────────────── */
+  useEffect(() => {
+    if (profile === undefined) return   // still loading
+    if (!profile?.universityName) { setSetupStep('uni');   return }
+    if (!profile?.majorIdentifier) { setSetupStep('major'); return }
+    setSetupStep('done')
+  }, [profile?.universityName, profile?.majorIdentifier, profile])
+
+  /* ── DB write helpers ─────────────────────────────────────── */
+  const upsertProfile = useCallback(async (patch: Partial<{
+    universityName: string; majorIdentifier: string
+  }>) => {
     if (!db) return
     const existing = await db.userProfile.get(1)
     if (existing) {
-      await db.userProfile.update(1, { universityName: entry.name })
+      await db.userProfile.update(1, patch)
     } else {
-      // Profile hasn't been seeded yet — create a minimal record
       await db.userProfile.put({
-        id:              1,
+        id: 1,
         userName:        session?.userHandle ?? 'Zenith User',
-        universityName:  entry.name,
+        universityName:  '',
         majorIdentifier: '',
-        expPoints:       0,
-        currentLevel:    1,
-        healthPoints:    100,
         lastActiveAt:    Date.now(),
+        ...patch,
       })
     }
   }, [session?.userHandle])
 
-  const handleReset = useCallback(async () => {
-    if (!db) return
-    await db.userProfile.update(1, { universityName: '' })
-    setUniConfig(null)
-  }, [])
+  const handleSelectUni = useCallback(async (entry: UniversityEntry) => {
+    await upsertProfile({ universityName: entry.name })
+    setSetupStep('major')
+  }, [upsertProfile])
 
-  /* ── Render states ───────────────────────────────────────── */
+  const handleSelectMajor = useCallback(async (entry: MajorEntry) => {
+    await upsertProfile({ majorIdentifier: entry.name })
+    setSetupStep('done')
+  }, [upsertProfile])
 
-  // 1. Profile not yet hydrated from IndexedDB
+  const handleSkipMajor = useCallback(async () => {
+    await upsertProfile({ majorIdentifier: 'Undecided' })
+    setSetupStep('done')
+  }, [upsertProfile])
+
+  const handleResetUni = useCallback(async () => {
+    await upsertProfile({ universityName: '', majorIdentifier: '' })
+    setUniConfig(null); setMajorConfig(null)
+    setSetupStep('uni')
+  }, [upsertProfile])
+
+  const handleResetMajor = useCallback(async () => {
+    await upsertProfile({ majorIdentifier: '' })
+    setMajorConfig(null)
+    setSetupStep('major')
+  }, [upsertProfile])
+
+  /* ── Render: loading ──────────────────────────────────────── */
   if (profile === undefined) {
     return <div className={styles.loadingShell} aria-hidden="true" />
   }
 
-  // 2. No university configured → show onboarding selector
-  if (!profile?.universityName) {
-    return <UniSelector key="selector" onSelect={handleSelect} />
-  }
-
-  // 3. University set but config is still loading (dynamic import in flight)
-  if (uniEntry?.hasData && configLoading) {
+  /* ── Render: pick university ──────────────────────────────── */
+  if (setupStep === 'uni') {
     return (
-      <div className={styles.loadingState}>
-        <p className={styles.loadingLabel}>Loading {profile.universityName}…</p>
+      <div className={`${styles.setupWrap} anim-scale-in`}>
+        <div className={styles.setupHeading}>
+          <ZenHeading
+            eyebrow="Scholastic · University Hub"
+            title="Select your University."
+            subtitle="We'll load resources, a GPA calculator, and tools tailored to your institution."
+            size="md"
+          />
+        </div>
+        <UniSelector onSelect={handleSelectUni} />
       </div>
     )
   }
 
-  // 4. University in registry but no data file yet
+  /* ── Render: pick major ───────────────────────────────────── */
+  if (setupStep === 'major') {
+    return (
+      <div className={`${styles.setupWrap} anim-scale-in`}>
+        <div className={styles.setupHeading}>
+          <ZenHeading
+            eyebrow={`${profile?.universityName ?? 'University Hub'} · Major`}
+            title="Select your Major."
+            subtitle="We'll load major-specific resources alongside your university hub."
+            size="md"
+          />
+        </div>
+        <div className={styles.majorSetupBack}>
+          <button type="button" className={styles.changeBtn} onClick={() => setSetupStep('uni')}>
+            ← Change University
+          </button>
+        </div>
+        <MajorSelector onSelect={handleSelectMajor} />
+        <div className={styles.skipRow}>
+          <button type="button" className={styles.skipBtn} onClick={handleSkipMajor}>
+            Skip — I'll decide later
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── Render: loading config ───────────────────────────────── */
+  if (uniEntry?.hasData && configLoading) {
+    return (
+      <div className={styles.loadingState}>
+        <p className={styles.loadingLabel}>Loading {profile?.universityName}…</p>
+      </div>
+    )
+  }
+
+  /* ── Render: no data for this university ──────────────────── */
   if (!uniEntry || !uniEntry.hasData || !uniConfig) {
     return (
       <UniNoData
-        universityName={profile.universityName}
-        onReset={handleReset}
+        universityName={profile?.universityName ?? ''}
+        majorName={profile?.majorIdentifier ?? ''}
+        onResetUni={handleResetUni}
+        onResetMajor={handleResetMajor}
       />
     )
   }
 
-  // 5. Full hub — key on universityName so entrance animation replays on change
+  /* ── Render: full hub ─────────────────────────────────────── */
+  const gpaScale: GpaScale = uniConfig.gpaScale ?? '4.0'
+
+  const TAB_LABELS: Record<TopTab, string> = {
+    'uni-resources':   'University Resources',
+    'major-resources': 'Major Resources',
+    'gpa':             'GPA Calculator',
+    'finances':        'Finances',
+  }
+
   return (
-    <UniversityHub
-      key={profile.universityName}
-      config={uniConfig}
-      entry={uniEntry}
-      onReset={handleReset}
-    />
+    <div key={uniEntry.id} className={`${styles.hubWrap} anim-scale-in`}>
+
+      {/* ── Hub identity strip ──────────────────────────────── */}
+      <div className={styles.identityStrip}>
+        <div className={styles.identityLeft}>
+          <div className={styles.uniInitials}>
+            {uniConfig.shortName.slice(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <p className={styles.identityUni}>{uniConfig.name}</p>
+            {profile?.majorIdentifier && profile.majorIdentifier !== 'Undecided' && (
+              <p className={styles.identityMajor}>{profile.majorIdentifier}</p>
+            )}
+            <p className={styles.identityLocation}>{uniConfig.location}</p>
+          </div>
+        </div>
+        <div className={styles.identityActions}>
+          <button type="button" className={styles.changeSmallBtn} onClick={handleResetUni}>
+            Change University
+          </button>
+          <button type="button" className={styles.changeSmallBtn} onClick={handleResetMajor}>
+            Change Major
+          </button>
+        </div>
+      </div>
+
+      {/* ── Top-level tab bar ───────────────────────────────── */}
+      <div className={styles.subTabBar} role="tablist">
+        {(Object.keys(TAB_LABELS) as TopTab[]).map(tab => (
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            className={`${styles.subTab} ${activeTab === tab ? styles.subTabActive : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </div>
+
+      {/* ── University Resources ────────────────────────────── */}
+      <div className={activeTab === 'uni-resources' ? styles.tabPane : styles.tabPaneHidden}>
+        <UniversityHub config={uniConfig} entry={uniEntry} onReset={handleResetUni} />
+      </div>
+
+      {/* ── Major Resources ─────────────────────────────────── */}
+      <div className={activeTab === 'major-resources' ? styles.tabPane : styles.tabPaneHidden}>
+        {majorEntry?.hasData && majorConfig ? (
+          <MajorHub config={majorConfig} entry={majorEntry} onReset={handleResetMajor} />
+        ) : (
+          <div className={styles.noDataPane}>
+            {profile?.majorIdentifier && profile.majorIdentifier !== 'Undecided' ? (
+              <>
+                <p className={styles.noDataTitle}>{profile.majorIdentifier}</p>
+                <p className={styles.noDataBody}>
+                  Major-specific resources for this field are coming soon.
+                </p>
+              </>
+            ) : (
+              <p className={styles.noDataBody}>
+                No major selected yet.{' '}
+                <button type="button" className={styles.inlineLink} onClick={handleResetMajor}>
+                  Select a major
+                </button>{' '}
+                to see tailored resources.
+              </p>
+            )}
+            <button type="button" className={styles.changeBtn} onClick={handleResetMajor}>
+              ← Change Major
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── GPA Calculator ──────────────────────────────────── */}
+      <div className={activeTab === 'gpa' ? styles.tabPane : styles.tabPaneHidden}>
+        <div className={styles.tabPadded}>
+          <div className={styles.gpaHeader}>
+            <p className={styles.gpaScaleNote}>
+              Using <strong>{gpaScale === '4.3' ? 'Cornell 4.3' : 'Standard 4.0'}</strong> grading
+              scale for {uniConfig.shortName}
+            </p>
+          </div>
+          <GpaSimulator gpaScale={gpaScale} />
+        </div>
+      </div>
+
+      {/* ── Finances ────────────────────────────────────────── */}
+      <div className={activeTab === 'finances' ? styles.tabPane : styles.tabPaneHidden}>
+        <div className={styles.tabPadded}>
+          <p className={styles.financesNote}>
+            Track your {uniConfig.currencyName ?? 'campus dining balance'} spend rate and manage deliveries and subscriptions.
+          </p>
+          <BrbBurnRate currencyName={uniConfig.currencyName ?? 'Campus Dollars'} />
+          <div style={{ marginTop: 'var(--sp-8)' }}>
+            <DeliveriesLogger />
+          </div>
+        </div>
+        <div style={{ marginTop: 'var(--sp-6)' }}>
+          <SubscriptionPackagesView />
+        </div>
+      </div>
+
+    </div>
   )
 }
 
-/* ════════════════════════════════════════════════════════════
-   UniNoData — inline component for recognised but unmapped
-   institutions. Shown when a university is in the registry
-   with hasData: false, or when it's freeform text not in
-   the registry at all.
-   ════════════════════════════════════════════════════════════ */
-
+/* ── UniNoData ────────────────────────────────────────────────── */
 function UniNoData({
-  universityName,
-  onReset,
+  universityName, majorName, onResetUni, onResetMajor,
 }: {
-  universityName: string
-  onReset: () => void
+  universityName: string; majorName: string
+  onResetUni: () => void; onResetMajor: () => void
 }) {
   return (
     <div className={`${styles.noDataWrap} anim-scale-in`}>
-
       <div className={styles.noDataHeading}>
         <ZenHeading
           eyebrow="Scholastic · University Hub"
           title={universityName}
-          subtitle="Zenith is building a full resource integration for your institution. The complete link database will be activated in a future phase."
+          subtitle="Zenith is building a full resource integration for your institution. Check back in a future update."
           size="md"
         />
       </div>
-
       <div className={`${styles.noDataActions} anim-slide-in delay-1`}>
-        <button
-          type="button"
-          className={styles.changeBtn}
-          onClick={onReset}
-        >
+        <button type="button" className={styles.changeBtn} onClick={onResetUni}>
           ← Change University
         </button>
         <p className={styles.noDataHint}>
-          Currently, only Cornell University has a full data integration.
+          Currently live: Cornell University, Texas A&M University, UT Austin.
         </p>
       </div>
-
     </div>
   )
 }

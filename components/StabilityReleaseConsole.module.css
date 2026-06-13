@@ -1,0 +1,696 @@
+/**
+ * Zenith OS — StabilityReleaseConsole styles
+ * Phase 13 · Step 13.3 — Master Stability Release Console
+ *
+ * Design language:
+ *   Canvas:     #0d0f12 (near-black — the final chamber)
+ *   Frame:      #141820 (velvety dark indigo)
+ *   Frame-up:   #1c2130 (raised surface)
+ *   Parchment:  rgba(229, 220, 190, *) — warm cream-gold token family
+ *   Sage:       #63a389 — forest sage green (certified state)
+ *   Rose:       rgba(248, 113, 113, *) — failure indicator
+ *   Font:       var(--font-mono) throughout
+ */
+
+/* ── Local design tokens ──────────────────────────────────────── */
+
+.console {
+  --parchment:          rgba(229, 220, 190, 1.00);
+  --parchment-mid:      rgba(229, 220, 190, 0.70);
+  --parchment-dim:      rgba(229, 220, 190, 0.42);
+  --parchment-ghost:    rgba(229, 220, 190, 0.20);
+  --parchment-hairline: rgba(229, 220, 190, 0.10);
+  --parchment-surface:  rgba(229, 220, 190, 0.04);
+
+  --sage:          #63a389;
+  --sage-mid:      rgba( 99, 163, 137, 0.72);
+  --sage-dim:      rgba( 99, 163, 137, 0.45);
+  --sage-ghost:    rgba( 99, 163, 137, 0.22);
+  --sage-hairline: rgba( 99, 163, 137, 0.12);
+  --sage-surface:  rgba( 99, 163, 137, 0.05);
+
+  --rose:          rgba(248, 113, 113, 0.90);
+  --rose-dim:      rgba(248, 113, 113, 0.50);
+  --rose-hairline: rgba(248, 113, 113, 0.14);
+  --rose-surface:  rgba(248, 113, 113, 0.04);
+
+  --amber-dim:     rgba(245, 158,  11, 0.60);
+  --amber-hairline:rgba(245, 158,  11, 0.14);
+
+  --canvas:    #0d0f12;
+  --frame:     #141820;
+  --frame-up:  #1c2130;
+
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONSOLE HEADER
+   ════════════════════════════════════════════════════════════════ */
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--sp-3) var(--sp-5);
+  background:      var(--canvas);
+  border:          1px solid var(--parchment-hairline);
+  border-radius:   var(--r-md);
+}
+
+.headerTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  font-weight:    700;
+  color:          var(--parchment-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  line-height:    1;
+}
+
+.headerTitleGlyph {
+  color:      var(--parchment-ghost);
+  margin-right: 6px;
+}
+
+.headerBuild {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--parchment-ghost);
+  letter-spacing: 0.06em;
+  padding:        2px var(--sp-2);
+  border:         1px solid var(--parchment-hairline);
+  border-radius:  var(--r-sm);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CHECK LIST
+   ════════════════════════════════════════════════════════════════ */
+
+.checkList {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  padding:        var(--sp-2);
+  background:     var(--canvas);
+  border:         1px solid var(--parchment-hairline);
+  border-radius:  var(--r-md);
+}
+
+/* ── Individual check row ─────────────────────────────────────── */
+
+.checkRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       10px var(--sp-4);
+  border-radius: var(--r-sm);
+  transition:    background 240ms ease;
+  min-height:    44px;
+}
+
+.checkRowRunning {
+  background: var(--sage-surface);
+}
+
+.checkRowPassed {
+  background: var(--sage-surface);
+}
+
+.checkRowFailed {
+  background: var(--rose-surface);
+}
+
+/* ── Bullet indicator ─────────────────────────────────────────── */
+
+.checkBullet {
+  width:       12px;
+  height:      12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Pending: dim parchment dot */
+.checkRowPending .checkBullet {
+  background: var(--parchment-hairline);
+  border:     1px solid var(--parchment-ghost);
+}
+
+/* Running: spinning arc */
+.checkRowRunning .checkBullet {
+  background:   transparent;
+  border:       1.5px solid var(--sage-ghost);
+  border-top-color: var(--sage);
+  animation:    bulletSpin 700ms linear infinite;
+}
+
+/* Passed: solid sage */
+.checkRowPassed .checkBullet {
+  background:  var(--sage);
+  border:      none;
+  box-shadow:  0 0 6px rgba(99, 163, 137, 0.35);
+}
+
+/* Failed: solid rose */
+.checkRowFailed .checkBullet {
+  background: var(--rose);
+  border:     none;
+}
+
+@keyframes bulletSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Check label ──────────────────────────────────────────────── */
+
+.checkLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  color:          var(--parchment-dim);
+  flex:           1;
+  min-width:      0;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  transition:     color 200ms ease;
+}
+
+.checkRowRunning .checkLabel  { color: var(--parchment-mid);  }
+.checkRowPassed  .checkLabel  { color: var(--parchment-dim);  }
+.checkRowFailed  .checkLabel  { color: var(--rose-dim);        }
+
+/* ── Certification badge ──────────────────────────────────────── */
+
+.checkBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  color:          var(--sage);
+  letter-spacing: 0.06em;
+  white-space:    nowrap;
+  flex-shrink:    0;
+  animation:      badgeReveal 300ms var(--ease-expo) both;
+}
+
+.checkBadgeFailed {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  color:          var(--rose-dim);
+  letter-spacing: 0.06em;
+  white-space:    nowrap;
+  flex-shrink:    0;
+  animation:      badgeReveal 300ms var(--ease-expo) both;
+}
+
+@keyframes badgeReveal {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ── Duration readout ─────────────────────────────────────────── */
+
+.checkDuration {
+  font-family: var(--font-mono);
+  font-size:   0.52rem;
+  color:       var(--parchment-hairline);
+  flex-shrink: 0;
+  min-width:   44px;
+  text-align:  right;
+}
+
+/* ── Detail sub-text ──────────────────────────────────────────── */
+
+.checkDetail {
+  font-family:  var(--font-mono);
+  font-size:    0.50rem;
+  color:        var(--parchment-ghost);
+  padding:      0 var(--sp-4) var(--sp-2) calc(var(--sp-3) + 12px + var(--sp-3));
+  line-height:  1.5;
+  word-break:   break-all;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RUN BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.runBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  width:          100%;
+  padding:        var(--sp-3) var(--sp-5);
+  border-radius:  var(--r-sm);
+  border:         1px solid var(--parchment-dim);
+  background:     var(--parchment-surface);
+  color:          var(--parchment-mid);
+  cursor:         pointer;
+  transition:     background 160ms ease, border-color 160ms ease,
+                  color 160ms ease, opacity 160ms ease;
+}
+
+.runBtn:hover:not(:disabled) {
+  background:   rgba(229, 220, 190, 0.08);
+  border-color: var(--parchment-mid);
+  color:        var(--parchment);
+}
+
+.runBtn:active:not(:disabled) {
+  background: rgba(229, 220, 190, 0.12);
+}
+
+.runBtn:disabled {
+  opacity: 0.40;
+  cursor:  not-allowed;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   METRICS PANEL
+   ════════════════════════════════════════════════════════════════ */
+
+.metricsPanel {
+  display:               grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:                   var(--sp-3);
+  animation:             metricsReveal 320ms var(--ease-expo) both;
+}
+
+@keyframes metricsReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.metricCard {
+  display:          flex;
+  flex-direction:   column;
+  gap:              var(--sp-1);
+  padding:          var(--sp-3) var(--sp-4);
+  background:       var(--frame);
+  border:           1px solid var(--parchment-hairline);
+  border-radius:    var(--r-md);
+  min-height:       68px;
+  justify-content:  center;
+  transition:       border-color 400ms ease;
+}
+
+.metricCardOptimal  { border-color: var(--sage-hairline); }
+.metricCardWarning  { border-color: var(--amber-hairline); }
+.metricCardCritical { border-color: var(--rose-hairline); }
+.metricCardSecure   { border-color: var(--sage-hairline); }
+.metricCardDegraded { border-color: var(--amber-hairline); }
+
+.metricLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.50rem;
+  color:          var(--parchment-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height:    1;
+}
+
+.metricValue {
+  font-family: var(--font-mono);
+  font-size:   0.90rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.metricValueOptimal  { color: var(--sage);     }
+.metricValueWarning  { color: var(--amber-dim); }
+.metricValueCritical { color: var(--rose);      }
+.metricValueSecure   { color: var(--sage);      }
+.metricValueDegraded { color: var(--amber-dim); }
+.metricValueDefault  { color: var(--parchment-mid); }
+
+/* ════════════════════════════════════════════════════════════════
+   SEAL BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.sealBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.65rem;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  width:          100%;
+  padding:        var(--sp-4) var(--sp-5);
+  border-radius:  var(--r-sm);
+  border:         1px solid var(--sage-mid);
+  background:     var(--sage-surface);
+  color:          var(--sage);
+  cursor:         pointer;
+  transition:     background 180ms ease, border-color 180ms ease,
+                  color 180ms ease, box-shadow 300ms ease;
+  animation:      sealBtnReveal 400ms var(--ease-expo) both;
+}
+
+.sealBtn:hover {
+  background:  rgba(99, 163, 137, 0.10);
+  border-color: var(--sage);
+  color:        #8ecfb5;
+  box-shadow:  0 0 24px rgba(99, 163, 137, 0.14);
+}
+
+.sealBtn:active {
+  background:  rgba(99, 163, 137, 0.16);
+  box-shadow:  0 0 8px rgba(99, 163, 137, 0.10);
+}
+
+@keyframes sealBtnReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Warning variant — some checks failed */
+.sealBtnWarning {
+  border-color:  var(--rose-dim);
+  color:         var(--rose-dim);
+  background:    var(--rose-surface);
+}
+
+.sealBtnWarning:hover {
+  background:  rgba(248, 113, 113, 0.08);
+  border-color: var(--rose);
+  color:        var(--rose);
+  box-shadow:   0 0 20px rgba(248, 113, 113, 0.10);
+}
+
+/* Sealed confirmation banner */
+.sealedBanner {
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  gap:            var(--sp-3);
+  padding:        var(--sp-3) var(--sp-5);
+  background:     var(--sage-surface);
+  border:         1px solid var(--sage-hairline);
+  border-radius:  var(--r-sm);
+  animation:      sealBtnReveal 400ms var(--ease-expo) both;
+}
+
+.sealedGlyph {
+  font-size:  1rem;
+  color:      var(--sage);
+}
+
+.sealedText {
+  font-family:    var(--font-mono);
+  font-size:      0.60rem;
+  color:          var(--sage-mid);
+  letter-spacing: 0.08em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CINEMATIC OVERLAY
+   ════════════════════════════════════════════════════════════════ */
+
+.cinematicOverlay {
+  position: fixed;
+  inset:    0;
+  z-index:  900;
+  display:  flex;
+  align-items:     center;
+  justify-content: center;
+
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    #0d1218 0%,
+    #070809 60%,
+    #050607 100%
+  );
+
+  /* Ambient sage underglow */
+  box-shadow: inset 0 0 280px rgba(99, 163, 137, 0.04);
+
+  cursor:    pointer;
+  animation: cinematicIn 700ms var(--ease-expo) both;
+}
+
+.cinematicLeaving {
+  animation: cinematicOut 300ms ease-in forwards;
+}
+
+@keyframes cinematicIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes cinematicOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Decorative ambient glow layer */
+.cinematicGlow {
+  position:      absolute;
+  inset:         0;
+  pointer-events: none;
+  background:    radial-gradient(
+    ellipse 600px 600px at 50% 50%,
+    rgba(99, 163, 137, 0.05) 0%,
+    transparent 70%
+  );
+}
+
+/* Inner content wrapper — does NOT stop propagation */
+.cinematicInner {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             var(--sp-5);
+  max-width:       560px;
+  width:           100%;
+  padding:         var(--sp-10) var(--sp-8);
+  position:        relative;
+  z-index:         1;
+  text-align:      center;
+}
+
+/* ── Seal badge ───────────────────────────────────────────────── */
+
+.sealBadgeWrap {
+  position:    relative;
+  width:       110px;
+  height:      110px;
+  flex-shrink: 0;
+  animation:   sealExpand 700ms var(--ease-expo) 0.4s both;
+}
+
+@keyframes sealExpand {
+  from { opacity: 0; transform: scale(0.60); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+/* Rotating outer dashed ring (separate wrapper div) */
+.sealOuterRing {
+  position:      absolute;
+  inset:         0;
+  border-radius: 50%;
+  animation:     sealRotate 30s linear infinite;
+}
+
+@keyframes sealRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* SVG inside badge wrap */
+.sealSvg {
+  width:    100%;
+  height:   100%;
+  position: absolute;
+  inset:    0;
+}
+
+/* Inner circle — drawn via stroke-dashoffset animation */
+.sealCircle {
+  stroke:             var(--sage-mid);
+  stroke-width:       1;
+  stroke-dasharray:   302;
+  stroke-dashoffset:  302;
+  animation:          sealDraw 1.4s ease-out 0.8s both;
+  transform-origin:   center;
+  transform-box:      fill-box;
+}
+
+@keyframes sealDraw {
+  from { stroke-dashoffset: 302; }
+  to   { stroke-dashoffset:   0; }
+}
+
+/* Glyph and label inside the badge SVG */
+.sealGlyph {
+  font-family: var(--font-mono);
+  font-size:   26px;
+  fill:        #63a389;
+}
+
+.sealLabelText {
+  font-family:    var(--font-mono);
+  font-size:      7.5px;
+  fill:           rgba(99, 163, 137, 0.55);
+  letter-spacing: 3px;
+}
+
+/* ── Title block ──────────────────────────────────────────────── */
+
+.cinematicSuper {
+  font-family:    var(--font-display);
+  font-size:      2.80rem;
+  font-weight:    700;
+  color:          var(--parchment-mid);
+  letter-spacing: 0.14em;
+  line-height:    1;
+  animation:      titleRise 500ms var(--ease-expo) 0.6s both;
+}
+
+@keyframes titleRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Separator lines ──────────────────────────────────────────── */
+
+.cinematicSep {
+  width:      100%;
+  max-width:  380px;
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--parchment-ghost) 20%,
+    var(--parchment-dim)   50%,
+    var(--parchment-ghost) 80%,
+    transparent 100%
+  );
+  animation: sepReveal 600ms var(--ease-expo) 0.85s both;
+}
+
+.cinematicSepSecond {
+  animation-delay: 1.05s;
+}
+
+@keyframes sepReveal {
+  from { opacity: 0; transform: scaleX(0.2); }
+  to   { opacity: 1; transform: scaleX(1);   }
+}
+
+/* ── Main tagline ─────────────────────────────────────────────── */
+
+.cinematicTitle {
+  font-family:    var(--font-mono);
+  font-size:      1.05rem;
+  font-weight:    700;
+  color:          var(--sage);
+  letter-spacing: 0.22em;
+  animation:      taglineReveal 500ms var(--ease-expo) 1.0s both;
+}
+
+@keyframes taglineReveal {
+  from { opacity: 0; letter-spacing: 0.30em; }
+  to   { opacity: 1; letter-spacing: 0.22em; }
+}
+
+/* ── Certified phase list ─────────────────────────────────────── */
+
+.cinematicPhaseList {
+  list-style: none;
+  margin:     0;
+  padding:    0;
+  display:    flex;
+  flex-direction: column;
+  gap:        var(--sp-2);
+  width:      100%;
+  max-width:  420px;
+}
+
+.cinematicPhaseItem {
+  display:      flex;
+  align-items:  center;
+  gap:          var(--sp-3);
+  font-family:  var(--font-mono);
+  font-size:    0.60rem;
+  color:        var(--parchment-dim);
+  letter-spacing: 0.04em;
+  opacity:      0;
+  animation:    phaseItemReveal 400ms var(--ease-expo) both;
+}
+
+@keyframes phaseItemReveal {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+.cinematicCheck {
+  color:      var(--sage);
+  flex-shrink: 0;
+  font-size:  0.65rem;
+}
+
+/* ── Build info ───────────────────────────────────────────────── */
+
+.cinematicBuild {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  color:          var(--parchment-ghost);
+  letter-spacing: 0.08em;
+  animation:      phaseItemReveal 400ms var(--ease-expo) 1.8s both;
+}
+
+.cinematicBuildSlash {
+  opacity: 0.45;
+  margin:  0 4px;
+}
+
+/* ── Dismiss hint ─────────────────────────────────────────────── */
+
+.cinematicDismiss {
+  font-family:    var(--font-mono);
+  font-size:      0.50rem;
+  color:          rgba(229, 220, 190, 0.16);
+  letter-spacing: 0.06em;
+  background:     transparent;
+  border:         none;
+  cursor:         pointer;
+  transition:     color 200ms ease;
+  padding:        var(--sp-2) var(--sp-4);
+  border-radius:  var(--r-sm);
+  animation:      phaseItemReveal 400ms var(--ease-expo) 2.1s both;
+}
+
+.cinematicDismiss:hover {
+  color: rgba(229, 220, 190, 0.36);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .metricsPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items:    flex-start;
+    gap:            var(--sp-2);
+  }
+
+  .checkLabel {
+    white-space: normal;
+    font-size:   0.56rem;
+  }
+
+  .cinematicSuper {
+    font-size: 2.0rem;
+  }
+
+  .cinematicTitle {
+    font-size: 0.85rem;
+  }
+
+  .cinematicInner {
+    padding: var(--sp-8) var(--sp-5);
+  }
+}

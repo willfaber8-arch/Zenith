@@ -86,15 +86,8 @@ export default function GritView() {
         <div className={styles.habitMeta} aria-label="Active tracked habits">
           {activeHabits.map(h => (
             <span key={h.id} className={styles.habitChip}>
-              <span
-                className={styles.habitChipDot}
-                data-diff={h.difficulty ?? 'medium'}
-                aria-hidden="true"
-              />
+              <span className={styles.habitChipDot} aria-hidden="true" />
               {h.name}
-              <span style={{ opacity: 0.55 }}>
-                {DIFF_WEIGHTS[h.difficulty ?? 'medium']}
-              </span>
             </span>
           ))}
         </div>

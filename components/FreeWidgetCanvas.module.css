@@ -1,0 +1,573 @@
+/* FreeWidgetCanvas — fixed one-screen drag canvas */
+
+/* ── Canvas: fixed height, no scroll ─────────────────────── */
+
+.canvas {
+  position: relative;
+  width:    100%;
+  height:   calc(100vh - 52px);  /* viewport minus topbar */
+  overflow: hidden;
+  user-select: none;
+  /* Snap-grid reference dots — 20px spacing matches GRID_SIZE constant */
+  background-image: radial-gradient(circle, rgba(124, 149, 255, 0.10) 1px, transparent 1px);
+  background-size:  20px 20px;
+}
+
+/* ── Draggable item wrapper ────────────────────────────────── */
+
+.item {
+  position:       absolute;
+  cursor:         default;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-smooth),
+    transform  var(--dur-fast) var(--ease-smooth);
+  border-radius:  var(--r-lg);
+  z-index:        1;
+}
+
+.itemDragging {
+  z-index:    50;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.60),
+    0 0 0 1px var(--accent-purple-dim);
+  transform:  scale(1.015);
+  transition: none;  /* kill transition while dragging for responsiveness */
+}
+
+.itemDragging .dragHandle {
+  cursor: grabbing;
+}
+
+/* ── Drag handle — always visible, click to grab ───────────── */
+
+.dragHandle {
+  position:        absolute;
+  top:             6px;
+  right:           6px;
+  z-index:         10;
+  width:           24px;
+  height:          24px;
+  border-radius:   var(--r-sm);
+  background:      rgba(11, 13, 19, 0.70);
+  border:          1px solid var(--border-subtle);
+  backdrop-filter: blur(6px);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  opacity:         0.35;   /* always subtly present */
+  transition:      opacity var(--dur-fast), background var(--dur-fast);
+  pointer-events:  auto;   /* must be interactable — drag starts here */
+  cursor:          grab;
+  font-size:       0.75rem;
+  color:           var(--text-muted);
+  line-height:     1;
+  user-select:     none;
+}
+
+.item:hover .dragHandle {
+  opacity:    1;
+  background: rgba(124, 149, 255, 0.15);
+  color:      var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+/* ── Manage button (fixed bottom-right pill) ───────────────── */
+
+/* ── Lock button (sits left of the Manage button) ─────────── */
+
+.lockBtn {
+  right: calc(var(--sp-6) + 108px) !important;   /* 108px = approx Manage button width + sp-3 gap */
+}
+
+.lockBtnOn {
+  background:   rgba(124, 149, 255, 0.15) !important;
+  border-color: var(--accent-purple-dim)  !important;
+  color:        var(--accent-purple)      !important;
+}
+
+/* ── Color swatch — per-widget background picker ─────────── */
+
+.colorSwatch {
+  width:         22px;
+  height:        22px;
+  border-radius: var(--r-sm);
+  border:        1px solid var(--border-subtle);
+  padding:       0;
+  cursor:        pointer;
+  flex-shrink:   0;
+  background:    transparent;
+  appearance:    none;
+  -webkit-appearance: none;
+  transition:    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.colorSwatch:hover {
+  border-color: var(--accent-purple-dim);
+}
+
+.colorSwatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.colorSwatch::-webkit-color-swatch {
+  border:        none;
+  border-radius: calc(var(--r-sm) - 1px);
+}
+
+/* ── Hex code input — direct color entry beside swatch ──────── */
+
+.hexInput {
+  width:          68px;
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.04em;
+  background:     rgba(124, 149, 255, 0.03);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-sm);
+  color:          var(--text-muted);
+  padding:        3px 5px;
+  outline:        none;
+  flex-shrink:    0;
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    background   var(--dur-fast) var(--ease-smooth),
+    color        var(--dur-fast) var(--ease-smooth);
+}
+
+.hexInput:focus {
+  border-color: var(--accent-purple-dim);
+  background:   rgba(124, 149, 255, 0.06);
+  color:        var(--text-primary);
+}
+
+/* ── Manage panel base button ──────────────────────────────── */
+
+.panelToggleBtn {
+  position:        fixed;
+  bottom:          var(--sp-6);
+  right:           var(--sp-6);
+  z-index:         200;
+  height:          36px;
+  padding:         0 var(--sp-4);
+  border-radius:   var(--r-xl);
+  border:          1px solid var(--border-subtle);
+  background:      var(--surface-card);
+  color:           var(--text-muted);
+  font-size:       0.75rem;
+  font-family:     var(--font-mono);
+  letter-spacing:  0.06em;
+  cursor:          pointer;
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  backdrop-filter: blur(10px);
+  box-shadow:      0 4px 16px rgba(0, 0, 0, 0.35);
+  transition:
+    background    var(--dur-fast) var(--ease-smooth),
+    color         var(--dur-fast) var(--ease-smooth),
+    border-color  var(--dur-fast) var(--ease-smooth);
+}
+
+.panelToggleBtn:hover {
+  background:   var(--bg-active);
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+.panelToggleIcon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.panelToggleLabel {
+  font-size:      0.68rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+/* ── Visibility panel ──────────────────────────────────────── */
+
+.visPanel {
+  position:        fixed;
+  bottom:          calc(var(--sp-6) + 48px);
+  right:           var(--sp-6);
+  z-index:         200;
+  width:           290px;
+  background:      var(--surface-card);
+  border:          1px solid var(--border-subtle);
+  border-radius:   var(--r-lg);
+  padding:         var(--sp-3) var(--sp-4);
+  box-shadow:      0 8px 32px rgba(0, 0, 0, 0.50);
+  backdrop-filter: blur(12px);
+  animation:       visPanelIn 180ms var(--ease-expo) both;
+}
+
+@keyframes visPanelIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.visPanelTitle {
+  font-size:      0.55rem;
+  font-family:    var(--font-mono);
+  letter-spacing: 0.12em;
+  color:          var(--text-dark);
+  margin-bottom:  var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom:  1px solid var(--border-subtle);
+}
+
+.visRow {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         5px 0;
+  cursor:          default;
+}
+
+/* Push the toggle to the far right */
+.visRow .visToggle {
+  margin-left: auto;
+}
+
+.visLabel {
+  font-size: 0.72rem;
+  color:     var(--text-muted);
+}
+
+/* toggle track */
+.visToggle {
+  position:      relative;
+  width:         32px;
+  height:        18px;
+  border-radius: 9px;
+  background:    var(--bg-active);
+  border:        1px solid var(--border-subtle);
+  cursor:        pointer;
+  flex-shrink:   0;
+  transition:    background var(--dur-fast) var(--ease-smooth);
+}
+
+/* toggle thumb */
+.visToggle::after {
+  content:         '';
+  position:        absolute;
+  top:             2px;
+  left:            2px;
+  width:           12px;
+  height:          12px;
+  border-radius:   50%;
+  background:      var(--text-dark);
+  transition:      transform var(--dur-fast) var(--ease-smooth), background var(--dur-fast);
+}
+
+.visToggleOn {
+  background:   rgba(124, 149, 255, 0.25);
+  border-color: var(--accent-purple-dim);
+}
+
+.visToggleOn::after {
+  background:  var(--accent-purple);
+  transform:   translateX(14px);
+}
+
+/* ── Panel meta row (count + reset button) ────────────────── */
+
+.visPanelMeta {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  margin-bottom:   var(--sp-2);
+}
+
+.visPanelCount {
+  font-size:      0.60rem;
+  font-family:    var(--font-mono);
+  color:          var(--text-dark);
+  letter-spacing: 0.06em;
+}
+
+.visPanelCountFull {
+  color: rgba(248, 113, 113, 0.85); /* soft red when at cap */
+}
+
+.resetBtn {
+  font-size:       0.58rem;
+  font-family:     var(--font-mono);
+  color:           var(--text-dark);
+  background:      transparent;
+  border:          1px solid var(--border-subtle);
+  border-radius:   var(--r-sm);
+  padding:         2px 6px;
+  cursor:          pointer;
+  letter-spacing:  0.04em;
+  transition:      color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.resetBtn:hover {
+  color:         var(--accent-purple);
+  border-color:  var(--accent-purple-dim);
+}
+
+/* ── Cap-full warning message ─────────────────────────────── */
+
+.visPanelLimit {
+  font-size:      0.60rem;
+  font-family:    var(--font-mono);
+  color:          rgba(248, 113, 113, 0.75);
+  background:     rgba(248, 113, 113, 0.06);
+  border:         1px solid rgba(248, 113, 113, 0.18);
+  border-radius:  var(--r-sm);
+  padding:        4px 8px;
+  margin-bottom:  var(--sp-2);
+  letter-spacing: 0.04em;
+  line-height:    1.4;
+}
+
+/* ── Disabled row + toggle ────────────────────────────────── */
+
+.visRowDisabled {
+  opacity: 0.38;
+  cursor:  not-allowed;
+}
+
+.visRowDisabled .colorSwatch,
+.visRowDisabled input {
+  pointer-events: none;
+}
+
+.visToggleDisabled {
+  cursor:         not-allowed;
+  pointer-events: none;
+}
+
+/* ── Resize handle — right-edge drag strip ────────────────── */
+
+.resizeHandle {
+  position:    absolute;
+  top:         36px;       /* below drag handle area */
+  right:       -4px;
+  width:       8px;
+  bottom:      24px;       /* leave room for corner handle */
+  z-index:     20;
+  cursor:      ew-resize;
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  opacity:     0;
+  transition:  opacity var(--dur-fast) var(--ease-smooth);
+}
+
+.resizeHandle::after {
+  content:       '';
+  width:         2px;
+  height:        48px;
+  border-radius: 2px;
+  background:    var(--accent-purple-dim);
+  transition:    background var(--dur-fast), height var(--dur-fast);
+}
+
+.item:hover .resizeHandle {
+  opacity: 1;
+}
+
+.resizeHandleActive {
+  opacity: 1 !important;
+}
+
+.resizeHandleActive::after {
+  background: var(--accent-purple);
+  height:     64px;
+}
+
+/* Cursor overrides while resizing */
+.itemResizing {
+  cursor: ew-resize !important;
+}
+
+.itemResizingCorner {
+  cursor: nwse-resize !important;
+}
+
+/* ── Lock mode — hides all interactive handles ──────────────── */
+
+.itemLocked .dragHandle,
+.itemLocked .resizeHandle,
+.itemLocked .cornerHandle {
+  display:        none !important;
+  pointer-events: none !important;
+}
+
+.itemLocked {
+  cursor: default !important;
+}
+
+/* ── Corner resize handle — bottom-right, scale drag ───── */
+
+.cornerHandle {
+  position:     absolute;
+  bottom:       0;
+  right:        0;
+  width:        22px;
+  height:       22px;
+  z-index:      25;
+  cursor:       nwse-resize;
+  opacity:      0;
+  transition:   opacity var(--dur-fast);
+  border-bottom-right-radius: var(--r-sm);
+}
+
+/* L-shaped corner indicator */
+.cornerHandle::before,
+.cornerHandle::after {
+  content:       '';
+  position:      absolute;
+  background:    var(--accent-purple-dim);
+  border-radius: 1px;
+  transition:    background var(--dur-fast);
+}
+
+/* Vertical bar */
+.cornerHandle::before {
+  right:  5px;
+  bottom: 5px;
+  width:  2px;
+  height: 10px;
+}
+
+/* Horizontal bar */
+.cornerHandle::after {
+  right:  5px;
+  bottom: 5px;
+  width:  10px;
+  height: 2px;
+}
+
+.item:hover .cornerHandle {
+  opacity: 1;
+}
+
+.cornerHandleActive {
+  opacity: 1 !important;
+}
+
+.cornerHandleActive::before,
+.cornerHandleActive::after {
+  background: var(--accent-purple);
+}
+
+/* ── GreetingCard ──────────────────────────────────────────── */
+
+.greetingCard {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5) var(--sp-6);
+  box-shadow:    var(--shadow-card);
+}
+
+.gcSalutation {
+  font-family: var(--font-display);
+  font-size:   1rem;
+  color:       var(--text-muted);
+  margin:      0 0 2px;
+}
+
+.gcName {
+  font-family: var(--font-display);
+  font-size:   2rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+  margin:      0 0 var(--sp-2);
+  line-height: 1.1;
+  background:  linear-gradient(
+    90deg,
+    var(--text-primary),
+    var(--accent-purple)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip:         text;
+}
+
+.gcMeta {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  font-size:   0.72rem;
+  color:       var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: var(--sp-4);
+  flex-wrap:   wrap;
+}
+
+.gcDot {
+  width:         3px;
+  height:        3px;
+  border-radius: 50%;
+  background:    var(--text-dark);
+  flex-shrink:   0;
+}
+
+/* ── Search form ───────────────────────────────────────────── */
+
+.gcSearch {
+  display:   flex;
+  gap:       var(--sp-2);
+  width:     100%;
+}
+
+.gcSearchInput {
+  flex:          1;
+  min-width:     0;
+  background:    var(--bg-hover);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:       var(--sp-2) var(--sp-3);
+  font-size:     0.82rem;
+  font-family:   var(--font-body);
+  color:         var(--text-primary);
+  outline:       none;
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    box-shadow   var(--dur-fast) var(--ease-smooth);
+}
+
+.gcSearchInput::placeholder {
+  color: var(--text-dark);
+}
+
+.gcSearchInput:focus {
+  border-color: var(--accent-purple-dim);
+  box-shadow:   0 0 0 3px rgba(124, 149, 255, 0.08);
+}
+
+.gcSearchBtn {
+  width:         36px;
+  height:        36px;
+  border-radius: var(--r-md);
+  background:    var(--bg-hover);
+  border:        1px solid var(--border-subtle);
+  color:         var(--text-muted);
+  font-size:     1rem;
+  cursor:        pointer;
+  flex-shrink:   0;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  transition:
+    background   var(--dur-fast) var(--ease-smooth),
+    color        var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.gcSearchBtn:hover:not(:disabled) {
+  background:   var(--bg-active);
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+.gcSearchBtn:disabled {
+  opacity: 0.35;
+  cursor:  default;
+}

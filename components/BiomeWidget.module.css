@@ -1,0 +1,313 @@
+/* BiomeWidget.module.css — Phase 10.2
+ *
+ * All creature motion uses transform-only keyframes (translateX / scaleX /
+ * translateY). No left / top / width changes during animation → compositor-
+ * thread only, zero layout or paint work during playback.
+ */
+
+/* ── Outer wrapper — matches HomeView column width ───────────────── */
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Card shell ───────────────────────────────────────────────────── */
+
+.card {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  overflow:      hidden;
+  box-shadow:    var(--shadow-card);
+}
+
+/* ── Header strip ─────────────────────────────────────────────────── */
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--sp-3) var(--sp-5);
+  border-bottom:   1px solid var(--border-subtle);
+  background:      rgba(0, 0, 0, 0.18);
+}
+
+.streamChip {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.45; transform: scale(1);    }
+  50%       { opacity: 1;    transform: scale(1.15); }
+}
+
+.streamDot {
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    #52cca3;
+  flex-shrink:   0;
+  will-change:   opacity, transform;
+  animation:     dotPulse 2.6s var(--ease-smooth) infinite;
+}
+
+.streamLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.42rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          #52cca3;
+  user-select:    none;
+}
+
+.biomeSwitcher {
+  display: flex;
+  gap:     2px;
+  background: rgba(0, 0, 0, 0.25);
+  border:  1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 2px;
+}
+
+.biomeBtn {
+  padding:        3px 10px;
+  border:         none;
+  border-radius:  var(--r-md);
+  background:     transparent;
+  color:          var(--text-dark);
+  font-family:    var(--font-mono);
+  font-size:      0.42rem;
+  font-weight:    600;
+  letter-spacing: 0.10em;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     background var(--dur-fast), color var(--dur-fast);
+}
+
+.biomeBtn:hover {
+  color: var(--text-muted);
+  background: rgba(82, 204, 163, 0.08);
+}
+
+.biomeBtnActive {
+  background: rgba(82, 204, 163, 0.15);
+  color:      #52cca3;
+}
+
+/* ── Scene container ──────────────────────────────────────────────── */
+
+.scene {
+  position:  relative;
+  width:     100%;
+  height:    212px;
+  overflow:  hidden;
+  /* paint containment tells the browser this element is a paint boundary,
+     letting it skip repaints outside it when only transforms animate inside */
+  contain:   layout style paint;
+}
+
+.sceneAqua {
+  background: linear-gradient(180deg,
+    #071320 0%,
+    #0c1e32 35%,
+    #091828 70%,
+    #071220 100%
+  );
+}
+
+.sceneZoo {
+  background: linear-gradient(180deg,
+    #08120a 0%,
+    #0d1c0d 35%,
+    #0a160a 70%,
+    #081009 100%
+  );
+}
+
+/* ── Empty state ──────────────────────────────────────────────────── */
+
+.emptyState {
+  position:        absolute;
+  inset:           0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         0 var(--sp-10);
+}
+
+.emptyLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.47rem;
+  font-weight:    600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          rgba(255, 255, 255, 0.13);
+  text-align:     center;
+  line-height:    2;
+  user-select:    none;
+}
+
+/* ── Creatures layer ──────────────────────────────────────────────── */
+
+.creaturesLayer {
+  position: absolute;
+  inset:    0;
+  bottom:   40px;  /* creatures live above the substrate + decor zone */
+}
+
+/*
+ * Fish swim: translateX (horizontal drift) + scaleX flip at the turn.
+ * The --swim-dist CSS variable is set per-creature as an inline style
+ * from React, so each fish travels a different distance before turning.
+ * Keyframe 0% and 100% share the same scaleX state → seamless loop.
+ */
+@keyframes fishSwimBiome {
+  0%   { transform: translateX(0)                        scaleX(1);  }
+  44%  { transform: translateX(var(--swim-dist, 200px))  scaleX(1);  }
+  50%  { transform: translateX(var(--swim-dist, 200px))  scaleX(-1); }
+  94%  { transform: translateX(0)                        scaleX(-1); }
+  100% { transform: translateX(0)                        scaleX(1);  }
+}
+
+/*
+ * Animal wander: gentle translateX only (no flip — animals turn
+ * naturally by just reversing direction through ease-in-out).
+ */
+@keyframes animalWanderBiome {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(var(--swim-dist, 65px)); }
+  100% { transform: translateX(0); }
+}
+
+.creature {
+  position:    absolute;
+  font-size:   1.75rem;
+  line-height: 1;
+  filter:      drop-shadow(0 2px 6px rgba(0, 0, 0, 0.60));
+  will-change: transform;
+}
+
+/* Fish: distributed vertically across the water column */
+.fish {
+  top:       calc(8%  + var(--ci, 0) * 10%);
+  left:      calc(5%  + var(--ci, 0) * 9%);
+  animation:
+    fishSwimBiome
+    calc(4.4s + var(--ci, 0) * 1.4s)
+    ease-in-out
+    infinite;
+}
+
+/* Animals: ground-level, spread horizontally */
+.animal {
+  bottom:    0;
+  left:      calc(5%  + var(--ci, 0) * 16%);
+  animation:
+    animalWanderBiome
+    calc(5.8s + var(--ci, 0) * 2.2s)
+    ease-in-out
+    infinite;
+}
+
+/* ── Decor layer ──────────────────────────────────────────────────── */
+
+/*
+ * Decor items sit just above the substrate. They only animate vertically
+ * (a gentle bob) — horizontal position is set statically via left: %.
+ */
+.decorLayer {
+  position: absolute;
+  bottom:   32px;  /* 32px = 30px substrate + 2px gap */
+  left:     0;
+  right:    0;
+  height:   52px;
+}
+
+@keyframes decorBobBiome {
+  0%, 100% { transform: translateY(0);    }
+  50%       { transform: translateY(-6px); }
+}
+
+.decor {
+  position:    absolute;
+  bottom:      0;
+  left:        calc(8% + var(--di, 0) * 24%);
+  font-size:   1.5rem;
+  line-height: 1;
+  filter:      drop-shadow(0 1px 4px rgba(0, 0, 0, 0.55));
+  will-change: transform;
+  animation:
+    decorBobBiome
+    calc(3.4s + var(--di, 0) * 1.0s)
+    ease-in-out
+    infinite;
+}
+
+/* ── Substrate strip ──────────────────────────────────────────────── */
+
+.substrate {
+  position:    absolute;
+  bottom:      0;
+  left:        0;
+  right:       0;
+  height:      30px;
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size:   0.40rem;
+  letter-spacing: 0.24em;
+  color:       rgba(255, 255, 255, 0.07);
+  background:  rgba(0, 0, 0, 0.30);
+  user-select: none;
+  overflow:    hidden;
+  white-space: nowrap;
+}
+
+/* ── Skeleton placeholder ─────────────────────────────────────────── */
+
+@keyframes skeletonShimmer {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.70; }
+}
+
+.skeleton {
+  height:        256px;  /* header 44px + scene 212px */
+  border-radius: var(--r-xl);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  animation:     skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 0 var(--sp-4) var(--sp-4);
+  }
+
+  .scene {
+    height: 172px;
+  }
+
+  .skeleton {
+    height: 216px;
+  }
+
+  .emptyLabel {
+    font-size:      0.42rem;
+    letter-spacing: 0.16em;
+  }
+
+  .creature {
+    font-size: 1.5rem;
+  }
+
+  .decor {
+    font-size: 1.25rem;
+  }
+}

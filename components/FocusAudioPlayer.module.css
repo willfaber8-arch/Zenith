@@ -1,0 +1,283 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Section label ─────────────────────────────────────────────── */
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+/* ── Ambient preset grid ────────────────────────────────────────── */
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+
+@media (max-width: 600px) {
+  .presetGrid { grid-template-columns: 1fr; }
+}
+
+.preset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-main) 60%, transparent);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.preset:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: var(--bg-hover);
+}
+
+.presetOn {
+  border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--accent-purple) 8%, var(--surface-card)) !important;
+}
+
+.presetTop {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.presetIcon {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.presetOn .presetIcon {
+  color: var(--accent-purple);
+}
+
+.presetLabel {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.presetStatus {
+  font-size: 0.5625rem;
+  color: var(--text-dark);
+}
+
+.presetOn .presetStatus {
+  color: var(--accent-purple);
+}
+
+.presetDesc {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Volume row ─────────────────────────────────────────────────── */
+
+.volRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.volLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  min-width: 48px;
+}
+
+.volSlider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent-purple) var(--fill-pct, 40%),
+    color-mix(in srgb, var(--border-subtle) 80%, transparent) var(--fill-pct, 40%)
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.volSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  border: 2px solid var(--bg-main);
+  cursor: pointer;
+}
+
+.volSlider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  border: 2px solid var(--bg-main);
+  cursor: pointer;
+}
+
+.volValue {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  min-width: 30px;
+  text-align: right;
+}
+
+.headphoneNote {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--accent-purple);
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────── */
+
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--sp-2) 0;
+}
+
+/* ── Music stream buttons ────────────────────────────────────────── */
+
+.streamRow {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.streamBtn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-main) 60%, transparent);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.streamBtn:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  color: var(--text-primary);
+}
+
+.streamBtnOn {
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--accent-purple) 10%, var(--surface-card)) !important;
+  color: var(--accent-purple) !important;
+}
+
+/* ── Custom URL ──────────────────────────────────────────────────── */
+
+.customUrlWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.customUrlRow {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.customUrlInput {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 160ms ease;
+}
+
+.customUrlInput::placeholder {
+  color: var(--text-dark);
+}
+
+.customUrlInput:focus {
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.customUrlInputErr {
+  border-color: color-mix(in srgb, #f87171 60%, transparent) !important;
+}
+
+.customUrlBtn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 10%, var(--surface-card));
+  color: var(--accent-purple);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: opacity 140ms ease;
+}
+
+.customUrlBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.customUrlError {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  color: #f87171;
+  margin: 0;
+}
+
+.customUrlHint {
+  font-family: var(--font-body);
+  font-size: 0.6250rem;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+/* ── Music iframe ────────────────────────────────────────────────── */
+
+.musicFrame {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.musicIframe {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: none;
+  background: var(--bg-main);
+}

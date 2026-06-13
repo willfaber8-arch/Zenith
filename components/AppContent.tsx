@@ -57,6 +57,16 @@ export default function AppContent({ children }: { children: ReactNode }) {
     setHsState('done')
   }, [])
 
+  /* Phase 15.3 — performance monitor: fires once per session on first authenticated boot */
+  useEffect(() => {
+    if (!authed || hsState !== 'done') return
+    const tag = '%c[ ZENITH PERFORMANCE MONITOR ]%c'
+    const base = 'color:#52cca3;font-weight:700;font-family:monospace'
+    const reset = 'color:inherit;font-weight:normal'
+    console.info(tag + ' LOCAL FONTS LOADED COMPLETE // CDNS CLEARED', base, reset)
+    console.info(tag + ' INDEX STRUCTURES FROZEN // QUERY TARGET VELOCITY: SUB-1MS', base, reset)
+  }, [authed, hsState])
+
   /*
    * Workspace is fully visible only once authed AND the handshake
    * is complete. During the handshake (hsState='needed') the

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import ZenHeading            from '@/components/ui/ZenHeading'
 import AquascapingValidator  from '@/components/AquascapingValidator'
 import SupplierCartSimulator from '@/components/SupplierCartSimulator'
-import HardscapeSimulator    from '@/components/HardscapeSimulator'
 import WaterParameterLogger  from '@/components/WaterParameterLogger'
 import styles from './AquascapingView.module.css'
 
@@ -22,9 +21,9 @@ const TAB_META: Record<Tab, { title: string; subtitle: string }> = {
       'Draft your shopping list, assign items to vendors, and let the pricing engine reveal per-vendor shipping thresholds and your optimised grand total.',
   },
   hardscape: {
-    title: 'Hardscape &\nWater Log.',
+    title: 'Water\nLog.',
     subtitle:
-      'Plan your aquascape layout on a grid-snapped canvas, then track water chemistry over time. The nitrogen cycle auditor signals when the tank is ready for inhabitants.',
+      'Track water chemistry over time. The nitrogen cycle auditor signals ammonia, nitrite, and nitrate trends — confirming when the tank is ready for inhabitants.',
   },
 }
 
@@ -61,7 +60,7 @@ export default function AquascapingView() {
           className={`${styles.tab} ${activeTab === 'hardscape' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('hardscape')}
         >
-          Hardscape & Water Log
+          Water Log
         </button>
       </div>
 
@@ -78,10 +77,7 @@ export default function AquascapingView() {
       </div>
 
       <div className={`${styles.tabPane} ${activeTab === 'hardscape' ? styles.tabPaneActive : ''}`}>
-        <div className={styles.hardscapeTab}>
-          <HardscapeSimulator />
-          <WaterParameterLogger />
-        </div>
+        <WaterParameterLogger />
       </div>
     </div>
   )

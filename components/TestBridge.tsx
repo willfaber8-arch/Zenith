@@ -28,11 +28,11 @@
  */
 
 import { useEffect } from 'react'
-import { db, awardXp, awardGold, seedUserProfile } from '@/lib/db'
+import { db, seedUserProfile } from '@/lib/db'
 
 export default function TestBridge() {
   useEffect(() => {
-    window.__zenith = { db, awardXp, awardGold, seedUserProfile }
+    window.__zenith = { db, seedUserProfile }
 
     /*
      * Signal that the bridge is ready — page.waitForEvent('zenith:bridge-ready')

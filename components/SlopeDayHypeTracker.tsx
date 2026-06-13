@@ -1,23 +1,9 @@
 'use client'
-/**
- * SlopeDayHypeTracker — Phase 5 · Step 5.7
- * ─────────────────────────────────────────────────────────────────
- * Two-pane dashboard:
- *   Left  — Mental Health Map: mood emoji grid, optional notes,
- *            3-day rolling trend with stress/energy bars.
- *   Right — Slope Day Arena: bold countdown display, hype phase
- *            badge, quest multiplier strips, progress track,
- *            and a subtle canvas-based periwinkle confetti overlay
- *            that activates during peak + live phases.
- *
- * Data flows:
- *   useMentalHealthLog → left pane mood logging + trend display
- *   useSlopeDay        → right pane countdown + multiplier display
- */
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { useMentalHealthLog }  from '@/lib/hooks/useMentalHealthLog'
-import { useSlopeDay }         from '@/lib/hooks/useSlopeDay'
+import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
+import { useLiveQuery }       from 'dexie-react-hooks'
+import { db }                 from '@/lib/db'
+import { useMentalHealthLog } from '@/lib/hooks/useMentalHealthLog'
 import {
   MOOD_VECTORS,
   MOOD_MAP,
@@ -26,117 +12,45 @@ import {
   type MoodKey,
   type MoodVector,
 } from '@/utils/mentalHealthLog'
-import {
-  HYPE_PHASE_LABELS,
-  HYPE_PHASE_COLORS,
-  fmtMultiplier,
-  type HypePhase,
-} from '@/utils/slopeDay'
+import type { MentalHealthLog } from '@/lib/db'
 import styles from './SlopeDayHypeTracker.module.css'
 
-/* ════════════════════════════════════════════════════════════════
-   CONFETTI CANVAS
-   ════════════════════════════════════════════════════════════════ */
+/* ── Helpers ─────────────────────────────────────────────────── */
 
-interface Particle {
-  x: number; y: number
-  vx: number; vy: number
-  r: number
-  hue: number; opacity: number
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function isoDate(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function spawnParticle(w: number, h: number): Particle {
-  return {
-    x:       Math.random() * w,
-    y:       Math.random() * h * 0.15,         // start in top 15%
-    vx:      (Math.random() - 0.5) * 0.5,
-    vy:      Math.random() * 0.7 + 0.25,
-    r:       Math.random() * 1.4 + 1.2,        // 1.2–2.6 px
-    hue:     Math.random() * 35 + 212,          // 212–247 periwinkle band
-    opacity: Math.random() * 0.14 + 0.06,       // 0.06–0.20 (spec: subtle, low-opacity)
-  }
+function buildMonthCells(year: number, month: number): Array<string | null> {
+  const firstDay    = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: Array<string | null> = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(isoDate(year, month, d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
 }
 
-interface ConfettiCanvasProps { phase: HypePhase }
-
-function ConfettiCanvas({ phase }: ConfettiCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const active    = phase === 'peak' || phase === 'live' || phase === 'countdown'
-  const count     = phase === 'live' ? 80 : phase === 'peak' ? 55 : 30
-
-  useEffect(() => {
-    if (!active) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let W = canvas.offsetWidth  || 400
-    let H = canvas.offsetHeight || 500
-    canvas.width  = W
-    canvas.height = H
-
-    let particles: Particle[] = Array.from({ length: count }, () => spawnParticle(W, H))
-    let raf: number
-
-    const onResize = () => {
-      W = canvas.offsetWidth  || W
-      H = canvas.offsetHeight || H
-      canvas.width  = W
-      canvas.height = H
-    }
-
-    const tick = () => {
-      ctx.clearRect(0, 0, W, H)
-      for (const p of particles) {
-        p.x = (p.x + p.vx + W) % W
-        p.y += p.vy
-        if (p.y > H + 4) Object.assign(p, spawnParticle(W, H))
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `hsla(${p.hue}, 70%, 72%, ${p.opacity.toFixed(3)})`
-        ctx.fill()
-      }
-      raf = requestAnimationFrame(tick)
-    }
-
-    const ro = new ResizeObserver(onResize)
-    ro.observe(canvas.parentElement ?? canvas)
-    raf = requestAnimationFrame(tick)
-
-    return () => {
-      cancelAnimationFrame(raf)
-      ro.disconnect()
-      ctx.clearRect(0, 0, W, H)
-    }
-  }, [active, count])
-
-  if (!active) return null
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className={styles.confettiCanvas}
-      aria-hidden="true"
-    />
-  )
+function moodCellColor(log: MentalHealthLog): string {
+  // wellbeing 0..1: high-energy + low-stress = 1 (green); opposite = 0 (red)
+  const w   = (log.energyLevel - log.stressLevel + 9) / 18
+  const hue = Math.round(w * 120)
+  return `hsla(${hue}, 65%, 50%, 0.85)`
 }
 
-/* ════════════════════════════════════════════════════════════════
-   STAT BAR — stress or energy reading 1–10
-   ════════════════════════════════════════════════════════════════ */
+/* ── Sub-components ──────────────────────────────────────────── */
 
 function StatBar({
   name, value, variant,
 }: { name: string; value: number; variant: 'stress' | 'energy' }) {
-  const fillClass = variant === 'stress' ? styles.statFillStress : styles.statFillEnergy
   return (
     <div className={styles.statRow}>
       <span className={styles.statName}>{name}</span>
       <div className={styles.statTrack}>
         <div
-          className={`${styles.statFill} ${fillClass}`}
+          className={`${styles.statFill} ${variant === 'stress' ? styles.statFillStress : styles.statFillEnergy}`}
           style={{ width: `${(value / 10) * 100}%` }}
         />
       </div>
@@ -145,54 +59,34 @@ function StatBar({
   )
 }
 
-/* ════════════════════════════════════════════════════════════════
-   HYPE PROGRESS — percentage through current phase window
-   ════════════════════════════════════════════════════════════════ */
+/* ── Main component ──────────────────────────────────────────── */
 
-/** Returns 0–100 indicating how far the user is through the current hype window */
-function computeHypeProgress(daysUntil: number): number {
-  if (daysUntil <= 0)   return 100
-  if (daysUntil <= 3)   return 70 + ((3  - daysUntil) / 3)  * 30   // 70–100%
-  if (daysUntil <= 7)   return 45 + ((7  - daysUntil) / 4)  * 25   // 45–70%
-  if (daysUntil <= 14)  return 20 + ((14 - daysUntil) / 7)  * 25   // 20–45%
-  const clamped = Math.min(daysUntil, 90)
-  return Math.max(0, ((90 - clamped) / 90) * 20)                    // 0–20%
-}
+export default function WellnessTracker() {
+  const mh = useMentalHealthLog()
 
-function hypeTrackFillClass(phase: HypePhase): string {
-  return {
-    standard:  styles.hypeTrackFillStandard,
-    season:    styles.hypeTrackFillSeason,
-    countdown: styles.hypeTrackFillCountdown,
-    peak:      styles.hypeTrackFillPeak,
-    live:      styles.hypeTrackFillLive,
-  }[phase]
-}
+  // All logs for the calendar (no date restriction)
+  const allLogs = useLiveQuery(
+    () => db?.mentalHealthLogs?.orderBy('logDate').toArray().catch(() => []) ?? Promise.resolve([]),
+    [],
+  ) ?? []
 
-/* ════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-   ════════════════════════════════════════════════════════════════ */
+  const logMap = useMemo(() => {
+    const m = new Map<string, MentalHealthLog>()
+    for (const l of allLogs) m.set(l.logDate, l)
+    return m
+  }, [allLogs])
 
-export default function SlopeDayHypeTracker() {
-  const mh   = useMentalHealthLog()
-  const hype = useSlopeDay()
-
-  /* ── Mood selection state ─────────────────────────────────── */
+  /* ── Mood logging state ───────────────────────────────────── */
   const [selectedMood, setSelectedMood] = useState<MoodVector | null>(null)
   const [notes,        setNotes]        = useState('')
   const [justLogged,   setJustLogged]   = useState(false)
 
-  /* Pre-select today's mood when the log loads */
   useEffect(() => {
     if (mh.todayLog?.moodVector) {
       const m = MOOD_MAP[mh.todayLog.moodVector as MoodKey]
       if (m) { setSelectedMood(m); setNotes(mh.todayLog.qualitativeNotes) }
     }
   }, [mh.todayLog])
-
-  const handleMoodClick = useCallback((m: MoodVector) => {
-    setSelectedMood(m)
-  }, [])
 
   const handleLog = useCallback(async () => {
     if (!selectedMood || mh.submitting) return
@@ -201,39 +95,43 @@ export default function SlopeDayHypeTracker() {
     setTimeout(() => setJustLogged(false), 2200)
   }, [selectedMood, notes, mh])
 
-  /* ── Date label ───────────────────────────────────────────── */
+  /* ── Calendar state ───────────────────────────────────────── */
   const today = new Date()
-  const dateDisplay = today.toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  })
+  const [calYear,     setCalYear]     = useState(today.getFullYear())
+  const [calMonth,    setCalMonth]    = useState(today.getMonth())
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
-  /* ── Hype progress ────────────────────────────────────────── */
-  const hypeProgress = computeHypeProgress(hype.daysUntil)
-  const phaseColor   = HYPE_PHASE_COLORS[hype.hypePhase]
-  const isHypeActive = hype.hypeMultiplier > 1.0
+  const monthCells = useMemo(() => buildMonthCells(calYear, calMonth), [calYear, calMonth])
+  const selectedLog = selectedDay ? (logMap.get(selectedDay) ?? null) : null
+  const todayStr    = todayISO()
+  const monthLabel  = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const dateDisplay = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
-  /* ── Last 3 calendar days (today, yesterday, day-before) ─── */
+  const prevMonth = useCallback(() => {
+    setSelectedDay(null)
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
+    else setCalMonth(m => m - 1)
+  }, [calMonth])
+
+  const nextMonth = useCallback(() => {
+    setSelectedDay(null)
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
+    else setCalMonth(m => m + 1)
+  }, [calMonth])
+
+  /* ── 3-day trend data ─────────────────────────────────────── */
   const last3Days = [0, 1, 2].map(dAgo => {
     const d = new Date(); d.setDate(d.getDate() - dAgo)
     const dateStr = d.toISOString().slice(0, 10)
-    const log     = mh.logs.find(l => l.logDate === dateStr) ?? null
-    return { dateStr, label: relativeDateLabel(dateStr), log }
+    return { dateStr, label: relativeDateLabel(dateStr), log: mh.logs.find(l => l.logDate === dateStr) ?? null }
   })
-
-  /* ── Countdown display helpers ────────────────────────────── */
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const numClass = hype.hypePhase === 'live'  ? styles.countdownNumLive
-    : hype.hypePhase === 'peak' || hype.hypePhase === 'countdown'
-      ? styles.countdownNumPeak
-      : ''
 
   return (
     <div className={styles.tracker}>
-
       <div className={styles.grid}>
 
         {/* ════════════════════════════════════════════════════
-            LEFT PANE — MENTAL HEALTH MAP
+            LEFT PANE — MOOD LOGGING
             ════════════════════════════════════════════════════ */}
         <div className={`${styles.card} anim-scale-in`}>
 
@@ -245,7 +143,6 @@ export default function SlopeDayHypeTracker() {
             <span className={styles.cardDate}>{dateDisplay}</span>
           </div>
 
-          {/* Logged-today chip */}
           {justLogged && (
             <div className={`${styles.todayChip} anim-scale-in`}>
               <span className={styles.todayChipDot} aria-hidden="true" />
@@ -253,12 +150,7 @@ export default function SlopeDayHypeTracker() {
             </div>
           )}
 
-          {/* Mood emoji grid */}
-          <div
-            className={styles.moodGrid}
-            role="group"
-            aria-label="Select your emotional state"
-          >
+          <div className={styles.moodGrid} role="group" aria-label="Select your emotional state">
             {MOOD_VECTORS.map(m => {
               const isBurnout = m.stressLevel >= 8 && m.energyLevel <= 3
               return (
@@ -270,13 +162,10 @@ export default function SlopeDayHypeTracker() {
                     selectedMood?.key === m.key ? styles.moodBtnSelected : '',
                     isBurnout ? styles.moodBtnBurnout : '',
                   ].join(' ')}
-                  onClick={() => handleMoodClick(m)}
+                  onClick={() => setSelectedMood(m)}
                   aria-pressed={selectedMood?.key === m.key}
                   aria-label={`${m.label}: stress ${m.stressLevel}, energy ${m.energyLevel}`}
-                  style={selectedMood?.key === m.key
-                    ? { borderColor: `hsla(${m.hue}, 70%, 72%, 0.50)`,
-                        boxShadow:  `0 0 12px hsla(${m.hue}, 70%, 72%, 0.12)` }
-                    : undefined}
+                  style={{ '--mood-hue': String(m.hue) } as CSSProperties}
                 >
                   <span className={styles.moodEmoji} aria-hidden="true">{m.emoji}</span>
                   <span className={styles.moodLabel}>{m.label}</span>
@@ -285,7 +174,6 @@ export default function SlopeDayHypeTracker() {
             })}
           </div>
 
-          {/* Notes textarea */}
           <div className={styles.notesWrap}>
             <label htmlFor="mh-notes" className={styles.notesLabel}>
               Quick Note (optional)
@@ -301,7 +189,6 @@ export default function SlopeDayHypeTracker() {
             />
           </div>
 
-          {/* Log button */}
           <button
             type="button"
             className={styles.logBtn}
@@ -313,10 +200,8 @@ export default function SlopeDayHypeTracker() {
 
           <div className={styles.divider} aria-hidden="true" />
 
-          {/* 3-day trend */}
           <div className={styles.trendSection}>
             <p className={styles.trendHeading}>3-Day Trend</p>
-
             {last3Days.map(({ dateStr, label, log }) => (
               <div
                 key={dateStr}
@@ -338,7 +223,6 @@ export default function SlopeDayHypeTracker() {
                     : <span className={styles.dayNoLog}>No entry</span>
                   }
                 </div>
-
                 {log && (
                   <>
                     <div className={styles.statBars}>
@@ -346,9 +230,7 @@ export default function SlopeDayHypeTracker() {
                       <StatBar name="Energy" value={log.energyLevel} variant="energy" />
                     </div>
                     {log.qualitativeNotes && (
-                      <p className={styles.dayNotes}>
-                        &ldquo;{log.qualitativeNotes}&rdquo;
-                      </p>
+                      <p className={styles.dayNotes}>&ldquo;{log.qualitativeNotes}&rdquo;</p>
                     )}
                   </>
                 )}
@@ -359,123 +241,142 @@ export default function SlopeDayHypeTracker() {
         </div>
 
         {/* ════════════════════════════════════════════════════
-            RIGHT PANE — SLOPE DAY ARENA
+            RIGHT PANE — MOOD HISTORY CALENDAR
             ════════════════════════════════════════════════════ */}
-        <div className={`${styles.card} ${styles.arenaCard} anim-scale-in delay-1`}>
+        <div className={`${styles.card} anim-scale-in delay-1`}>
 
-          {/* Confetti overlay — activates during countdown / peak / live */}
-          <ConfettiCanvas phase={hype.hypePhase} />
-
-          <div className={styles.arenaContent}>
-
-            {/* Arena header */}
-            <div className={styles.arenaHeader}>
-              <div className={styles.arenaTitleBlock}>
-                <p className={styles.arenaEyebrow}>Cornell · Slope Day</p>
-                <h2 className={styles.arenaTitle}>
-                  The Hype Arena
-                </h2>
-              </div>
-              <span className={styles.arenaDateChip}>
-                {hype.dateLabel} {hype.yearLabel}
-              </span>
+          <div className={styles.cardHeader}>
+            <div>
+              <p className={styles.cardEyebrow}>Mood History · Calendar</p>
+              <h2 className={styles.cardTitle}>Emotional Map</h2>
             </div>
-
-            {/* Countdown or live banner */}
-            {hype.isPast ? (
-              <div className={`${styles.pastCard}`}>
-                <p className={styles.pastIcon}>🎉</p>
-                <p className={styles.pastText}>
-                  Slope Day {hype.yearLabel} has passed.<br />
-                  Next Slope Day arrives {new Date(hype.slopeDay.getFullYear() + 1, 4, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.
-                </p>
-              </div>
-            ) : hype.hypePhase === 'live' ? (
-              <div className={styles.liveBanner}>
-                <span className={styles.liveDot} aria-hidden="true" />
-                <span className={styles.liveText}>Slope Day is TODAY 🎶</span>
-              </div>
-            ) : (
-              <div className={styles.countdownBlock} aria-label={`${hype.daysUntil} days, ${hype.hoursUntil} hours, ${hype.minutesUntil} minutes until Slope Day`}>
-                <div className={styles.countdownUnit}>
-                  <span className={`${styles.countdownNum} ${numClass}`}>
-                    {pad(hype.daysUntil)}
-                  </span>
-                  <span className={styles.countdownLabel}>days</span>
-                </div>
-                <span className={styles.countdownSep} aria-hidden="true">:</span>
-                <div className={styles.countdownUnit}>
-                  <span className={`${styles.countdownNum} ${numClass}`}>
-                    {pad(hype.hoursUntil)}
-                  </span>
-                  <span className={styles.countdownLabel}>hours</span>
-                </div>
-                <span className={styles.countdownSep} aria-hidden="true">:</span>
-                <div className={styles.countdownUnit}>
-                  <span className={`${styles.countdownNum} ${numClass}`}>
-                    {pad(hype.minutesUntil)}
-                  </span>
-                  <span className={styles.countdownLabel}>min</span>
-                </div>
-              </div>
-            )}
-
-            {/* Hype phase badge */}
-            <div className={styles.hypePhase}>
-              <span
-                className={[
-                  styles.hypePhaseDot,
-                  isHypeActive ? styles.hypePhaseDotActive : '',
-                ].join(' ')}
-                style={{ background: phaseColor }}
-                aria-hidden="true"
-              />
-              <span
-                className={styles.hypePhaseLabel}
-                style={{ color: phaseColor }}
-              >
-                {HYPE_PHASE_LABELS[hype.hypePhase]}
-              </span>
-            </div>
-
-            {/* Multiplier strips */}
-            <div className={styles.multiplierSection}>
-
-              <div className={`${styles.multiplierRow} ${isHypeActive ? styles.multiplierRowActive : ''}`}>
-                <span className={styles.multiplierIcon} aria-hidden="true">⬡</span>
-                <span className={styles.multiplierName}>Quest Gold Reward</span>
-                <span className={`${styles.multiplierValue} ${isHypeActive ? styles.multiplierValueActive : styles.multiplierValueStandard}`}>
-                  {fmtMultiplier(hype.hypeMultiplier)}
-                </span>
-              </div>
-
-              <div className={`${styles.multiplierRow} ${isHypeActive ? styles.multiplierRowActive : ''}`}>
-                <span className={styles.multiplierIcon} aria-hidden="true">⬡</span>
-                <span className={styles.multiplierName}>Quest XP Reward</span>
-                <span className={`${styles.multiplierValue} ${isHypeActive ? styles.multiplierValueActive : styles.multiplierValueStandard}`}>
-                  {fmtMultiplier(hype.hypeMultiplier)}
-                </span>
-              </div>
-
-            </div>
-
-            {/* Hype progress track */}
-            <div className={styles.hypeTrackSection}>
-              <div className={styles.hypeTrackLabel}>
-                <span className={styles.hypeTrackName}>Hype Level</span>
-                <span className={styles.hypeTrackPct}>{Math.round(hypeProgress)}%</span>
-              </div>
-              <div className={styles.hypeTrack} role="progressbar" aria-valuenow={Math.round(hypeProgress)} aria-valuemin={0} aria-valuemax={100}>
-                <div
-                  className={`${styles.hypeTrackFill} ${hypeTrackFillClass(hype.hypePhase)}`}
-                  style={{ width: `${hypeProgress}%` }}
-                />
-              </div>
-            </div>
-
           </div>
-        </div>
 
+          {/* Month navigator */}
+          <div className={styles.calNav}>
+            <button
+              type="button"
+              className={styles.calNavBtn}
+              onClick={prevMonth}
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <span className={styles.calMonthLabel}>{monthLabel}</span>
+            <button
+              type="button"
+              className={styles.calNavBtn}
+              onClick={nextMonth}
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Day-of-week headers */}
+          <div className={styles.calDowRow}>
+            {DOW.map(d => (
+              <span key={d} className={styles.calDowLabel}>{d}</span>
+            ))}
+          </div>
+
+          {/* Day grid */}
+          <div className={styles.calGrid} role="grid" aria-label={`Mood calendar for ${monthLabel}`}>
+            {monthCells.map((dateStr, i) => {
+              if (!dateStr) return <div key={`e-${i}`} className={styles.calCellEmpty} />
+              const log      = logMap.get(dateStr)
+              const isToday  = dateStr === todayStr
+              const isSel    = dateStr === selectedDay
+              const dayNum   = parseInt(dateStr.slice(8), 10)
+              return (
+                <button
+                  key={dateStr}
+                  type="button"
+                  className={[
+                    styles.calCell,
+                    log      ? styles.calCellLogged  : styles.calCellNoLog,
+                    isToday  ? styles.calCellToday   : '',
+                    isSel    ? styles.calCellSelected : '',
+                  ].join(' ')}
+                  style={log ? { background: moodCellColor(log) } : undefined}
+                  onClick={() => setSelectedDay(isSel ? null : dateStr)}
+                  aria-label={`${dateStr}${log ? `: ${MOOD_MAP[log.moodVector as MoodKey]?.label ?? log.moodVector}` : ': no entry'}`}
+                  aria-pressed={isSel}
+                >
+                  <span className={styles.calCellNum}>{dayNum}</span>
+                  {log && (
+                    <span className={styles.calCellEmoji} aria-hidden="true">
+                      {MOOD_MAP[log.moodVector as MoodKey]?.emoji ?? ''}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className={styles.calLegend}>
+            <div className={styles.calLegendItem}>
+              <span className={styles.calLegendDot} style={{ background: 'hsla(120,65%,50%,0.85)' }} />
+              <span className={styles.calLegendLabel}>Thriving</span>
+            </div>
+            <div className={styles.calLegendItem}>
+              <span className={styles.calLegendDot} style={{ background: 'hsla(60,65%,50%,0.85)' }} />
+              <span className={styles.calLegendLabel}>Neutral</span>
+            </div>
+            <div className={styles.calLegendItem}>
+              <span className={styles.calLegendDot} style={{ background: 'hsla(0,65%,50%,0.85)' }} />
+              <span className={styles.calLegendLabel}>Drained</span>
+            </div>
+            <div className={`${styles.calLegendItem} ${styles.calLegendNoLog}`}>
+              <span className={styles.calLegendDot} style={{ background: 'rgba(255,255,255,0.07)' }} />
+              <span className={styles.calLegendLabel}>No entry</span>
+            </div>
+          </div>
+
+          <div className={styles.divider} aria-hidden="true" />
+
+          {/* Selected day detail */}
+          {selectedDay ? (
+            <div className={`${styles.calDetail} anim-scale-in`} key={selectedDay}>
+              <div className={styles.calDetailHeader}>
+                <span className={styles.calDetailDate}>
+                  {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-US', {
+                    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+                  })}
+                </span>
+                {selectedLog && (
+                  <span className={styles.calDetailMoodBadge}>
+                    {MOOD_MAP[selectedLog.moodVector as MoodKey]?.emoji}{' '}
+                    {MOOD_MAP[selectedLog.moodVector as MoodKey]?.label ?? selectedLog.moodVector}
+                  </span>
+                )}
+              </div>
+              {selectedLog ? (
+                <>
+                  <div className={styles.statBars}>
+                    <StatBar name="Stress" value={selectedLog.stressLevel} variant="stress" />
+                    <StatBar name="Energy" value={selectedLog.energyLevel} variant="energy" />
+                  </div>
+                  {selectedLog.qualitativeNotes ? (
+                    <p className={styles.calDetailNotes}>
+                      &ldquo;{selectedLog.qualitativeNotes}&rdquo;
+                    </p>
+                  ) : (
+                    <p className={styles.calDetailEmpty}>No notes for this day.</p>
+                  )}
+                </>
+              ) : (
+                <p className={styles.calDetailEmpty}>No entry logged for this day.</p>
+              )}
+            </div>
+          ) : (
+            <p className={styles.calPrompt}>
+              Select a day to view your logged emotional state.
+            </p>
+          )}
+
+        </div>
       </div>
     </div>
   )

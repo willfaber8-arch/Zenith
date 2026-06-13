@@ -27,6 +27,7 @@ import {
 } from 'react'
 import { getSyncEngine, type SyncStatus } from '@/services/syncEngine'
 import { initSyncBroker }                from '@/services/syncBroker'
+import { error }                        from '@/lib/logger'
 
 /* ── Context shape ──────────────────────────────────────────── */
 
@@ -78,7 +79,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [])  // intentionally empty — engine is a stable singleton
 
   const triggerSync = useCallback(() => {
-    getSyncEngine().reconcileLocalToCloud().catch(console.error)
+    getSyncEngine().reconcileLocalToCloud().catch(
+      (err) => error('SyncContext', 'Manual reconciliation failed', err),
+    )
   }, [])
 
   return (

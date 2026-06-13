@@ -3,66 +3,92 @@
  * Phase 3 · Step 3.5 — Secure LLM Proxy Endpoint
  *
  * POST /api/study-ai
- * Body: { text: string, title?: string }
- * Returns: { markdownSummary: string, flashcards: Flashcard[] }
- *
- * The Anthropic API key is read exclusively from process.env.LLM_API_KEY
- * and never exposed to the browser bundle.  All LLM traffic is proxied
- * server-side so the client only sends plain study text and receives
- * structured JSON.
+ * Body: {
+ *   text:     string,
+ *   title?:   string,
+ *   mode?:    'notes' | 'topic'      (default: 'notes')
+ *   generate?: { summary, flashcards, practiceTest }
+ * }
+ * Returns: { markdownSummary, flashcards, practiceTest? }
  */
 
 import Anthropic          from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import type { StudyAiResponse }      from '@/types/studyAi'
+import type { StudyAiResponse, GenerateOptions }      from '@/types/studyAi'
 
 /* ── Constants ────────────────────────────────────────────────── */
 
-const MAX_INPUT_CHARS = 16_000   // ~4 k tokens — generous for lecture notes
-const MIN_INPUT_CHARS = 40       // reject nonsense submissions
+const MAX_INPUT_CHARS = 16_000
+const MIN_INPUT_CHARS = 10
 
-/* ── System prompt ────────────────────────────────────────────── */
-/*
- * Strict instructions to produce a parseable JSON object with no
- * surrounding text or markdown fences.  The quality bar at the end
- * ensures graceful degradation on very short / unclear input.
- */
-const SYSTEM_PROMPT = `\
-You are Zenith AI — a precision academic study assistant embedded in a personal productivity dashboard.
+/* ── System prompt builder ────────────────────────────────────── */
 
-Your sole task: analyse the provided study material and produce a structured JSON study package.
+function buildSystemPrompt(
+  mode: 'notes' | 'topic',
+  gen:  GenerateOptions,
+): string {
+  const parts: string[] = []
 
-CRITICAL OUTPUT RULE: Respond with ONLY a raw JSON object. No markdown code fences. No preamble. No trailing commentary. The first character of your response must be { and the last must be }.
+  parts.push(`You are Zenith AI — a precision academic study assistant embedded in a personal productivity dashboard.`)
+  parts.push(``)
 
-Required JSON structure (no additional keys):
-{
-  "markdownSummary": "...",
-  "flashcards": [
-    { "id": "1", "question": "...", "answer": "..." }
-  ]
+  if (mode === 'topic') {
+    parts.push(`The user has described a topic they want to study. Generate high-quality study material FROM SCRATCH based on the topic description. Treat it as if writing a comprehensive study guide.`)
+  } else {
+    parts.push(`The user has provided raw study material (lecture notes, textbook text, etc.). Analyse it and produce a structured study package.`)
+  }
+
+  parts.push(``)
+  parts.push(`CRITICAL OUTPUT RULE: Respond with ONLY a raw JSON object. No markdown code fences. No preamble. No trailing commentary. The first character must be { and the last must be }.`)
+  parts.push(``)
+  parts.push(`Required JSON structure (include ONLY the keys that are requested below):`)
+  parts.push(`{`)
+  if (gen.summary)      parts.push(`  "markdownSummary": "...",`)
+  else                  parts.push(`  "markdownSummary": "",`)
+  if (gen.flashcards)   parts.push(`  "flashcards": [{ "id": "1", "question": "...", "answer": "..." }],`)
+  else                  parts.push(`  "flashcards": [],`)
+  if (gen.practiceTest) parts.push(`  "practiceTest": [{ "id": "1", "question": "...", "choices": ["A...", "B...", "C...", "D..."], "correct": 0, "explain": "..." }]`)
+  parts.push(`}`)
+  parts.push(``)
+
+  if (gen.summary) {
+    parts.push(`════ markdownSummary Rules ════`)
+    parts.push(`• Use ## for 2–4 major topic sections`)
+    parts.push(`• Use **Term**: Definition pattern to introduce key vocabulary`)
+    parts.push(`• Use - bullet lists for enumerated concepts, process steps, or examples`)
+    parts.push(`• Target 350–600 words — dense academic prose, no filler`)
+    parts.push(`• Structure: concise overview paragraph → key concepts → mechanisms / processes → applications or examples`)
+    parts.push(``)
+  }
+
+  if (gen.flashcards) {
+    parts.push(`════ flashcards Rules ════`)
+    parts.push(`• Generate exactly 10–15 cards — more for rich material, fewer for thin input`)
+    parts.push(`• Target the highest-yield, exam-relevant concepts only`)
+    parts.push(`• Questions must be precise: prefer "What is…", "How does…", "Which…", "Define…" patterns`)
+    parts.push(`• Answers must be complete standalone sentences — no pronouns without referent`)
+    parts.push(`• Sequential string IDs starting at "1"`)
+    parts.push(`• Vary cognitive level: ~40% recall, ~40% application, ~20% synthesis/comparison`)
+    parts.push(``)
+  }
+
+  if (gen.practiceTest) {
+    parts.push(`════ practiceTest Rules ════`)
+    parts.push(`• Generate exactly 8–12 multiple-choice questions`)
+    parts.push(`• Each question has exactly 4 choices (A, B, C, D) as an array`)
+    parts.push(`• "correct" is the 0-indexed position of the right answer`)
+    parts.push(`• "explain" is 1–2 sentences explaining why that choice is correct`)
+    parts.push(`• Questions should test understanding, not trivial memorisation`)
+    parts.push(`• Vary difficulty: ~30% easy, ~50% medium, ~20% hard`)
+    parts.push(`• Sequential string IDs starting at "1"`)
+    parts.push(``)
+  }
+
+  parts.push(`════ Graceful Degradation ════`)
+  parts.push(`If the input is too short or ambiguous, still return the required JSON structure with minimal but valid content.`)
+
+  return parts.join('\n')
 }
-
-════ markdownSummary Rules ════
-• Use ## for 2–4 major topic sections
-• Use **Term**: Definition pattern to introduce key vocabulary
-• Use - bullet lists for enumerated concepts, process steps, or examples
-• Target 350–600 words — dense academic prose, no filler
-• Structure: concise overview paragraph → key concepts → mechanisms / processes → applications or examples
-
-════ flashcards Rules ════
-• Generate exactly 10–15 cards — more for rich material, fewer for thin input
-• Target the highest-yield, exam-relevant concepts only
-• Questions must be precise and answerable:
-  — Prefer "What is…", "How does…", "Which…", "Define…" patterns
-  — Avoid vague "Explain…" or "Describe…" prompts
-• Answers must be complete standalone sentences — no pronouns without referent
-• Sequential string IDs starting at "1"
-• Vary cognitive level: ~40 % recall, ~40 % application, ~20 % synthesis / comparison
-
-════ Graceful Degradation ════
-If the input is too short or ambiguous to fully analyse, still return the required JSON structure.
-Set markdownSummary to a brief note about the limitation, and provide at least 3 generic
-study-technique flashcards (e.g. spaced repetition, active recall, Feynman technique).`
 
 /* ── POST handler ─────────────────────────────────────────────── */
 
@@ -71,46 +97,54 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const apiKey = process.env.LLM_API_KEY
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'AI service is not configured. Set LLM_API_KEY in your .env.local file.' },
+      { error: 'AI service is not configured. Add LLM_API_KEY to your .env.local file to enable AI features.' },
       { status: 503 },
     )
   }
 
-  /* 2 ─ Parse and validate the request body */
+  /* 2 ─ Parse and validate request body */
   let text: string
   let title: string
+  let mode:  'notes' | 'topic'
+  let generate: GenerateOptions
+
   try {
     const body = await req.json()
     text  = typeof body.text  === 'string' ? body.text.trim()  : ''
     title = typeof body.title === 'string' ? body.title.trim() : 'Untitled Study Material'
+    mode  = body.mode === 'topic' ? 'topic' : 'notes'
+    generate = {
+      summary:      body.generate?.summary      !== false,
+      flashcards:   body.generate?.flashcards    !== false,
+      practiceTest: body.generate?.practiceTest  === true,
+    }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
   if (text.length < MIN_INPUT_CHARS) {
     return NextResponse.json(
-      { error: `Please provide at least ${MIN_INPUT_CHARS} characters of study content.` },
+      { error: `Please provide at least ${MIN_INPUT_CHARS} characters of ${mode === 'topic' ? 'topic description' : 'study content'}.` },
       { status: 400 },
     )
   }
 
   /* 3 ─ Call the Anthropic API */
-  const model = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
-
+  const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
   const client = new Anthropic({ apiKey })
+
+  const userMessage = mode === 'topic'
+    ? `Study topic: ${title}\n\nTopic description / what I want to learn:\n${text.slice(0, MAX_INPUT_CHARS)}`
+    : `Title: ${title}\n\nStudy material:\n${text.slice(0, MAX_INPUT_CHARS)}`
 
   let raw: string
   try {
     const message = await client.messages.create({
       model,
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{
-        role:    'user',
-        content: `Title: ${title}\n\nContent:\n${text.slice(0, MAX_INPUT_CHARS)}`,
-      }],
+      system: buildSystemPrompt(mode, generate),
+      messages: [{ role: 'user', content: userMessage }],
     })
-
     const block = message.content[0]
     raw = block.type === 'text' ? block.text.trim() : ''
   } catch (err) {
@@ -125,24 +159,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   /* 4 ─ Parse and validate the JSON response */
   let parsed: StudyAiResponse
   try {
-    // Strip accidental markdown fences the model might add despite instructions
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     parsed = JSON.parse(cleaned)
   } catch {
-    console.error('[study-ai] JSON parse failure. Raw response:\n', raw.slice(0, 500))
+    console.error('[study-ai] JSON parse failure. Raw:\n', raw.slice(0, 500))
     return NextResponse.json(
       { error: 'AI returned a malformed response. Please try again.' },
       { status: 502 },
     )
   }
 
-  if (
-    typeof parsed.markdownSummary !== 'string' ||
-    !Array.isArray(parsed.flashcards)          ||
-    parsed.flashcards.some(
-      c => typeof c.id !== 'string' || typeof c.question !== 'string' || typeof c.answer !== 'string'
-    )
-  ) {
+  if (typeof parsed.markdownSummary !== 'string' || !Array.isArray(parsed.flashcards)) {
     return NextResponse.json(
       { error: 'AI response did not match the expected schema. Please try again.' },
       { status: 502 },
@@ -153,5 +180,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     markdownSummary: parsed.markdownSummary,
     flashcards:      parsed.flashcards,
+    practiceTest:    parsed.practiceTest ?? undefined,
   } satisfies StudyAiResponse)
 }

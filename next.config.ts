@@ -68,8 +68,8 @@ const ContentSecurityPolicy = [
   /* Media — canvas blob URLs for hardscape export */
   `media-src 'self' blob:`,
 
-  /* Frames — reject all embedding; Zenith is never an iframe source */
-  `frame-src 'none'`,
+  /* Frames — music embeds for the focus audio player */
+  `frame-src https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com`,
   `frame-ancestors 'none'`,
 
   /* Object — no Flash / plugins */
@@ -246,6 +246,11 @@ const nextConfig: NextConfig = {
   /* Strict mode activates additional warnings in development and
      stress-tests effects for the double-invoke pattern.             */
   reactStrictMode: true,
+
+  /* Remove the X-Powered-By: Next.js header from every response.
+     Default is true (header sent); false suppresses it.
+     Reduces technology fingerprinting surface area.                 */
+  poweredByHeader: false,
 
   /* Package import optimisation — tree-shakes icon/component libs
      that export hundreds of named exports.  Add any heavy lib here. */

@@ -1,0 +1,76 @@
+/* ════════════════════════════════════════════════════════════
+   CosmeticPointsIndicator — Step 2.2
+   Pill-shaped balance chip rendered in the Topbar cluster,
+   immediately left of the user profile chip.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Live badge ───────────────────────────────────────────── */
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+  transition: border-color 200ms var(--ease-smooth),
+              background   200ms var(--ease-smooth);
+}
+
+.badge:hover {
+  border-color: rgba(124, 149, 255, 0.35);
+  background: color-mix(in srgb, var(--accent-purple) 8%, var(--surface-card));
+}
+
+.badge:active {
+  background: color-mix(in srgb, var(--accent-purple) 14%, var(--surface-card));
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent-green);
+  line-height: 1;
+}
+
+/* ── Skeleton — zero layout shift during IDB boot frame ────── */
+
+.skeleton {
+  width: 52px;
+  height: 22px;
+  border-radius: var(--r-xl);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1;    }
+  50%       { opacity: 0.35; }
+}
+
+/* ── Mobile: collapse at the same breakpoint as weatherChip ── */
+
+@media (max-width: 767px) {
+  .badge,
+  .skeleton {
+    display: none;
+  }
+}

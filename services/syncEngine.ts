@@ -46,6 +46,7 @@ import {
   type PendingSyncQueueItem,
 } from '@/lib/db'
 import { getSupabaseClient } from '@/lib/supabase'
+import { warn }              from '@/lib/logger'
 
 /* ════════════════════════════════════════════════════════════════
    PUBLIC TYPES
@@ -213,7 +214,7 @@ export class ZenithSyncEngine {
         this.emit(remaining === 0 ? 'CLOUD_SYNCHRONIZED' : 'OFFLINE_QUEUED')
       }
     } catch (err) {
-      console.warn('[ZenithSync] Reconciliation failed:', err)
+      warn('ZenithSync', 'Reconciliation failed', err)
       this.emit('OFFLINE_QUEUED')
     } finally {
       this._reconciling = false
@@ -412,7 +413,7 @@ export class ZenithSyncEngine {
     for (const item of items) {
       // Silently retire items that have exhausted their retry budget
       if (item.retryCount >= MAX_RETRIES) {
-        console.warn('[ZenithSync] Retiring item after max retries:', {
+        warn('ZenithSync', 'Retiring item after max retries', {
           table:      item.tableName,
           operation:  item.operation,
           supabaseId: item.supabaseId,
@@ -433,7 +434,7 @@ export class ZenithSyncEngine {
         }
         syncedIds.push(item.id!)
       } catch (err) {
-        console.warn(`[ZenithSync] Item ${item.id} failed:`, err)
+        warn('ZenithSync', `Item ${item.id} failed`, err)
         failedIds.push(item.id!)
       }
     }
@@ -482,9 +483,6 @@ export class ZenithSyncEngine {
           user_name:        record.userName,
           university_name:  record.universityName,
           major_identifier: record.majorIdentifier,
-          current_level:    record.currentLevel,
-          exp_points:       record.expPoints,
-          health_points:    record.healthPoints,
           // `updated_at` is managed by the DB trigger — never set it manually
         },
         { onConflict: 'id' },

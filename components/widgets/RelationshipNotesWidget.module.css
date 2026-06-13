@@ -1,0 +1,234 @@
+/* ════════════════════════════════════════════════════════════════
+   RelationshipNotesWidget — Friends-Network Letterbox Card
+   Phase 9 · Step 9.3
+   ════════════════════════════════════════════════════════════════
+   Color philosophy:
+     Dark mineral base (#0d0f12) + teal (#2dd4bf / rgba 45,212,191)
+     accents — matches the friends-network nav tab color so the widget
+     feels cohesively tied to its source view.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Outer shell ─────────────────────────────────────────────── */
+
+.card {
+  background:    #0d0f12;
+  border:        1px solid rgba(45, 212, 191, 0.10);
+  border-radius: var(--r-xl);
+  padding:       var(--sp-5) var(--sp-6);
+  height:        220px;
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-3);
+  position:      relative;
+  overflow:      hidden;
+
+  box-shadow:
+    inset 0 1px 0 rgba(45, 212, 191, 0.08),
+    0 0 0 1px rgba(45, 212, 191, 0.05),
+    0 2px 16px rgba(0, 0, 0, 0.28);
+
+  transition:
+    border-color  220ms var(--ease-smooth),
+    box-shadow    220ms var(--ease-smooth);
+}
+
+.card:hover {
+  border-color: rgba(45, 212, 191, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(45, 212, 191, 0.14),
+    0 0 0 1px rgba(45, 212, 191, 0.09),
+    0 4px 24px rgba(0, 0, 0, 0.32);
+}
+
+/* ── Card header row ─────────────────────────────────────────── */
+
+.header {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+}
+
+.headerIcon {
+  font-size:  0.78rem;
+  color:      rgba(45, 212, 191, 0.45);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.headerIcon.unread {
+  color:      rgba(45, 212, 191, 0.80);
+  filter:     drop-shadow(0 0 4px rgba(45, 212, 191, 0.30));
+}
+
+.headerLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          rgba(45, 212, 191, 0.40);
+}
+
+/* ── Unread badge ────────────────────────────────────────────── */
+
+.newBadge {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          rgba(45, 212, 191, 0.72);
+  background:     rgba(45, 212, 191, 0.08);
+  border:         1px solid rgba(45, 212, 191, 0.16);
+  border-radius:  var(--r-sm);
+  padding:        2px 7px;
+  margin-left:    auto;
+  flex-shrink:    0;
+}
+
+.newDot {
+  width:         4px;
+  height:        4px;
+  border-radius: 50%;
+  background:    rgba(45, 212, 191, 0.80);
+  flex-shrink:   0;
+  animation:     newDotPulse 2.2s ease-in-out infinite;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+
+.emptyState {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-3);
+  text-align:      center;
+  padding:         var(--sp-4) 0;
+  animation:       fadeIn 500ms var(--ease-expo) both;
+}
+
+.emptyGlyph {
+  font-size:   1.8rem;
+  opacity:     0.14;
+  line-height: 1;
+  user-select: none;
+}
+
+.emptyText {
+  font-family:    var(--font-mono);
+  font-size:      0.575rem;
+  letter-spacing: 0.10em;
+  color:          rgba(45, 212, 191, 0.38);
+  line-height:    1.85;
+  white-space:    pre-line;
+}
+
+/* ── Active message card ─────────────────────────────────────── */
+
+.messageCard {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  overflow:       hidden;
+  animation:      letterReveal 420ms var(--ease-expo) both;
+}
+
+/* Indented body with teal left-border quote indicator */
+.messageBody {
+  flex:     1;
+  position: relative;
+  padding-left: var(--sp-4);
+  overflow: hidden;
+}
+
+.messageBody::before {
+  content:       '';
+  position:      absolute;
+  left:          0;
+  top:           3px;
+  bottom:        3px;
+  width:         2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(45, 212, 191, 0.55) 0%,
+    rgba(45, 212, 191, 0.08) 100%
+  );
+}
+
+.messageText {
+  font-family:         var(--font-display);
+  font-size:           0.90rem;
+  line-height:         1.70;
+  color:               var(--text-primary);
+
+  overflow:            hidden;
+  display:             -webkit-box;
+  -webkit-line-clamp:  3;
+  -webkit-box-orient:  vertical;
+}
+
+/* ── Footer — sender + timestamp ─────────────────────────────── */
+
+.footer {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  flex-wrap:       wrap;
+  font-family:     var(--font-mono);
+  font-size:       0.575rem;
+  letter-spacing:  0.06em;
+  color:           var(--text-dark);
+  border-top:      1px solid rgba(45, 212, 191, 0.07);
+  padding-top:     var(--sp-3);
+  flex-shrink:     0;
+}
+
+.footerFrom {
+  color:   var(--text-dark);
+  opacity: 0.75;
+}
+
+.senderName {
+  color:       rgba(45, 212, 191, 0.72);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.footerDivider {
+  opacity:     0.28;
+  user-select: none;
+}
+
+.timestamp {
+  color:   var(--text-dark);
+  opacity: 0.65;
+}
+
+/* ── Keyframes ───────────────────────────────────────────────── */
+
+@keyframes letterReveal {
+  from {
+    opacity:   0;
+    transform: translateY(10px) scale(0.975);
+  }
+  to {
+    opacity:   1;
+    transform: translateY(0)    scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes newDotPulse {
+  0%, 100% { opacity: 0.80; transform: scale(1);    }
+  50%       { opacity: 0.25; transform: scale(0.70); }
+}

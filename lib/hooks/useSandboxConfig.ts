@@ -1,85 +1,155 @@
 'use client'
-/**
- * useSandboxConfig
- * ────────────────────────────────────────────────────────────────
- * localStorage-backed visibility dictionary for WidgetSandbox.
- * Reads persisted config on first mount (client-only), falls back
- * to SANDBOX_DEFAULTS when no stored value exists.
- *
- * Returns { config, toggleWidget, mounted } — the `mounted` flag
- * lets consumers skip rendering until the real config is read,
- * preventing a flash of incorrect widget visibility on load.
- *
- * Import only from `'use client'` components.
- */
 
 import { useState, useEffect } from 'react'
 
 /* ── Widget visibility dictionary ─────────────────────────────── */
 
 export interface SandboxConfig {
-  urgentTasks:     boolean
-  pomodoroPreview: boolean
-  habitSummary:    boolean
-  localWeather:    boolean
+  habitSummary:      boolean
+  pomodoroPreview:   boolean
+  calendarToday:     boolean
+  localWeather:      boolean
+  studyStreak:       boolean
+  uniHub:            boolean
+  cardioSummary:     boolean
+  letterbox:         boolean
+  distanceTracker:   boolean
+  // Utility widgets
+  timerWidget:       boolean
+  stopwatch:         boolean
+  // Library
+  readingTracker:    boolean
+  // Vault
+  customLinks:       boolean
+  // Scholastic
+  vocabTracker:      boolean
+  gpaWidget:         boolean
+  // Life
+  wellnessCheck:     boolean
+  mealToday:         boolean
+  newsHeadline:      boolean
+  // Arcade
+  arcadeEconomy:     boolean
 }
 
 export const SANDBOX_DEFAULTS: SandboxConfig = {
-  urgentTasks:     true,
-  pomodoroPreview: false,
   habitSummary:    true,
+  pomodoroPreview: false,
+  calendarToday:   true,
   localWeather:    true,
+  studyStreak:     true,
+  uniHub:          false,
+  cardioSummary:   true,
+  letterbox:       true,
+  distanceTracker: true,
+  timerWidget:     true,
+  stopwatch:       false,
+  readingTracker:  true,
+  customLinks:     true,
+  vocabTracker:    false,
+  gpaWidget:       false,
+  wellnessCheck:   false,
+  mealToday:       false,
+  newsHeadline:    false,
+  arcadeEconomy:   false,
 }
 
-/** Friendly label map for the Manage Sandbox panel */
 export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
-  urgentTasks:     'Urgent Tasks',
-  pomodoroPreview: 'Pomodoro Preview',
   habitSummary:    'Habit Summary',
+  pomodoroPreview: 'Pomodoro Timer',
+  calendarToday:   'Today\'s Schedule',
   localWeather:    'Local Weather',
+  studyStreak:     'Study Streak',
+  uniHub:          'University Hub',
+  cardioSummary:   'Cardio Activity',
+  letterbox:       'Letterbox',
+  distanceTracker: 'Distance Tracker',
+  timerWidget:     'Timer',
+  stopwatch:       'Stopwatch',
+  readingTracker:  'Reading Tracker',
+  customLinks:     'Quick Links',
+  vocabTracker:    'Polyglot Vault',
+  gpaWidget:       'GPA',
+  wellnessCheck:   'Wellness Check',
+  mealToday:       'Today\'s Meals',
+  newsHeadline:    'World News',
+  arcadeEconomy:   'Arcade Economy',
 }
 
-const STORAGE_KEY = 'zenith_sandbox_config'
+export const WIDGET_VIEWS: Record<keyof SandboxConfig, string> = {
+  habitSummary:    'habits',
+  pomodoroPreview: 'study-shield',
+  calendarToday:   'calendar',
+  localWeather:    'calendar',
+  studyStreak:     'study-shield',
+  uniHub:          'uni-hub',
+  cardioSummary:   'workouts',
+  letterbox:       'friends-network',
+  distanceTracker: 'friends-network',
+  timerWidget:     'home',
+  stopwatch:       'home',
+  readingTracker:  'book-tracker',
+  customLinks:     'custom-links',
+  vocabTracker:    'vocab-builder',
+  gpaWidget:       'uni-hub',
+  wellnessCheck:   'wellness',
+  mealToday:       'meal-planning',
+  newsHeadline:    'world-events',
+  arcadeEconomy:   'games',
+}
 
-/* ── Return type ──────────────────────────────────────────────── */
+/* Widget size hints — 'wide' spans full width on desktop */
+export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
+  habitSummary:    'normal',
+  pomodoroPreview: 'normal',
+  calendarToday:   'normal',
+  localWeather:    'wide',
+  studyStreak:     'normal',
+  uniHub:          'normal',
+  cardioSummary:   'normal',
+  letterbox:       'normal',
+  distanceTracker: 'normal',
+  timerWidget:     'normal',
+  stopwatch:       'normal',
+  readingTracker:  'normal',
+  customLinks:     'normal',
+  vocabTracker:    'normal',
+  gpaWidget:       'normal',
+  wellnessCheck:   'normal',
+  mealToday:       'normal',
+  newsHeadline:    'normal',
+  arcadeEconomy:   'normal',
+}
+
+const STORAGE_KEY = 'zenith_sandbox_config_v4'
 
 export interface UseSandboxConfigResult {
   config:       SandboxConfig
   toggleWidget: (key: keyof SandboxConfig) => void
-  /** false until the first useEffect reads from localStorage */
   mounted:      boolean
 }
 
-/* ── Hook ─────────────────────────────────────────────────────── */
-
 export function useSandboxConfig(): UseSandboxConfigResult {
-  /* Start with defaults — SSR-safe, no window access */
   const [config,  setConfig]  = useState<SandboxConfig>(SANDBOX_DEFAULTS)
   const [mounted, setMounted] = useState(false)
 
-  /* Hydrate from localStorage on first client render */
   useEffect(() => {
     setMounted(true)
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<SandboxConfig>
-        /* Merge with defaults so any future new keys get their default */
         setConfig(prev => ({ ...prev, ...parsed }))
       }
     } catch {
-      /* Corrupt localStorage entry — silently keep defaults */
+      /* Corrupt localStorage — keep defaults */
     }
   }, [])
 
   const toggleWidget = (key: keyof SandboxConfig) => {
     setConfig(prev => {
       const next = { ...prev, [key]: !prev[key] }
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      } catch {
-        /* Storage quota exceeded — UI still updates, just not persisted */
-      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* noop */ }
       return next
     })
   }

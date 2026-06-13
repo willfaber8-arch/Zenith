@@ -1,0 +1,316 @@
+/* ════════════════════════════════════════════════════════════════
+   ShiftMatrix — Step 4.2 · Harvest Station
+   Layout contract:
+     .root          — full-height flex column; position:relative for overlay
+     .statsBar      — fixed-width metric strip aligned with BOARD_PX
+     .boardWrapper  — centres the puzzle board
+     .board         — position:relative container; all tiles are absolute
+     .tile          — position:absolute; animated via transform:translate
+     .tileMovable   — adjacency highlight; hover glow + pointer cursor
+     .tileEmpty     — invisible placeholder for the blank cell slot
+     .tileNum       — face value typography
+     .hint          — one-line contextual footer
+     .resultOverlay — full-bleed victory screen (position:absolute)
+     .resultCard    — centred result card with slide-up entrance
+
+   Tile animation strategy:
+     All tiles share `position:absolute; top:0; left:0` in .board.
+     Their `transform:translate(x,y)` is set inline from tileTranslate().
+     React key={value} keeps each tile's DOM element stable across
+     re-renders — only the transform changes, which CSS transitions
+     interpolate smoothly at 200ms ease-out.
+
+   All colour values reference design-token CSS custom properties.
+   No hardcoded hex values. --accent-green for shard reward readouts,
+   --accent-purple for quantum-fuel readouts and movable-tile glow.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════
+   ROOT
+   ════════════════════════════════════════════════════════════════ */
+
+.root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--bg-main);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STATS BAR
+   ════════════════════════════════════════════════════════════════ */
+
+.statsBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
+  background: var(--surface-card);
+  /* width is set inline to match BOARD_PX */
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  line-height: 1;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.statGreen {
+  color: var(--accent-green);
+}
+
+.statDivider {
+  width: 1px;
+  height: 28px;
+  background: color-mix(in srgb, var(--border-subtle) 60%, transparent);
+  flex-shrink: 0;
+  margin: 0 var(--sp-2);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BOARD WRAPPER + BOARD CANVAS
+   ════════════════════════════════════════════════════════════════ */
+
+.boardWrapper {
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  background: color-mix(in srgb, var(--surface-card) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 30%, transparent);
+}
+
+.board {
+  position: relative;
+  /* width + height set inline from BOARD_PX constant */
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TILE — base state
+   All tiles share top:0;left:0 and are moved via transform:translate.
+   React key={value} keeps the DOM element stable between renders so
+   CSS can animate the transform change as the tile slides.
+   ════════════════════════════════════════════════════════════════ */
+
+.tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
+  user-select: none;
+  cursor: default;
+  /* transition is set inline — only applied when in gameplay, not on mount/reset */
+}
+
+/* ── Movable tile — adjacency highlight ─────────────────────── */
+
+.tileMovable {
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--accent-purple) 22%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 4%, var(--surface-card));
+}
+
+.tileMovable:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 52%, transparent);
+  background:   color-mix(in srgb, var(--accent-purple) 9%, var(--surface-card));
+  box-shadow:   0 0 12px color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+
+.tileMovable:focus-visible {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow:   0 0 0 2px color-mix(in srgb, var(--accent-purple) 32%, transparent),
+                0 0 16px  color-mix(in srgb, var(--accent-purple) 20%, transparent);
+}
+
+/* ── Empty cell slot ────────────────────────────────────────── */
+
+.tileEmpty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--r-sm);
+  /* completely invisible — only occupies layout space */
+  opacity: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ── Tile face value ────────────────────────────────────────── */
+
+.tileNum {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FOOTER HINT
+   ════════════════════════════════════════════════════════════════ */
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+  text-align: center;
+  margin: 0;
+  min-height: 1em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   VICTORY OVERLAY
+   ════════════════════════════════════════════════════════════════ */
+
+.resultOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  animation: overlayReveal 380ms var(--ease-expo) both;
+}
+
+@keyframes overlayReveal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.resultCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-8) var(--sp-10);
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 22%, transparent);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--accent-green) 7%, transparent);
+  animation: cardRise 420ms var(--ease-expo) 60ms both;
+  min-width: 300px;
+}
+
+@keyframes cardRise {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.resultHeading {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-green);
+  margin: 0;
+}
+
+.resultGrid {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.resultLabel {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.resultVal {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.resultGreen {
+  color: var(--accent-green);
+}
+
+.resultPurple {
+  color: var(--accent-purple);
+}
+
+.resultDivider {
+  height: 1px;
+  background: color-mix(in srgb, var(--border-subtle) 50%, transparent);
+  border: none;
+  margin: var(--sp-1) 0;
+}
+
+/* ── Replay CTA ─────────────────────────────────────────────── */
+
+.restartBtn {
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-green);
+  background: color-mix(in srgb, var(--accent-green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 28%, transparent);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-6);
+  cursor: pointer;
+  transition:
+    background   220ms var(--ease-smooth),
+    border-color 220ms var(--ease-smooth);
+}
+
+.restartBtn:hover {
+  background:   color-mix(in srgb, var(--accent-green) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 50%, transparent);
+}
+
+.restartBtn:focus-visible {
+  outline:        2px solid color-mix(in srgb, var(--accent-green) 60%, transparent);
+  outline-offset: 3px;
+}

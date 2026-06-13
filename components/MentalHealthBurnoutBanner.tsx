@@ -15,7 +15,6 @@
 
 import { useState, useEffect } from 'react'
 import { useMentalHealthLog }  from '@/lib/hooks/useMentalHealthLog'
-import { useFatigue }          from '@/lib/FatigueContext'
 import styles                  from './MentalHealthBurnoutBanner.module.css'
 
 const DISMISS_LS_KEY  = 'zenith_mh_dismissed_at'
@@ -37,22 +36,19 @@ function saveDismissed(): void {
 
 export default function MentalHealthBurnoutBanner() {
   const { evaluation }           = useMentalHealthLog()
-  const { startRecovery, isRecovering } = useFatigue()
-  const [dismissed, setDismissed] = useState(true)  // start hidden, set after mount
+  const [dismissed, setDismissed] = useState(true)
 
-  /* Hydrate dismiss state client-side to avoid SSR flash */
   useEffect(() => {
     setDismissed(isDismissedNow())
   }, [])
 
-  /* Reset dismissed state when risk clears completely */
   useEffect(() => {
     if (evaluation.burnoutRisk === 'none') setDismissed(false)
   }, [evaluation.burnoutRisk])
 
   const isCritical = evaluation.burnoutRisk === 'critical'
   const isEmerging = evaluation.burnoutRisk === 'emerging'
-  const visible    = (isCritical || isEmerging) && !dismissed && !isRecovering
+  const visible    = (isCritical || isEmerging) && !dismissed
 
   if (!visible) return null
 
@@ -83,15 +79,6 @@ export default function MentalHealthBurnoutBanner() {
       </div>
 
       <div className={styles.actions}>
-        {isCritical && (
-          <button
-            type="button"
-            className={styles.recoveryBtn}
-            onClick={startRecovery}
-          >
-            Start Recovery
-          </button>
-        )}
         <button
           type="button"
           className={styles.dismissBtn}

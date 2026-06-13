@@ -9,7 +9,7 @@ export default function CourseMatrixView() {
     <div className={styles.wrap}>
       <div className="anim-scale-in">
         <ZenHeading
-          eyebrow="Scholastic · Phase 3.4"
+          eyebrow="Scholastic · Cognitive Load"
           title={`Cognitive\nLoad Map.`}
           subtitle="Rate your courses across math, coding, and memorization dimensions — the engine forecasts weekly cognitive strain from your calendar."
           size="lg"

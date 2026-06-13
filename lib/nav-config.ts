@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════
-   Zenith Navigation Taxonomy — Phase 0 · Step 0.3
+   Zenith Navigation Taxonomy
    Central source of truth for routes, categories, and
    the background-morph tint palette.
    ════════════════════════════════════════════════════════════ */
@@ -9,32 +9,46 @@ export type CategoryId = 'essentials' | 'creator' | 'vault'
 export type ViewId =
   | 'home'
   // Essentials → Scholastic
-  | 'study-shield'
-  | 'gpa-calc'
   | 'uni-hub'
-  | 'major-hub'
-  | 'course-matrix'
-  | 'character'
-  | 'grit-analytics'
-  | 'quest-matrix'
-  | 'focus-rooms'
-  | 'skill-tree'
+  | 'study-shield'
+  | 'vocab-builder'
   // Essentials → Life
   | 'calendar'
+  | 'habits'
   | 'workouts'
-  | 'burn-rate'
-  | 'slope-day'
+  | 'wellness'
+  | 'meal-planning'
+  | 'world-events'
+  | 'personal-brand'
+  | 'subscriptions'
+  | 'game-finder'
+  | 'friends-network'
+  | 'book-tracker'
+  | 'tournament-hub'
   // Creator's Choice
   | 'aquascaping'
   | 'trail-hunter'
   | 'botanist'
+  | 'games'
   // Personalized Vault
   | 'custom-links'
+  | 'stats'
+  // System
+  | 'settings'
 
 export interface NavLink {
-  id: ViewId
-  label: string
+  id:       ViewId
+  label:    string
   category: CategoryId
+  color:    string   // unique hex accent per view — drives nav hover glow + widget top-edge
+}
+
+/** Convert a 6-digit hex color to an rgba() string */
+export function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 export interface NavSubCategory {
@@ -53,38 +67,36 @@ export interface NavCategory {
 }
 
 /** Default background — matches --bg-main in globals.css */
-export const BG_HOME = '#0b0d13'
+export const BG_HOME = '#0d0f12'
 
 export const NAV_CONFIG: NavCategory[] = [
   {
     id: 'essentials',
     label: 'Zenith Essentials',
-    bgTint: '#0d1020',            // Deep Slate-Indigo
+    bgTint: '#0e1018',            // Warm Deep Slate-Indigo
     subcategories: [
       {
         id: 'scholastic',
         label: 'Scholastic',
         links: [
-          { id: 'study-shield',   label: 'Study Shield',       category: 'essentials' },
-          { id: 'gpa-calc',       label: 'GPA Calculator',     category: 'essentials' },
-          { id: 'uni-hub',        label: 'University Hub',     category: 'essentials' },
-          { id: 'major-hub',      label: 'Major Hub',          category: 'essentials' },
-          { id: 'course-matrix',  label: 'Cognitive Load Map', category: 'essentials' },
-          { id: 'character',        label: 'Character Sheet',    category: 'essentials' },
-          { id: 'grit-analytics', label: 'Grit Analytics',     category: 'essentials' },
-          { id: 'quest-matrix',  label: 'Quest Matrix',       category: 'essentials' },
-          { id: 'focus-rooms',   label: 'Focus Rooms',        category: 'essentials' },
-          { id: 'skill-tree',    label: 'Skill Tree',         category: 'essentials' },
+          { id: 'uni-hub',       label: 'University Hub',  category: 'essentials', color: '#6366f1' },
+          { id: 'study-shield',  label: 'Study Shield',    category: 'essentials', color: '#38bdf8' },
+          { id: 'vocab-builder', label: 'Vocab Builder',   category: 'essentials', color: '#06b6d4' },
         ],
       },
       {
         id: 'life',
         label: 'Life',
         links: [
-          { id: 'calendar',  label: 'Universal Calendar',  category: 'essentials' },
-          { id: 'workouts',  label: 'Workouts',            category: 'essentials' },
-          { id: 'burn-rate', label: 'BRB Burn Rate',       category: 'essentials' },
-          { id: 'slope-day', label: 'Slope Day',           category: 'essentials' },
+          { id: 'habits',         label: 'Habits',             category: 'essentials', color: '#f87171' },
+          { id: 'calendar',       label: 'Universal Calendar', category: 'essentials', color: '#60a5fa' },
+          { id: 'workouts',       label: 'Workouts',           category: 'essentials', color: '#fb923c' },
+          { id: 'meal-planning',  label: 'Meal Planning',      category: 'essentials', color: '#86efac' },
+          { id: 'wellness',       label: 'Mental Wellness',    category: 'essentials', color: '#f9a8d4' },
+          { id: 'personal-brand', label: 'Personal Brand Hub', category: 'essentials', color: '#fbbf24' },
+          { id: 'world-events',   label: 'World Events',       category: 'essentials', color: '#818cf8' },
+          { id: 'game-finder',    label: 'Game Hub',           category: 'essentials', color: '#c084fc' },
+          { id: 'book-tracker',   label: 'Reading Tracker',    category: 'essentials', color: '#f97316' },
         ],
       },
     ],
@@ -94,17 +106,19 @@ export const NAV_CONFIG: NavCategory[] = [
     label: "Creator's Choice",
     bgTint: '#090f0b',            // Deep Obsidian-Green
     links: [
-      { id: 'aquascaping',  label: 'Aquascaping Engine',  category: 'creator' },
-      { id: 'trail-hunter', label: 'Trail Hunter',        category: 'creator' },
-      { id: 'botanist',     label: 'Botanist Guide',      category: 'creator' },
+      { id: 'aquascaping',  label: 'Aquascaping Engine', category: 'creator', color: '#059669' },
+      { id: 'trail-hunter', label: 'Trail Hunter',       category: 'creator', color: '#22c55e' },
+      { id: 'botanist',     label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
+      { id: 'games',        label: 'Arcade Hub',         category: 'creator', color: '#a3e635' },
     ],
   },
   {
     id: 'vault',
     label: 'Personalized Vault',
-    bgTint: '#101010',            // Minimal Charcoal-Grey
+    bgTint: '#0f1012',            // Warm Mineral Charcoal
     links: [
-      { id: 'custom-links', label: 'Custom Link Manager', category: 'vault' },
+      { id: 'custom-links', label: 'Custom Link Manager', category: 'vault', color: '#94a3b8' },
+      { id: 'stats',        label: 'Stats & Analytics',   category: 'vault', color: '#f59e0b' },
     ],
   },
 ]
@@ -121,32 +135,20 @@ export const CATEGORY_ACCENT: Record<CategoryId, string> = {
   vault:      'var(--text-muted)',
 }
 
-/**
- * Hover background per category — Step 0.4 micro-interaction spec.
- * Low opacity so the tint is felt, not shouted.
- */
 export const CATEGORY_HOVER_BG: Record<CategoryId, string> = {
-  essentials: 'rgba(124, 149, 255, 0.12)',   // Soft Indigo-Periwinkle
-  creator:    'rgba(82,  204, 163, 0.12)',   // Organic Sage-Emerald
-  vault:      'rgba(155, 163, 196, 0.15)',   // Balanced Charcoal-Silver
+  essentials: 'rgba(124, 149, 255, 0.12)',
+  creator:    'rgba(99,  163, 137, 0.12)',   /* botanical sage green */
+  vault:      'rgba(155, 163, 196, 0.15)',
 }
 
-/**
- * Active background — slightly higher opacity than hover to act as
- * a persistent anchor against the morphed page background.
- */
 export const CATEGORY_ACTIVE_BG: Record<CategoryId, string> = {
   essentials: 'rgba(124, 149, 255, 0.18)',
-  creator:    'rgba(82,  204, 163, 0.18)',
+  creator:    'rgba(99,  163, 137, 0.18)',   /* botanical sage green */
   vault:      'rgba(155, 163, 196, 0.22)',
 }
 
-/**
- * Active left-border accent rendered as an inset box-shadow so
- * it never causes layout shift.
- */
 export const CATEGORY_BORDER: Record<CategoryId, string> = {
   essentials: 'rgba(124, 149, 255, 0.55)',
-  creator:    'rgba(82,  204, 163, 0.55)',
+  creator:    'rgba(99,  163, 137, 0.55)',   /* botanical sage green */
   vault:      'rgba(155, 163, 196, 0.60)',
 }

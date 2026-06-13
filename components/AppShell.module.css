@@ -57,6 +57,7 @@
   z-index: 1;
 }
 
+/* logoMark replaced by ZenithMark SVG component — retained as fallback */
 .logoMark {
   width: 26px;
   height: 26px;
@@ -68,8 +69,75 @@
   font-family: var(--font-display);
   font-size: 0.8125rem;
   font-weight: 800;
-  color: #0b0d13;
+  color: #0d0f12;
   flex-shrink: 0;
+}
+
+/* ── Sidebar collapse / reveal buttons ───────────────────── */
+
+.sidebarCollapseBtn {
+  margin-left: auto;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  width:          22px;
+  height:         22px;
+  border-radius:  var(--r-sm);
+  border:         1px solid transparent;
+  background:     transparent;
+  color:          var(--text-dark);
+  font-size:      0.9rem;
+  line-height:    1;
+  cursor:         pointer;
+  flex-shrink:    0;
+  transition:
+    background-color var(--dur-fast),
+    border-color     var(--dur-fast),
+    color            var(--dur-fast);
+}
+
+.sidebarCollapseBtn:hover {
+  background-color: var(--bg-hover);
+  border-color:     var(--border-subtle);
+  color:            var(--text-muted);
+}
+
+/* Panel-pull-out tab at the center-left edge when sidebar is fully collapsed */
+.sidebarRevealBtn {
+  position:        fixed;
+  top:             50%;
+  left:            0;
+  transform:       translateY(-50%);
+  z-index:         101;
+  width:           20px;
+  height:          140px;
+  border-radius:   0 var(--r-lg) var(--r-lg) 0;
+  border:          1px solid var(--border-subtle);
+  border-left:     none;
+  background:      var(--surface-card);
+  color:           var(--text-dark);
+  font-size:       0.65rem;
+  line-height:     1;
+  letter-spacing:  0.12em;
+  cursor:          pointer;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  writing-mode:    vertical-rl;
+  text-orientation: mixed;
+  box-shadow:      3px 0 12px rgba(0, 0, 0, 0.30);
+  transition:
+    color            var(--dur-fast) var(--ease-smooth),
+    background-color var(--dur-fast) var(--ease-smooth),
+    box-shadow       var(--dur-base) var(--ease-smooth),
+    transform        var(--dur-base) var(--ease-smooth);
+}
+
+.sidebarRevealBtn:hover {
+  color:            var(--text-muted);
+  background-color: rgba(124, 149, 255, 0.08);
+  transform:        translateY(-50%) translateX(4px);
+  box-shadow:       5px 0 20px rgba(0, 0, 0, 0.40), inset -1px 0 0 var(--accent-purple-dim);
 }
 
 .logoText {
@@ -118,6 +186,39 @@
   padding: 0 var(--sp-4) var(--sp-2);
   line-height: 1;
 }
+
+/* ── Collapsible category header ──────────────────────────── */
+
+.categoryLabelBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  padding: 0 var(--sp-4) var(--sp-2);
+  line-height: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color 150ms ease;
+}
+
+.categoryLabelBtn:hover { color: var(--text-muted); }
+
+.categoryLabelText { flex: 1; }
+
+.collapseChevron {
+  font-size: 0.6rem;
+  line-height: 1;
+  transition: transform 220ms var(--ease-spring-snappy);
+}
+
+.categoryContent { overflow: hidden; }
 
 /* ── Sub-category block ───────────────────────────────────── */
 
@@ -238,8 +339,8 @@
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  /* Scale in when it first appears */
-  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Scale in when it first appears (Phase 11.2 · spring snappy) */
+  animation: scaleIn 0.22s var(--ease-spring-snappy) both;
 }
 
 /* ── Footer row (Settings + Sign Out) ────────────────────── */
@@ -280,10 +381,34 @@
 }
 
 /* The area below the Topbar where views render */
+/* Sets --cat-* tokens inherited by all child view components */
 .viewport {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+
+  /* Default / Scholastic (essentials) — periwinkle */
+  --cat-accent:     var(--accent-purple);
+  --cat-accent-dim: rgba(124, 149, 255, 0.35);
+  --cat-border:     rgba(124, 149, 255, 0.14);
+  --cat-surface:    rgba(124, 149, 255, 0.05);
+  --cat-card:       #131420;
+}
+
+.viewport[data-category="creator"] {
+  --cat-accent:     var(--accent-green);
+  --cat-accent-dim: rgba(99, 163, 137, 0.35);   /* botanical sage green */
+  --cat-border:     rgba(99, 163, 137, 0.14);
+  --cat-surface:    rgba(99, 163, 137, 0.05);
+  --cat-card:       #131c18;
+}
+
+.viewport[data-category="vault"] {
+  --cat-accent:     var(--text-muted);
+  --cat-accent-dim: rgba(155, 163, 196, 0.35);
+  --cat-border:     rgba(155, 163, 196, 0.14);
+  --cat-surface:    rgba(155, 163, 196, 0.05);
+  --cat-card:       #161616;
 }
 
 /* ── Backdrop (mobile only) ───────────────────────────────── */
@@ -292,7 +417,7 @@
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(11, 13, 19, 0.72);
+  background: rgba(13, 15, 18, 0.72);   /* warm midnight canvas overlay */
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: fadeIn var(--dur-base) ease both;
@@ -319,7 +444,7 @@
     inset: 0 auto 0 0;
     height: 100%;
     transform: translateX(calc(-1 * var(--sidebar-w)));
-    transition: transform var(--dur-slow) var(--ease-expo);
+    transition: transform 500ms var(--ease-spring-cozy);
     pointer-events: none;
   }
 
@@ -345,4 +470,218 @@
   .backdrop {
     display: block;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Right-click context menu
+   ══════════════════════════════════════════════════════════════ */
+
+.ctxMenu {
+  position:      fixed;
+  z-index:       800;
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow:    0 12px 40px rgba(0,0,0,0.55), 0 0 0 1px var(--border-subtle);
+  min-width:     180px;
+  overflow:      hidden;
+  animation:     scaleIn 0.18s var(--ease-spring-snappy) both;
+}
+
+.ctxMenuItem {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  width:          100%;
+  padding:        9px 14px;
+  background:     transparent;
+  border:         none;
+  color:          var(--text-muted);
+  font-size:      0.78rem;
+  font-weight:    500;
+  cursor:         pointer;
+  text-align:     left;
+  transition:     background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.ctxMenuItem:hover {
+  background: var(--bg-hover);
+  color:      var(--text-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Hidden items manager panel
+   ══════════════════════════════════════════════════════════════ */
+
+.ctxBackdrop {
+  position: fixed;
+  inset:    0;
+  z-index:  398;
+}
+
+.hiddenMgrPanel {
+  position:      fixed;
+  bottom:        var(--sp-6);
+  left:          calc(var(--sidebar-w) + var(--sp-4));
+  z-index:       399;
+  width:         clamp(220px, 60vw, 280px);
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow:    0 16px 48px rgba(0,0,0,0.55);
+  overflow:      hidden;
+  animation:     scaleIn 0.18s var(--ease-expo) both;
+}
+
+.hiddenMgrHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--sp-3) var(--sp-4);
+  border-bottom:   1px solid var(--border-subtle);
+}
+
+.hiddenMgrTitle {
+  font-family:    var(--font-display);
+  font-size:      0.8rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.hiddenMgrClose {
+  background:  transparent;
+  border:      none;
+  color:       var(--text-dark);
+  font-size:   1.1rem;
+  cursor:      pointer;
+  line-height: 1;
+  padding:     2px 4px;
+  border-radius: var(--r-sm);
+  transition:  color var(--dur-fast) ease;
+}
+
+.hiddenMgrClose:hover { color: var(--text-primary); }
+
+.hiddenMgrRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+  padding:         8px var(--sp-4);
+  border-bottom:   1px solid var(--border-subtle);
+}
+
+.hiddenMgrLabel {
+  font-size: 0.78rem;
+  color:     var(--text-muted);
+  flex:      1;
+}
+
+.hiddenMgrShowBtn {
+  font-size:     0.7rem;
+  font-weight:   600;
+  padding:       3px 10px;
+  background:    rgba(124,149,255,0.08);
+  border:        1px solid var(--accent-purple-dim);
+  border-radius: var(--r-sm);
+  color:         var(--accent-purple);
+  cursor:        pointer;
+  transition:    background var(--dur-fast) ease;
+}
+
+.hiddenMgrShowBtn:hover { background: rgba(124,149,255,0.16); }
+
+.hiddenMgrShowAll {
+  display:      block;
+  width:        calc(100% - var(--sp-8));
+  margin:       var(--sp-3) var(--sp-4);
+  padding:      7px 0;
+  background:   transparent;
+  border:       1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:        var(--text-dark);
+  font-size:    0.72rem;
+  font-weight:  600;
+  cursor:       pointer;
+  transition:   all var(--dur-fast) ease;
+}
+
+.hiddenMgrShowAll:hover {
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Customize Sidebar panel
+   ══════════════════════════════════════════════════════════════ */
+
+.customizePanel {
+  position:       fixed;
+  bottom:         var(--sp-6);
+  left:           calc(var(--sidebar-w) + var(--sp-4));
+  z-index:        399;
+  width:          clamp(240px, 62vw, 310px);
+  max-height:     72vh;
+  display:        flex;
+  flex-direction: column;
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  box-shadow:     0 16px 48px rgba(0, 0, 0, 0.55);
+  animation:      scaleIn 0.18s var(--ease-expo) both;
+}
+
+.customizePanelScroll {
+  overflow-y:  auto;
+  flex:        1;
+  padding-bottom: var(--sp-2);
+}
+
+.customizeSectionLabel {
+  font-size:      0.42rem;
+  font-weight:    700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  padding:        var(--sp-3) var(--sp-4) var(--sp-1);
+  opacity:        0.7;
+}
+
+/* Toggle switch (track) */
+.customizeToggle {
+  position:      relative;
+  width:         36px;
+  height:        20px;
+  border-radius: 10px;
+  background:    var(--bg-active);
+  border:        1px solid var(--border-subtle);
+  cursor:        pointer;
+  flex-shrink:   0;
+  transition:    background var(--dur-fast) var(--ease-smooth),
+                 border-color var(--dur-fast) var(--ease-smooth);
+}
+
+/* Toggle thumb */
+.customizeToggle::after {
+  content:       '';
+  position:      absolute;
+  top:           3px;
+  left:          3px;
+  width:         12px;
+  height:        12px;
+  border-radius: 50%;
+  background:    var(--text-dark);
+  transition:    transform var(--dur-fast) var(--ease-smooth),
+                 background var(--dur-fast) var(--ease-smooth);
+}
+
+.customizeToggleOn {
+  background:   rgba(124, 149, 255, 0.22);
+  border-color: var(--accent-purple-dim);
+}
+
+.customizeToggleOn::after {
+  background: var(--accent-purple);
+  transform:  translateX(16px);
 }

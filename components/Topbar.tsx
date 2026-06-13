@@ -7,6 +7,7 @@ import { useCopilot }      from '@/lib/CopilotContext'
 import { fetchWeather, type WeatherData } from '@/lib/weather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
+import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
 import styles from './Topbar.module.css'
 
 const WMO_ICONS: Record<string, string> = {
@@ -108,7 +109,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
   if (wStatus === 'loading') weatherStr = '·· °'
   if (wStatus === 'done' && weather) {
     const icon = WMO_ICONS[weather.condition] ?? '·'
-    weatherStr = `${icon} ${weather.tempC}°`
+    weatherStr = `${icon} ${weather.tempF}°F`
   }
 
   /* ── User display ───────────────────────────────────────── */
@@ -134,12 +135,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
 
       {/* ── Active view breadcrumb ───────────────────────────── */}
       <div className={styles.breadcrumb} aria-label="Active view">
-        {catConfig && (
-          <>
-            <span className={styles.breadCat}>{catConfig.label}</span>
-            <span className={styles.breadSep} aria-hidden="true">·</span>
-          </>
-        )}
         <span
           className={styles.breadView}
           style={{ color: accentColor }}
@@ -198,6 +193,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
         </time>
 
         <span className={styles.divider} aria-hidden="true" />
+
+        {/* Cosmetic Points balance — only visible when authenticated */}
+        {session && (
+          <>
+            <CosmeticPointsIndicator />
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
 
         {/* User profile chip */}
         <div

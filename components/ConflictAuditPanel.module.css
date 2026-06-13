@@ -1,0 +1,382 @@
+/**
+ * Zenith OS — ConflictAuditPanel styles
+ * Phase 13 · Step 13.2 — Multi-Device Conflict Resolution Auditor
+ *
+ * Design language:
+ *   Canvas:      #14171c (mineral-dark slate, distinct from stress harness)
+ *   Canvas-up:   #1b1f27 (raised surface)
+ *   Accent:      var(--gold-*) — soft 22-carat gold family
+ *   Local node:  var(--periwinkle-*) — periwinkle (this device)
+ *   Remote node: var(--teal-*) — teal-adjacent for incoming remote
+ *   Win:         var(--accent-green)
+ *   Tie-break:   #fbbf24 (warm amber-yellow)
+ *   Font:        var(--font-mono) throughout
+ */
+
+/* ── Local design tokens ──────────────────────────────────────── */
+.panel {
+  --gold:          rgba(212, 175, 95, 1);
+  --gold-bright:   rgba(232, 200, 120, 1);
+  --gold-mid:      rgba(212, 175, 95, 0.72);
+  --gold-dim:      rgba(212, 175, 95, 0.45);
+  --gold-ghost:    rgba(212, 175, 95, 0.22);
+  --gold-hairline: rgba(212, 175, 95, 0.12);
+  --gold-surface:  rgba(212, 175, 95, 0.05);
+
+  --periwinkle:    rgba(124, 149, 255, 0.90);
+  --periwinkle-dim:rgba(124, 149, 255, 0.55);
+
+  --teal:          rgba(82, 204, 163, 0.90);
+  --teal-dim:      rgba(82, 204, 163, 0.55);
+
+  --yellow:        #fbbf24;
+  --rose:          #f87171;
+
+  --canvas:        #14171c;
+  --canvas-up:     #1b1f27;
+  --canvas-raised: #21262f;
+
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   IDENTITY STRIP
+   ════════════════════════════════════════════════════════════════ */
+
+.identityStrip {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-3);
+  padding:        var(--sp-3) var(--sp-4);
+  background:     var(--canvas);
+  border:         1px solid var(--gold-hairline);
+  border-radius:  var(--r-md);
+}
+
+.identityDot {
+  width:          8px;
+  height:         8px;
+  border-radius:  50%;
+  background:     var(--gold-mid);
+  flex-shrink:    0;
+  animation:      identityPulse 3s ease-in-out infinite;
+}
+
+@keyframes identityPulse {
+  0%, 100% { opacity: 1;    box-shadow: 0 0 0 0   rgba(212, 175, 95, 0); }
+  50%       { opacity: 0.6; box-shadow: 0 0 0 4px rgba(212, 175, 95, 0.18); }
+}
+
+.identityLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  color:          var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  flex-shrink:    0;
+}
+
+.identityUuid {
+  font-family: var(--font-mono);
+  font-size:   0.65rem;
+  color:       var(--gold-mid);
+  letter-spacing: 0.04em;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identitySeparator {
+  height:     1px;
+  flex:       1;
+  background: var(--gold-hairline);
+  margin:     0 var(--sp-1);
+}
+
+.identityNodeLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--gold-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink:    0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   METRICS ROW
+   ════════════════════════════════════════════════════════════════ */
+
+.metricsRow {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   var(--sp-3);
+}
+
+.metricBadge {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  padding:        var(--sp-3) var(--sp-4);
+  background:     var(--canvas);
+  border:         1px solid var(--gold-hairline);
+  border-radius:  var(--r-md);
+  min-height:     64px;
+  justify-content: center;
+}
+
+.metricBadgeLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--gold-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height:    1;
+}
+
+.metricBadgeValue {
+  font-family:  var(--font-mono);
+  font-size:    1.10rem;
+  font-weight:  600;
+  color:        var(--gold-mid);
+  line-height:  1.1;
+  transition:   color 280ms ease;
+}
+
+.metricBadgeValueActive {
+  color:     var(--gold);
+  animation: metricPop 300ms var(--ease-expo) both;
+}
+
+.metricBadgeSuffix {
+  font-size:  0.65rem;
+  font-weight: 400;
+  color:      var(--gold-dim);
+  margin-left: 3px;
+}
+
+@keyframes metricPop {
+  0%   { transform: scale(0.92); }
+  60%  { transform: scale(1.04); }
+  100% { transform: scale(1);    }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIMULATE BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.simBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  text-align:     center;
+  width:          100%;
+  padding:        var(--sp-3) var(--sp-5);
+  border-radius:  var(--r-sm);
+  border:         1px solid var(--gold-mid);
+  background:     var(--gold-surface);
+  color:          var(--gold);
+  cursor:         pointer;
+  transition:     background 160ms ease, border-color 160ms ease,
+                  color 160ms ease, opacity 160ms ease;
+}
+
+.simBtn:hover:not(:disabled) {
+  background:   rgba(212, 175, 95, 0.10);
+  border-color: var(--gold);
+  color:        var(--gold-bright);
+}
+
+.simBtn:active:not(:disabled) {
+  background: rgba(212, 175, 95, 0.15);
+}
+
+.simBtn:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}
+
+.simBtnRunning {
+  border-color: var(--gold-ghost);
+  color:        var(--gold-dim);
+  animation:    simPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes simPulse {
+  0%, 100% { border-color: var(--gold-ghost); }
+  50%       { border-color: var(--gold-dim);   }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AUDIT LOG
+   ════════════════════════════════════════════════════════════════ */
+
+.logWrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  animation:      logWrapReveal 240ms var(--ease-expo) both;
+}
+
+@keyframes logWrapReveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.logHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.logHeaderTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  color:          var(--gold-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
+.logClearBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.52rem;
+  color:          var(--gold-ghost);
+  background:     transparent;
+  border:         1px solid transparent;
+  border-radius:  var(--r-sm);
+  padding:        2px var(--sp-2);
+  cursor:         pointer;
+  letter-spacing: 0.04em;
+  transition:     color 140ms ease, border-color 140ms ease;
+}
+
+.logClearBtn:hover {
+  color:        var(--gold-dim);
+  border-color: var(--gold-hairline);
+}
+
+/* ── Terminal container ────────────────────────────────────────── */
+
+.auditLog {
+  background:     var(--canvas);
+  border:         1px solid var(--gold-hairline);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-3) var(--sp-4);
+  max-height:     272px;
+  overflow-y:     auto;
+  display:        flex;
+  flex-direction: column;
+  gap:            1px;
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-hairline) transparent;
+}
+
+.auditLog::-webkit-scrollbar       { width: 4px; }
+.auditLog::-webkit-scrollbar-track { background: transparent; }
+.auditLog::-webkit-scrollbar-thumb { background: var(--gold-hairline); border-radius: 2px; }
+.auditLog::-webkit-scrollbar-thumb:hover { background: var(--gold-ghost); }
+
+/* ── Log row ──────────────────────────────────────────────────── */
+
+.logLine {
+  display:     flex;
+  align-items: baseline;
+  gap:         var(--sp-2);
+  line-height: 1.55;
+  animation:   entrySlide 180ms var(--ease-expo) both;
+}
+
+@keyframes entrySlide {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+.logTs {
+  font-family: var(--font-mono);
+  font-size:   0.52rem;
+  color:       rgba(212, 175, 95, 0.16);
+  flex-shrink: 0;
+  width:       76px;
+  user-select: none;
+}
+
+.logPfx {
+  font-family: var(--font-mono);
+  font-size:   0.56rem;
+  flex-shrink: 0;
+  width:       74px;
+}
+
+.logMsg {
+  font-family: var(--font-mono);
+  font-size:   0.58rem;
+  word-break:  break-word;
+  line-height: 1.5;
+}
+
+/* ── Separator between scenario runs ─────────────────────────── */
+
+.logSeparator {
+  height:     1px;
+  background: var(--gold-hairline);
+  margin:     var(--sp-2) 0 var(--sp-1);
+  opacity:    0.6;
+}
+
+/* ── Level colour variants ────────────────────────────────────── */
+
+/* collision — bright gold (phase header) */
+.logCollision .logPfx  { color: var(--gold-bright); }
+.logCollision .logMsg  { color: var(--gold);         }
+
+/* local — periwinkle (this device's record) */
+.logLocal .logPfx  { color: var(--periwinkle-dim); }
+.logLocal .logMsg  { color: var(--periwinkle);      }
+
+/* remote — teal (incoming remote device) */
+.logRemote .logPfx  { color: var(--teal-dim); }
+.logRemote .logMsg  { color: var(--teal);      }
+
+/* lww — gold-mid (resolution decision) */
+.logLww .logPfx  { color: var(--gold-dim); }
+.logLww .logMsg  { color: var(--gold-mid); }
+
+/* tiebreak — warm yellow (UUID comparison) */
+.logTiebreak .logPfx  { color: var(--yellow); }
+.logTiebreak .logMsg  { color: var(--yellow); }
+
+/* certified — green (integrity confirmed) */
+.logCertified .logPfx  { color: var(--accent-green); }
+.logCertified .logMsg  { color: var(--accent-green); }
+
+/* running cursor */
+.logCursorRow { padding-top: 2px; }
+.cursor {
+  display:     inline-block;
+  font-family: var(--font-mono);
+  font-size:   0.62rem;
+  color:       var(--gold-dim);
+  animation:   cursorBlink 900ms step-end infinite;
+  user-select: none;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 520px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+  .identityStrip {
+    flex-wrap: wrap;
+  }
+}

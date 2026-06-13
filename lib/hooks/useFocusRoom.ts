@@ -59,7 +59,7 @@ export function useFocusRoom() {
   const machine      = usePomodoroStateMachine()
 
   const userName      = profile?.userName ?? session?.userHandle ?? 'Scholar'
-  const avatarAssetId = (profile?.equippedItems as Record<string, string> | undefined)?.head ?? ''
+  const avatarAssetId = ''
 
   /* ── Room state ───────────────────────────────────────────── */
   const [phase,    setPhase]   = useState<LobbyPhase>('idle')

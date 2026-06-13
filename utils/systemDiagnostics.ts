@@ -61,7 +61,6 @@ const STORAGE_PROBES: Array<{ name: string; fn: () => Promise<number> }> = [
   { name: 'userProfile',      fn: () => db.userProfile.count()      },
   { name: 'outboxMutations',  fn: () => db.outboxMutations.count()  },
   { name: 'mentalHealthLogs', fn: () => db.mentalHealthLogs.count() },
-  { name: 'rpgEventLog',      fn: () => db.rpgEventLog.count()      },
 ]
 
 async function checkStorage(): Promise<{ ok: boolean; msg: string }> {
@@ -76,7 +75,7 @@ async function checkStorage(): Promise<{ ok: boolean; msg: string }> {
   if (failing.length > 0) {
     return { ok: false, msg: `Unresponsive: ${failing.join(', ')}` }
   }
-  return { ok: true, msg: `${STORAGE_PROBES.length}/7 tables verified` }
+  return { ok: true, msg: `${STORAGE_PROBES.length} tables verified` }
 }
 
 /* ── Cloud sync check ─────────────────────────────────────────── */
@@ -125,16 +124,9 @@ async function checkStateEngine(): Promise<{ ok: boolean; msg: string; skip?: bo
     if (!profile) {
       return { ok: false, skip: true, msg: 'Profile seeding in progress' }
     }
-    const invalid = (['currentLevel', 'healthPoints'] as const).filter(
-      k => typeof profile[k] !== 'number' || !isFinite(profile[k]),
-    )
-    if (invalid.length > 0) {
-      return { ok: false, msg: `Invalid scalars: ${invalid.join(', ')}` }
-    }
-    const gold = typeof profile.goldPoints === 'number' ? profile.goldPoints : 0
     return {
       ok: true,
-      msg: `Lv.${profile.currentLevel} · HP ${profile.healthPoints} · Gold ${gold}`,
+      msg: `Profile verified: ${profile.userName}`,
     }
   } catch {
     return { ok: false, msg: 'IDB read error — possible schema mismatch' }

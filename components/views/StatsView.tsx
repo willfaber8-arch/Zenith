@@ -1,0 +1,235 @@
+'use client'
+
+import { useState }     from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db }           from '@/lib/db'
+import { gamesDb }      from '@/lib/gamesDb'
+import { calcGpa }      from '@/utils/gpaMath'
+import ZenHeading       from '@/components/ui/ZenHeading'
+import EcosystemWrapped from '@/components/EcosystemWrapped'
+import styles from './StatsView.module.css'
+
+/* ─────────────────────────────────────────────────────────────── */
+
+function StatChip({
+  label, value, accent,
+}: { label: string; value: string | number; accent?: boolean }) {
+  return (
+    <div className={`${styles.statChip} ${accent ? styles.statChipAccent : ''}`}>
+      <span className={styles.statValue}>{value}</span>
+      <span className={styles.statLabel}>{label}</span>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.card}>
+      <h2 className={styles.cardTitle}>{title}</h2>
+      {children}
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ════════════════════════════════════════════════════════════════ */
+
+export default function StatsView() {
+  const [showWrapped, setShowWrapped] = useState(false)
+
+  /* ── Live IDB data ────────────────────────────────────────── */
+  const habits     = useLiveQuery(() => db.habits.toArray(),     []) ?? []
+  const completions = useLiveQuery(() => db.habitCompletions.toArray(), []) ?? []
+  const sessions   = useLiveQuery(() => db.pomodoroSessions.toArray(), []) ?? []
+  const events     = useLiveQuery(() => db.calendarEvents.toArray(), []) ?? []
+  const semesters  = useLiveQuery(() => db.gpaSemesters.toArray(),  []) ?? []
+  const courses    = useLiveQuery(() => db.gpaCourses.toArray(),    []) ?? []
+  const resources  = useLiveQuery(() => gamesDb?.resource_inventory.toArray(), []) ?? []
+  const vocabCards = useLiveQuery(() => db.vocab_cards.toArray(),   []) ?? []
+
+  /* ── Computed habit stats ─────────────────────────────────── */
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayCompletions = completions.filter(c => c.date === todayISO)
+  const habitsCompletedToday = habits.filter(h =>
+    todayCompletions.find(c => c.habitId === h.id && c.count >= (h.targetCompletions ?? 1)),
+  ).length
+  const topStreak = habits.reduce((max, h) => Math.max(max, h.streakCount ?? 0), 0)
+
+  /* ── Computed study stats ─────────────────────────────────── */
+  const weekAgo     = Date.now() - 7 * 86_400_000
+  const weekSessions = sessions.filter(s => s.completedAt >= weekAgo && s.sessionType === 'work')
+  const totalFocusMinutes = weekSessions.reduce((sum, s) => sum + (s.durationMinutes ?? 25), 0)
+  const focusHours  = (totalFocusMinutes / 60).toFixed(1)
+
+  /* ── Computed GPA ────────────────────────────────────────────*/
+  const allCourses = courses.filter(c => {
+    const sem = semesters.find(s => s.id === c.semesterId)
+    return sem && !sem.isProjected
+  })
+  const gpaResult  = allCourses.length > 0 ? calcGpa(allCourses) : null
+
+  /* ── Computed economy stats ──────────────────────────────── */
+  const cpBalance = resources.find(r => r.id === 'cosmetic_points')?.balance ?? 0
+  const totalHarvested = resources
+    .filter(r => ['raw_data_shards', 'organic_spores', 'cosmic_dust'].includes(r.id))
+    .reduce((sum, r) => sum + (r.totalEarnedLifetime ?? 0), 0)
+
+  /* ── Vocab stats ─────────────────────────────────────────── */
+  const vocabMastered = vocabCards.filter(c => c.reviewIntervalDays >= 21).length
+  const vocabDue      = vocabCards.filter(c => c.nextReviewTimestamp <= Date.now()).length
+
+  /* ── Upcoming events ─────────────────────────────────────── */
+  const now     = Date.now()
+  const nextWeek = now + 7 * 86_400_000
+  const upcomingEvents = events
+    .filter(e => e.startMs >= now && e.startMs <= nextWeek)
+    .sort((a, b) => a.startMs - b.startMs)
+    .slice(0, 5)
+
+  function fmtEventDate(ms: number): string {
+    return new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
+  return (
+    <div className={styles.root}>
+      <ZenHeading
+        eyebrow="Personalized Vault · Analytics"
+        title="Stats &amp; Analytics"
+        subtitle="Your Zenith workspace at a glance — habits, focus, GPA, and economy."
+        size="md"
+      />
+
+      {/* ── Annual review trigger ─────────────────────────────── */}
+      <button
+        type="button"
+        className={styles.wrappedBtn}
+        onClick={() => setShowWrapped(true)}
+        aria-label="Open annual Ecosystem Wrapped review"
+      >
+        ◈ Annual Ecosystem Review
+      </button>
+
+      {/* ── Overview row ──────────────────────────────────────── */}
+      <div className={styles.overviewRow}>
+        <StatChip label="Habits Active"       value={habits.length}              />
+        <StatChip label="Done Today"          value={`${habitsCompletedToday}/${habits.length}`} accent />
+        <StatChip label="Best Streak"         value={`${topStreak}d`}            />
+        <StatChip label="Focus This Week"     value={`${focusHours}h`}           />
+        <StatChip label="Sessions (7d)"       value={weekSessions.length}        />
+        {gpaResult && (
+          <StatChip label="Cumulative GPA"    value={gpaResult.gpa.toFixed(2)}   accent />
+        )}
+        <StatChip label="✦ Credits"           value={cpBalance.toLocaleString()} />
+        <StatChip label="Resources Harvested" value={totalHarvested.toLocaleString()} />
+        {vocabMastered > 0 && (
+          <StatChip label="Vocab Mastered" value={vocabMastered} accent />
+        )}
+        {vocabDue > 0 && (
+          <StatChip label="Vocab Due Today" value={vocabDue} />
+        )}
+      </div>
+
+      <div className={styles.grid}>
+
+        {/* ── Habit breakdown ───────────────────────────────────── */}
+        <SectionCard title="Habits">
+          {habits.length === 0 ? (
+            <p className={styles.empty}>No habits tracked yet.</p>
+          ) : (
+            <div className={styles.habitList}>
+              {[...habits]
+                .sort((a, b) => (b.streakCount ?? 0) - (a.streakCount ?? 0))
+                .slice(0, 8)
+                .map(h => {
+                  const tc  = todayCompletions.find(c => c.habitId === h.id)
+                  const pct = Math.min(100, Math.round(((tc?.count ?? 0) / (h.targetCompletions ?? 1)) * 100))
+                  return (
+                    <div key={h.id} className={styles.habitRow}>
+                      <div
+                        className={styles.habitDot}
+                        style={{ background: h.color ?? 'var(--accent-purple)' }}
+                      />
+                      <span className={styles.habitName}>{h.name}</span>
+                      <div className={styles.habitBar}>
+                        <div
+                          className={styles.habitBarFill}
+                          style={{
+                            width: `${pct}%`,
+                            background: h.color ?? 'var(--accent-purple)',
+                          }}
+                        />
+                      </div>
+                      <span className={styles.habitPct}>{pct}%</span>
+                      <span className={styles.habitStreak}>🔥 {h.streakCount ?? 0}d</span>
+                    </div>
+                  )
+                })}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* ── Study analytics ───────────────────────────────────── */}
+        <SectionCard title="Study Sessions">
+          <div className={styles.studyStats}>
+            <div className={styles.studyStat}>
+              <span className={styles.studyStatNum}>{weekSessions.length}</span>
+              <span className={styles.studyStatLabel}>Sessions this week</span>
+            </div>
+            <div className={styles.studyStat}>
+              <span className={styles.studyStatNum}>{focusHours}h</span>
+              <span className={styles.studyStatLabel}>Focus time (7d)</span>
+            </div>
+            <div className={styles.studyStat}>
+              <span className={styles.studyStatNum}>
+                {weekSessions.length > 0
+                  ? Math.round(totalFocusMinutes / weekSessions.length)
+                  : 0}m
+              </span>
+              <span className={styles.studyStatLabel}>Avg session length</span>
+            </div>
+            <div className={styles.studyStat}>
+              <span className={styles.studyStatNum}>{sessions.length}</span>
+              <span className={styles.studyStatLabel}>Total sessions ever</span>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* ── Upcoming events ───────────────────────────────────── */}
+        <SectionCard title="Upcoming Events (7 days)">
+          {upcomingEvents.length === 0 ? (
+            <p className={styles.empty}>No events in the next 7 days.</p>
+          ) : (
+            <div className={styles.eventList}>
+              {upcomingEvents.map(ev => (
+                <div key={ev.id} className={styles.eventRow}>
+                  <span className={styles.eventDate}>{fmtEventDate(ev.startMs)}</span>
+                  <span className={styles.eventTitle}>{ev.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* ── Arcade economy ────────────────────────────────────── */}
+        <SectionCard title="Arcade Economy">
+          <div className={styles.studyStats}>
+            {resources.map(r => (
+              <div key={r.id} className={styles.studyStat}>
+                <span className={styles.studyStatNum}>{r.balance.toLocaleString()}</span>
+                <span className={styles.studyStatLabel}>{r.name}</span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+      </div>
+
+      {showWrapped && (
+        <EcosystemWrapped onClose={() => setShowWrapped(false)} />
+      )}
+    </div>
+  )
+}

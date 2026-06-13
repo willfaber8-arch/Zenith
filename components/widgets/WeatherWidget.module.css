@@ -1,0 +1,213 @@
+/* ════════════════════════════════════════════════════════════
+   WeatherWidget — Full redesign with 7-day forecast
+   ════════════════════════════════════════════════════════════ */
+
+.widget {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-5);
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-4);
+}
+
+.clickable {
+  cursor:     pointer;
+  transition: border-color var(--dur-base) var(--ease-smooth),
+              background   var(--dur-base) var(--ease-smooth);
+}
+
+.clickable:hover {
+  border-color: rgba(82, 204, 163, 0.30);
+  background:   rgba(82, 204, 163, 0.03);
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+.widgetHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+}
+
+.eyebrow {
+  font-size:      0.65rem;
+  font-weight:    700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--accent-green);
+}
+
+.location {
+  font-size:  0.72rem;
+  font-weight: 500;
+  color:      var(--text-muted);
+}
+
+/* ── Loading ────────────────────────────────────────────── */
+
+.loadingBody {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  padding:     var(--sp-4) 0;
+}
+
+.spinnerSmall {
+  width:         18px;
+  height:        18px;
+  border:        2px solid rgba(82, 204, 163, 0.15);
+  border-top:    2px solid var(--accent-green);
+  border-radius: 50%;
+  animation:     spin 0.7s linear infinite;
+  flex-shrink:   0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loadingText {
+  font-size: 0.78rem;
+  color:     var(--text-dark);
+}
+
+/* ── Error ──────────────────────────────────────────────── */
+
+.errorBody {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-2);
+  padding:        var(--sp-4) 0;
+  text-align:     center;
+}
+
+.errorIcon {
+  font-size: 1.4rem;
+  color:     var(--text-dark);
+}
+
+.errorText {
+  font-size:  0.78rem;
+  color:      var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+/* ── Current conditions row ─────────────────────────────── */
+
+.currentRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-5);
+}
+
+.weatherIcon {
+  font-size:   3.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tempBlock {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+.tempMain {
+  font-family:    var(--font-display);
+  font-size:      2.8rem;
+  font-weight:    700;
+  line-height:    1;
+  color:          var(--text-primary);
+  letter-spacing: -0.03em;
+}
+
+.deg {
+  font-size:    1.6rem;
+  font-weight:  400;
+  color:        var(--text-muted);
+  margin-left:  1px;
+}
+
+.conditionLabel {
+  font-size:  0.82rem;
+  color:      var(--text-muted);
+  margin-top: 2px;
+}
+
+.hiLo {
+  font-size:   0.78rem;
+  color:       var(--text-dark);
+  margin-top:  2px;
+  letter-spacing: 0.02em;
+}
+
+.hiLabel {
+  color: #f59e0b;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.loLabel {
+  color:        var(--accent-purple);
+  font-weight:  600;
+  margin-right: 2px;
+  margin-left:  6px;
+}
+
+/* ── 7-day forecast strip ───────────────────────────────── */
+
+.forecastStrip {
+  display:        flex;
+  gap:            2px;
+  border-top:     1px solid var(--border-subtle);
+  padding-top:    var(--sp-3);
+  overflow-x:     auto;
+  scrollbar-width: none;
+}
+
+.forecastStrip::-webkit-scrollbar { display: none; }
+
+.forecastDay {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            3px;
+  flex:           1;
+  min-width:      42px;
+  padding:        var(--sp-2) 2px;
+  border-radius:  var(--r-md);
+  transition:     background var(--dur-fast) ease;
+}
+
+.forecastDay:hover {
+  background: var(--bg-hover);
+}
+
+.forecastDayLabel {
+  font-size:      0.6rem;
+  font-weight:    700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  white-space:    nowrap;
+}
+
+.forecastIcon {
+  font-size:   1.1rem;
+  line-height: 1;
+}
+
+.forecastHigh {
+  font-size:   0.72rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+}
+
+.forecastLow {
+  font-size: 0.68rem;
+  color:     var(--text-dark);
+}

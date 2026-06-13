@@ -280,3 +280,157 @@
   border-color: var(--accent-purple-dim);
   background:   rgba(124, 149, 255, 0.07);
 }
+
+/* ── Not-configured banner ───────────────────────────────────── */
+
+.notConfigured {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           var(--sp-3);
+  padding:       var(--sp-4);
+  background:    rgba(255, 179, 71, 0.06);
+  border:        1px solid rgba(255, 179, 71, 0.22);
+  border-radius: var(--r-md);
+  margin-bottom: var(--sp-2);
+}
+
+.notConfiguredIcon {
+  font-size:  1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #ffb347;
+}
+
+.notConfiguredTitle {
+  font-size:   0.8rem;
+  font-weight: 600;
+  color:       var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.notConfiguredBody {
+  font-size:   0.75rem;
+  color:       var(--text-muted);
+  line-height: 1.55;
+}
+
+.code {
+  font-family:   var(--font-mono);
+  font-size:     0.7rem;
+  background:    rgba(124, 149, 255, 0.08);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding:       1px 5px;
+  color:         var(--accent-purple);
+}
+
+.configLink {
+  color:           var(--accent-purple);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Input mode toggle ───────────────────────────────────────── */
+
+.modeToggleRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+}
+
+.modeLabel {
+  font-size:      0.72rem;
+  font-weight:    600;
+  letter-spacing: 0.05em;
+  color:          var(--text-muted);
+  text-transform: uppercase;
+  flex-shrink:    0;
+}
+
+.modeToggle {
+  display:       flex;
+  background:    rgba(11, 13, 19, 0.5);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  overflow:      hidden;
+}
+
+.modeBtn {
+  padding:        6px 14px;
+  background:     transparent;
+  border:         none;
+  color:          var(--text-dark);
+  font-family:    var(--font-body);
+  font-size:      0.75rem;
+  font-weight:    500;
+  cursor:         pointer;
+  transition:     background var(--dur-fast) ease, color var(--dur-fast) ease;
+  white-space:    nowrap;
+}
+
+.modeBtn:hover {
+  color: var(--text-muted);
+}
+
+.modeBtnActive {
+  background: rgba(124, 149, 255, 0.14);
+  color:      var(--accent-purple);
+}
+
+/* ── Generate options ────────────────────────────────────────── */
+
+.generateRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+  flex-wrap:   wrap;
+}
+
+.generateLabel {
+  font-size:      0.72rem;
+  font-weight:    600;
+  letter-spacing: 0.05em;
+  color:          var(--text-muted);
+  text-transform: uppercase;
+  flex-shrink:    0;
+}
+
+.generateOptions {
+  display: flex;
+  gap:     var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.genOption {
+  display:       flex;
+  align-items:   center;
+  gap:           6px;
+  padding:       5px 12px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-dark);
+  font-size:     0.75rem;
+  font-weight:   500;
+  cursor:        pointer;
+  transition:    all var(--dur-fast) ease;
+  user-select:   none;
+}
+
+.genOption:hover {
+  border-color: var(--accent-purple-dim);
+  color:        var(--text-muted);
+}
+
+.genOptionOn {
+  background:   rgba(124, 149, 255, 0.10);
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.genCheckbox {
+  width:  13px;
+  height: 13px;
+  accent-color: var(--accent-purple);
+  cursor: pointer;
+}

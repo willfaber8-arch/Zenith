@@ -16,7 +16,7 @@ const TrailMap = dynamic(() => import('./TrailMap'), {
 
 /* ── Constants ────────────────────────────────────────────────────── */
 
-const MAX_DIST = 25
+const MAX_DIST = 50
 
 const FEATURE_LABELS: Record<TrailFeature, string> = {
   waterfall:     'Waterfall',
@@ -92,7 +92,7 @@ export default function TrailHunter() {
             <input
               className={styles.searchInput}
               type="text"
-              placeholder="Trail name or region…"
+              placeholder="State, region, or trail name…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -114,7 +114,7 @@ export default function TrailHunter() {
               style={{ '--fill-pct': fillPct } as React.CSSProperties}
             />
             <div className={styles.sliderScale}>
-              <span>1 mi</span><span>10 mi</span><span>20+ mi</span>
+              <span>1 mi</span><span>25 mi</span><span>50+ mi</span>
             </div>
           </div>
 

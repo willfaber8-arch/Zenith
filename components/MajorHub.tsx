@@ -15,6 +15,7 @@
  * ════════════════════════════════════════════════════════════════
  */
 
+import { useState } from 'react'
 import type { MajorConfig, MajorEntry } from '@/config/majors'
 import styles from './MajorHub.module.css'
 
@@ -25,9 +26,16 @@ interface MajorHubProps {
 }
 
 export default function MajorHub({ config, onReset }: MajorHubProps) {
+  const [activeCategory, setActiveCategory] = useState<string>(
+    config.categories[0]?.id ?? '',
+  )
+
   const totalLinks = config.categories.reduce(
     (acc, cat) => acc + cat.links.length, 0,
   )
+
+  const visibleCat = config.categories.find(c => c.id === activeCategory)
+    ?? config.categories[0]
 
   return (
     <div className={`${styles.wrap} anim-scale-in`}>
@@ -56,51 +64,57 @@ export default function MajorHub({ config, onReset }: MajorHubProps) {
 
       <div className={styles.divider} aria-hidden="true" />
 
-      {/* ── Category sections ─────────────────────────────── */}
-      <div className={styles.categories}>
-        {config.categories.map((cat, catIdx) => (
-          <section
+      {/* ── Category tab bar ──────────────────────────────── */}
+      <div className={styles.categoryTabBar} role="tablist" aria-label="Major resource categories">
+        {config.categories.map(cat => (
+          <button
             key={cat.id}
-            className={`${styles.category} anim-slide-in`}
-            style={{ animationDelay: `${catIdx * 80}ms` }}
-            aria-labelledby={`major-cat-${cat.id}`}
+            role="tab"
+            aria-selected={activeCategory === cat.id}
+            className={`${styles.categoryTab} ${activeCategory === cat.id ? styles.categoryTabActive : ''}`}
+            onClick={() => setActiveCategory(cat.id)}
           >
-
-            <p id={`major-cat-${cat.id}`} className={styles.categoryLabel}>
-              {cat.label}
-            </p>
-
-            <div className={styles.grid} role="list">
-              {cat.links.map(link => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.card}
-                  role="listitem"
-                  aria-label={`${link.title} — opens in a new tab`}
-                >
-                  {link.tag && (
-                    <span className={styles.tag} aria-hidden="true">
-                      {link.tag}
-                    </span>
-                  )}
-
-                  <h3 className={styles.cardTitle}>{link.title}</h3>
-
-                  <p className={styles.cardDesc}>{link.description}</p>
-
-                  <span className={styles.linkAction} aria-hidden="true">
-                    Open resource →
-                  </span>
-                </a>
-              ))}
-            </div>
-
-          </section>
+            {cat.label}
+          </button>
         ))}
       </div>
+
+      {/* ── Active category links ──────────────────────────── */}
+      {visibleCat && (
+        <section
+          key={visibleCat.id}
+          className={`${styles.category} anim-fade-in`}
+          aria-labelledby={`major-cat-${visibleCat.id}`}
+        >
+          <div className={styles.grid} role="list">
+            {visibleCat.links.map(link => (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.card}
+                role="listitem"
+                aria-label={`${link.title} — opens in a new tab`}
+              >
+                {link.tag && (
+                  <span className={styles.tag} aria-hidden="true">
+                    {link.tag}
+                  </span>
+                )}
+
+                <h3 className={styles.cardTitle}>{link.title}</h3>
+
+                <p className={styles.cardDesc}>{link.description}</p>
+
+                <span className={styles.linkAction} aria-hidden="true">
+                  Open resource →
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
     </div>
   )

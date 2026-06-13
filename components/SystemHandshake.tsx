@@ -49,13 +49,13 @@ export default function SystemHandshake({ onUnlock }: Props) {
     setTimeout(() => onUnlockRef.current(), 500)
   }, [])
 
-  // Boot header phase: 900ms then begin scanning
+  // Boot header phase: 300ms then begin scanning
   useEffect(() => {
-    const t = setTimeout(() => setPhase('scanning'), 900)
+    const t = setTimeout(() => setPhase('scanning'), 300)
     return () => clearTimeout(t)
   }, [])
 
-  // Diagnostics phase
+  // Diagnostics phase — runs checks and advances to success/fatal
   useEffect(() => {
     if (phase !== 'scanning') return
     let cancelled = false
@@ -74,17 +74,19 @@ export default function SystemHandshake({ onUnlock }: Props) {
 
       if (cancelled) return
       setReport(result)
-
-      if (result.hasFatal) {
-        setPhase('fatal')
-      } else {
-        setPhase('success')
-        setTimeout(() => { if (!cancelled) unlock() }, 1500)
-      }
+      setPhase(result.hasFatal ? 'fatal' : 'success')
     }
 
     run()
     return () => { cancelled = true }
+  }, [phase])
+
+  // Unlock timer — fires 600ms after diagnostics pass; separate effect
+  // so the scanning cleanup doesn't cancel this timer
+  useEffect(() => {
+    if (phase !== 'success') return
+    const t = setTimeout(() => unlock(), 600)
+    return () => clearTimeout(t)
   }, [phase, unlock])
 
   const passCount  = checks.filter(c => c.status === 'passed').length

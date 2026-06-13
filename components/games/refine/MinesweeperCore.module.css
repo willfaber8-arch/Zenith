@@ -1,0 +1,468 @@
+/* ════════════════════════════════════════════════════════════════
+   MinesweeperCore — Steps 3.1 + 3.2
+   Layout contract:
+     .gameRoot        — full-height flex column (fills game container)
+     .statusBar       — fixed stat strip with mine/flag counters
+     .boardContainer  — flex centering; constrains the square board
+     .board           — 10×10 CSS grid; always square via aspect-ratio
+     .cell + states   — cell variants driven by phase-machine state
+
+   Step 3.2 additions:
+     .cellFlagged      — accent-purple border + flagPlant spring animation
+     .cellFlagEligible — purple hover-border override when flag is legal
+     .statValueCapReached — purple tint on flag counter at capacity
+     @keyframes flagPlant — cubic-bezier(0.34,1.56,0.64,1) spring snap
+
+   Sizing strategy for .board:
+     height: 100%  +  aspect-ratio: 1  =  always square, always fits the
+     16:9 wrapper canvas because height is the constraining dimension.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════
+   ROOT
+   ════════════════════════════════════════════════════════════════ */
+
+.gameRoot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  gap: var(--sp-2);
+  overflow: hidden;
+  background: var(--bg-main);
+  /* Step 3.3: positioning context for the refine overlay */
+  position: relative;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STATUS BAR
+   ════════════════════════════════════════════════════════════════ */
+
+.statusBar {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
+  background: var(--surface-card);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+}
+
+.statGlyph {
+  font-size: 0.60rem;
+  color: var(--text-dark);
+  line-height: 1;
+}
+
+.statValue {
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  transition: color 200ms ease;
+}
+
+/* Flag supply exhausted — purple tint signals no more flags available */
+.statValueCapReached {
+  color: var(--accent-purple);
+}
+
+.statLabel {
+  font-size: 0.50rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* Phase tag */
+.phaseTag {
+  font-family: var(--font-mono);
+  font-size: 0.525rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-accent);
+  padding: 2px var(--sp-3);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--cat-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 25%, transparent);
+  transition: color 220ms ease, background 220ms ease, border-color 220ms ease;
+}
+
+.phaseTagWon {
+  color: var(--accent-green);
+  background: color-mix(in srgb, var(--accent-green) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 28%, transparent);
+}
+
+.phaseTagLost {
+  color: #f87171;
+  background: color-mix(in srgb, #f87171 10%, transparent);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BOARD LAYOUT
+   ════════════════════════════════════════════════════════════════ */
+
+.boardContainer {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board {
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  gap: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CELL — BASE
+   ════════════════════════════════════════════════════════════════ */
+
+.cell {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+  /* Spec: transition-all duration-150 ease-out */
+  transition: all 150ms ease-out;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CELL STATE VARIANTS
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Unrevealed (hidden, no flag) ────────────────────────────── */
+
+.cellHidden {
+  background: var(--surface-card);
+}
+
+.cellHidden:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--cat-accent) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--cat-accent) 32%, transparent);
+  transform: scale(1.10);
+  z-index: 1;
+}
+
+.cellHidden:active:not(:disabled) {
+  transform: scale(0.92);
+  background: color-mix(in srgb, var(--cat-accent) 22%, var(--surface-card));
+}
+
+/* ── Flag-eligible hover override (Step 3.2) ─────────────────────
+   Applied when a flag placement is a legal action on this cell.
+   Two-class compound selector (.cellHidden.cellFlagEligible) has higher
+   specificity than the single-class .cellHidden rule above, so only the
+   border colour is overridden — the scale transform is inherited. ── */
+
+.cellHidden.cellFlagEligible:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+/* ── Flagged anchor state (Step 3.2) ─────────────────────────────
+   Spec: background stays bg-surface-card; icon uses --accent-purple.
+   Animation: spring snap — cubic-bezier(0.34, 1.56, 0.64, 1).
+   The keyframe fires once when the class is added (React never
+   removes/re-adds the DOM node for the same key, so it replays only
+   when the user unflagged and re-flags the same cell). ─────────── */
+
+.cellFlagged {
+  background:   var(--surface-card);
+  border-color: color-mix(in srgb, var(--accent-purple) 28%, transparent);
+  animation:    flagPlant 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.cellFlagged:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--accent-purple) 8%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  transform: scale(1.06);
+}
+
+@keyframes flagPlant {
+  0%   { transform: scale(0.55); opacity: 0.3; }
+  55%  { transform: scale(1.18);               }
+  80%  { transform: scale(0.95);               }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+
+/* ── Revealed safe (blank or numbered) ──────────────────────── */
+
+.cellRevealed {
+  background:   var(--bg-main);
+  border-color: color-mix(in srgb, var(--text-muted) 5%, transparent);
+  cursor: default;
+}
+
+/* Revealed cells are disabled (no longer clickable) — override the
+   browser's default disabled opacity so they still look crisp. */
+.cellRevealed:disabled {
+  opacity: 1;
+}
+
+/* ── Revealed mine ───────────────────────────────────────────── */
+
+.cellMine {
+  background:   color-mix(in srgb, var(--accent-purple) 10%, var(--bg-main));
+  border-color: color-mix(in srgb, var(--accent-purple) 22%, transparent);
+  cursor: default;
+}
+
+.cellMine:disabled {
+  opacity: 1;
+}
+
+/* ── Exploded mine — the cell the player clicked ─────────────── */
+
+.cellExploded {
+  background:   color-mix(in srgb, #f87171 22%, var(--bg-main));
+  border-color: rgba(248, 113, 113, 0.45);
+  animation:    explodeFlash 550ms var(--ease-expo) both;
+}
+
+@keyframes explodeFlash {
+  0%   { transform: scale(1.22); opacity: 0.55; }
+  45%  { transform: scale(0.90); opacity: 1;    }
+  100% { transform: scale(1);    opacity: 1;    }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   HINT / FEEDBACK LINE
+   ════════════════════════════════════════════════════════════════ */
+
+.hintLine {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.525rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  text-align: center;
+  margin: 0;
+  min-height: 1em;  /* prevent layout shift when content changes */
+  transition: color 200ms ease;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP 3.3 — REFINE RESULT OVERLAY
+   ────────────────────────────────────────────────────────────────
+   Absolutely positioned over .gameRoot (which is position:relative).
+   z-index 15: above the board cells, below the wrapper's result
+   overlay (z:20 in UniversalGameWrapper.module.css).
+
+   The overlay slides in on mount via overlaySlideIn — matching the
+   spec's transition-transform duration-500 cubic-bezier(0.16,1,0.3,1).
+
+   Victory path  → header/button use --accent-green  tinting.
+   Detonated path → header/button use --accent-purple tinting.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+
+.refineOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  /* Spec: transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] */
+  animation: overlaySlideIn 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes overlaySlideIn {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Modal card ──────────────────────────────────────────────── */
+
+.refineCard {
+  width: 100%;
+  max-width: 300px;
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 15%, transparent);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  animation: cardRise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cardRise {
+  from { transform: translateY(10px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+/*
+ * Spec: "bold fixed-width header string using Plus Jakarta Sans
+ *        font-mono text-base font-bold uppercase tracking-widest"
+ * Plus Jakarta Sans is var(--font-body); monospace visual treatment
+ * via font-weight 800 + wide tracking + uppercase.
+ */
+.refineHeader {
+  font-family: var(--font-body);
+  font-size: 0.875rem;       /* text-base */
+  font-weight: 800;          /* font-bold */
+  letter-spacing: 0.16em;   /* tracking-widest */
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Spec: victory → text-[var(--accent-green)] */
+.refineHeaderWon  { color: var(--accent-green); }
+/* Spec: detonated → text-[var(--accent-purple)] */
+.refineHeaderLost { color: var(--accent-purple); }
+
+/* ── Data matrix ─────────────────────────────────────────────── */
+
+.refineStats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.refineRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-height: 18px;
+}
+
+.refineLabel {
+  font-family: var(--font-mono);
+  font-size: 0.525rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  flex-shrink: 0;
+}
+
+.refineValue {
+  font-family: var(--font-mono);
+  font-size: 0.675rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Spec: credited resources glow in --accent-green */
+.refineValueGreen  { color: var(--accent-green); }
+/* Spec: overflow / penalties tint in --accent-purple */
+.refineValuePurple { color: var(--accent-purple); }
+
+/* Hairline separator between score rows and resource row */
+.refineDivider {
+  height: 1px;
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  margin: var(--sp-1) 0;
+}
+
+/* ── Storage cap advisory ────────────────────────────────────── */
+
+.refineCapNotice {
+  font-family: var(--font-body);
+  font-size: 0.675rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent-purple) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 16%, transparent);
+}
+
+/* ── Collect / Dismiss button ────────────────────────────────── */
+
+.collectBtn {
+  width: 100%;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background   250ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity      200ms ease;
+}
+
+.collectBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Victory collect — accent-green */
+.collectBtnWon {
+  border: 1px solid color-mix(in srgb, var(--accent-green) 35%, transparent);
+  background:   color-mix(in srgb, var(--accent-green) 10%, transparent);
+  color: var(--accent-green);
+}
+
+.collectBtnWon:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--accent-green) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 55%, transparent);
+}
+
+/* Detonation dismiss — accent-purple */
+.collectBtnLost {
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background:   color-mix(in srgb, var(--accent-purple) 8%, transparent);
+  color: var(--accent-purple);
+}
+
+.collectBtnLost:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--accent-purple) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 48%, transparent);
+}

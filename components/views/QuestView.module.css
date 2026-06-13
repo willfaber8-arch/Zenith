@@ -1,8 +1,0 @@
-/* views/QuestView.module.css */
-
-.wrap {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-6);
-  padding-bottom: var(--sp-8);
-}

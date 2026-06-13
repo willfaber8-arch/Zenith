@@ -24,6 +24,7 @@ import {
 } from 'react'
 import { useCopilot }  from '@/lib/CopilotContext'
 import { useAuth }     from '@/lib/AuthContext'
+import { useToast }    from '@/lib/ToastContext'
 import {
   compileUserContextPayload,
   type UserContextPayload,
@@ -229,6 +230,7 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
 export default function AiCopilotSidebar() {
   const { isOpen, close }   = useCopilot()
   const { session }         = useAuth()
+  const { toast }           = useToast()
 
   /* ── State ─────────────────────────────────────────────────── */
   const [messages,       setMessages]       = useState<ChatMsg[]>([])
@@ -236,11 +238,15 @@ export default function AiCopilotSidebar() {
   const [contextStatus,  setContextStatus]  = useState<ContextStatus>('idle')
   const [contextPayload, setContextPayload] = useState<string | null>(null)
   const [isSubmitting,   setIsSubmitting]   = useState(false)
+  const [isListening,    setIsListening]    = useState(false)
+  const [interimSpeech,  setInterimSpeech]  = useState('')
 
   /* ── Refs ──────────────────────────────────────────────────── */
-  const threadRef    = useRef<HTMLDivElement>(null)
-  const textareaRef  = useRef<HTMLTextAreaElement>(null)
-  const abortRef     = useRef<AbortController | null>(null)
+  const threadRef       = useRef<HTMLDivElement>(null)
+  const textareaRef     = useRef<HTMLTextAreaElement>(null)
+  const abortRef        = useRef<AbortController | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef  = useRef<any>(null)
 
   /* ── Compile context on first open ────────────────────────── */
   useEffect(() => {
@@ -336,6 +342,66 @@ export default function AiCopilotSidebar() {
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }, [])
+
+  /* ── Voice / speech-to-text input ───────────────────────────── */
+  const handleMicClick = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const SpeechRecognitionAPI: any =
+      typeof window !== 'undefined' &&
+      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    if (!SpeechRecognitionAPI) {
+      toast('Speech recognition is not supported in this browser.', 'error')
+      return
+    }
+
+    const rec = new SpeechRecognitionAPI()
+    rec.lang = 'en-US'
+    rec.interimResults = true
+    rec.continuous = false
+
+    rec.onstart = () => setIsListening(true)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (event: any) => {
+      let interim = ''
+      let final   = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript
+        if (event.results[i].isFinal) final += t
+        else interim += t
+      }
+      if (final) {
+        setInput(prev =>
+          prev + (prev.length > 0 && !prev.endsWith(' ') ? ' ' : '') + final.trim() + ' ',
+        )
+        setInterimSpeech('')
+      } else {
+        setInterimSpeech(interim)
+      }
+    }
+
+    rec.onend = () => {
+      setIsListening(false)
+      setInterimSpeech('')
+      recognitionRef.current = null
+    }
+
+    rec.onerror = () => {
+      setIsListening(false)
+      setInterimSpeech('')
+      recognitionRef.current = null
+    }
+
+    recognitionRef.current = rec
+    rec.start()
+  }, [isListening, toast])
 
   /* ── Stop streaming ──────────────────────────────────────────── */
   const handleStop = useCallback(() => {
@@ -479,7 +545,7 @@ export default function AiCopilotSidebar() {
         aria-label="AI Co-Pilot"
         aria-hidden={!isOpen}
         role="complementary"
-        inert={!isOpen ? '' as unknown as boolean : undefined}
+        inert={!isOpen}
       >
 
         {/* ── Header ────────────────────────────────────────────── */}
@@ -558,22 +624,42 @@ export default function AiCopilotSidebar() {
         {/* ── Input bar ─────────────────────────────────────────── */}
         <div className={styles.inputBar}>
 
-          <textarea
-            ref={textareaRef}
-            className={`${styles.textarea} scrollbar-none`}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about tasks, deadlines, study strategies…"
-            rows={1}
-            disabled={isSubmitting}
-            aria-label="Message input"
-            aria-describedby="copilot-hint"
-          />
+          {/* Interim speech ghost text */}
+          {interimSpeech && (
+            <p className={styles.interimSpeech} aria-live="polite">
+              {interimSpeech}
+            </p>
+          )}
+
+          <div className={styles.textareaRow}>
+            <textarea
+              ref={textareaRef}
+              className={`${styles.textarea} scrollbar-none`}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={isListening ? 'Listening…' : 'Ask about tasks, deadlines, study strategies…'}
+              rows={1}
+              disabled={isSubmitting}
+              aria-label="Message input"
+              aria-describedby="copilot-hint"
+            />
+
+            <button
+              type="button"
+              className={`${styles.micBtn} ${isListening ? styles.micBtnActive : ''}`}
+              onClick={handleMicClick}
+              title={isListening ? 'Stop listening' : 'Speak your message'}
+              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              aria-pressed={isListening}
+            >
+              {isListening ? '⏺' : '◎'}
+            </button>
+          </div>
 
           <div className={styles.inputFooter}>
             <span id="copilot-hint" className={styles.inputHint}>
-              {isSubmitting ? 'Generating…' : '⌘ ↵ to send'}
+              {isListening ? 'Listening — click ◎ to stop' : isSubmitting ? 'Generating…' : '⌘ ↵ to send'}
             </span>
 
             {isSubmitting ? (

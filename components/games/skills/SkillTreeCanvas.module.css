@@ -1,0 +1,360 @@
+/* ════════════════════════════════════════════════════════════════
+   SkillTreeCanvas — Games Tab · Step 6.1
+   Interactive SVG Progression Tree Renderer
+
+   Selector contract (Next.js CSS Modules rule 34):
+     Every [data-*] attribute selector is anchored to a local class.
+     e.g.  .nodeCircle[data-state="locked"]  — VALID
+     Bare  [data-state="locked"]             — INVALID (pure check)
+
+   SVG-specific CSS notes:
+     • `fill` and `stroke` in CSS override SVG presentation attrs.
+     • `transform-box: fill-box` + `transform-origin: center` pivot
+       scale() transforms from an SVG element's visual centre rather
+       than the SVG coordinate origin (0,0).
+     • `dominant-baseline: central` vertically centres SVG <text>.
+     • `text-anchor: middle` horizontally centres SVG <text>.
+     • `pointer-events: none` on label/glyph text prevents them from
+       consuming click events meant for the parent <g> node group.
+     • `filter: drop-shadow()` on a <g> element applies to the
+       composite of all its children — correct for the hover glow.
+
+   Z-order within the SVG (paint order, no explicit z-index):
+     1  Background dismiss rect (transparent, catches clicks)
+     2  Connector path layer   (<path> bezier curves)
+     3  Node layer             (<g> groups: circle + glyph + label)
+     4  Popup overlay          (<g> detail card, rendered last/on top)
+   ════════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════════════
+   ROOT CONTAINER
+   Enforces a 4:3 aspect ratio (800/600) so the tree never distorts.
+   ════════════════════════════════════════════════════════════════ */
+
+.canvasWrap {
+  position:      relative;
+  width:         100%;
+  aspect-ratio:  4 / 3;
+  background:    var(--bg-main);
+  border-radius: var(--r-lg);
+  border:        1px solid var(--border-subtle);
+  overflow:      hidden;
+}
+
+.svg {
+  display: block;
+  width:   100%;
+  height:  100%;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONNECTOR PATHS
+   Three states drive the bezier path appearance:
+     inactive — parent node is locked; low-contrast muted stroke.
+     partial  — parent unlocked but child locked; dashed hint.
+     active   — parent unlocked; solid periwinkle glow.
+   ════════════════════════════════════════════════════════════════ */
+
+.connector {
+  fill:             none;
+  stroke-linecap:   round;
+  stroke-linejoin:  round;
+  transition:
+    stroke         300ms var(--ease-smooth),
+    stroke-opacity 300ms var(--ease-smooth);
+}
+
+.connector[data-state="inactive"] {
+  stroke:       rgba(155, 163, 196, 0.10);
+  stroke-width: 1.5;
+}
+
+.connector[data-state="partial"] {
+  stroke:           rgba(124, 149, 255, 0.22);
+  stroke-width:     1.5;
+  stroke-dasharray: 5 4;
+}
+
+.connector[data-state="active"] {
+  stroke:       rgba(124, 149, 255, 0.40);
+  stroke-width: 2;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NODE GROUP — <g> wrapper
+   Handles cursor, hover scale, and hover glow via drop-shadow.
+   `transform-box: fill-box` is the key: without it, scale() would
+   pivot from the SVG viewport origin (top-left) rather than the
+   element's own centre.
+   ════════════════════════════════════════════════════════════════ */
+
+.nodeGroup {
+  cursor:           pointer;
+  transform-box:    fill-box;
+  transform-origin: center;
+  transition:
+    transform 300ms ease-out,
+    filter    300ms ease-out;
+}
+
+.nodeGroup[data-state="locked"] {
+  cursor: default;
+}
+
+.nodeGroup[data-state="available"]:hover {
+  transform: scale(1.15);
+  filter:    drop-shadow(0 0 8px rgba(124, 149, 255, 0.52));
+}
+
+.nodeGroup[data-state="unlocked"]:hover {
+  transform: scale(1.15);
+  filter:    drop-shadow(0 0 10px rgba(82, 204, 163, 0.58));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NODE CIRCLE — primary state indicator
+   ════════════════════════════════════════════════════════════════ */
+
+.nodeCircle {
+  transition:
+    fill   200ms var(--ease-smooth),
+    stroke 200ms var(--ease-smooth);
+}
+
+.nodeCircle[data-state="locked"] {
+  fill:         var(--bg-main);
+  stroke:       rgba(155, 163, 196, 0.30);
+  stroke-width: 1.5;
+}
+
+.nodeCircle[data-state="available"] {
+  fill:         var(--bg-main);
+  stroke:       rgba(124, 149, 255, 0.60);
+  stroke-width: 2;
+}
+
+.nodeCircle[data-state="unlocked"] {
+  fill:         var(--surface-card);
+  stroke:       var(--accent-green);
+  stroke-width: 2.5;
+  animation:    nodeCirclePulse 3.2s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NODE GLYPH — Unicode symbol centred inside each circle
+   ════════════════════════════════════════════════════════════════ */
+
+.nodeGlyph {
+  font-size:         15px;
+  font-family:       var(--font-mono);
+  text-anchor:       middle;
+  dominant-baseline: central;
+  pointer-events:    none;
+  user-select:       none;
+  transition:        fill 200ms var(--ease-smooth);
+}
+
+.nodeGlyph[data-state="locked"] {
+  fill: var(--text-dark);
+}
+
+.nodeGlyph[data-state="available"] {
+  fill: rgba(124, 149, 255, 0.85);
+}
+
+.nodeGlyph[data-state="unlocked"] {
+  fill: var(--accent-green);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NODE LABEL — small text below each circle
+   ════════════════════════════════════════════════════════════════ */
+
+.nodeLabel {
+  font-size:      10px;
+  font-family:    var(--font-mono);
+  text-anchor:    middle;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  user-select:    none;
+  transition:     fill 200ms var(--ease-smooth),
+                  opacity 200ms var(--ease-smooth);
+}
+
+.nodeLabel[data-state="locked"] {
+  fill:    var(--text-dark);
+  opacity: 0.55;
+}
+
+.nodeLabel[data-state="available"] {
+  fill: var(--text-muted);
+}
+
+.nodeLabel[data-state="unlocked"] {
+  fill: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BRANCH HEADER — section label above each specialization branch
+   ════════════════════════════════════════════════════════════════ */
+
+.branchHeader {
+  font-size:      8px;
+  font-family:    var(--font-mono);
+  text-anchor:    middle;
+  letter-spacing: 0.10em;
+  pointer-events: none;
+  user-select:    none;
+  fill:           var(--text-dark);
+  opacity:        0.55;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SELECTION RING — rotating dashed ring around the selected node
+   Visible only on the currently clicked node.
+   ════════════════════════════════════════════════════════════════ */
+
+.selectionRing {
+  fill:             none;
+  stroke:           rgba(124, 149, 255, 0.55);
+  stroke-width:     1.5;
+  stroke-dasharray: 5 3;
+  pointer-events:   none;
+  transform-box:    fill-box;
+  transform-origin: center;
+  animation:        rotateDash 6s linear infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BURST RING — one-shot expand + fade animation on node unlock
+   Component renders this element only when burstNodeId matches;
+   the animation plays once then the element is removed.
+   ════════════════════════════════════════════════════════════════ */
+
+.burstRing {
+  fill:             none;
+  stroke:           var(--accent-green);
+  stroke-width:     2.5;
+  pointer-events:   none;
+  transform-box:    fill-box;
+  transform-origin: center;
+  animation:        nodeUnlockBurst 700ms ease-out forwards;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   POPUP — in-canvas detail card
+   Slides in via translateY on mount.  The background rect uses
+   a drop-shadow filter for the card depth effect; the stroke
+   border uses the periwinkle accent at low opacity.
+   ════════════════════════════════════════════════════════════════ */
+
+.popupGroup {
+  animation:      popupReveal 180ms var(--ease-smooth) both;
+  pointer-events: all;
+}
+
+.popupBg {
+  fill:   var(--surface-card);
+  stroke: rgba(124, 149, 255, 0.22);
+  stroke-width: 1;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.50));
+}
+
+.popupTitle {
+  font-size:         12px;
+  font-family:       var(--font-display);
+  font-weight:       600;
+  text-anchor:       middle;
+  dominant-baseline: auto;
+  fill:              var(--text-primary);
+  pointer-events:    none;
+  user-select:       none;
+}
+
+.popupDesc {
+  font-size:         9.5px;
+  font-family:       var(--font-body);
+  text-anchor:       middle;
+  dominant-baseline: auto;
+  fill:              var(--text-muted);
+  pointer-events:    none;
+  user-select:       none;
+}
+
+.popupBranchTag {
+  font-size:         8px;
+  font-family:       var(--font-mono);
+  text-anchor:       middle;
+  letter-spacing:    0.08em;
+  pointer-events:    none;
+  user-select:       none;
+}
+
+/* Branch-specific tints for the popup tag */
+.popupBranchTag[data-branch="nexus"] {
+  fill: var(--accent-purple);
+}
+
+.popupBranchTag[data-branch="aesthetic"] {
+  fill: var(--accent-purple);
+}
+
+.popupBranchTag[data-branch="efficiency"] {
+  fill: rgba(240, 168, 50, 0.90);   /* amber — efficiency / performance */
+}
+
+.popupBranchTag[data-branch="cultivation"] {
+  fill: var(--accent-green);
+}
+
+.popupBranchTag[data-branch="synergy"] {
+  fill: rgba(255, 195, 80, 0.90);   /* gold — cross-system mastery */
+}
+
+.popupDivider {
+  stroke:       rgba(124, 149, 255, 0.14);
+  stroke-width: 0.5;
+}
+
+.popupClose {
+  font-size:         14px;
+  font-family:       var(--font-mono);
+  text-anchor:       middle;
+  dominant-baseline: central;
+  fill:              var(--text-muted);
+  cursor:            pointer;
+  transition:        fill 150ms ease-out;
+}
+
+.popupClose:hover {
+  fill: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ════════════════════════════════════════════════════════════════ */
+
+/* Breathing stroke-width pulse on unlocked nodes */
+@keyframes nodeCirclePulse {
+  0%, 100% { stroke-width: 2.5; }
+  50%       { stroke-width: 3.5; }
+}
+
+/* Selection ring: advances the dash pattern to simulate rotation */
+@keyframes rotateDash {
+  from { stroke-dashoffset: 0;   }
+  to   { stroke-dashoffset: -44; }
+}
+
+/* One-shot expand + fade ring on node unlock */
+@keyframes nodeUnlockBurst {
+  from { transform: scale(1);   opacity: 0.85; }
+  to   { transform: scale(1.9); opacity: 0;    }
+}
+
+/* Popup slide-in entrance */
+@keyframes popupReveal {
+  from { transform: translateY(5px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}

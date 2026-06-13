@@ -123,9 +123,8 @@ function consistencyCoefficient(habit: Habit, daysAgo: number): number {
 
   let expected: number
   switch (habit.frequency) {
-    case 'weekly': expected = 1; break
-    case 'custom': expected = habit.targetDays?.length ?? 3; break
-    default:       expected = ROLLING_WINDOW              // 'daily'
+    case 'specific_days': expected = habit.activeDays?.length ?? 3; break
+    default:              expected = ROLLING_WINDOW   // 'daily'
   }
 
   return Math.min(1, completed / Math.max(1, expected))
@@ -179,7 +178,7 @@ export function calculateMovingGritScore(habits: Habit[]): GritDataPoint[] {
 
     /* Per-habit normalised contributions */
     const contributions = habits.map(h => {
-      const Wd = difficultyWeight(h.difficulty)
+      const Wd = difficultyWeight(undefined)
       const Cc = consistencyCoefficient(h, daysAgo)
       const Es = effectiveStreakOnDay(h, daysAgo)
       const Bs = Math.log(Es + 1)                           // ln(streak + 1)

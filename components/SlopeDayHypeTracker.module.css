@@ -1,21 +1,16 @@
 /* ════════════════════════════════════════════════════════════
-   SlopeDayHypeTracker.module.css — Phase 5 · Step 5.7
-   Two-pane dashboard: Mental Health Map + Slope Day Arena
-   Local design tokens follow the Creator's Choice --v-* convention
-   but with the periwinkle + sage palette of Zenith Essentials.
+   WellnessTracker (SlopeDayHypeTracker.module.css)
+   Two-pane dashboard: Mood Logging + Mood History Calendar
    ════════════════════════════════════════════════════════════ */
 
 /* ── Local tokens ──────────────────────────────────────────── */
 .tracker {
-  --v-card:        #141923;
-  --v-inner:       #0f1620;
-  --v-border:      rgba(124, 149, 255, 0.10);
-  --v-accent:      var(--accent-purple);
-  --v-sage:        var(--accent-green);
-  --v-gold:        #ccaf52;
-  --v-ember:       #e0723a;
-  --v-rose:        #f87171;
-  --v-muted-rose:  rgba(248, 113, 113, 0.55);
+  --v-card:   #141923;
+  --v-inner:  #0f1620;
+  --v-border: rgba(124, 149, 255, 0.10);
+  --v-accent: var(--accent-purple);
+  --v-rose:   #f87171;
+  --v-sage:   var(--accent-green);
 
   display:        flex;
   flex-direction: column;
@@ -31,138 +26,143 @@
 }
 
 @media (max-width: 960px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+  .grid { grid-template-columns: 1fr; }
 }
 
 /* ── Shared card shell ─────────────────────────────────────── */
 .card {
-  background:    var(--v-card);
-  border:        1px solid var(--v-border);
-  border-radius: var(--r-xl);
-  padding:       var(--sp-6);
-  box-shadow:    var(--shadow-card);
-  display:       flex;
+  background:     var(--v-card);
+  border:         1px solid var(--v-border);
+  border-radius:  var(--r-xl);
+  padding:        var(--sp-6);
+  box-shadow:     var(--shadow-card);
+  display:        flex;
   flex-direction: column;
-  gap:           var(--sp-5);
-  position:      relative;
-  overflow:      hidden;
-}
-
-/* Top-edge accent gradient */
-.card::before {
-  content:    '';
-  position:   absolute;
-  top:        0;
-  left:       var(--sp-6);
-  right:      var(--sp-6);
-  height:     1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--v-accent) 40%,
-    var(--v-accent) 60%,
-    transparent
-  );
-  opacity: 0.45;
+  gap:            var(--sp-5);
 }
 
 /* ── Card header ───────────────────────────────────────────── */
 .cardHeader {
   display:         flex;
-  align-items:     flex-start;
   justify-content: space-between;
-  gap:             var(--sp-3);
+  align-items:     flex-start;
 }
 
 .cardEyebrow {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.22em;
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color:          var(--text-dark);
-  line-height:    1;
   margin-bottom:  var(--sp-1);
 }
 
 .cardTitle {
-  font-family:    var(--font-display);
-  font-size:      1.0625rem;
-  font-weight:    700;
-  color:          var(--text-primary);
-  letter-spacing: -0.03em;
-  line-height:    1.2;
+  font-family: var(--font-display);
+  font-size:   20px;
+  font-weight: 600;
+  color:       var(--text-primary);
+  line-height: 1.2;
 }
 
 .cardDate {
-  font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    500;
   color:          var(--text-dark);
-  letter-spacing: 0.10em;
+  letter-spacing: 0.04em;
   white-space:    nowrap;
+  padding-top:    2px;
 }
 
-/* ════════════════════════════════════════════════════════════
-   LEFT PANE — MENTAL HEALTH MAP
-   ════════════════════════════════════════════════════════════ */
+/* ── Logged-today chip ─────────────────────────────────────── */
+.todayChip {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  padding:        var(--sp-2) var(--sp-3);
+  border-radius:  var(--r-md);
+  background:     rgba(82, 204, 163, 0.10);
+  border:         1px solid rgba(82, 204, 163, 0.25);
+  font-family:    var(--font-body);
+  font-size:      12px;
+  color:          var(--v-sage);
+}
 
-/* ── Mood grid ─────────────────────────────────────────────── */
+.todayChipDot {
+  display:       block;
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    var(--v-sage);
+  flex-shrink:   0;
+}
+
+/* ── Mood emoji grid ───────────────────────────────────────── */
 .moodGrid {
   display:               grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap:                   var(--sp-2);
+  grid-template-columns: repeat(2, 1fr);
+  gap:                   var(--sp-3);
 }
 
 .moodBtn {
-  display:         flex;
-  flex-direction:  column;
-  align-items:     center;
-  gap:             var(--sp-1);
-  padding:         var(--sp-3) var(--sp-2);
-  background:      rgba(255, 255, 255, 0.03);
-  border:          1px solid rgba(255, 255, 255, 0.06);
-  border-radius:   var(--r-lg);
-  cursor:          pointer;
-  transition:
-    background   var(--dur-base) var(--ease-smooth),
-    border-color var(--dur-base) var(--ease-smooth),
-    transform    var(--dur-fast) var(--ease-expo),
-    box-shadow   var(--dur-base) var(--ease-smooth);
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--sp-2);
+  padding:        var(--sp-4) var(--sp-3);
+  border-radius:  var(--r-lg);
+  background:     var(--v-inner);
+  border:         1px solid var(--v-border);
+  cursor:         pointer;
+  /* Ambient hue glow — subtle always-on warmth */
+  box-shadow:     0 0 12px hsla(var(--mood-hue, 210), 55%, 60%, 0.07);
+  transition:     border-color 180ms ease, box-shadow 200ms ease, background 180ms ease, transform 100ms ease;
 }
 
 .moodBtn:hover {
-  background:  rgba(124, 149, 255, 0.07);
-  border-color: rgba(124, 149, 255, 0.20);
-  transform:   translateY(-1px);
+  background:   hsla(var(--mood-hue, 210), 55%, 50%, 0.07);
+  border-color: hsla(var(--mood-hue, 210), 65%, 65%, 0.40);
+  box-shadow:   0 0 18px hsla(var(--mood-hue, 210), 65%, 62%, 0.22);
+  transform:    translateY(-1px);
+}
+
+.moodBtn:active {
+  transform: translateY(0);
 }
 
 .moodBtnSelected {
-  background:  rgba(124, 149, 255, 0.13);
-  border-color: rgba(124, 149, 255, 0.40);
-  box-shadow:  0 0 12px rgba(124, 149, 255, 0.14);
-  animation:   scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  background:   hsla(var(--mood-hue, 210), 60%, 50%, 0.12) !important;
+  border-color: hsla(var(--mood-hue, 210), 70%, 68%, 0.55) !important;
+  box-shadow:   0 0 20px hsla(var(--mood-hue, 210), 65%, 62%, 0.28) !important;
 }
 
-/* Stress-derived border tint for drained/stressed moods */
-.moodBtnBurnout {
-  border-color: rgba(248, 113, 113, 0.32) !important;
+.moodBtnBurnout:not(.moodBtnSelected) {
+  border-color: rgba(248, 113, 113, 0.22);
 }
 
 .moodEmoji {
-  font-size:   1.25rem;
+  font-size:   28px;
   line-height: 1;
+  /* Subtle colored shadow behind the emoji */
+  filter:      drop-shadow(0 0 6px hsla(var(--mood-hue, 210), 65%, 62%, 0.30));
+}
+
+.moodBtnSelected .moodEmoji {
+  filter: drop-shadow(0 0 10px hsla(var(--mood-hue, 210), 70%, 65%, 0.55));
 }
 
 .moodLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.375rem;
-  font-weight:    700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color:          var(--text-dark);
-  line-height:    1;
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    500;
+  color:          var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.moodBtnSelected .moodLabel {
+  color: var(--text-primary);
 }
 
 /* ── Notes textarea ────────────────────────────────────────── */
@@ -173,75 +173,56 @@
 }
 
 .notesLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    500;
   color:          var(--text-dark);
+  letter-spacing: 0.04em;
 }
 
 .notesInput {
   width:         100%;
-  min-height:    64px;
+  resize:        none;
   background:    var(--v-inner);
   border:        1px solid var(--v-border);
   border-radius: var(--r-md);
-  padding:       var(--sp-3) var(--sp-4);
+  padding:       var(--sp-3);
   font-family:   var(--font-body);
-  font-size:     0.75rem;
-  color:         var(--text-muted);
-  line-height:   1.55;
-  resize:        vertical;
-  transition:    border-color var(--dur-base) var(--ease-smooth);
+  font-size:     13px;
+  color:         var(--text-primary);
+  outline:       none;
+  transition:    border-color 160ms ease;
+}
+
+.notesInput:focus {
+  border-color: rgba(124, 149, 255, 0.40);
 }
 
 .notesInput::placeholder { color: var(--text-dark); }
 
-.notesInput:focus {
-  outline:      none;
-  border-color: rgba(124, 149, 255, 0.35);
-}
-
 /* ── Log button ────────────────────────────────────────────── */
 .logBtn {
-  padding:       var(--sp-3) var(--sp-5);
-  background:    linear-gradient(
-    135deg,
-    rgba(124, 149, 255, 0.20),
-    rgba(124, 149, 255, 0.12)
-  );
-  border:        1px solid rgba(124, 149, 255, 0.38);
-  border-radius: var(--r-lg);
-  font-family:   var(--font-body);
-  font-size:     0.75rem;
-  font-weight:   600;
-  color:         var(--accent-purple);
-  cursor:        pointer;
-  letter-spacing: 0.02em;
-  transition:
-    background   var(--dur-base) var(--ease-smooth),
-    border-color var(--dur-base) var(--ease-smooth),
-    box-shadow   var(--dur-base) var(--ease-smooth),
-    opacity      var(--dur-fast) ease;
+  align-self:     stretch;
+  padding:        var(--sp-3) var(--sp-4);
+  border-radius:  var(--r-md);
+  background:     var(--v-accent);
+  border:         none;
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    600;
+  color:          #0b0d13;
+  cursor:         pointer;
+  transition:     opacity 160ms ease, transform 100ms ease;
 }
 
-.logBtn:hover:not(:disabled) {
-  background:   rgba(124, 149, 255, 0.28);
-  border-color: rgba(124, 149, 255, 0.62);
-  box-shadow:   0 0 16px rgba(124, 149, 255, 0.18);
-}
-
-.logBtn:disabled {
-  opacity: 0.45;
-  cursor:  not-allowed;
-}
+.logBtn:hover:not(:disabled)  { opacity: 0.85; }
+.logBtn:active:not(:disabled) { transform: scale(0.98); }
+.logBtn:disabled               { opacity: 0.38; cursor: not-allowed; }
 
 /* ── Divider ───────────────────────────────────────────────── */
 .divider {
   height:     1px;
   background: var(--v-border);
-  margin:     0 calc(-1 * var(--sp-6));
 }
 
 /* ── 3-day trend section ───────────────────────────────────── */
@@ -252,73 +233,56 @@
 }
 
 .trendHeading {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.22em;
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color:          var(--text-dark);
 }
 
 .dayEntry {
-  display:        flex;
+  background:    var(--v-inner);
+  border:        1px solid var(--v-border);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3);
+  display:       flex;
   flex-direction: column;
-  gap:            var(--sp-2);
-  padding:        var(--sp-3) var(--sp-4);
-  background:     var(--v-inner);
-  border:         1px solid var(--v-border);
-  border-radius:  var(--r-md);
+  gap:           var(--sp-2);
 }
 
 .dayEntryMissing {
-  opacity:  0.4;
-  font-style: italic;
+  opacity: 0.55;
 }
 
 .dayRow {
   display:         flex;
-  align-items:     center;
   justify-content: space-between;
-  gap:             var(--sp-2);
+  align-items:     center;
 }
 
 .dayLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.5rem;
-  font-weight:    700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color:          var(--text-dark);
+  font-family: var(--font-body);
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--text-muted);
 }
 
 .dayMood {
   display:     flex;
   align-items: center;
-  gap:         var(--sp-2);
+  gap:         var(--sp-1);
 }
 
-.dayMoodEmoji { font-size: 0.875rem; line-height: 1; }
+.dayMoodEmoji  { font-size: 14px; line-height: 1; }
+.dayMoodLabel  { font-family: var(--font-body); font-size: 12px; color: var(--text-muted); }
+.dayNoLog      { font-family: var(--font-body); font-size: 11px; color: var(--text-dark); }
 
-.dayMoodLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    600;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color:          var(--text-muted);
-}
-
-.dayNoLog {
-  font-family: var(--font-body);
-  font-size:   0.6875rem;
-  color:       var(--text-dark);
-}
-
-/* Stat bars */
+/* ── Stat bars ─────────────────────────────────────────────── */
 .statBars {
   display:        flex;
   flex-direction: column;
-  gap:            var(--sp-1);
+  gap:            6px;
 }
 
 .statRow {
@@ -328,383 +292,258 @@
 }
 
 .statName {
-  font-family:    var(--font-mono);
-  font-size:      0.375rem;
-  font-weight:    700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    500;
   color:          var(--text-dark);
-  width:          40px;
+  width:          38px;
   flex-shrink:    0;
+  letter-spacing: 0.03em;
 }
 
 .statTrack {
   flex:          1;
-  height:        4px;
+  height:        5px;
+  border-radius: 3px;
   background:    rgba(255, 255, 255, 0.06);
-  border-radius: 99px;
   overflow:      hidden;
 }
 
 .statFill {
   height:        100%;
-  border-radius: 99px;
-  transition:    width 0.4s var(--ease-expo);
+  border-radius: 3px;
+  transition:    width 300ms ease;
 }
 
-.statFillStress { background: rgba(248, 113, 113, 0.65); }
-.statFillEnergy { background: rgba(82, 204, 163, 0.70);  }
+.statFillStress { background: linear-gradient(90deg, #f87171, #ef4444); }
+.statFillEnergy { background: linear-gradient(90deg, #52cca3, #34d399); }
 
 .statValue {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  color:          var(--text-dark);
-  width:          18px;
-  text-align:     right;
-  flex-shrink:    0;
-}
-
-.dayNotes {
-  font-family:  var(--font-body);
-  font-size:    0.6875rem;
-  color:        var(--text-dark);
-  line-height:  1.45;
-  font-style:   italic;
-  overflow:     hidden;
-  text-overflow: ellipsis;
-  white-space:  nowrap;
-}
-
-/* ── Today logged indicator ────────────────────────────────── */
-.todayChip {
-  display:       flex;
-  align-items:   center;
-  gap:           var(--sp-2);
-  padding:       var(--sp-2) var(--sp-3);
-  background:    rgba(82, 204, 163, 0.07);
-  border:        1px solid rgba(82, 204, 163, 0.22);
-  border-radius: var(--r-lg);
-  font-family:   var(--font-mono);
-  font-size:     0.4375rem;
-  font-weight:   700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color:         rgba(82, 204, 163, 0.80);
-}
-
-.todayChipDot {
-  width:         5px;
-  height:        5px;
-  border-radius: 50%;
-  background:    var(--v-sage);
-  animation:     pulseGlow 2s ease-in-out infinite;
-}
-
-/* ════════════════════════════════════════════════════════════
-   RIGHT PANE — SLOPE DAY ARENA
-   ════════════════════════════════════════════════════════════ */
-
-/* Override card top accent for the right pane (brighter sage) */
-.arenaCard::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--v-sage) 40%,
-    var(--v-sage) 60%,
-    transparent
-  );
-  opacity: 0.50;
-}
-
-/* ── Confetti canvas overlay ───────────────────────────────── */
-.confettiCanvas {
-  position:       absolute;
-  inset:          0;
-  z-index:        1;
-  pointer-events: none;
-  border-radius:  inherit;
-}
-
-/* ── Arena content (above confetti) ───────────────────────── */
-.arenaContent {
-  position:       relative;
-  z-index:        2;
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-5);
-}
-
-/* ── Slope Day header row ──────────────────────────────────── */
-.arenaHeader {
-  display:         flex;
-  align-items:     flex-start;
-  justify-content: space-between;
-  gap:             var(--sp-3);
-}
-
-.arenaTitleBlock {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-1);
-}
-
-.arenaEyebrow {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color:          rgba(82, 204, 163, 0.60);
-  line-height:    1;
-}
-
-.arenaTitle {
-  font-family:    var(--font-display);
-  font-size:      1.0625rem;
-  font-weight:    700;
-  color:          var(--text-primary);
-  letter-spacing: -0.03em;
-  line-height:    1.2;
-}
-
-.arenaDateChip {
-  padding:       var(--sp-1) var(--sp-3);
-  background:    rgba(82, 204, 163, 0.08);
-  border:        1px solid rgba(82, 204, 163, 0.22);
-  border-radius: var(--r-xl);
-  font-family:   var(--font-mono);
-  font-size:     0.4375rem;
-  font-weight:   700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color:         rgba(82, 204, 163, 0.80);
-  white-space:   nowrap;
-}
-
-/* ── Countdown block ───────────────────────────────────────── */
-.countdownBlock {
-  display:         flex;
-  align-items:     flex-start;
-  gap:             var(--sp-4);
-  justify-content: center;
-}
-
-.countdownUnit {
-  display:         flex;
-  flex-direction:  column;
-  align-items:     center;
-  gap:             var(--sp-1);
-  min-width:       60px;
-}
-
-.countdownNum {
-  font-family:    var(--font-display);
-  font-size:      3.25rem;
-  font-weight:    700;
-  color:          var(--text-primary);
-  letter-spacing: -0.06em;
-  line-height:    1;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Vivid sage green when live / peak */
-.countdownNumLive  { color: rgba(82, 204, 163, 0.95); }
-.countdownNumPeak  { color: rgba(204, 175, 82, 0.95); }
-
-.countdownLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color:          var(--text-dark);
-}
-
-.countdownSep {
-  font-family:    var(--font-display);
-  font-size:      2.25rem;
-  font-weight:    300;
-  color:          var(--text-dark);
-  line-height:    1;
-  align-self:     flex-start;
-  margin-top:     0.4rem;
-  opacity:        0.35;
-}
-
-/* ── Live state banner ─────────────────────────────────────── */
-.liveBanner {
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  gap:             var(--sp-3);
-  padding:         var(--sp-3) var(--sp-5);
-  background:      rgba(82, 204, 163, 0.08);
-  border:          1px solid rgba(82, 204, 163, 0.35);
-  border-radius:   var(--r-xl);
-  animation:       pulseGlow 1.5s ease-in-out infinite;
-}
-
-.liveDot {
-  width:         8px;
-  height:        8px;
-  border-radius: 50%;
-  background:    var(--v-sage);
-  animation:     pulseGlow 1.5s ease-in-out infinite;
-}
-
-.liveText {
-  font-family:    var(--font-display);
-  font-size:      0.9375rem;
-  font-weight:    700;
-  color:          rgba(82, 204, 163, 0.90);
-  letter-spacing: -0.02em;
-}
-
-/* ── Hype phase badge ──────────────────────────────────────── */
-.hypePhase {
-  display:     flex;
-  align-items: center;
-  gap:         var(--sp-2);
-  padding:     var(--sp-2) var(--sp-4);
-  background:  rgba(255, 255, 255, 0.03);
-  border:      1px solid var(--v-border);
-  border-radius: var(--r-xl);
-  width:       fit-content;
-}
-
-.hypePhaseDot {
-  width:         6px;
-  height:        6px;
-  border-radius: 50%;
-  flex-shrink:   0;
-}
-
-.hypePhaseDotActive {
-  animation: pulseGlow 2s ease-in-out infinite;
-}
-
-.hypePhaseLabel {
-  font-family:    var(--font-mono);
-  font-size:      0.5rem;
-  font-weight:    700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-/* ── Multiplier strips ─────────────────────────────────────── */
-.multiplierSection {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-2);
-}
-
-.multiplierRow {
-  display:         flex;
-  align-items:     center;
-  justify-content: space-between;
-  gap:             var(--sp-3);
-  padding:         var(--sp-3) var(--sp-4);
-  background:      var(--v-inner);
-  border:          1px solid var(--v-border);
-  border-radius:   var(--r-md);
-  transition:      border-color var(--dur-base) var(--ease-smooth);
-}
-
-.multiplierRowActive {
-  border-color: rgba(124, 149, 255, 0.28);
-  background:   rgba(124, 149, 255, 0.05);
-}
-
-.multiplierIcon {
-  font-size:   0.875rem;
-  line-height: 1;
+  font-family: var(--font-mono);
+  font-size:   10px;
+  color:       var(--text-dark);
+  width:       14px;
+  text-align:  right;
   flex-shrink: 0;
 }
 
-.multiplierName {
-  flex:           1;
-  font-family:    var(--font-body);
-  font-size:      0.6875rem;
-  font-weight:    500;
-  color:          var(--text-muted);
+.dayNotes {
+  font-family: var(--font-body);
+  font-size:   11px;
+  color:       var(--text-muted);
+  font-style:  italic;
+  line-height: 1.5;
+  margin:      0;
 }
 
-.multiplierValue {
-  font-family:    var(--font-mono);
-  font-size:      0.6875rem;
-  font-weight:    700;
-  letter-spacing: 0.06em;
-}
+/* ══════════════════════════════════════════════════════════════
+   CALENDAR PANE
+   ══════════════════════════════════════════════════════════════ */
 
-.multiplierValueActive  { color: var(--accent-purple); }
-.multiplierValueStandard { color: var(--text-dark);    }
-
-/* ── Hype progress track ───────────────────────────────────── */
-.hypeTrackSection {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-2);
-}
-
-.hypeTrackLabel {
+/* Month navigator */
+.calNav {
   display:         flex;
   justify-content: space-between;
   align-items:     center;
+  gap:             var(--sp-3);
 }
 
-.hypeTrackName {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.calNavBtn {
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  width:         30px;
+  height:        30px;
+  border-radius: var(--r-md);
+  background:    var(--v-inner);
+  border:        1px solid var(--v-border);
+  color:         var(--text-muted);
+  font-size:     18px;
+  cursor:        pointer;
+  transition:    background 160ms ease, color 160ms ease;
+  flex-shrink:   0;
+}
+
+.calNavBtn:hover {
+  background: rgba(124, 149, 255, 0.10);
+  color:      var(--text-primary);
+}
+
+.calMonthLabel {
+  font-family: var(--font-display);
+  font-size:   15px;
+  font-weight: 600;
+  color:       var(--text-primary);
+  text-align:  center;
+  flex:        1;
+}
+
+/* Day-of-week row */
+.calDowRow {
+  display:               grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:                   3px;
+}
+
+.calDowLabel {
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
   color:          var(--text-dark);
+  letter-spacing: 0.04em;
+  text-align:     center;
+  padding-bottom: var(--sp-1);
 }
 
-.hypeTrackPct {
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  color:          var(--text-dark);
+/* Calendar grid */
+.calGrid {
+  display:               grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:                   3px;
 }
 
-.hypeTrack {
-  height:        6px;
-  background:    rgba(255, 255, 255, 0.05);
-  border-radius: 99px;
-  overflow:      hidden;
+.calCellEmpty {
+  aspect-ratio: 1;
 }
 
-.hypeTrackFill {
-  height:        100%;
-  border-radius: 99px;
-  transition:    width 0.8s var(--ease-expo);
+.calCell {
+  aspect-ratio:   1;
+  border-radius:  var(--r-sm);
+  border:         1px solid transparent;
+  cursor:         pointer;
+  position:       relative;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  gap:            2px;
+  transition:     transform 120ms ease, box-shadow 120ms ease;
+  overflow:       hidden;
 }
 
-/* Gradient shifts from periwinkle → gold → ember → sage as you approach */
-.hypeTrackFillStandard  { background: rgba(155, 163, 196, 0.40); }
-.hypeTrackFillSeason    { background: linear-gradient(90deg, rgba(124, 149, 255, 0.70), rgba(124, 149, 255, 0.90)); }
-.hypeTrackFillCountdown { background: linear-gradient(90deg, rgba(124, 149, 255, 0.80), rgba(204, 175, 82,  0.80)); }
-.hypeTrackFillPeak      { background: linear-gradient(90deg, rgba(204, 175, 82,  0.80), rgba(224, 114, 58,  0.90)); }
-.hypeTrackFillLive      { background: linear-gradient(90deg, rgba(82,  204, 163, 0.80), rgba(82,  204, 163, 1.00)); }
+.calCell:hover { transform: scale(1.08); }
 
-/* ── Past Slope Day state ──────────────────────────────────── */
-.pastCard {
-  text-align: center;
-  padding:    var(--sp-8) var(--sp-6);
-  gap:        var(--sp-3);
+.calCellNoLog {
+  background:   rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
-.pastIcon {
-  font-size:   2rem;
+.calCellLogged {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.calCellToday {
+  box-shadow: 0 0 0 1.5px var(--accent-purple);
+}
+
+.calCellSelected {
+  box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(255,255,255,0.20);
+  transform:  scale(1.08);
+}
+
+.calCellNum {
+  font-family:    var(--font-body);
+  font-size:      9px;
+  font-weight:    600;
+  color:          rgba(255, 255, 255, 0.75);
+  line-height:    1;
+  text-shadow:    0 1px 2px rgba(0, 0, 0, 0.50);
+}
+
+.calCellEmoji {
+  font-size:   10px;
   line-height: 1;
-  opacity:     0.4;
 }
 
-.pastText {
-  font-family:  var(--font-body);
-  font-size:    0.875rem;
-  font-weight:  500;
-  color:        var(--text-dark);
-  line-height:  1.5;
+/* Legend */
+.calLegend {
+  display:   flex;
+  gap:       var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.calLegendItem {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+}
+
+.calLegendDot {
+  display:       block;
+  width:         10px;
+  height:        10px;
+  border-radius: 3px;
+  flex-shrink:   0;
+}
+
+.calLegendLabel {
+  font-family: var(--font-body);
+  font-size:   11px;
+  color:       var(--text-dark);
+}
+
+.calLegendNoLog .calLegendDot {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Selected day detail */
+.calDetail {
+  background:     var(--v-inner);
+  border:         1px solid var(--v-border);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-4);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.calDetailHeader {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  flex-wrap:       wrap;
+  gap:             var(--sp-2);
+}
+
+.calDetailDate {
+  font-family: var(--font-body);
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--text-muted);
+}
+
+.calDetailMoodBadge {
+  font-family:   var(--font-body);
+  font-size:     12px;
+  font-weight:   600;
+  color:         var(--text-primary);
+  background:    rgba(124, 149, 255, 0.10);
+  border:        1px solid rgba(124, 149, 255, 0.20);
+  border-radius: var(--r-sm);
+  padding:       2px 8px;
+}
+
+.calDetailNotes {
+  font-family: var(--font-body);
+  font-size:   12px;
+  color:       var(--text-muted);
+  font-style:  italic;
+  line-height: 1.6;
+  margin:      0;
+}
+
+.calDetailEmpty {
+  font-family: var(--font-body);
+  font-size:   12px;
+  color:       var(--text-dark);
+  margin:      0;
+}
+
+.calPrompt {
+  font-family: var(--font-body);
+  font-size:   12px;
+  color:       var(--text-dark);
+  text-align:  center;
+  padding:     var(--sp-4) 0;
+  margin:      0;
 }

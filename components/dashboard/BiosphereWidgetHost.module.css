@@ -1,0 +1,176 @@
+/* ════════════════════════════════════════════════════════════════
+   BiosphereWidgetHost — Context-Adaptive Layout Shell
+   Step 5.3 — Cross-Pillar Component Pinning
+
+   Three layout contexts, one component.  All layout rules are
+   expressed here; the component applies the right class based on
+   the `context` prop.
+
+   Z-index stack within the host (all local stacking context):
+     0  rendererLayer   — BiosphereRenderer fills the host
+     1  studyShieldOverlay — frosted glass over the renderer
+     2  stageBadge       — monospaced tier readout (dashboard only)
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Shared base ────────────────────────────────────────────── */
+.hostBase {
+  position: relative;
+  overflow: hidden;
+  /* Establish an independent stacking context so the overlay
+     backdrop-filter applies only to this host's renderer content. */
+  isolation: isolate;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Context variant — games_tab
+   Full pane allocation; BiosphereRenderer fills width and height.
+   ════════════════════════════════════════════════════════════════ */
+.hostGamesTab {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Context variant — study_shield
+   Horizontal cockpit strip (128 px / 8 rem tall).
+   All interactivity is suppressed by `inert` on the renderer layer;
+   the CSS here adds the visual affordance (muted top border).
+   ════════════════════════════════════════════════════════════════ */
+.hostStudyShield {
+  width: 100%;
+  height: 128px;
+  border-top: 1px solid rgba(155, 163, 196, 0.08);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Context variant — dashboard_home
+   Square grid tile, constrained to a sm-breakpoint max-width.
+   `aspect-ratio` is the single source of truth for the height —
+   never set an explicit height here or the square will break.
+   ════════════════════════════════════════════════════════════════ */
+.hostDashboardHome {
+  width: 100%;
+  max-width: 24rem;   /* 384 px — matches Tailwind's max-w-sm */
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Renderer layer
+   Fills the host absolutely.  `opacity` is applied inline by the
+   component (driven by ContextDisplayConfig.opacityAlpha) so the
+   transition here only handles the ease curve.
+   ════════════════════════════════════════════════════════════════ */
+.rendererLayer {
+  position: absolute;
+  inset: 0;
+  transition: opacity 300ms var(--ease-smooth);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Study Shield overlay
+   A semi-transparent frosted glass layer rendered above the
+   renderer and below interactive cockpit UI.
+
+   How it works:
+     `backdrop-filter: blur(12px)` blurs the rendered pixels of
+     .rendererLayer (which are *behind* this overlay in the same
+     stacking context). Combined with `background` at 40% opacity,
+     the result is a frosted-biosphere ambient strip.
+   ════════════════════════════════════════════════════════════════ */
+.studyShieldOverlay {
+  position: absolute;
+  inset: 0;
+  /* bg-main (#0b0d13) at 40% opacity */
+  background-color: rgba(11, 13, 19, 0.40);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  /* Lower border blends into the cockpit content below */
+  border-bottom: 1px solid rgba(155, 163, 196, 0.10);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Dashboard stage badge
+   Tiny monospaced tier readout pinned to the bottom-right corner.
+   Rendered only in the `dashboard_home` context.
+   ════════════════════════════════════════════════════════════════ */
+.stageBadge {
+  position: absolute;
+  bottom: var(--sp-2);
+  right: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;   /* 10 px */
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  /* bg-main at 65% opacity — readable on top of any environment */
+  background: rgba(11, 13, 19, 0.65);
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Loading skeleton
+   Applied to .hostBase during the IDB boot frame.
+   Uses the same skeletonPulse keyframe defined in globals.css
+   via CosmeticPointsIndicator and other boot-frame skeletons.
+   ════════════════════════════════════════════════════════════════ */
+.skeletonState {
+  background: var(--surface-card);
+  animation: skeletonPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.25; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Unpinned state
+   Shown when no environment has been configured for a given context.
+   Centred column layout, matching the EmptyEnvironment pattern
+   inside BiosphereRenderer but scoped to the host shell.
+   ════════════════════════════════════════════════════════════════ */
+.unpinnedState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  text-align: center;
+}
+
+.unpinnedGlyph {
+  font-size: 1.375rem;
+  color: var(--text-dark);
+  opacity: 0.5;
+  line-height: 1;
+  user-select: none;
+}
+
+.unpinnedLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;   /* 11 px */
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.unpinnedHint {
+  font-family: var(--font-body);
+  font-size: 0.625rem;    /* 10 px */
+  color: var(--text-dark);
+  line-height: 1.5;
+  max-width: 15rem;
+  margin: 0;
+}

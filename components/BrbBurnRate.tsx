@@ -24,7 +24,7 @@ const DEFAULTS = {
 
 /* ── Component ───────────────────────────────────────────────────── */
 
-export default function BrbBurnRate() {
+export default function BrbBurnRate({ currencyName = 'Campus Dollars' }: { currencyName?: string }) {
   const [balance,  setBalance]  = useState<number>(DEFAULTS.balance)
   const [endDate,  setEndDate]  = useState<string>(DEFAULTS.endDate)
   const [buffer,   setBuffer]   = useState<number>(DEFAULTS.buffer)
@@ -68,7 +68,7 @@ export default function BrbBurnRate() {
       {/* ── Card header ──────────────────────────────────────── */}
       <div className={styles.cardHeader}>
         <div>
-          <div className={styles.cardEyebrow}>Big Red Bucks · Cornell Dining</div>
+          <div className={styles.cardEyebrow}>{currencyName} · Campus Dining</div>
           <div className={styles.cardTitle}>Burn Rate Calculator</div>
         </div>
         <span className={`${styles.statusBadge} ${styles[`status_${status}`]}`}>

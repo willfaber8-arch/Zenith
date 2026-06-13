@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useContext } from 'react'
-import { FatigueCtx } from '@/lib/FatigueContext'
+import { useEffect, useRef } from 'react'
 import styles from './CosmosCanvas.module.css'
 
 interface Star {
@@ -38,18 +37,6 @@ function buildStars(w: number, h: number): Star[] {
 export default function CosmosCanvas() {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
 
-  /* ── Fatigue speed multiplier ─────────────────────────────────
-     Read via useContext (not useFatigue) so the canvas renders
-     safely even if FatigueProvider hasn't mounted yet.
-     speedRef is mutated by a sync effect; the animation loop
-     reads .current each frame — no re-mount needed on change.  */
-  const fatigueCtx = useContext(FatigueCtx)
-  const speedRef   = useRef(1.0)
-
-  useEffect(() => {
-    speedRef.current = fatigueCtx?.isFatigued ? 0.5 : 1.0
-  }, [fatigueCtx?.isFatigued])
-
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -75,20 +62,15 @@ export default function CosmosCanvas() {
     const tick = () => {
       ctx.clearRect(0, 0, W, H)
 
-      /* speedRef.current is 0.5 during fatigue (halved drift + lerp) */
-      const sm = speedRef.current
-
       for (const s of stars) {
-        // Drift + seamless wrap (speed-multiplied for fatigue slowdown)
-        s.x = (s.x + s.vx * sm + W) % W
-        s.y = (s.y + s.vy * sm + H) % H
+        s.x = (s.x + s.vx + W) % W
+        s.y = (s.y + s.vy + H) % H
 
-        // Twinkle: smooth exponential lerp toward target opacity
         const d = s.target - s.opacity
         if (Math.abs(d) < 0.007) {
           s.target = Math.random() * 0.28 + 0.06
         } else {
-          s.opacity += d * s.speed * sm
+          s.opacity += d * s.speed
         }
 
         // Cool blue-white (majority) or barely-warm white (minority)

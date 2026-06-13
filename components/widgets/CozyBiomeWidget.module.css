@@ -1,0 +1,137 @@
+.root { display: flex; flex-direction: column; }
+
+/* ── Scene ─────────────────────────────────────────────────────── */
+
+.scene {
+  width: 100%;
+  min-height: 140px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin: var(--sp-3) 0;
+}
+
+.sceneAqua { background: linear-gradient(180deg, #0c1a2e 0%, #0d2640 60%, #0a1e35 100%); }
+.sceneZoo  { background: linear-gradient(180deg, #0b1a0a 0%, #112210 60%, #0d1c0d 100%); }
+
+.sceneEmpty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+}
+
+.sceneEmptyIcon { font-size: 2rem; opacity: 0.3; }
+
+.sceneEmptyText {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Creatures ─────────────────────────────────────────────────── */
+
+.creatureLayer {
+  flex: 1;
+  position: relative;
+  min-height: 90px;
+}
+
+@keyframes fishSwimWidget {
+  0%   { transform: translateX(0) scaleX(1); }
+  45%  { transform: translateX(80px) scaleX(1); }
+  50%  { transform: translateX(80px) scaleX(-1); }
+  95%  { transform: translateX(0) scaleX(-1); }
+  100% { transform: translateX(0) scaleX(1); }
+}
+
+@keyframes animalWanderWidget {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(50px); }
+  100% { transform: translateX(0); }
+}
+
+.creature {
+  position: absolute;
+  font-size: 1.625rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.fish {
+  animation: fishSwimWidget calc(4s + calc(var(--ci, 0) * 1.2s)) ease-in-out infinite;
+  top: calc(15% + calc(var(--ci, 0) * 20%));
+  left: calc(8% + calc(var(--ci, 0) * 12%));
+}
+
+.animal {
+  animation: animalWanderWidget calc(5s + calc(var(--ci, 0) * 1.8s)) ease-in-out infinite;
+  bottom: 16px;
+  left: calc(6% + calc(var(--ci, 0) * 18%));
+}
+
+/* ── Decor ─────────────────────────────────────────────────────── */
+
+.decorLayer {
+  position: absolute;
+  bottom: 20px;
+  right: var(--sp-3);
+  display: flex;
+  gap: var(--sp-2);
+}
+
+@keyframes decorBobWidget {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+.decor {
+  font-size: 1.25rem;
+  animation: decorBobWidget calc(2.5s + calc(var(--di, 0) * 0.7s)) ease-in-out infinite;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
+/* ── Surface ────────────────────────────────────────────────────── */
+
+.surface {
+  padding: 4px var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.45rem;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.20);
+  text-align: center;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--sp-2);
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 0.525rem;
+  color: var(--text-dark);
+}
+
+.vpBadge {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #f59e0b;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, #f59e0b 25%, transparent);
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+}

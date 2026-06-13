@@ -1,0 +1,230 @@
+/* ════════════════════════════════════════════════════════════
+   ViewSkeleton.module.css
+   Phase 12.2 — Lazy-Loading Cozy Shimmer Placeholder
+
+   Structural loading wireframe used as the `loading` fallback
+   inside every next/dynamic descriptor.  Three visual rules:
+
+     1. Palette is strictly --bg-main / --surface-card /
+        very faint warm-shimmer only.  No saturated spinners.
+     2. Block geometry mirrors the real view anatomy (eyebrow,
+        title, card grid, row cards) so the transition from
+        skeleton → live content feels seamless — no layout shift.
+     3. The shimmer sweep (gradient left→right) runs at 2.8s so
+        it is clearly visible but never frantic.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Root shell ───────────────────────────────────────────── */
+
+.root {
+  width:      100%;
+  min-height: 100%;
+  padding:    var(--sp-8) var(--sp-8) var(--sp-12);
+  display:    flex;
+  flex-direction: column;
+  gap:        var(--sp-8);
+  position:   relative;
+  overflow:   hidden;
+}
+
+/* ── Breathing pulse — shared by all skeleton blocks ─────── */
+
+@keyframes skeletonBreathe {
+  0%, 100% { opacity: 0.38; }
+  52%      { opacity: 0.62; }
+}
+
+/* ── Warm shimmer sweep — passes left-to-right across blocks  */
+
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ── Base skeleton block ──────────────────────────────────── */
+
+.block {
+  position:      relative;
+  overflow:      hidden;
+  border-radius: var(--r-md);
+  background:    var(--surface-card);
+  animation:     skeletonBreathe 2.6s ease-in-out infinite;
+}
+
+/* Shimmer layer on top of every block */
+.block::after {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    90deg,
+    transparent        0%,
+    rgba(229, 193, 124, 0.055)  35%,
+    rgba(229, 193, 124, 0.085)  50%,
+    rgba(229, 193, 124, 0.055)  65%,
+    transparent       100%
+  );
+  transform:  translateX(-100%);
+  animation:  shimmerSweep 2.8s ease-in-out infinite;
+}
+
+/* Stagger child blocks so shimmer doesn't look synchronised */
+.block:nth-child(2)  { animation-delay: 180ms; }
+.block:nth-child(2)::after { animation-delay: 180ms; }
+.block:nth-child(3)  { animation-delay: 360ms; }
+.block:nth-child(3)::after { animation-delay: 360ms; }
+.block:nth-child(4)  { animation-delay: 540ms; }
+.block:nth-child(4)::after { animation-delay: 540ms; }
+.block:nth-child(5)  { animation-delay: 720ms; }
+.block:nth-child(5)::after { animation-delay: 720ms; }
+
+/* ── Header section ───────────────────────────────────────── */
+
+.header {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  max-width:      520px;
+}
+
+.eyebrow {
+  width:  140px;
+  height: 11px;
+  border-radius: 99px;
+  background: rgba(124, 149, 255, 0.08);
+}
+
+.title {
+  width:  300px;
+  height: 34px;
+  border-radius: var(--r-md);
+}
+
+.subtitle {
+  width:  220px;
+  height: 14px;
+  border-radius: 99px;
+  background: rgba(138, 148, 166, 0.12);
+}
+
+/* ── Content area ─────────────────────────────────────────── */
+
+.content {
+  display: flex;
+  flex:    1;
+  gap:     var(--sp-6);
+}
+
+/* Default: stacked grid layout */
+.contentDefault {
+  flex-direction: column;
+  gap:            var(--sp-6);
+}
+
+/* Split: two equal panes side-by-side (FriendsNetwork, Games) */
+.contentSplit {
+  flex-direction: row;
+  gap:            var(--sp-6);
+}
+
+/* ── Card grid (2-column) ─────────────────────────────────── */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap:     var(--sp-5);
+}
+
+/* ── Card rows (3-column) ─────────────────────────────────── */
+
+.cardRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap:     var(--sp-4);
+}
+
+/* ── Individual block sizes ───────────────────────────────── */
+
+.cardTall {
+  height: 180px;
+}
+
+.cardShort {
+  height: 88px;
+}
+
+.card {
+  height: 140px;
+}
+
+/* ── Split-view pane ──────────────────────────────────────── */
+
+.pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding:        var(--sp-5);
+  border:         1px solid rgba(124, 149, 255, 0.05);
+  border-radius:  var(--r-lg);
+  background:     rgba(20, 23, 28, 0.45);
+}
+
+.paneHeader {
+  width:  60%;
+  height: 22px;
+  border-radius: var(--r-md);
+}
+
+.paneLine {
+  width:  100%;
+  height: 14px;
+  border-radius: 99px;
+}
+
+.paneLineShort {
+  width:  55%;
+  height: 14px;
+  border-radius: 99px;
+}
+
+/* ── Status label strip ───────────────────────────────────── */
+
+.statusLabel {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  margin-top:  auto;
+  padding-top: var(--sp-4);
+}
+
+@keyframes dotBreathe {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.7; }
+}
+
+.statusDot {
+  display:       inline-block;
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    var(--accent-warm);
+  animation:     dotBreathe 2.2s ease-in-out infinite;
+}
+
+.statusText {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .contentSplit  { flex-direction: column; }
+  .cardGrid,
+  .cardRow       { grid-template-columns: 1fr; }
+  .title         { width: 80%; }
+}

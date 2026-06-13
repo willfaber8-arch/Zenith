@@ -6,13 +6,13 @@
   gap: var(--sp-4);
 }
 
-/* Overline label above the heading */
+/* Overline label above the heading — inherits --cat-accent from .viewport */
 .eyebrow {
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent-purple);
+  color: var(--cat-accent, var(--accent-purple));
 }
 
 /* Title — always Syne, always near-black leading */

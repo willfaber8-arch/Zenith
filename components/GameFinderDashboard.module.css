@@ -1,0 +1,560 @@
+/* ════════════════════════════════════════════════════════════
+   Game Finder Dashboard — Phase 8.5
+   Token usage: --cat-* (purple in Essentials), --surface-card,
+   --border-subtle, font-mono/display/body, spacing scale.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Root two-column grid ────────────────────────────────── */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-8) var(--sp-12);
+  max-width: 1200px;
+  align-items: start;
+}
+
+/* ════════════════════════════════════════════════════════════
+   LEFT — Filter Control Shelf
+   ════════════════════════════════════════════════════════════ */
+
+.filterPanel {
+  position: sticky;
+  top: var(--sp-6);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.filterPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filterPanelTitle {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.filterCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: rgba(124, 149, 255, 0.15);
+  color: var(--cat-accent, var(--accent-purple));
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+.filterSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.filterSectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dark);
+}
+
+/* ── Filter Chips ────────────────────────────────────────── */
+
+.chipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 130ms var(--ease-smooth),
+              border-color 130ms var(--ease-smooth),
+              color 130ms var(--ease-smooth);
+}
+
+.chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chipActive {
+  background: rgba(124, 149, 255, 0.12);
+  border-color: rgba(124, 149, 255, 0.35);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.chipActive:hover {
+  background: rgba(124, 149, 255, 0.18);
+}
+
+.chipActiveDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.filterDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0;
+}
+
+/* ── Reset button ────────────────────────────────────────── */
+
+.resetBtn {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dark);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: color 130ms;
+}
+
+.resetBtn:hover:not(:disabled) {
+  color: var(--text-muted);
+}
+
+.resetBtn:disabled {
+  opacity: 0.30;
+  cursor: default;
+}
+
+.filterStat {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dark);
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+.filterStatNum {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RIGHT — Search Terminal & Card Grid
+   ════════════════════════════════════════════════════════════ */
+
+.resultsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* ── Search Bar ──────────────────────────────────────────── */
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  transition: border-color 150ms;
+}
+
+.searchBar:focus-within {
+  border-color: rgba(124, 149, 255, 0.35);
+}
+
+.searchGlyph {
+  font-size: 1.05rem;
+  color: var(--text-dark);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--text-dark);
+}
+
+.searchClear {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dark);
+  font-size: 0.62rem;
+  padding: 3px 6px;
+  border-radius: var(--r-sm);
+  transition: background 130ms, color 130ms;
+}
+
+.searchClear:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+/* ── Results meta row ────────────────────────────────────── */
+
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resultsCount {
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.inlineClearBtn {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 130ms;
+}
+
+.inlineClearBtn:hover {
+  color: var(--text-muted);
+}
+
+/* ── Card Grid ───────────────────────────────────────────── */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* ════════════════════════════════════════════════════════════
+   GAME CARD
+   ════════════════════════════════════════════════════════════ */
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  cursor: pointer;
+  animation: cardIn 280ms var(--ease-expo) both;
+  user-select: none;
+  transition: border-color 220ms var(--ease-smooth),
+              box-shadow   220ms var(--ease-smooth),
+              transform    220ms var(--ease-smooth);
+}
+
+.card:hover {
+  border-color: rgba(124, 149, 255, 0.22);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+  transform: translateY(-2px);
+}
+
+.cardExpanded {
+  border-color: rgba(124, 149, 255, 0.28);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.20);
+}
+
+/* ── Card header block ───────────────────────────────────── */
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.cardTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+/* Cost badge */
+.costBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  margin-top: 2px;
+}
+
+.costFree {
+  background: rgba(82, 204, 163, 0.12);
+  color: #52cca3;
+  border: 1px solid rgba(82, 204, 163, 0.22);
+}
+
+.costUnder15 {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+}
+
+.costPremium {
+  background: rgba(124, 149, 255, 0.12);
+  color: #7c95ff;
+  border: 1px solid rgba(124, 149, 255, 0.22);
+}
+
+/* Meta row (player count + expand chevron) */
+.cardMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playerCount {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dark);
+}
+
+.expandChevron {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  transition: transform 260ms var(--ease-smooth);
+}
+
+/* ── Badge row (platforms + genres) ─────────────────────── */
+
+.cardBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* Platform pills — each with its own color identity */
+.platPill {
+  font-family: var(--font-mono);
+  font-size: 0.57rem;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+}
+
+.platWeb {
+  background: rgba(56, 189, 248, 0.10);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.20);
+}
+
+.platSteam {
+  background: rgba(124, 149, 255, 0.10);
+  color: #7c95ff;
+  border: 1px solid rgba(124, 149, 255, 0.20);
+}
+
+.platEpic {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9ba3c4;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.platConsole {
+  background: rgba(82, 204, 163, 0.10);
+  color: #52cca3;
+  border: 1px solid rgba(82, 204, 163, 0.20);
+}
+
+/* Genre tags — intentionally muted/quiet */
+.genreTag {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text-dark);
+}
+
+/* ── Description Reveal — grid-template-rows technique ───── */
+/*
+   CLAUDE.md rule 25: use grid-template-rows: 0fr → 1fr for smooth
+   collapsible animation. No max-height guessing needed.
+*/
+
+.descWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms var(--ease-smooth),
+              margin-top         280ms var(--ease-smooth);
+  margin-top: 0;
+}
+
+.descWrapperOpen {
+  grid-template-rows: 1fr;
+  margin-top: var(--sp-3);
+}
+
+.descInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-1); /* breathing room from badge row */
+}
+
+.descText {
+  font-size: 0.81rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.playLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  letter-spacing: 0.05em;
+  color: var(--cat-accent, var(--accent-purple));
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 130ms;
+  align-self: flex-start;
+  padding-bottom: 1px;
+}
+
+.playLink:hover {
+  border-color: currentColor;
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-16) var(--sp-8);
+  background: var(--surface-card);
+  border: 1px dashed rgba(124, 149, 255, 0.12);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.emptyGlyph {
+  font-size: 2.8rem;
+  color: var(--text-dark);
+  opacity: 0.35;
+  line-height: 1;
+}
+
+.emptyLabel {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.emptyResetBtn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms, border-color 140ms;
+}
+
+.emptyResetBtn:hover {
+  background: var(--bg-hover);
+  border-color: rgba(124, 149, 255, 0.25);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 800px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    padding: 0 var(--sp-4) var(--sp-8);
+  }
+
+  .filterPanel {
+    position: static;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}

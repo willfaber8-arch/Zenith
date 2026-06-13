@@ -1,0 +1,21 @@
+/* ════════════════════════════════════════════════════════════════
+   AmbientParticles — Games Tab · Step 7.2
+   Dynamic Particles Override Module
+
+   The canvas sits as an absolute overlay that fills its nearest
+   positioned ancestor.  The caller is responsible for supplying
+   a `position: relative` (or any positioned) parent wrapper.
+
+   pointer-events: none   — mouse events fall through to real UI.
+   z-index: 0             — beneath text layers and grid nodes.
+   image-rendering        — pixelated prevents browser up-scaling
+                            from blurring sub-pixel particles.
+   ════════════════════════════════════════════════════════════════ */
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  image-rendering: pixelated;
+}

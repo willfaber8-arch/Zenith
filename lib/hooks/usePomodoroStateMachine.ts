@@ -22,9 +22,10 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { db, awardXp } from '@/lib/db'
+import { db } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import { useStudyMode } from '@/lib/StudyModeContext'
+import { error }        from '@/lib/logger'
 
 /* ── Timer constants ─────────────────────────────────────────────── */
 
@@ -124,7 +125,7 @@ export function usePomodoroStateMachine(): PomodoroMachine {
         completedAt:      Date.now(),
         startedAt:        startMs,
         distractionCount: distractions,
-      }).then(() => awardXp(25)).catch(console.error)
+      }).catch((err) => error('Pomodoro', 'Session IDB write failed', err))
 
       // Update session counters (ref first, then state for stability)
       countRef.current += 1

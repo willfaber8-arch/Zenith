@@ -14,7 +14,7 @@ export default function FocusRoomView() {
 
       <div className="anim-scale-in">
         <ZenHeading
-          eyebrow="Scholastic · Phase 5.5"
+          eyebrow="Scholastic · Focus Rooms"
           title={'Focus\nRooms.'}
           subtitle="Create a serverless P2P focus room and share the code with peers. Pomodoro timers sync in real time via WebRTC — no server required."
           size="lg"

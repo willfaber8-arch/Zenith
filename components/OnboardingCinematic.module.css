@@ -1,0 +1,307 @@
+/* ════════════════════════════════════════════════════════════
+   OnboardingCinematic.module.css
+   Phase 11.4 — First-Time Welcome Cinematic & Boot Terminal
+
+   Full-screen initialization barrier for first-time sessions.
+   Warm amber-gold accent palette; monospace terminal aesthetic.
+   z-index: 9999 — sits above every other layer in the z-stack.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Overlay shell ────────────────────────────────────────── */
+
+.overlay {
+  position:         fixed;
+  inset:            0;
+  z-index:          9999;
+  background:       #0d0f12;
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  padding:          var(--sp-6);
+  overflow:         hidden;
+}
+
+/* Ambient warm radial glow — very subtle, behind the card */
+.overlay::before {
+  content:         '';
+  position:        absolute;
+  inset:           0;
+  background:      radial-gradient(
+    ellipse 55% 45% at 50% 50%,
+    rgba(229, 193, 124, 0.028) 0%,
+    transparent 72%
+  );
+  pointer-events:  none;
+}
+
+/* Exit — spring fade + gentle scale retreat */
+@keyframes overlayFadeOut {
+  from { opacity: 1;   transform: scale(1);    }
+  to   { opacity: 0;   transform: scale(1.01); }
+}
+
+.overlayExit {
+  pointer-events: none;
+  animation: overlayFadeOut 650ms var(--ease-spring-cozy) forwards;
+}
+
+/* ── Corner glyph ornaments ───────────────────────────────── */
+
+.cornerTL,
+.cornerBR {
+  position:       absolute;
+  font-size:      0.7rem;
+  color:          rgba(229, 193, 124, 0.10);
+  pointer-events: none;
+  user-select:    none;
+  animation:      cozy-bounce-in 700ms var(--ease-spring-cozy) 180ms both;
+}
+
+.cornerTL { top: var(--sp-5); left: var(--sp-6); }
+.cornerBR { bottom: var(--sp-5); right: var(--sp-6); }
+
+/* ── Terminal card ────────────────────────────────────────── */
+
+@keyframes cardReveal {
+  from {
+    opacity:   0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity:   1;
+    transform: scale(1)    translateY(0);
+  }
+}
+
+.card {
+  max-width:     540px;
+  width:         100%;
+  background:    var(--surface-card);
+  border:        1px solid rgba(229, 193, 124, 0.13);
+  border-radius: var(--r-lg);
+  padding:       var(--sp-8);
+  position:      relative;
+  overflow:      hidden;
+
+  box-shadow:
+    0 0 0 1px rgba(229, 193, 124, 0.04),
+    0 6px 40px rgba(0, 0, 0, 0.60),
+    0 1px 0   rgba(229, 193, 124, 0.07) inset;
+
+  animation: cardReveal 520ms var(--ease-spring-cozy) 60ms both;
+}
+
+/* Warm top-edge gradient glow — mirrors Widget.module.css ::before pattern */
+.card::before {
+  content:    '';
+  position:   absolute;
+  top:        0;
+  left:       var(--sp-8);
+  right:      var(--sp-8);
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(229, 193, 124, 0.32) 35%,
+    rgba(229, 193, 124, 0.32) 65%,
+    transparent
+  );
+}
+
+/* ── Card header row ──────────────────────────────────────── */
+
+.header {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  margin-bottom:  var(--sp-6);
+  padding-bottom: var(--sp-4);
+  border-bottom:  1px solid rgba(229, 193, 124, 0.07);
+}
+
+@keyframes dotPulseWarm {
+  0%, 100% { opacity: 0.5; box-shadow: 0 0 0 0   rgba(229, 193, 124, 0.45); }
+  55%      { opacity: 1;   box-shadow: 0 0 0 5px rgba(229, 193, 124, 0);   }
+}
+
+.headerDot {
+  display:       inline-block;
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    var(--accent-warm);
+  flex-shrink:   0;
+  animation:     dotPulseWarm 2.4s var(--ease-smooth) infinite;
+}
+
+.headerTitle {
+  font-family:    var(--font-mono);
+  font-size:      0.625rem;
+  font-weight:    700;
+  letter-spacing: 0.24em;
+  color:          var(--accent-warm);
+  text-transform: uppercase;
+}
+
+.headerSub {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  letter-spacing: 0.15em;
+  color:          var(--text-dark);
+  text-transform: uppercase;
+  margin-left:    auto;
+}
+
+/* ── Terminal log area ────────────────────────────────────── */
+
+.terminal {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  min-height:     148px;
+}
+
+@keyframes logLineIn {
+  from {
+    opacity:   0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity:   1;
+    transform: translateX(0);
+  }
+}
+
+.logLine {
+  font-family:    var(--font-mono);
+  font-size:      0.6875rem;
+  letter-spacing: 0.045em;
+  color:          var(--accent-warm);
+  line-height:    1.65;
+  opacity:        0;  /* overridden by animation fill */
+  animation:      logLineIn 300ms var(--ease-spring-cozy) both;
+}
+
+/* Blinking underscore cursor — appended to the last active line */
+.logLineCursor::after {
+  content:      '_';
+  display:      inline-block;
+  margin-left:  2px;
+  color:        var(--accent-warm);
+  animation:    cursorBlink 1.05s steps(1) infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 99% { opacity: 0; }
+}
+
+/* Idle state — block cursor before any lines appear */
+.logLineIdle {
+  opacity:   1;
+  animation: none;
+}
+
+.idleCursor {
+  display:         inline-block;
+  width:           7px;
+  height:          0.82em;
+  background:      var(--accent-warm);
+  opacity:         0.50;
+  vertical-align:  middle;
+  border-radius:   1px;
+  animation:       cursorBlink 1.05s steps(1) infinite;
+}
+
+/* ── Progress track ───────────────────────────────────────── */
+
+.progressWrap {
+  margin-top:    var(--sp-4);
+  height:        2px;
+  background:    rgba(229, 193, 124, 0.07);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.progressFill {
+  height:        100%;
+  border-radius: 99px;
+  background:    linear-gradient(
+    90deg,
+    rgba(229, 193, 124, 0.28),
+    rgba(229, 193, 124, 0.55)
+  );
+  transition:    width 580ms var(--ease-spring-cozy);
+}
+
+/* ── Wake CTA ─────────────────────────────────────────────── */
+
+@keyframes ctaReveal {
+  from {
+    opacity:   0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity:   1;
+    transform: translateY(0)   scale(1);
+  }
+}
+
+.ctaWrap {
+  margin-top:  var(--sp-6);
+  padding-top: var(--sp-5);
+  border-top:  1px solid rgba(229, 193, 124, 0.07);
+  display:     flex;
+  justify-content: center;
+  animation:   ctaReveal 400ms var(--ease-spring-cozy) both;
+}
+
+.ctaBtn {
+  font-family:    var(--font-mono);
+  font-size:      0.6875rem;
+  font-weight:    600;
+  letter-spacing: 0.13em;
+  color:          var(--accent-warm);
+  background:     transparent;
+  border:         1px solid rgba(229, 193, 124, 0.20);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-3) var(--sp-7);
+  cursor:         pointer;
+
+  transition:
+    background   220ms var(--ease-spring-cozy),
+    border-color 220ms var(--ease-spring-cozy),
+    box-shadow   220ms var(--ease-spring-cozy),
+    transform    180ms var(--ease-spring-snappy);
+}
+
+.ctaBtn:hover {
+  background:   rgba(229, 193, 124, 0.07);
+  border-color: rgba(229, 193, 124, 0.48);
+  box-shadow:
+    0 0 18px rgba(229, 193, 124, 0.07),
+    0 0 0 1px rgba(229, 193, 124, 0.08);
+}
+
+.ctaBtn:active {
+  transform:  scale(0.97);
+  background: rgba(229, 193, 124, 0.13);
+}
+
+.ctaBtn:focus-visible {
+  outline:        2px solid rgba(229, 193, 124, 0.45);
+  outline-offset: 3px;
+}
+
+/* ── Audit result line — sage green for repair confirmations ── */
+
+/**
+ * Applied when the DB audit applied corrections (hadRepairs === true).
+ * Botanical sage tone ( #63a389 ) — intentionally cool and desaturated
+ * relative to the warm amber boot lines so it reads as a system note
+ * rather than a call to action.  Mirrors --accent-green in the global
+ * token system without referencing the CSS var directly (canvas-safe pattern).
+ */
+.logLineSage {
+  color: #63a389;
+}
