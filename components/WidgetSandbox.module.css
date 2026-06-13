@@ -91,6 +91,20 @@
   column-gap: var(--sp-4);
 }
 
+/* Single column on narrow screens */
+@media (max-width: 639px) {
+  .masonryGrid {
+    columns: 1;
+  }
+}
+
+/* Three columns on very wide screens */
+@media (min-width: 1400px) {
+  .masonryGrid {
+    columns: 3;
+  }
+}
+
 /* ── Widget animation wrappers ────────────────────────────── */
 
 .widgetIdle {

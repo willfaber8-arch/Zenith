@@ -289,3 +289,29 @@ export const LazyCalendarView = dynamic(
     loading: makeSkeleton('wide'),
   },
 )
+
+/* ═══════════════════════════════════════════════════════════════
+   ROOT-LEVEL OVERLAYS (conditionally rendered, never needed at first paint)
+   ═══════════════════════════════════════════════════════════════ */
+
+/** AiCopilotSidebar — slide-over chat panel with streaming Anthropic responses.
+ *  Only opens when the user clicks the ◎ button; never visible at first paint. */
+export const LazyAiCopilotSidebar = dynamic(
+  () => import('@/components/AiCopilotSidebar'),
+  { ssr: false, loading: EmptyLoader },
+)
+
+/** TutorialSpotlight — first-time user walkthrough shown for 3 sessions only.
+ *  Saves ~8 KB of modal/animation code from the initial parse budget. */
+export const LazyTutorialSpotlight = dynamic(
+  () => import('@/components/TutorialSpotlight'),
+  { ssr: false, loading: EmptyLoader },
+)
+
+/** OnboardingCinematic — first-session boot cinematic that self-removes.
+ *  Contains a full database audit engine; never needed after first visit. */
+export const LazyOnboardingCinematic = dynamic(
+  () => import('@/components/OnboardingCinematic'),
+  { ssr: false, loading: EmptyLoader },
+)
+

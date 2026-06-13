@@ -93,5 +93,5 @@ export default function CosmosCanvas() {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+  return <canvas ref={canvasRef} className={`${styles.canvas} cosmosCanvas`} aria-hidden="true" />
 }

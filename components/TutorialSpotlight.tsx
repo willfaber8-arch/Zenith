@@ -139,6 +139,7 @@ export default function TutorialSpotlight() {
       />
 
       {/* Card */}
+      <div className={styles.cardWrapper}>
       <div
         className={styles.card}
         role="dialog"
@@ -201,6 +202,7 @@ export default function TutorialSpotlight() {
         <p className={styles.counter} aria-live="polite">
           {step + 1} / {STEPS.length}
         </p>
+      </div>
       </div>
     </>
   )

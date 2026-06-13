@@ -53,12 +53,13 @@ import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
 import Toast             from '@/components/Toast'
 import ErrorBoundary     from '@/components/ErrorBoundary'
-import AiCopilotSidebar  from '@/components/AiCopilotSidebar'
-import ThemeApplicator          from '@/components/ThemeApplicator'
-import TutorialSpotlight         from '@/components/TutorialSpotlight'
-import { LazyBackgroundCanvasManager as BackgroundCanvasManager } from '@/lib/dynamicViews'
-import OnboardingCinematic       from '@/components/OnboardingCinematic'
-import CursorTrailManager        from '@/components/CursorTrailManager'
+import ThemeApplicator from '@/components/ThemeApplicator'
+import {
+  LazyBackgroundCanvasManager as BackgroundCanvasManager,
+  LazyAiCopilotSidebar        as AiCopilotSidebar,
+  LazyTutorialSpotlight       as TutorialSpotlight,
+  LazyOnboardingCinematic     as OnboardingCinematic,
+} from '@/lib/dynamicViews'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
 import TestBridge        from '@/components/TestBridge'
 /* Vercel observability — Phase 6.3
@@ -144,7 +145,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
          *     AppShell       z-index:  2  — full workspace (when authenticated)
          *   Toast               z-index:  600 — notification stack
          *   OnboardingCinematic z-index: 9999 — first-session boot cinematic (self-removes)
-         *   CursorTrailManager  z-index: 9000 — parchment-gold dust trail (pointer-events:none)
          */}
         <NavProvider>
           <NavBadgeProvider>
@@ -175,7 +175,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <AiCopilotSidebar />
                         <TutorialSpotlight />
                         <OnboardingCinematic />
-                        <CursorTrailManager />
                         {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
                       </ContextMenuProvider>
                     </CopilotProvider>

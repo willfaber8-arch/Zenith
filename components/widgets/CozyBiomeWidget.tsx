@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNav } from '@/lib/NavContext'
 import styles from './CozyBiomeWidget.module.css'
 import wStyles from './Widget.module.css'
@@ -38,22 +38,24 @@ const PREVIEW_MAP: Record<string, PreviewItem> = {
 const AQUA_IDS = ['neon_tetra','goldfish','betta','clownfish','guppy','plants','coral','castle','shell']
 const ZOO_IDS  = ['bunny','penguin','turtle','red_panda','deer','hedgehog','flowers','pond','cherry_tree']
 
-export default function CozyBiomeWidget() {
-  const { navigate }  = useNav()
-  const [biome,  setBiome]  = useState<BiomeStore | null>(null)
-  const [vp,     setVp]     = useState<VitalityStore | null>(null)
+function readBiome(): BiomeStore {
+  try {
+    const raw = localStorage.getItem(BIOME_KEY)
+    return raw ? JSON.parse(raw) as BiomeStore : { purchased: [], activeBiome: 'aquarium' }
+  } catch { return { purchased: [], activeBiome: 'aquarium' } }
+}
 
-  useEffect(() => {
-    try {
-      const rawB = localStorage.getItem(BIOME_KEY)
-      const rawV = localStorage.getItem(VP_KEY)
-      setBiome(rawB ? JSON.parse(rawB) as BiomeStore : { purchased: [], activeBiome: 'aquarium' })
-      setVp(rawV ? JSON.parse(rawV) as VitalityStore : { balance: 0, lifetime: 0 })
-    } catch {
-      setBiome({ purchased: [], activeBiome: 'aquarium' })
-      setVp({ balance: 0, lifetime: 0 })
-    }
-  }, [])
+function readVp(): VitalityStore {
+  try {
+    const raw = localStorage.getItem(VP_KEY)
+    return raw ? JSON.parse(raw) as VitalityStore : { balance: 0, lifetime: 0 }
+  } catch { return { balance: 0, lifetime: 0 } }
+}
+
+export default function CozyBiomeWidget() {
+  const { navigate } = useNav()
+  const [biome] = useState<BiomeStore>(readBiome)
+  const [vp]    = useState<VitalityStore>(readVp)
 
   const activeBiome = biome?.activeBiome ?? 'aquarium'
   const validIds    = activeBiome === 'aquarium' ? AQUA_IDS : ZOO_IDS

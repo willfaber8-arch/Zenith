@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNav }          from '@/lib/NavContext'
 import { useAuth }         from '@/lib/AuthContext'
 import { useToast }        from '@/lib/ToastContext'
@@ -113,7 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const EASE_OUT = 'cubic-bezier(0.4, 0, 0.2, 1)'
   const EASE_IN  = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
-  const sidebarStyle: React.CSSProperties = {
+  const sidebarStyle = useMemo<React.CSSProperties>(() => ({
     width:         sidebarHidden ? 0 : undefined,
     overflow:      sidebarHidden ? 'hidden' : undefined,
     transform:     isStudyModeActive ? 'translateX(-100%)' : 'translateX(0)',
@@ -122,15 +122,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     transition:    isStudyModeActive
       ? `width 300ms ${EASE_OUT}, transform 400ms ${EASE_OUT}, opacity 300ms ease`
       : `width 300ms ${EASE_IN},  transform 400ms ${EASE_IN},  opacity 300ms ease`,
-  }
+  }), [isStudyModeActive, sidebarHidden])
 
-  const topbarStyle: React.CSSProperties = {
+  const topbarStyle = useMemo<React.CSSProperties>(() => ({
     transform:  isStudyModeActive ? 'translateY(-100%)' : 'translateY(0)',
     opacity:    isStudyModeActive ? 0 : 1,
     transition: isStudyModeActive
       ? `transform 380ms ${EASE_OUT}, opacity 280ms ease`
       : `transform 380ms ${EASE_IN},  opacity 280ms ease`,
-  }
+  }), [isStudyModeActive])
 
   const handleLink = (link: NavLink) => {
     navigate(link.id, link.category)
