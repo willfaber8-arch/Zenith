@@ -1,23 +1,15 @@
 'use client'
 
 /* ════════════════════════════════════════════════════════════
-   AppContent — Phase 0 · Step 0.5  (updated Phase 6.5)
-   Auth-aware wrapper that orchestrates the synchronized
-   transition between the AuthGate overlay and the main
-   Zenith workspace.
+   AppContent — Auth-aware wrapper that orchestrates the
+   synchronized transition between the AuthGate overlay and
+   the main Zenith workspace.
 
    Animation contract:
      Sign-in  →  gate: opacity 1→0 + translateY 0→12px  (0.5s ease)
                   app: opacity 0→1 + scale 0.97→1        (0.5s expo)
      Sign-out →  gate: opacity 0→1 + translateY 12px→0  (0.5s ease)
                   app: opacity 1→0 + scale 1→0.97        (0.3s ease)
-
-   Phase 6.5 — System Handshake:
-     On the first authenticated load per browser session, the
-     SystemHandshake overlay gates the workspace. sessionStorage
-     key 'zenith_handshake_v1' is set when the handshake
-     completes (or is force-overridden), so subsequent page loads
-     within the same session skip the boot sequence entirely.
    ════════════════════════════════════════════════════════════ */
 
 import { useEffect, type ReactNode } from 'react'

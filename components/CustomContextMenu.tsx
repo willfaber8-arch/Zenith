@@ -294,16 +294,10 @@ export function CustomContextMenu({
         items: [
           {
             glyph: '⟳',
-            label: 'System Diagnostics',
+            label: 'Reload Page',
             onClick: () => {
-              toast('Running system diagnostics...', 'info')
               onClose()
-              setTimeout(() => {
-                try {
-                  sessionStorage.removeItem('zenith_handshake_v1')
-                } catch { /* private mode */ }
-                window.location.reload()
-              }, 500)
+              setTimeout(() => window.location.reload(), 200)
             },
           },
         ],

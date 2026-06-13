@@ -238,12 +238,16 @@ export default function WorkoutsView() {
   }
 
   /* ── Computed stats ─────────────────────────────────────────── */
-  const { totalMins, weekMins } = useMemo(() => {
-    const totalMins = sessions.reduce((s, r) => s + r.durationMinutes, 0)
-    const cutoff    = Date.now() - 7 * 86_400_000
-    const weekMins  = sessions.reduce((s, r) => r.completedAt >= cutoff ? s + r.durationMinutes : s, 0)
-    return { totalMins, weekMins }
-  }, [sessions])
+  const totalMins = useMemo(
+    () => sessions.reduce((s, r) => s + r.durationMinutes, 0),
+    [sessions],
+  )
+  // weekMins is NOT memoized: Date.now() must be fresh on every render so the
+  // 7-day rolling window advances in real time without requiring a new session.
+  const weekMins = sessions.reduce(
+    (s, r) => r.completedAt >= Date.now() - 7 * 86_400_000 ? s + r.durationMinutes : s,
+    0,
+  )
 
   const aquaItems  = useMemo(() => BIOME_CATALOG.filter(c => c.biome === 'aquarium'), [])
   const zooItems   = useMemo(() => BIOME_CATALOG.filter(c => c.biome === 'zoo'),      [])
