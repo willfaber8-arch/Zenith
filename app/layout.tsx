@@ -53,12 +53,14 @@ import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
 import Toast             from '@/components/Toast'
 import ErrorBoundary     from '@/components/ErrorBoundary'
-import AiCopilotSidebar  from '@/components/AiCopilotSidebar'
-import ThemeApplicator          from '@/components/ThemeApplicator'
-import TutorialSpotlight         from '@/components/TutorialSpotlight'
-import { LazyBackgroundCanvasManager as BackgroundCanvasManager } from '@/lib/dynamicViews'
-import OnboardingCinematic       from '@/components/OnboardingCinematic'
-import CursorTrailManager        from '@/components/CursorTrailManager'
+import ThemeApplicator from '@/components/ThemeApplicator'
+import {
+  LazyBackgroundCanvasManager as BackgroundCanvasManager,
+  LazyAiCopilotSidebar        as AiCopilotSidebar,
+  LazyTutorialSpotlight       as TutorialSpotlight,
+  LazyOnboardingCinematic     as OnboardingCinematic,
+  LazyCursorTrailManager      as CursorTrailManager,
+} from '@/lib/dynamicViews'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
 import TestBridge        from '@/components/TestBridge'
 /* Vercel observability — Phase 6.3

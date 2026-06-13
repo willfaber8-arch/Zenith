@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useLiveQuery }          from 'dexie-react-hooks'
 import { db }                    from '@/lib/db'
 import type { CardioSession }    from '@/lib/db'
@@ -238,12 +238,15 @@ export default function WorkoutsView() {
   }
 
   /* ── Computed stats ─────────────────────────────────────────── */
-  const totalMins   = sessions.reduce((s, r) => s + r.durationMinutes, 0)
-  const thisWeek    = sessions.filter(r => r.completedAt >= Date.now() - 7 * 86_400_000)
-  const weekMins    = thisWeek.reduce((s, r) => s + r.durationMinutes, 0)
+  const { totalMins, weekMins } = useMemo(() => {
+    const totalMins = sessions.reduce((s, r) => s + r.durationMinutes, 0)
+    const cutoff    = Date.now() - 7 * 86_400_000
+    const weekMins  = sessions.reduce((s, r) => r.completedAt >= cutoff ? s + r.durationMinutes : s, 0)
+    return { totalMins, weekMins }
+  }, [sessions])
 
-  const aquaItems  = BIOME_CATALOG.filter(c => c.biome === 'aquarium')
-  const zooItems   = BIOME_CATALOG.filter(c => c.biome === 'zoo')
+  const aquaItems  = useMemo(() => BIOME_CATALOG.filter(c => c.biome === 'aquarium'), [])
+  const zooItems   = useMemo(() => BIOME_CATALOG.filter(c => c.biome === 'zoo'),      [])
   const shopItems  = biome.activeBiome === 'aquarium' ? aquaItems : zooItems
 
   function fmtDate(completedAt: number): string {
