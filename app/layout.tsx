@@ -59,7 +59,6 @@ import {
   LazyAiCopilotSidebar        as AiCopilotSidebar,
   LazyTutorialSpotlight       as TutorialSpotlight,
   LazyOnboardingCinematic     as OnboardingCinematic,
-  LazyCursorTrailManager      as CursorTrailManager,
 } from '@/lib/dynamicViews'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
 import TestBridge        from '@/components/TestBridge'
@@ -146,7 +145,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
          *     AppShell       z-index:  2  — full workspace (when authenticated)
          *   Toast               z-index:  600 — notification stack
          *   OnboardingCinematic z-index: 9999 — first-session boot cinematic (self-removes)
-         *   CursorTrailManager  z-index: 9000 — parchment-gold dust trail (pointer-events:none)
          */}
         <NavProvider>
           <NavBadgeProvider>
@@ -177,7 +175,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <AiCopilotSidebar />
                         <TutorialSpotlight />
                         <OnboardingCinematic />
-                        <CursorTrailManager />
                         {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
                       </ContextMenuProvider>
                     </CopilotProvider>

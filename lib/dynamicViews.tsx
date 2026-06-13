@@ -315,9 +315,3 @@ export const LazyOnboardingCinematic = dynamic(
   { ssr: false, loading: EmptyLoader },
 )
 
-/** CursorTrailManager — parchment-gold particle dust trail (pointer-events:none).
- *  Pure canvas RAF loop; deferring it means the loop doesn't compete with hydration. */
-export const LazyCursorTrailManager = dynamic(
-  () => import('@/components/CursorTrailManager'),
-  { ssr: false, loading: EmptyLoader },
-)
