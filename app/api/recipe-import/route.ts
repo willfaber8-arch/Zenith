@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { assertSafePublicUrl } from '@/lib/server/ssrfGuard'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
+
+export const runtime = 'nodejs'
 
 /* ── HTML entity decoder ─────────────────────────────────────── */
 function decodeEntities(str: string): string {
@@ -22,6 +26,21 @@ function extractMeta(html: string, name: string): string {
 
 /* ── POST /api/recipe-import ─────────────────────────────────── */
 export async function POST(req: NextRequest) {
+  /* 0 — Throttle per client IP (best-effort, per-instance) */
+  const limit = rateLimit(`recipe-import:${clientIp(req)}`, 15, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
+  /* Reject oversized bodies before parsing */
+  const contentLength = Number(req.headers.get('content-length') ?? 0)
+  if (contentLength > 4_000) {
+    return NextResponse.json({ error: 'Request body too large' }, { status: 413 })
+  }
+
   let url: string
   try {
     const body = await req.json()
@@ -34,16 +53,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing url' }, { status: 400 })
   }
 
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+  /* SSRF guard — protocol, port, credentials, and private-IP resolution check */
+  const safe = await assertSafePublicUrl(url)
+  if (!safe.ok) {
+    return NextResponse.json({ error: safe.reason ?? 'URL not permitted' }, { status: 400 })
   }
 
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return NextResponse.json({ error: 'Only http/https URLs allowed' }, { status: 400 })
-  }
+  const parsed = new URL(url)
 
   let html: string
   try {
@@ -52,7 +68,8 @@ export async function POST(req: NextRequest) {
         'User-Agent': 'Mozilla/5.0 (compatible; ZenithOS/1.0; +recipe-import)',
         'Accept':     'text/html,application/xhtml+xml',
       },
-      signal: AbortSignal.timeout(9_000),
+      redirect: 'error',                     // a redirect could bypass the SSRF check
+      signal:   AbortSignal.timeout(9_000),
     })
     if (!resp.ok) {
       return NextResponse.json({ error: `Site returned ${resp.status}` }, { status: 502 })

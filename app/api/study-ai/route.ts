@@ -15,11 +15,13 @@
 import Anthropic          from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import type { StudyAiResponse, GenerateOptions }      from '@/types/studyAi'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 /* ── Constants ────────────────────────────────────────────────── */
 
 const MAX_INPUT_CHARS = 16_000
 const MIN_INPUT_CHARS = 10
+const MAX_BODY_BYTES  = 128 * 1024   // reject oversized request payloads
 
 /* ── System prompt builder ────────────────────────────────────── */
 
@@ -93,6 +95,15 @@ function buildSystemPrompt(
 /* ── POST handler ─────────────────────────────────────────────── */
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  /* 0 ─ Throttle per client IP — this is the most expensive paid endpoint */
+  const limit = rateLimit(`study-ai:${clientIp(req)}`, 10, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before generating again.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   /* 1 ─ Guard: API key must be configured server-side */
   const apiKey = process.env.LLM_API_KEY
   if (!apiKey) {
@@ -100,6 +111,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { error: 'AI service is not configured. Add LLM_API_KEY to your .env.local file to enable AI features.' },
       { status: 503 },
     )
+  }
+
+  /* Reject oversized bodies before parsing */
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Request body too large.' }, { status: 413 })
   }
 
   /* 2 ─ Parse and validate request body */

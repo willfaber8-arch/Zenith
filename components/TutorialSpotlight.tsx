@@ -34,38 +34,74 @@ const STEPS: Step[] = [
   {
     icon:  '◈',
     title: 'Welcome to Zenith',
-    body:  'Your personal life dashboard — academics, habits, workouts, and creativity all in one place. Everything runs locally in your browser, so your data stays private.',
-    hint:  'Session 1 of the guided tour',
+    body:  'Your personal life dashboard — academics, habits, workouts, calendar, and creative tools all in one place. Everything runs locally in your browser, so your data stays private. This quick tour shows you the essentials; you can replay it any time from Settings.',
+    hint:  'Use ← / → or the buttons below to move through the tour',
   },
   {
     icon:  '⊞',
     title: 'Navigate with the Sidebar',
-    body:  'The left sidebar organises everything into three categories: Zenith Essentials, Creator\'s Choice, and Personalized Vault. Click a category name to collapse or expand it. Right-click any item to hide it.',
-    hint:  'Tip: right-click any nav item to hide it',
+    body:  'The left sidebar groups everything into three categories: Zenith Essentials, Creator\'s Choice, and Personalized Vault. Click a category heading to collapse or expand it, and right-click any item to hide it from the list.',
+    hint:  'Tip: right-click a nav item → "Hide" to declutter',
   },
   {
-    icon:  '🏠',
-    title: 'Your Dashboard',
-    body:  'The Home screen shows your widgets — weather, habits, calendar, cardio, and your Cozy Biome. Click Manage on the dashboard to toggle which widgets are visible.',
-    hint:  'Tip: click "Manage" on the dashboard to customise',
+    icon:  '☀',
+    title: 'Light & Dark Mode',
+    body:  'Hard to read in daylight? Click the ☀ / ☽ button in the top bar to switch between dark and light themes instantly. Your choice is remembered on this device.',
+    hint:  'Tip: the toggle sits just left of the ◎ AI button',
+  },
+  {
+    icon:  '▤',
+    title: 'Two Dashboard Layouts',
+    body:  'Your Home screen has two modes, switched from the chips in the top-right corner: "Classic" is a tidy auto-arranged grid, and "Free" is a drag-and-drop canvas where you can place, resize, and recolour every widget exactly where you want it.',
+    hint:  'Tip: try the Classic / Free chips at the top-right of Home',
+  },
+  {
+    icon:  '⚙',
+    title: 'Customise Your Widgets',
+    body:  'In Classic mode, click "Manage" to toggle which widgets appear. In Free mode, use the ⚙ Manage panel to show/hide widgets and recolour them, drag the ⠿ handle to move a widget, and drag its edge or corner to resize. Hit "Lock" when you\'re happy so nothing shifts by accident.',
+    hint:  'Tip: "↺ Reset positions" re-packs everything on-screen',
+  },
+  {
+    icon:  '🔍',
+    title: 'Search & Quick Tools',
+    body:  'The search bar on your dashboard runs a Google search in a new tab. Around it you\'ll find live widgets — weather, today\'s calendar, habit rings, study streak, and more.',
+    hint:  'Tip: press Enter in the search bar to launch a query',
+  },
+  {
+    icon:  '🎓',
+    title: 'University Hub',
+    body:  'Under Zenith Essentials → Scholastic, the University Hub gathers your school\'s real resources, a GPA calculator, a cognitive-load planner, and campus finance tools. Pick your university and major once and it tailors everything.',
+    hint:  'Tip: your university also powers the Calendar schedule builder',
   },
   {
     icon:  '🎯',
     title: 'Study Shield',
-    body:  'Study Shield activates a full-screen focus cockpit with a Pomodoro timer, flashcard deck, and ambient audio presets. Find it under Zenith Essentials → Scholastic.',
+    body:  'Study Shield opens a full-screen focus cockpit with a Pomodoro timer, a flashcard deck, voice notes, and ambient audio presets (rain, ocean, brown noise, focus tones). Everything you need to lock in.',
     hint:  'Tip: press Escape to exit the cockpit at any time',
   },
   {
+    icon:  '📅',
+    title: 'Habits & Calendar',
+    body:  'Track daily habits with streaks and a weekly grid, and manage your schedule in the Universal Calendar — add personal events, subscribe to iCal/Canvas feeds, or auto-generate your class timetable from your university.',
+    hint:  'Tip: the calendar has week, month, and agenda views',
+  },
+  {
     icon:  '⚡',
-    title: 'Earn Vitality Points',
-    body:  'Log cardio sessions in Workouts to earn Vitality Points. Spend them in your Cozy Biome shop to adopt fish and animals for your personal aquarium or zoo — visible right on your dashboard.',
-    hint:  'Tip: 30+ minute sessions earn a bonus',
+    title: 'Workouts & Your Cozy Biome',
+    body:  'Log cardio in Workouts to earn Vitality Points, then spend them in the Cozy Biome shop to adopt fish and animals for your own aquarium or zoo — which animates right on your dashboard.',
+    hint:  'Tip: sessions of 30+ minutes earn a bonus',
   },
   {
     icon:  '◎',
     title: 'AI Co-Pilot',
-    body:  'Click the ◎ button in the top bar to open your AI Co-Pilot. It reads your habits, assignments, and wellness logs to give you personalised academic and wellbeing advice.',
+    body:  'Click the ◎ button in the top bar to open your AI Co-Pilot. It reads your habits, assignments, and wellness logs to give personalised academic and wellbeing advice — and you can talk to it with the mic button.',
     hint:  'Tip: voice input is supported via the mic button',
+  },
+  {
+    icon:  '✦',
+    title: 'You\'re All Set',
+    body:  'That\'s the tour! Explore the sidebar to discover more — meal planning, reading tracker, aquascaping, trail finder, and the Arcade Hub. You can replay this walkthrough any time from Settings → Help & Tour.',
+    hint:  'Settings → Help & Tour → Replay walkthrough',
   },
 ]
 
@@ -86,6 +122,18 @@ export default function TutorialSpotlight() {
       saveTutorialState(next)
       setShow(true)
     }
+  }, [])
+
+  /* Replay trigger — dispatched from Settings → Help & Tour.
+     Restarts the walkthrough from step 1 regardless of session count. */
+  useEffect(() => {
+    const replay = () => {
+      setStep(0)
+      setVisible(true)
+      setShow(true)
+    }
+    window.addEventListener('zenith:replay-tutorial', replay)
+    return () => window.removeEventListener('zenith:replay-tutorial', replay)
   }, [])
 
   const handleNext = useCallback(() => {

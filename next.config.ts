@@ -30,13 +30,17 @@ import type { NextConfig } from 'next'
 
 /* ── Security header values ────────────────────────────────────── */
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const ContentSecurityPolicy = [
   /* Default — block everything not explicitly allowed */
   `default-src 'self'`,
 
-  /* Scripts — unsafe-inline + unsafe-eval required by Next.js 15 App Router
-     RSC streaming and React DevTools in development.                       */
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+  /* Scripts — 'unsafe-inline' is required by the Next.js 15 App Router for RSC
+     streaming bootstrap (pending a per-request nonce middleware). 'unsafe-eval'
+     is required ONLY in development for React Fast Refresh / HMR, so it is
+     stripped from the production policy to shrink the XSS attack surface.     */
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
 
   /* Styles — Google Fonts stylesheet + inline styles for CSS-in-JS tokens */
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
@@ -126,9 +130,17 @@ const securityHeaders = [
     value: 'max-age=31536000; includeSubDomains',
   },
   {
-    /* Enable browser XSS auditor as a defence-in-depth fallback */
+    /* The legacy XSS auditor is removed in modern browsers and can itself
+       introduce vulnerabilities in older ones. Per current guidance, set to 0
+       (disabled) and rely on the CSP above for XSS defence. */
     key:   'X-XSS-Protection',
-    value: '1; mode=block',
+    value: '0',
+  },
+  {
+    /* Isolate this browsing context from cross-origin popups/openers,
+       mitigating cross-window scripting and Spectre-class side channels. */
+    key:   'Cross-Origin-Opener-Policy',
+    value: 'same-origin',
   },
   {
     /* Speed up DNS resolution for third-party CDN assets */

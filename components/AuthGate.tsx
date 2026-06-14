@@ -49,15 +49,29 @@ export default function AuthGate() {
   const [handle,    setHandle]    = useState('')
   const [inputErr,  setInputErr]  = useState('')
   const [gLoading,  setGLoading]  = useState(false)
+  const [gStep,     setGStep]     = useState(false)   // Google "choose account" step
+  const [gName,     setGName]     = useState('')
+  const [gErr,      setGErr]      = useState('')
 
-  /* ── Mock Google OAuth ───────────────────────────────── */
-  const handleGoogle = async () => {
+  /* ── Mock Google OAuth ───────────────────────────────────
+   * This is a local-first app with no real OAuth backend, so clicking
+   * the Google button reveals an inline "choose account" step. The
+   * session is created with the actual person's name — never a
+   * hardcoded value — so the dashboard greets the real signed-in user. */
+  const handleGoogleClick = () => {
     if (gLoading) return
+    setGStep(true)
+  }
+
+  const handleGoogleContinue = async (e?: FormEvent) => {
+    e?.preventDefault()
+    const name = gName.trim()
+    if (!name) { setGErr('Enter the name on your account.'); return }
     setGLoading(true)
     // Simulate network round-trip
-    await new Promise<void>(r => setTimeout(r, 900))
-    signIn('Will')
-    toast('Signed in via Google — welcome back, Will.', 'success')
+    await new Promise<void>(r => setTimeout(r, 700))
+    signIn(name)
+    toast(`Signed in via Google — welcome, ${name}.`, 'success')
     setGLoading(false)
   }
 
@@ -90,16 +104,44 @@ export default function AuthGate() {
         <div className={styles.divider} />
 
         {/* ── Google sign-in ────────────────────────────── */}
-        <button
-          type="button"
-          className={styles.googleBtn}
-          onClick={handleGoogle}
-          disabled={gLoading}
-          aria-busy={gLoading}
-        >
-          {gLoading ? <Spinner /> : <GoogleIcon />}
-          <span>{gLoading ? 'Connecting to Google…' : 'Sign in with Google'}</span>
-        </button>
+        {!gStep ? (
+          <button
+            type="button"
+            className={styles.googleBtn}
+            onClick={handleGoogleClick}
+          >
+            <GoogleIcon />
+            <span>Sign in with Google</span>
+          </button>
+        ) : (
+          <form className={styles.localForm} onSubmit={handleGoogleContinue} noValidate>
+            <label className={styles.inputLabel} htmlFor="google-name">
+              Choose your account
+            </label>
+            <input
+              id="google-name"
+              className={`${styles.input} ${gErr ? styles.inputInvalid : ''}`}
+              type="text"
+              placeholder="Name on your Google account"
+              value={gName}
+              onChange={e => { setGName(e.target.value); setGErr('') }}
+              autoFocus
+              autoComplete="name"
+              spellCheck={false}
+              maxLength={40}
+            />
+            {gErr && <p className={styles.inputErr} role="alert">{gErr}</p>}
+            <button
+              type="submit"
+              className={styles.googleBtn}
+              disabled={gLoading}
+              aria-busy={gLoading}
+            >
+              {gLoading ? <Spinner /> : <GoogleIcon />}
+              <span>{gLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
+            </button>
+          </form>
+        )}
 
         {/* ── Divider row ───────────────────────────────── */}
         <div className={styles.orRow} aria-hidden="true">
