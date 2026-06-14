@@ -33,14 +33,15 @@ function EnvelopeIcon() {
    Shows when NEXT_PUBLIC_SUPABASE_URL + ANON_KEY are set.
    ══════════════════════════════════════════════════════════ */
 
-type SbMode = 'signin' | 'signup'
+type SbMode = 'signin' | 'signup' | 'offline'
 
 interface SupabaseAuthFormProps {
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>
+  signIn:       (email: string, password: string) => Promise<{ error: string | null }>
+  signUp:       (email: string, password: string, displayName: string) => Promise<{ error: string | null }>
+  localSignIn:  (name: string) => Promise<{ error: string | null }>
 }
 
-function SupabaseAuthForm({ signIn, signUp }: SupabaseAuthFormProps) {
+function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps) {
   const { toast } = useToast()
 
   const [mode,        setMode]        = useState<SbMode>('signin')
@@ -50,12 +51,20 @@ function SupabaseAuthForm({ signIn, signUp }: SupabaseAuthFormProps) {
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
   const [checkEmail,  setCheckEmail]  = useState(false)  // post-sign-up awaiting confirmation
+  const [offlineName, setOfflineName] = useState('')
 
   const clearError = () => { if (error) setError('') }
 
   const switchMode = (next: SbMode) => {
     setMode(next)
     setError('')
+  }
+
+  const handleOffline = async (e: FormEvent) => {
+    e.preventDefault()
+    const name = offlineName.trim() || 'Guest'
+    await localSignIn(name)
+    toast(`Welcome, ${name} — running offline.`, 'success')
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -87,6 +96,61 @@ function SupabaseAuthForm({ signIn, signUp }: SupabaseAuthFormProps) {
       return
     }
     toast(`Welcome back — workspace ready.`, 'success')
+  }
+
+  if (mode === 'offline') {
+    return (
+      <div className={styles.overlay} aria-label="Continue offline">
+        <div className={styles.card} role="main">
+
+          <div className={styles.badge}>
+            <div className={styles.logoMark} aria-hidden="true">Z</div>
+            <div className={styles.logoTextGroup}>
+              <span className={styles.logoTitle}>Zenith OS</span>
+              <span className={styles.logoTag}>Personal Command Centre</span>
+            </div>
+          </div>
+
+          <div className={styles.offlineNotice}>
+            <p className={styles.offlineTitle}>Offline Mode</p>
+            <p className={styles.offlineDesc}>
+              Your data stays in this browser — nothing is sent to any server.
+              You can always sign in later to enable cloud sync.
+            </p>
+          </div>
+
+          <form className={styles.localForm} onSubmit={handleOffline} noValidate>
+            <div className={styles.fieldGroup}>
+              <label className={styles.inputLabel} htmlFor="offline-name">
+                Your name <span className={styles.optionalTag}>(optional)</span>
+              </label>
+              <input
+                id="offline-name"
+                className={styles.input}
+                type="text"
+                placeholder="Guest"
+                value={offlineName}
+                onChange={e => setOfflineName(e.target.value)}
+                autoFocus
+                autoComplete="name"
+                maxLength={40}
+              />
+            </div>
+
+            <button type="submit" className={styles.submitBtn}>
+              Continue Offline
+            </button>
+          </form>
+
+          <p className={styles.footerNote}>
+            <button type="button" className={styles.tabLink} onClick={() => switchMode('signin')}>
+              Back to sign in
+            </button>
+          </p>
+
+        </div>
+      </div>
+    )
   }
 
   if (checkEmail) {
@@ -237,6 +301,18 @@ function SupabaseAuthForm({ signIn, signUp }: SupabaseAuthFormProps) {
           }
         </p>
 
+        <div className={styles.offlineDivider} />
+
+        <p className={styles.offlineBypass}>
+          <button
+            type="button"
+            className={styles.offlineLink}
+            onClick={() => switchMode('offline')}
+          >
+            Continue without account →
+          </button>
+        </p>
+
       </div>
     </div>
   )
@@ -378,6 +454,7 @@ export default function AuthGate() {
       <SupabaseAuthForm
         signIn={(email, password) => signIn(email, password)}
         signUp={signUp}
+        localSignIn={(name) => signIn(name)}
       />
     )
   }
