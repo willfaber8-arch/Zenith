@@ -283,6 +283,16 @@
   animation:     skeletonShimmer 1.8s ease-in-out infinite;
 }
 
+/* ── Light mode overrides ─────────────────────────────────────────── */
+
+:global(html[data-color-scheme='light']) .header {
+  background: rgba(82, 204, 163, 0.05);
+}
+
+:global(html[data-color-scheme='light']) .biomeSwitcher {
+  background: rgba(82, 204, 163, 0.08);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────── */
 
 @media (max-width: 600px) {

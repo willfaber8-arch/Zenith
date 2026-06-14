@@ -267,6 +267,9 @@ html[data-color-scheme='light'] {
   --bg-hover:      rgba(79, 102, 240, 0.07);
   --bg-active:     rgba(79, 102, 240, 0.13);
 
+  /* Text — darkened for WCAG AA on light surfaces */
+  --text-dark: #5c6387;
+
   /* Shadow */
   --shadow-card:
     0 2px 12px rgba(20, 24, 60, 0.10),

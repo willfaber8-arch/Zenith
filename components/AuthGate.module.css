@@ -234,6 +234,10 @@
 }
 
 .submitBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
   width: 100%;
   padding: 0.6875rem var(--sp-5);
   background: linear-gradient(
@@ -264,3 +268,101 @@
   color: var(--text-dark);
   opacity: 0.6;
 }
+
+/* ── Tab bar (Supabase Sign In / Create Account) ──────────── */
+
+.tabBar {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 3px;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.5rem var(--sp-4);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--r-md) - 2px);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover:not(.tabActive) {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.tabActive {
+  background: var(--accent-purple-dim);
+  color: var(--text-primary);
+}
+
+/* ── Field group (label + input stacked) ─────────────────── */
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ── Tab link (inline text button) ───────────────────────── */
+
+.tabLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: inherit;
+  color: var(--accent-purple);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.tabLink:hover { opacity: 1; }
+
+/* ── Check-email state ────────────────────────────────────── */
+
+.checkEmailState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-5) 0 var(--sp-4);
+  text-align: center;
+}
+
+.checkEmailIcon {
+  color: var(--accent-purple);
+  opacity: 0.75;
+}
+
+.checkEmailTitle {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.checkEmailDesc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.checkEmailDesc strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
