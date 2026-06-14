@@ -19,6 +19,34 @@
 import Anthropic     from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
+import { detectProvider }     from '@/lib/aiProviderUtils'
+
+const GEMINI_BASE          = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+
+async function callGemini(apiKey: string, goal: string, maxTokens: number): Promise<string> {
+  const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT
+  const url   = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`
+  const res   = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents:         [{ role: 'user', parts: [{ text: goal }] }],
+      systemInstruction: { parts: [{ text: ROADMAP_SYSTEM }] },
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 200)}`)
+  }
+  const data       = await res.json() as Record<string, unknown>
+  const candidates = data.candidates as Array<Record<string, unknown>> | undefined
+  const parts      = (candidates?.[0]?.content as Record<string, unknown> | undefined)
+    ?.parts as Array<{ text?: string }> | undefined
+  return parts?.map(p => p.text ?? '').join('') ?? ''
+}
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -104,11 +132,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     )
   }
 
-  /* 1 — API key guard */
-  const apiKey = process.env.LLM_API_KEY
+  /* 1 — Resolve API key: user-supplied key takes priority over server env var */
+  const userKey   = req.headers.get('x-user-api-key')?.trim() ?? ''
+  const serverKey = process.env.LLM_API_KEY ?? ''
+  const apiKey    = userKey || serverKey
+  const provider  = detectProvider(apiKey) ?? (serverKey ? 'anthropic' : null)
+
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'AI service not configured. Add LLM_API_KEY to .env.local.' },
+      { error: 'No AI key configured. Add your Gemini or Anthropic key in Settings → AI Provider.' },
       { status: 503 },
     )
   }
@@ -131,23 +163,26 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'goal is required.' }, { status: 400 })
   }
 
-  /* 3 — Call Anthropic (non-streaming — we need the full JSON first) */
-  const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
-  const client = new Anthropic({ apiKey })
-
+  /* 3 — Call AI provider (non-streaming — we need the full JSON first) */
   try {
-    const message = await client.messages.create({
-      model,
-      max_tokens: MAX_TOKENS,
-      system:     ROADMAP_SYSTEM,
-      messages:   [{ role: 'user', content: goal }],
-    })
+    let rawText: string
 
-    // Concatenate all text content blocks
-    const rawText = message.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('')
+    if (provider === 'gemini') {
+      rawText = await callGemini(apiKey, goal, MAX_TOKENS)
+    } else {
+      const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
+      const client = new Anthropic({ apiKey })
+      const message = await client.messages.create({
+        model,
+        max_tokens: MAX_TOKENS,
+        system:     ROADMAP_SYSTEM,
+        messages:   [{ role: 'user', content: goal }],
+      })
+      rawText = message.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map(b => b.text)
+        .join('')
+    }
 
     /* 4 — Parse + validate the JSON array */
     const rawParsed = extractJSON(rawText)

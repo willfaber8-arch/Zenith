@@ -16,6 +16,44 @@ import Anthropic          from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import type { StudyAiResponse, GenerateOptions }      from '@/types/studyAi'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
+import { detectProvider }     from '@/lib/aiProviderUtils'
+
+/* ── Gemini non-streaming helper ──────────────────────────────── */
+
+const GEMINI_BASE         = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+
+async function callGemini(
+  apiKey:       string,
+  systemPrompt: string,
+  userMessage:  string,
+  maxTokens:    number,
+): Promise<string> {
+  const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT
+  const url   = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`
+
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents:         [{ role: 'user', parts: [{ text: userMessage }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+    signal: AbortSignal.timeout(60_000),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 200)}`)
+  }
+
+  const data = await res.json() as Record<string, unknown>
+  const candidates = data.candidates as Array<Record<string, unknown>> | undefined
+  const parts = (candidates?.[0]?.content as Record<string, unknown> | undefined)
+    ?.parts as Array<{ text?: string }> | undefined
+  return parts?.map(p => p.text ?? '').join('') ?? ''
+}
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -104,11 +142,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  /* 1 ─ Guard: API key must be configured server-side */
-  const apiKey = process.env.LLM_API_KEY
+  /* 1 ─ Resolve API key: user-supplied key takes priority over server env var */
+  const userKey   = req.headers.get('x-user-api-key')?.trim() ?? ''
+  const serverKey = process.env.LLM_API_KEY ?? ''
+  const apiKey    = userKey || serverKey
+  const provider  = detectProvider(apiKey) ?? (serverKey ? 'anthropic' : null)
+
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'AI service is not configured. Add LLM_API_KEY to your .env.local file to enable AI features.' },
+      { error: 'No AI key configured. Add your Gemini or Anthropic key in Settings → AI Provider.' },
       { status: 503 },
     )
   }
@@ -145,27 +187,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  /* 3 ─ Call the Anthropic API */
-  const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
-  const client = new Anthropic({ apiKey })
-
-  const userMessage = mode === 'topic'
+  /* 3 ─ Call the AI provider */
+  const systemPrompt = buildSystemPrompt(mode, generate)
+  const userMessage  = mode === 'topic'
     ? `Study topic: ${title}\n\nTopic description / what I want to learn:\n${text.slice(0, MAX_INPUT_CHARS)}`
     : `Title: ${title}\n\nStudy material:\n${text.slice(0, MAX_INPUT_CHARS)}`
 
   let raw: string
   try {
-    const message = await client.messages.create({
-      model,
-      max_tokens: 4096,
-      system: buildSystemPrompt(mode, generate),
-      messages: [{ role: 'user', content: userMessage }],
-    })
-    const block = message.content[0]
-    raw = block.type === 'text' ? block.text.trim() : ''
+    if (provider === 'gemini') {
+      raw = (await callGemini(apiKey, systemPrompt, userMessage, 4096)).trim()
+    } else {
+      const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
+      const client = new Anthropic({ apiKey })
+      const message = await client.messages.create({
+        model,
+        max_tokens: 4096,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: userMessage }],
+      })
+      const block = message.content[0]
+      raw = block.type === 'text' ? block.text.trim() : ''
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[study-ai] Anthropic API error:', msg)
+    console.error('[study-ai] AI API error:', msg)
     return NextResponse.json(
       { error: 'The AI service returned an error. Please try again.' },
       { status: 502 },

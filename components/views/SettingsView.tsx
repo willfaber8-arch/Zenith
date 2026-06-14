@@ -5,6 +5,7 @@ import { useLiveQuery }     from 'dexie-react-hooks'
 import { useAuth }          from '@/lib/AuthContext'
 import { useToast }         from '@/lib/ToastContext'
 import { useSandboxConfig } from '@/lib/hooks/useSandboxConfig'
+import { useAiConfig }      from '@/lib/hooks/useAiConfig'
 import { db }               from '@/lib/db'
 import { gamesDb, purchaseTheme, setActiveTheme } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
@@ -38,6 +39,7 @@ function Section({ id, title, children }: { id?: string; title: string; children
 const SETTINGS_SECTIONS = [
   { id: 's-appearance', label: 'Appearance' },
   { id: 's-widgets',    label: 'Widgets'    },
+  { id: 's-ai',         label: 'AI'         },
   { id: 's-help',       label: 'Help'       },
   { id: 's-account',    label: 'Account'    },
   { id: 's-audio',      label: 'Audio'      },
@@ -150,6 +152,27 @@ export default function SettingsView() {
     setActivatingId(null)
     toast('Theme applied.', 'success')
   }, [toast])
+
+  /* ── AI Provider config ────────────────────────────────────── */
+  const { config: aiConfig, saveKey: saveAiKey, clearKey: clearAiKey, maskedKey, mounted: aiMounted } = useAiConfig()
+  const [aiKeyInput,  setAiKeyInput]  = useState('')
+  const [aiKeySaved,  setAiKeySaved]  = useState(false)
+
+  const handleSaveAiKey = useCallback(() => {
+    const k = aiKeyInput.trim()
+    if (!k) return
+    saveAiKey(k)
+    setAiKeyInput('')
+    setAiKeySaved(true)
+    toast('API key saved locally. It stays in your browser — never sent to our servers.', 'success')
+    setTimeout(() => setAiKeySaved(false), 3000)
+  }, [aiKeyInput, saveAiKey, toast])
+
+  const handleClearAiKey = useCallback(() => {
+    clearAiKey()
+    setAiKeyInput('')
+    toast('API key cleared.', 'info')
+  }, [clearAiKey, toast])
 
   /* ── Ambient backdrop ──────────────────────────────────────── */
   const [backdrop, setBackdrop] = useState<BackgroundStyle>(BACKDROP_DEFAULT)
@@ -325,6 +348,81 @@ export default function SettingsView() {
               onChange={() => toggleWidget('uniHub')}
             />
           </div>
+        </Section>
+
+        {/* ── AI Provider ─────────────────────────────────────── */}
+        <Section id="s-ai" title="AI Provider">
+          <p className={styles.sectionSubtitle}>
+            Zenith&apos;s AI features (Co-Pilot, Study Shield, Roadmap) use your own API key —
+            stored only in this browser, never on our servers. Paste a key from
+            Google AI Studio (Gemini) or Anthropic Console below.
+          </p>
+
+          {/* ── Current key status ─────────────────────────────── */}
+          {aiMounted && aiConfig.userApiKey && (
+            <div className={styles.aiKeyStatus}>
+              <span className={styles.aiKeyProvider}>
+                {aiConfig.provider === 'gemini'     ? '◎ Google Gemini'    :
+                 aiConfig.provider === 'anthropic'  ? '◎ Anthropic Claude' :
+                 '◎ Unknown provider'}
+              </span>
+              <span className={styles.aiKeyMasked}>{maskedKey}</span>
+              <button className={styles.aiKeyClearBtn} onClick={handleClearAiKey}>
+                Remove key
+              </button>
+            </div>
+          )}
+
+          {/* ── Key input ──────────────────────────────────────── */}
+          <div className={styles.aiKeyRow}>
+            <input
+              type="password"
+              className={styles.aiKeyInput}
+              placeholder={
+                aiMounted && aiConfig.userApiKey
+                  ? 'Enter a new key to replace the current one'
+                  : 'Paste your Gemini (AIza…) or Anthropic (sk-ant-…) key'
+              }
+              value={aiKeyInput}
+              onChange={e => setAiKeyInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveAiKey() }}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              className={`${styles.aiKeySaveBtn} ${aiKeySaved ? styles.aiKeySavedState : ''}`}
+              onClick={handleSaveAiKey}
+              disabled={!aiKeyInput.trim()}
+            >
+              {aiKeySaved ? '✓ Saved' : 'Save Key'}
+            </button>
+          </div>
+
+          {/* ── Provider help links ────────────────────────────── */}
+          <div className={styles.aiProviderLinks}>
+            <span className={styles.aiProviderLinkLabel}>Get a free key:</span>
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.aiProviderLink}
+            >
+              Google AI Studio (Gemini) →
+            </a>
+            <a
+              href="https://console.anthropic.com/settings/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.aiProviderLink}
+            >
+              Anthropic Console →
+            </a>
+          </div>
+
+          <p className={styles.aiKeyNote}>
+            🔒 Your key is stored in localStorage. It is sent only to our server
+            as an HTTPS header for forwarding to the AI provider — never logged or persisted.
+          </p>
         </Section>
 
         {/* ── Help & Tour ─────────────────────────────────────── */}
