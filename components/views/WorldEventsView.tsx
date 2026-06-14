@@ -5,6 +5,20 @@ import ZenHeading from '@/components/ui/ZenHeading'
 import type { NewsArticle } from '@/app/api/world-news/route'
 import styles from './WorldEventsView.module.css'
 
+/**
+ * RSS feed content is untrusted. A malicious or compromised feed could supply a
+ * `javascript:` (or other dangerous-scheme) link; only allow http(s) through,
+ * otherwise fall back to a no-op anchor.
+ */
+function safeHref(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:' ? url : '#'
+  } catch {
+    return '#'
+  }
+}
+
 export default function WorldEventsView() {
   const [news,        setNews]        = useState<NewsArticle[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
@@ -93,7 +107,7 @@ export default function WorldEventsView() {
           {filteredNews.map((article, i) => (
             <a
               key={i}
-              href={article.url}
+              href={safeHref(article.url)}
               target="_blank"
               rel="noopener noreferrer"
               className={styles.card}

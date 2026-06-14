@@ -18,6 +18,7 @@
 
 import Anthropic     from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -94,6 +95,15 @@ function validateTasks(raw: unknown): RoadmapTask[] {
 /* ── POST handler ─────────────────────────────────────────────── */
 
 export async function POST(req: NextRequest): Promise<Response> {
+  /* 0 — Throttle per client IP — this is a paid endpoint */
+  const limit = rateLimit(`roadmap:${clientIp(req)}`, 10, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before trying again.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   /* 1 — API key guard */
   const apiKey = process.env.LLM_API_KEY
   if (!apiKey) {
@@ -101,6 +111,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       { error: 'AI service not configured. Add LLM_API_KEY to .env.local.' },
       { status: 503 },
     )
+  }
+
+  /* Reject oversized bodies before parsing */
+  if (Number(req.headers.get('content-length') ?? 0) > 8_000) {
+    return NextResponse.json({ error: 'Request body too large.' }, { status: 413 })
   }
 
   /* 2 — Parse + sanitise body */

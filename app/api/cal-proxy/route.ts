@@ -17,12 +17,24 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { assertSafePublicUrl } from '@/lib/server/ssrfGuard'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
 
-const ALLOWED = new Set(['https:', 'http:'])
+/* Reject calendars larger than 8 MB — protects against memory exhaustion. */
+const MAX_FEED_BYTES = 8 * 1024 * 1024
 
 export async function GET(req: NextRequest) {
+  /* 0 — Throttle per client IP (best-effort, per-instance) */
+  const limit = rateLimit(`cal-proxy:${clientIp(req)}`, 30, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   const rawUrl = req.nextUrl.searchParams.get('url')
   if (!rawUrl) {
     return NextResponse.json({ error: 'url parameter required' }, { status: 400 })
@@ -31,15 +43,10 @@ export async function GET(req: NextRequest) {
   /* Normalise webcal:// → https:// (common for Apple/Canvas feeds) */
   const normalised = rawUrl.replace(/^webcal:\/\//i, 'https://')
 
-  let parsed: URL
-  try {
-    parsed = new URL(normalised)
-  } catch {
-    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
-  }
-
-  if (!ALLOWED.has(parsed.protocol)) {
-    return NextResponse.json({ error: 'Protocol not allowed' }, { status: 400 })
+  /* SSRF guard — protocol, port, credentials, and private-IP resolution check */
+  const safe = await assertSafePublicUrl(normalised)
+  if (!safe.ok) {
+    return NextResponse.json({ error: safe.reason ?? 'URL not permitted' }, { status: 400 })
   }
 
   try {
@@ -48,6 +55,8 @@ export async function GET(req: NextRequest) {
         'User-Agent': 'ZenithOS/2.5 CalendarAggregator (+https://zenith.app)',
         'Accept':     'text/calendar, text/plain, */*',
       },
+      redirect: 'error',                      // a redirect could bypass the SSRF check
+      signal:   AbortSignal.timeout(10_000),  // bound slow/hung upstreams
       /* Next.js server cache — avoids hammering upstream on every render */
       next: { revalidate: 300 },
     })
@@ -59,20 +68,36 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const icalText = await upstream.text()
+    /* Enforce a byte ceiling while reading the body */
+    const reader = upstream.body?.getReader()
+    let icalText = ''
+    if (reader) {
+      const decoder = new TextDecoder()
+      let total = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done || !value) break
+        total += value.byteLength
+        if (total > MAX_FEED_BYTES) {
+          await reader.cancel()
+          return NextResponse.json({ error: 'Feed too large' }, { status: 413 })
+        }
+        icalText += decoder.decode(value, { stream: true })
+      }
+      icalText += decoder.decode()
+    } else {
+      icalText = await upstream.text()
+    }
 
     return new NextResponse(icalText, {
       status: 200,
       headers: {
-        'Content-Type':                'text/calendar; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control':               'public, max-age=300, s-maxage=300',
+        'Content-Type':  'text/calendar; charset=utf-8',
+        'Cache-Control': 'public, max-age=300, s-maxage=300',
       },
     })
-  } catch (err) {
-    return NextResponse.json(
-      { error: 'Feed fetch failed', detail: String(err) },
-      { status: 502 },
-    )
+  } catch {
+    /* Generic message — never echo the raw error (may leak internal detail) */
+    return NextResponse.json({ error: 'Feed fetch failed' }, { status: 502 })
   }
 }
