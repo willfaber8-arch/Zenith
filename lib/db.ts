@@ -1008,15 +1008,26 @@ export function getDb(): ZenithDatabase {
 
 /**
  * Ensures a UserProfile singleton exists (id = 1).
- * Call once on first authenticated load. Safe to call multiple
- * times — will not overwrite an existing profile.
+ * Call once on first authenticated load. Safe to call multiple times.
+ *
+ * If a profile already exists but its userName differs from the name the
+ * current session signed in with, the name is reconciled to the session
+ * value. This prevents a stale name (e.g. a previous user's) from lingering
+ * when a different account signs in on the same device.
  */
 export async function seedUserProfile(
   userName: string,
   opts: Partial<Omit<UserProfile, 'id' | 'userName'>> = {},
 ): Promise<UserProfile> {
   const existing = await getDb().userProfile.get(1)
-  if (existing) return existing
+  if (existing) {
+    const trimmed = userName.trim()
+    if (trimmed && existing.userName !== trimmed) {
+      await getDb().userProfile.update(1, { userName: trimmed, lastActiveAt: Date.now() })
+      return { ...existing, userName: trimmed }
+    }
+    return existing
+  }
 
   const profile: UserProfile = {
     id:              1,

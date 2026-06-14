@@ -31,13 +31,6 @@ export const TEXAS_AM: UniversityConfig = {
           url:         'https://canvas.tamu.edu',
         },
         {
-          id:          'tamu-degreeplanner',
-          title:       'Degree Planner',
-          tag:         'Planning',
-          description: 'Map your four-year plan, track degree requirements, and check missing credits before registration.',
-          url:         'https://degreeplanner.tamu.edu',
-        },
-        {
           id:          'tamu-library',
           title:       'Evans Library',
           tag:         'Library',
@@ -89,13 +82,6 @@ export const TEXAS_AM: UniversityConfig = {
       tab:   'career',
       links: [
         {
-          id:          'tamu-aggieland',
-          title:       'Aggieland Jobs',
-          tag:         'Jobs',
-          description: 'Official job and internship board — browse Aggie-exclusive postings and sign up for on-campus interviews.',
-          url:         'https://aggielandjobs.tamu.edu',
-        },
-        {
           id:          'tamu-career-center',
           title:       'Career Center',
           tag:         'Career',
@@ -114,7 +100,7 @@ export const TEXAS_AM: UniversityConfig = {
           title:       'Veteran Resource & Support Center',
           tag:         'Veterans',
           description: 'Career services, GI Bill advising, and transition resources for Aggie student veterans and military-connected students.',
-          url:         'https://veteran.tamu.edu',
+          url:         'https://veterans.tamu.edu',
         },
         {
           id:          'tamu-mays',
@@ -178,15 +164,15 @@ export const TEXAS_AM: UniversityConfig = {
           id:          'tamu-student-orgs',
           title:       'Student Organizations',
           tag:         'Orgs',
-          description: 'Browse 1 000+ registered Aggie student organizations — academic, social, cultural, faith-based, and service clubs.',
-          url:         'https://stuorg.tamu.edu',
+          description: 'Browse 1 000+ registered Aggie student organizations — academic, social, cultural, faith-based, and service clubs — on MaroonLink, the official student involvement platform.',
+          url:         'https://maroonlink.tamu.edu',
         },
         {
           id:          'tamu-athletics',
           title:       'Aggie Athletics',
           tag:         'Athletics',
           description: '12th Man spirit hub — purchase student football tickets, view basketball and baseball schedules, and access Kyle Field gameday information.',
-          url:         'https://www.aggieeathletics.com',
+          url:         'https://12thman.com',
         },
         {
           id:          'tamu-bonfire',
@@ -208,8 +194,8 @@ export const TEXAS_AM: UniversityConfig = {
           id:          'tamu-health',
           title:       'Student Health Services',
           tag:         'Health',
-          description: 'Schedule appointments at the Beutel Health Center, view immunization records, access counseling and mental health services.',
-          url:         'https://shs.tamu.edu',
+          description: 'Schedule appointments at University Health Services, view immunization records, and access counseling and mental health resources.',
+          url:         'https://uhs.tamu.edu',
         },
         {
           id:          'tamu-it',

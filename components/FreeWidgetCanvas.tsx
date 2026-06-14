@@ -661,6 +661,50 @@ export default function FreeWidgetCanvas() {
     }
   }, [])
 
+  /* ── Clamp every widget into the visible canvas ─────────────────
+     The hardcoded DEFAULT_POSITIONS (and positions saved from a wider
+     screen) can place widgets off the right edge on a smaller laptop —
+     and a widget you can't see is a widget you can't drag back. This
+     runs on mount and on every window resize so nothing is ever stranded
+     off-screen. Only positions that actually overflow are rewritten, so
+     on a wide screen this is a no-op (no spurious localStorage writes). */
+  const clampToViewport = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const cw = canvas.clientWidth
+    if (cw <= 0) return
+
+    let changed = false
+    const next: FreePositions = { ...posRef.current }
+    for (const key of ALL_FREE_KEYS) {
+      const eff = next[key] ?? DEFAULT_POSITIONS[key]
+      const w   = sizesRef.current[key]  ?? ITEM_WIDTHS[key] ?? DEFAULT_WIDTH
+      const s   = scalesRef.current[key] ?? 1
+      const maxX = Math.max(0, cw - Math.ceil(w * s) - 8)
+      const cx = snap(Math.min(Math.max(0, eff.x), maxX), GRID_SIZE)
+      const cy = snap(Math.max(0, eff.y), GRID_SIZE)
+      if (cx !== eff.x || cy !== eff.y) {
+        next[key] = { x: cx, y: cy }
+        changed = true
+      }
+    }
+    if (changed) {
+      posRef.current = next
+      setPosState({ ...next })
+      savePositions(next)
+    }
+  }, [])
+
+  /* Run the clamp once the canvas is laid out, and again on resize. */
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => clampToViewport())
+    window.addEventListener('resize', clampToViewport)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', clampToViewport)
+    }
+  }, [clampToViewport])
+
   const getPos = useCallback((key: FreeKey): Pos =>
     posRef.current[key] ?? DEFAULT_POSITIONS[key], [])
 

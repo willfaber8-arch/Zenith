@@ -38,6 +38,7 @@ function Section({ id, title, children }: { id?: string; title: string; children
 const SETTINGS_SECTIONS = [
   { id: 's-appearance', label: 'Appearance' },
   { id: 's-widgets',    label: 'Widgets'    },
+  { id: 's-help',       label: 'Help'       },
   { id: 's-account',    label: 'Account'    },
   { id: 's-audio',      label: 'Audio'      },
   { id: 's-privacy',    label: 'Data'       },
@@ -324,6 +325,24 @@ export default function SettingsView() {
               onChange={() => toggleWidget('uniHub')}
             />
           </div>
+        </Section>
+
+        {/* ── Help & Tour ─────────────────────────────────────── */}
+        <Section id="s-help" title="Help & Tour">
+          <p className={styles.sectionSubtitle}>
+            New to Zenith, or want a refresher? Replay the guided
+            walkthrough that covers the sidebar, dashboard layouts,
+            widgets, Study Shield, and more.
+          </p>
+          <button
+            className={styles.dataBtn}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('zenith:replay-tutorial'))
+              toast('Starting the guided tour…', 'info')
+            }}
+          >
+            ◈ Replay walkthrough
+          </button>
         </Section>
 
         {/* ── Account ─────────────────────────────────────────── */}
