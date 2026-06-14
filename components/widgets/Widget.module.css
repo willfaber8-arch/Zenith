@@ -152,7 +152,7 @@
 
 .clickable:hover {
   border-color: color-mix(in srgb, var(--widget-accent, var(--accent-purple)) 22%, transparent);
-  background:   color-mix(in srgb, var(--widget-accent, var(--accent-purple))  3%, transparent);
+  background:   color-mix(in srgb, var(--widget-accent, var(--accent-purple))  5%, var(--surface-card));
 }
 
 .clickable:hover .navArrow {

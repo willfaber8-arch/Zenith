@@ -21,7 +21,7 @@
 
 .clickable:hover {
   border-color: rgba(82, 204, 163, 0.30);
-  background:   rgba(82, 204, 163, 0.03);
+  background:   color-mix(in srgb, var(--accent-green) 5%, var(--surface-card));
 }
 
 /* ── Header ─────────────────────────────────────────────── */
