@@ -18,7 +18,8 @@
 import { useState, useCallback, useRef }      from 'react'
 import { injectAIGeneratedRoadmap }            from '@/utils/roadmapInjector'
 import type { RoadmapTask }                    from '@/utils/roadmapInjector'
-import { useToast }                            from '@/lib/ToastContext'
+import { useToast }    from '@/lib/ToastContext'
+import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import { priorityFromDays }                    from '@/utils/roadmapInjector'
 import styles                                  from './RoadmapGeneratorButton.module.css'
 
@@ -60,7 +61,8 @@ function PriorityDot({ days }: { days: number }) {
    ════════════════════════════════════════════════════════════════ */
 
 export default function RoadmapGeneratorButton() {
-  const { toast } = useToast()
+  const { toast }       = useToast()
+  const { authHeaders } = useAiConfig()
 
   const [goal,    setGoal]    = useState('')
   const [phase,   setPhase]   = useState<Phase>('idle')
@@ -84,7 +86,7 @@ export default function RoadmapGeneratorButton() {
     try {
       const res = await fetch('/api/roadmap', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({ goal: goal.trim() }),
       })
 

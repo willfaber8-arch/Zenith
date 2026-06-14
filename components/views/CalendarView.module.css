@@ -151,7 +151,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
-  animation: scaleIn 0.22s var(--ease-expo) both;
+  animation: panelScaleIn 0.22s var(--ease-expo) both;
   overflow: hidden;
 }
 
@@ -1000,6 +1000,14 @@
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+/* Normal-flow panels (feed manager, tasks) — scale/fade WITHOUT the modal's
+   centering translate.  Sharing the modal's scaleIn left these panels
+   permanently shifted -50%/-50% (off-screen into the sidebar). */
+@keyframes panelScaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
 .eventModalHeader { margin-bottom: var(--sp-5); }
 
 .eventModalEyebrow {
@@ -1320,7 +1328,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
-  animation: scaleIn 0.22s var(--ease-expo) both;
+  animation: panelScaleIn 0.22s var(--ease-expo) both;
 }
 
 .tasksPanelHeader {

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
+import ZenHeading      from '@/components/ui/ZenHeading'
+import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import styles from './PersonalBrandView.module.css'
 
 /* ── Career resource links ──────────────────────────────────────── */
@@ -113,6 +114,7 @@ type Tone = typeof TONES[number]
    ════════════════════════════════════════════════════════════════ */
 
 export default function PersonalBrandView() {
+  const { authHeaders }           = useAiConfig()
   const [activeTag, setActiveTag] = useState('All')
 
   /* ── LinkedIn generator state ───────────────────────────────── */
@@ -147,7 +149,7 @@ export default function PersonalBrandView() {
     try {
       const res = await fetch('/api/chat', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({
           messages: [{ role: 'user', content: userMsg }],
           contextPayload: { systemPrompt: systemMsg },

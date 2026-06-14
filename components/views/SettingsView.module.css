@@ -1,6 +1,9 @@
 .root {
   padding: var(--sp-8) var(--sp-8) var(--sp-16);
   max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .grid {
@@ -505,18 +508,13 @@
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
-  overflow-x: auto;
   padding: var(--sp-3) 0;
   margin-bottom: var(--sp-2);
   background: color-mix(in srgb, var(--bg-main) 85%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
-  scrollbar-width: none;
-}
-
-.anchorBar::-webkit-scrollbar {
-  display: none;
 }
 
 .anchorPill {
@@ -550,4 +548,160 @@
 /* Sections need scroll-margin so sticky bar doesn't cover the heading */
 .section {
   scroll-margin-top: 64px;
+}
+
+/* ── AI Provider section ──────────────────────────────────────── */
+
+.aiKeyStatus {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  padding:     var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background:  color-mix(in srgb, var(--accent-green) 8%, var(--surface-card));
+  border:      1px solid color-mix(in srgb, var(--accent-green) 25%, transparent);
+  border-radius: var(--r-md);
+  flex-wrap:   wrap;
+}
+
+.aiKeyProvider {
+  font-family:  var(--font-mono);
+  font-size:    0.7rem;
+  font-weight:  600;
+  letter-spacing: 0.06em;
+  color:        var(--accent-green);
+  text-transform: uppercase;
+}
+
+.aiKeyMasked {
+  font-family: var(--font-mono);
+  font-size:   0.7rem;
+  color:       var(--text-muted);
+  flex:        1;
+  min-width:   0;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiKeyClearBtn {
+  font-family:  var(--font-mono);
+  font-size:    0.65rem;
+  font-weight:  600;
+  letter-spacing: 0.05em;
+  color:        var(--text-dark);
+  background:   transparent;
+  border:       1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  border-radius: var(--r-sm);
+  padding:      var(--sp-1) var(--sp-3);
+  cursor:       pointer;
+  transition:   color 140ms, border-color 140ms;
+  white-space:  nowrap;
+  flex-shrink:  0;
+}
+
+.aiKeyClearBtn:hover {
+  color:         #f87171;
+  border-color:  rgba(248, 113, 113, 0.4);
+}
+
+.aiKeyRow {
+  display:   flex;
+  gap:       var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.aiKeyInput {
+  flex:        1;
+  background:  var(--bg-hover);
+  border:      1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding:     var(--sp-3) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size:   0.75rem;
+  color:       var(--text-primary);
+  outline:     none;
+  transition:  border-color 160ms ease;
+  min-width:   0;
+}
+
+.aiKeyInput:focus {
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.aiKeyInput::placeholder {
+  color: var(--text-dark);
+}
+
+.aiKeySaveBtn {
+  padding:      var(--sp-3) var(--sp-5);
+  background:   color-mix(in srgb, var(--accent-purple) 18%, var(--surface-card));
+  border:       1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  border-radius: var(--r-md);
+  font-family:  var(--font-mono);
+  font-size:    0.7rem;
+  font-weight:  600;
+  letter-spacing: 0.06em;
+  color:        var(--accent-purple);
+  cursor:       pointer;
+  transition:   background 160ms, border-color 160ms, color 160ms;
+  white-space:  nowrap;
+  flex-shrink:  0;
+}
+
+.aiKeySaveBtn:hover:not(:disabled) {
+  background:   color-mix(in srgb, var(--accent-purple) 28%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--accent-purple) 60%, transparent);
+}
+
+.aiKeySaveBtn:disabled {
+  opacity: 0.38;
+  cursor:  not-allowed;
+}
+
+.aiKeySavedState {
+  background:   color-mix(in srgb, var(--accent-green) 18%, var(--surface-card)) !important;
+  border-color: color-mix(in srgb, var(--accent-green) 40%, transparent) !important;
+  color:        var(--accent-green) !important;
+}
+
+.aiProviderLinks {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+  flex-wrap:   wrap;
+  margin-bottom: var(--sp-3);
+}
+
+.aiProviderLinkLabel {
+  font-family:  var(--font-mono);
+  font-size:    0.65rem;
+  font-weight:  600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:        var(--text-dark);
+}
+
+.aiProviderLink {
+  font-family: var(--font-mono);
+  font-size:   0.7rem;
+  color:       var(--accent-purple);
+  text-decoration: none;
+  transition:  color 140ms;
+}
+
+.aiProviderLink:hover {
+  color: color-mix(in srgb, var(--accent-purple) 70%, white);
+  text-decoration: underline;
+}
+
+.aiKeyNote {
+  font-size:   0.72rem;
+  color:       var(--text-dark);
+  line-height: 1.5;
+  margin-top:  var(--sp-1);
+  padding:     var(--sp-3) var(--sp-4);
+  background:  color-mix(in srgb, var(--border-subtle) 40%, transparent);
+  border-radius: var(--r-sm);
+  border-left: 2px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
 }

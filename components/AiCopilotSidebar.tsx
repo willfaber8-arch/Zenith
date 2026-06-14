@@ -22,9 +22,10 @@ import {
   useState, useEffect, useRef, useCallback,
   type JSX, type KeyboardEvent, type ChangeEvent,
 } from 'react'
-import { useCopilot }  from '@/lib/CopilotContext'
-import { useAuth }     from '@/lib/AuthContext'
-import { useToast }    from '@/lib/ToastContext'
+import { useCopilot }     from '@/lib/CopilotContext'
+import { useAuth }        from '@/lib/AuthContext'
+import { useToast }       from '@/lib/ToastContext'
+import { useAiConfig }    from '@/lib/hooks/useAiConfig'
 import {
   compileUserContextPayload,
   type UserContextPayload,
@@ -231,6 +232,7 @@ export default function AiCopilotSidebar() {
   const { isOpen, close }   = useCopilot()
   const { session }         = useAuth()
   const { toast }           = useToast()
+  const { authHeaders }     = useAiConfig()
 
   /* ── State ─────────────────────────────────────────────────── */
   const [messages,       setMessages]       = useState<ChatMsg[]>([])
@@ -463,7 +465,7 @@ export default function AiCopilotSidebar() {
 
       const res = await fetch('/api/chat', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({
           messages:       history,
           contextPayload: contextPayload ?? undefined,

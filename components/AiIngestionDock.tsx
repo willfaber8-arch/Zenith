@@ -15,7 +15,8 @@ import {
   useState, useRef, useCallback,
   type DragEvent, type FormEvent, type ChangeEvent,
 } from 'react'
-import { useToast } from '@/lib/ToastContext'
+import { useToast }    from '@/lib/ToastContext'
+import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import type { StudyAiResponse, StudyAiError, GenerateOptions } from '@/types/studyAi'
 import styles from './AiIngestionDock.module.css'
 
@@ -47,7 +48,8 @@ export default function AiIngestionDock({ onResult, isCompact = false }: AiInges
   const [expanded,   setExpanded]   = useState(true)
   const [notConfigured, setNotConfigured] = useState(false)
 
-  const { toast } = useToast()
+  const { toast }       = useToast()
+  const { authHeaders } = useAiConfig()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const toggleGenerate = (key: keyof GenerateOptions) => {
@@ -111,7 +113,7 @@ export default function AiIngestionDock({ onResult, isCompact = false }: AiInges
     try {
       const res = await fetch('/api/study-ai', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({
           text:     trimmed,
           title:    title.trim() || 'Study Session',

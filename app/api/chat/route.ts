@@ -20,6 +20,79 @@
 import Anthropic   from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
+import { detectProvider }     from '@/lib/aiProviderUtils'
+
+/* ── Gemini REST streaming helper ─────────────────────────────── */
+
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+
+async function streamGemini(
+  apiKey:       string,
+  systemPrompt: string,
+  messages:     ChatMessage[],
+  maxTokens:    number,
+): Promise<ReadableStream<Uint8Array>> {
+  const geminiMessages = messages.map(m => ({
+    role:  m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }))
+
+  const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT
+  const url   = `${GEMINI_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`
+
+  const upstream = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents:         geminiMessages,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+
+  if (!upstream.ok) {
+    const errText = await upstream.text().catch(() => '')
+    throw new Error(`Gemini API error ${upstream.status}: ${errText.slice(0, 200)}`)
+  }
+
+  const encoder = new TextEncoder()
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader  = upstream.body!.getReader()
+      const decoder = new TextDecoder()
+      let   buffer  = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6).trim()
+            if (data === '[DONE]') continue
+            try {
+              const parsed = JSON.parse(data) as Record<string, unknown>
+              const candidates = parsed.candidates as Array<Record<string, unknown>> | undefined
+              const text = (candidates?.[0]?.content as Record<string, unknown> | undefined)
+                ?.parts as Array<{ text?: string }> | undefined
+              const chunk = text?.[0]?.text ?? ''
+              if (chunk) controller.enqueue(encoder.encode(chunk))
+            } catch { /* malformed SSE line — skip */ }
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Stream interrupted'
+        controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+}
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -67,12 +140,22 @@ export async function POST(req: NextRequest): Promise<Response> {
     )
   }
 
-  /* 1 — API key guard */
-  const apiKey = process.env.LLM_API_KEY
+  /* 1 — Resolve API key: user-supplied key takes priority over server env var */
+  const userKey    = req.headers.get('x-user-api-key')?.trim() ?? ''
+  const serverKey  = process.env.LLM_API_KEY ?? ''
+  const apiKey     = userKey || serverKey
+  const provider   = detectProvider(apiKey)
+
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'AI service not configured. Add LLM_API_KEY to .env.local.' },
+      { error: 'No AI key configured. Add your Gemini or Anthropic key in Settings → AI Provider.' },
       { status: 503 },
+    )
+  }
+  if (!provider) {
+    return NextResponse.json(
+      { error: 'Unrecognized API key format. Use a Google Gemini (AIza…) or Anthropic (sk-ant-…) key.' },
+      { status: 400 },
     )
   }
 
@@ -122,47 +205,50 @@ export async function POST(req: NextRequest): Promise<Response> {
     ? `${SYSTEM_BASE}\n\n${contextPayload}`
     : SYSTEM_BASE
 
-  /* 5 — Stream from Anthropic */
-  const model  = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
-  const client = new Anthropic({ apiKey })
-
+  /* 5 — Stream from the appropriate provider */
   try {
-    const stream = client.messages.stream({
-      model,
-      max_tokens: MAX_TOKENS_RESPONSE,
-      system:     systemPrompt,
-      messages:   sanitised,
-    })
+    let readable: ReadableStream<Uint8Array>
 
-    const encoder = new TextEncoder()
-
-    const readable = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (
-              event.type === 'content_block_delta' &&
-              event.delta.type === 'text_delta'
-            ) {
-              controller.enqueue(encoder.encode(event.delta.text))
+    if (provider === 'gemini') {
+      readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
+    } else {
+      // Anthropic path
+      const model   = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
+      const client  = new Anthropic({ apiKey })
+      const stream  = client.messages.stream({
+        model,
+        max_tokens: MAX_TOKENS_RESPONSE,
+        system:     systemPrompt,
+        messages:   sanitised,
+      })
+      const encoder = new TextEncoder()
+      readable = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          try {
+            for await (const event of stream) {
+              if (
+                event.type === 'content_block_delta' &&
+                event.delta.type === 'text_delta'
+              ) {
+                controller.enqueue(encoder.encode(event.delta.text))
+              }
             }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Stream interrupted'
+            controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
+          } finally {
+            controller.close()
           }
-        } catch (err) {
-          // Surface a visible inline error rather than silently closing the stream
-          const msg = err instanceof Error ? err.message : 'Stream interrupted'
-          controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
-        } finally {
-          controller.close()
-        }
-      },
-    })
+        },
+      })
+    }
 
     return new Response(readable, {
       headers: {
         'Content-Type':      'text/plain; charset=utf-8',
         'Transfer-Encoding': 'chunked',
         'Cache-Control':     'no-store',
-        'X-Accel-Buffering': 'no',   // disable Nginx/proxy buffering for true streaming
+        'X-Accel-Buffering': 'no',
       },
     })
   } catch (err) {
