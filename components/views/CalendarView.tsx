@@ -759,7 +759,7 @@ function TasksPanel() {
   ) as TodoCategory[] | undefined
 
   const items = useLiveQuery(
-    () => db?.todo_items.orderBy('createdAt').toArray() ?? Promise.resolve([]),
+    () => db?.todo_items.orderBy('id').toArray() ?? Promise.resolve([]),
     [],
   ) as TodoItem[] | undefined
 
