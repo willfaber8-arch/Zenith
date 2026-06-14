@@ -144,12 +144,18 @@ export async function POST(req: NextRequest): Promise<Response> {
   const userKey    = req.headers.get('x-user-api-key')?.trim() ?? ''
   const serverKey  = process.env.LLM_API_KEY ?? ''
   const apiKey     = userKey || serverKey
-  const provider   = detectProvider(apiKey) ?? (serverKey ? 'anthropic' : null)
+  const provider   = detectProvider(apiKey)
 
   if (!apiKey) {
     return NextResponse.json(
       { error: 'No AI key configured. Add your Gemini or Anthropic key in Settings → AI Provider.' },
       { status: 503 },
+    )
+  }
+  if (!provider) {
+    return NextResponse.json(
+      { error: 'Unrecognized API key format. Use a Google Gemini (AIza…) or Anthropic (sk-ant-…) key.' },
+      { status: 400 },
     )
   }
 

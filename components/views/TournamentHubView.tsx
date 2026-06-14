@@ -22,7 +22,7 @@
  * Lazy-loaded via lib/dynamicViews.tsx — no code in the initial bundle.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import ZenHeading from '@/components/ui/ZenHeading'
 import styles     from './TournamentHubView.module.css'
 
@@ -58,28 +58,75 @@ function polarToXY(angleDeg: number, r: number): { x: number; y: number } {
   return { x: WHEEL_CX + r * Math.cos(rad), y: WHEEL_CY + r * Math.sin(rad) }
 }
 
-function segmentPath(index: number, total: number): string {
-  const segAngle = 360 / total
-  const startA   = index * segAngle
-  const endA     = startA + segAngle
+function truncate(s: string, maxLen: number): string {
+  return s.length > maxLen ? s.slice(0, maxLen - 1) + '…' : s
+}
 
-  const start       = polarToXY(startA, WHEEL_R)
-  const end         = polarToXY(endA,   WHEEL_R)
-  const largeArcFlag = segAngle > 180 ? 1 : 0
+// ─────────────────────────────────────────────────────────────
+// Weighted wheel geometry
+// ─────────────────────────────────────────────────────────────
 
+interface Participant {
+  name:   string
+  weight: number   // ≥ 1; higher = larger slice / higher probability
+}
+
+interface WheelSeg {
+  start: number   // degrees, 0 = 12 o'clock, clockwise
+  end:   number
+  mid:   number
+}
+
+/** Cumulative weighted segment boundaries (degrees). */
+function computeSegments(weights: number[]): WheelSeg[] {
+  const total = weights.reduce((a, b) => a + b, 0) || 1
+  let cum = 0
+  return weights.map(w => {
+    const start = (cum / total) * 360
+    cum += w
+    const end = (cum / total) * 360
+    return { start, end, mid: (start + end) / 2 }
+  })
+}
+
+/** Pie-slice path between two angles. */
+function arcPath(startA: number, endA: number): string {
+  const start        = polarToXY(startA, WHEEL_R)
+  const end          = polarToXY(endA,   WHEEL_R)
+  const largeArcFlag = endA - startA > 180 ? 1 : 0
   return `M ${WHEEL_CX} ${WHEEL_CY} L ${start.x} ${start.y} A ${WHEEL_R} ${WHEEL_R} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`
 }
 
-function labelProps(index: number, total: number): { x: number; y: number; rotation: number } {
-  const segAngle = 360 / total
-  const midAngle = index * segAngle + segAngle / 2
-  const r        = WHEEL_R * 0.61
-  const { x, y } = polarToXY(midAngle, r)
-  return { x, y, rotation: midAngle }
+/** Which segment sits under the top pointer after rotating `rotation`°. */
+function pickWinnerIndex(weights: number[], rotation: number): number {
+  const total      = weights.reduce((a, b) => a + b, 0) || 1
+  const normalized = (((360 - (rotation % 360)) % 360) + 360) % 360
+  const target     = (normalized / 360) * total
+  let cum = 0
+  for (let i = 0; i < weights.length; i++) {
+    cum += weights[i]
+    if (target < cum) return i
+  }
+  return weights.length - 1
 }
 
-function truncate(s: string, maxLen: number): string {
-  return s.length > maxLen ? s.slice(0, maxLen - 1) + '…' : s
+/** SSR-safe migrating loader: tolerates the legacy string[] format. */
+function loadParticipants(): Participant[] {
+  const raw = loadJson<unknown>(WHEEL_KEY + '_names', [])
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item): Participant => {
+      if (typeof item === 'string') return { name: item, weight: 1 }
+      if (item && typeof item === 'object' && 'name' in item) {
+        const o = item as { name: unknown; weight?: unknown }
+        return {
+          name:   String(o.name),
+          weight: Math.max(1, Math.min(99, Math.round(Number(o.weight) || 1))),
+        }
+      }
+      return { name: String(item), weight: 1 }
+    })
+    .filter(p => p.name.trim().length > 0)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -213,11 +260,12 @@ function saveJson(key: string, value: unknown): void {
 // ─────────────────────────────────────────────────────────────
 
 function WheelOfNames() {
-  const [names,   setNames]   = useState<string[]>(() =>
-    loadJson<string[]>(WHEEL_KEY + '_names', [])
-  )
-  const [history, setHistory] = useState<string[]>(() =>
+  const [participants, setParticipants] = useState<Participant[]>(loadParticipants)
+  const [history,      setHistory]      = useState<string[]>(() =>
     loadJson<string[]>(WHEEL_KEY + '_hist', [])
+  )
+  const [useWeights, setUseWeights] = useState<boolean>(() =>
+    loadJson<boolean>(WHEEL_KEY + '_useWeights', false)
   )
   const [inputVal, setInputVal] = useState('')
   const [rotation, setRotation] = useState(0)
@@ -227,29 +275,53 @@ function WheelOfNames() {
   const prevRotRef = useRef(0)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Persist names whenever they change
-  useEffect(() => {
-    saveJson(WHEEL_KEY + '_names', names)
-  }, [names])
+  // Persist
+  useEffect(() => { saveJson(WHEEL_KEY + '_names', participants) }, [participants])
+  useEffect(() => { saveJson(WHEEL_KEY + '_useWeights', useWeights) }, [useWeights])
+
+  // Clean up the spin timer on unmount
+  useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }, [])
 
   const addName = useCallback(() => {
     const trimmed = inputVal.trim()
-    if (!trimmed || names.includes(trimmed)) return
-    setNames(prev => [...prev, trimmed])
+    if (!trimmed) return
+    setParticipants(prev =>
+      prev.some(p => p.name === trimmed) ? prev : [...prev, { name: trimmed, weight: 1 }],
+    )
     setInputVal('')
-  }, [inputVal, names])
+  }, [inputVal])
 
   const removeName = useCallback((idx: number) => {
-    setNames(prev => prev.filter((_, i) => i !== idx))
+    setParticipants(prev => prev.filter((_, i) => i !== idx))
     setWinner(null)
+  }, [])
+
+  /** Quick-remove the most recent winner after a spin. */
+  const removeWinner = useCallback(() => {
+    if (!winner) return
+    setParticipants(prev => prev.filter(p => p.name !== winner))
+    setWinner(null)
+  }, [winner])
+
+  const adjustWeight = useCallback((idx: number, delta: number) => {
+    setParticipants(prev => prev.map((p, i) =>
+      i === idx ? { ...p, weight: Math.max(1, Math.min(99, p.weight + delta)) } : p,
+    ))
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') addName()
   }, [addName])
 
+  // Effective weights: all-equal when the weight system is off
+  const weights  = useMemo(
+    () => participants.map(p => (useWeights ? p.weight : 1)),
+    [participants, useWeights],
+  )
+  const segments = useMemo(() => computeSegments(weights), [weights])
+
   const spin = useCallback(() => {
-    if (spinning || names.length < 2) return
+    if (spinning || participants.length < 2) return
     setWinner(null)
     setSpinning(true)
 
@@ -262,13 +334,8 @@ function WheelOfNames() {
     // Compute winner after the transition duration (4.5 s)
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     timeoutRef.current = setTimeout(() => {
-      const n           = names.length
-      const segAngle    = 360 / n
-      // The pointer is at the top. After clockwise rotation by R°,
-      // the wheel's top has moved to: (360 - R%360) % 360 degrees.
-      const normalized  = ((360 - (newRotation % 360)) % 360 + 360) % 360
-      const winnerIdx   = Math.floor(normalized / segAngle) % n
-      const w           = names[winnerIdx]
+      const idx = pickWinnerIndex(weights, newRotation)
+      const w   = participants[idx]?.name ?? participants[0].name
 
       setWinner(w)
       setSpinning(false)
@@ -279,17 +346,27 @@ function WheelOfNames() {
         return next
       })
     }, 4520)
+  }, [spinning, participants, weights])
 
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
-  }, [spinning, names])
-
-  const n = names.length
+  const n = participants.length
 
   return (
     <div className={styles.wheelLayout}>
       {/* ── Names panel ─────────────────────────── */}
       <div className={styles.namesPanel}>
-        <p className={styles.namesPanelTitle}>Participants</p>
+        <div className={styles.namesPanelHead}>
+          <p className={styles.namesPanelTitle}>Participants</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={useWeights}
+            className={`${styles.weightToggle} ${useWeights ? styles.weightToggleOn : ''}`}
+            onClick={() => setUseWeights(v => !v)}
+            title="Give some names a higher chance of winning"
+          >
+            ⚖ Weights {useWeights ? 'ON' : 'OFF'}
+          </button>
+        </div>
 
         <div className={styles.nameInputRow}>
           <input
@@ -307,21 +384,46 @@ function WheelOfNames() {
         </div>
 
         <div className={styles.nameList} role="list">
-          {names.length === 0 && (
+          {n === 0 && (
             <p className={styles.namesEmpty}>[ NO PARTICIPANTS YET ]</p>
           )}
-          {names.map((name, i) => (
-            <div key={name + i} className={styles.nameRow} role="listitem">
+          {participants.map((p, i) => (
+            <div key={p.name + i} className={styles.nameRow} role="listitem">
               <span
                 className={styles.nameDot}
                 style={{ background: WHEEL_COLORS[i % WHEEL_COLORS.length] }}
                 aria-hidden="true"
               />
-              <span className={styles.nameText}>{name}</span>
+              <span className={styles.nameText}>{p.name}</span>
+
+              {useWeights && (
+                <span className={styles.weightControls}>
+                  <button
+                    className={styles.weightBtn}
+                    onClick={() => adjustWeight(i, -1)}
+                    disabled={p.weight <= 1}
+                    aria-label={`Decrease ${p.name} weight`}
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <span className={styles.weightValue} title="Relative chance">×{p.weight}</span>
+                  <button
+                    className={styles.weightBtn}
+                    onClick={() => adjustWeight(i, +1)}
+                    disabled={p.weight >= 99}
+                    aria-label={`Increase ${p.name} weight`}
+                    type="button"
+                  >
+                    +
+                  </button>
+                </span>
+              )}
+
               <button
                 className={styles.nameRemove}
                 onClick={() => removeName(i)}
-                aria-label={`Remove ${name}`}
+                aria-label={`Remove ${p.name}`}
                 type="button"
               >
                 ×
@@ -330,10 +432,10 @@ function WheelOfNames() {
           ))}
         </div>
 
-        {names.length > 0 && (
+        {n > 0 && (
           <button
             className={styles.clearBtn}
-            onClick={() => { setNames([]); setWinner(null); }}
+            onClick={() => { setParticipants([]); setWinner(null); }}
             type="button"
           >
             Clear All
@@ -356,13 +458,15 @@ function WheelOfNames() {
               style={{ transform: `rotate(${rotation}deg)` }}
             >
               {n >= 2
-                ? names.map((name, i) => {
+                ? participants.map((p, i) => {
                     const color    = WHEEL_COLORS[i % WHEEL_COLORS.length]
-                    const path     = segmentPath(i, n)
-                    const lp       = labelProps(i, n)
+                    const seg      = segments[i]
+                    const path     = arcPath(seg.start, seg.end)
+                    const lpr      = WHEEL_R * 0.61
+                    const lp       = polarToXY(seg.mid, lpr)
                     const maxChars = n > 8 ? 8 : 12
                     return (
-                      <g key={name + i}>
+                      <g key={p.name + i}>
                         <path d={path} fill={color} stroke="#0d0f12" strokeWidth="1.5" opacity="0.88" />
                         <text
                           x={lp.x}
@@ -373,9 +477,9 @@ function WheelOfNames() {
                           fontFamily="var(--font-mono)"
                           fill="#0d0f12"
                           fontWeight="700"
-                          transform={`rotate(${lp.rotation}, ${lp.x}, ${lp.y})`}
+                          transform={`rotate(${seg.mid}, ${lp.x}, ${lp.y})`}
                         >
-                          {truncate(name, maxChars)}
+                          {truncate(p.name, maxChars)}
                         </text>
                       </g>
                     )
@@ -401,15 +505,15 @@ function WheelOfNames() {
               strokeWidth="2"
             />
 
-            {/* Pointer triangle at 12 o'clock */}
+            {/* Pointer triangle at 12 o'clock — apex points DOWN into the wheel */}
             <polygon
               className={styles.wheelPointer}
-              points={`${WHEEL_CX},8 ${WHEEL_CX - 9},28 ${WHEEL_CX + 9},28`}
+              points={`${WHEEL_CX},28 ${WHEEL_CX - 9},8 ${WHEEL_CX + 9},8`}
               fill="var(--accent-warm)"
             />
             <circle
               className={styles.wheelPointer}
-              cx={WHEEL_CX} cy={28} r={4}
+              cx={WHEEL_CX} cy={8} r={4}
               fill="var(--accent-warm)"
             />
 
@@ -448,6 +552,13 @@ function WheelOfNames() {
           <div className={styles.winnerBox} key={winner} role="status" aria-live="polite">
             <p className={styles.winnerLabel}>Winner</p>
             <p className={styles.winnerName}>{winner}</p>
+            <button
+              className={styles.winnerRemoveBtn}
+              onClick={removeWinner}
+              type="button"
+            >
+              ✕ Remove from wheel
+            </button>
           </div>
         )}
 

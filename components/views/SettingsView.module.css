@@ -1,6 +1,9 @@
 .root {
   padding: var(--sp-8) var(--sp-8) var(--sp-16);
   max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .grid {
@@ -505,18 +508,13 @@
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
-  overflow-x: auto;
   padding: var(--sp-3) 0;
   margin-bottom: var(--sp-2);
   background: color-mix(in srgb, var(--bg-main) 85%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
-  scrollbar-width: none;
-}
-
-.anchorBar::-webkit-scrollbar {
-  display: none;
 }
 
 .anchorPill {

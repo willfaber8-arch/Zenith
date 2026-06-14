@@ -667,3 +667,104 @@
   .setupRow    { flex-direction: column; }
   .wheelContainer { width: 280px; height: 280px; }
 }
+
+/* ── Weight system + winner quick-remove (Wheel of Names) ─────── */
+
+.namesPanelHead {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-2);
+}
+
+.weightToggle {
+  font-family:    var(--font-mono);
+  font-size:      0.5rem;
+  font-weight:    600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  background:     transparent;
+  border:         1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  border-radius:  var(--r-xl);
+  padding:        4px 10px;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     color 140ms, border-color 140ms, background 140ms;
+}
+
+.weightToggle:hover {
+  color:        var(--text-muted);
+  border-color: color-mix(in srgb, var(--accent-warm) 40%, transparent);
+}
+
+.weightToggleOn {
+  color:        var(--accent-warm);
+  border-color: color-mix(in srgb, var(--accent-warm) 55%, transparent);
+  background:   color-mix(in srgb, var(--accent-warm) 12%, transparent);
+}
+
+.weightControls {
+  display:      flex;
+  align-items:  center;
+  gap:          4px;
+  margin-left:  auto;
+  flex-shrink:  0;
+}
+
+.weightBtn {
+  width:         20px;
+  height:        20px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background:    var(--bg-main);
+  color:         var(--text-muted);
+  font-size:     0.85rem;
+  line-height:   1;
+  cursor:        pointer;
+  transition:    color 120ms, border-color 120ms;
+}
+
+.weightBtn:hover:not(:disabled) {
+  color:        var(--accent-warm);
+  border-color: color-mix(in srgb, var(--accent-warm) 45%, transparent);
+}
+
+.weightBtn:disabled {
+  opacity: 0.35;
+  cursor:  not-allowed;
+}
+
+.weightValue {
+  font-family: var(--font-mono);
+  font-size:   0.6rem;
+  font-weight: 600;
+  color:       var(--accent-warm);
+  min-width:   22px;
+  text-align:  center;
+}
+
+.winnerRemoveBtn {
+  margin-top:     var(--sp-3);
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  font-weight:    600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  background:     transparent;
+  border:         1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  border-radius:  var(--r-md);
+  padding:        var(--sp-2) var(--sp-4);
+  cursor:         pointer;
+  transition:     color 140ms, border-color 140ms, background 140ms;
+}
+
+.winnerRemoveBtn:hover {
+  color:        #c96a6a;
+  border-color: rgba(201, 106, 106, 0.45);
+  background:   rgba(201, 106, 106, 0.08);
+}
