@@ -140,10 +140,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     )
   }
 
-  /* 1 — Resolve API key: user-supplied key takes priority over server env var */
-  const userKey    = req.headers.get('x-user-api-key')?.trim() ?? ''
-  const serverKey  = process.env.LLM_API_KEY ?? ''
-  const apiKey     = userKey || serverKey
+  /* 1 — Resolve API key: user-supplied key takes priority over server env var.
+   *   Sanitize by stripping non-printable chars trim() won't catch — invisible
+   *   Unicode (zero-width spaces, BOM) can be silently pasted from web dashboards. */
+  const rawUserKey = req.headers.get('x-user-api-key') ?? ''
+  const rawSrvKey  = process.env.LLM_API_KEY ?? ''
+  const apiKey     = (rawUserKey || rawSrvKey).replace(/[^\x20-\x7E]/g, '').trim()
   const provider   = detectProvider(apiKey)
 
   if (!apiKey) {

@@ -5,10 +5,23 @@
 
 export type AiProvider = 'anthropic' | 'gemini'
 
-/** Auto-detect the AI provider from the key prefix. */
+/**
+ * Auto-detect the AI provider from the key prefix.
+ * Strips non-printable / non-ASCII chars before checking — zero-width spaces
+ * and other invisible Unicode characters are commonly introduced when pasting
+ * keys from web dashboards, and trim() alone won't remove them.
+ */
 export function detectProvider(key: string): AiProvider | null {
-  const k = key.trim()
+  const k = key.replace(/[^\x20-\x7E]/g, '').trim()
   if (k.startsWith('sk-ant-')) return 'anthropic'
   if (k.startsWith('AIza'))    return 'gemini'
   return null
+}
+
+/**
+ * Sanitize a raw user-pasted key the same way detectProvider() does.
+ * Call this before storing to localStorage so the saved value is clean.
+ */
+export function sanitizeApiKey(key: string): string {
+  return key.replace(/[^\x20-\x7E]/g, '').trim()
 }
