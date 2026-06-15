@@ -20,7 +20,7 @@
 import Anthropic   from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
-import { detectProvider }     from '@/lib/aiProviderUtils'
+import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 
 /* ── Gemini REST streaming helper ─────────────────────────────── */
 
@@ -54,7 +54,7 @@ async function streamGemini(
 
   if (!upstream.ok) {
     const errText = await upstream.text().catch(() => '')
-    throw new Error(`Gemini API error ${upstream.status}: ${errText.slice(0, 200)}`)
+    throw new Error(friendlyGeminiError(upstream.status, errText))
   }
 
   const encoder = new TextEncoder()
