@@ -10,11 +10,15 @@ export type AiProvider = 'anthropic' | 'gemini'
  * Strips non-printable / non-ASCII chars before checking — zero-width spaces
  * and other invisible Unicode characters are commonly introduced when pasting
  * keys from web dashboards, and trim() alone won't remove them.
+ *
+ * Google issues Gemini keys in two formats: the classic "AIza…" keys and the
+ * newer "AQ.…" keys from AI Studio. Both authenticate the Generative Language
+ * API via the ?key= query parameter.
  */
 export function detectProvider(key: string): AiProvider | null {
   const k = key.replace(/[^\x20-\x7E]/g, '').trim()
   if (k.startsWith('sk-ant-')) return 'anthropic'
-  if (k.startsWith('AIza'))    return 'gemini'
+  if (k.startsWith('AIza') || k.startsWith('AQ.')) return 'gemini'
   return null
 }
 

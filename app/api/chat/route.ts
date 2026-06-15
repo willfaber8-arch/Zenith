@@ -156,7 +156,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   if (!provider) {
     return NextResponse.json(
-      { error: 'Unrecognized API key format. Use a Google Gemini (AIza…) or Anthropic (sk-ant-…) key.' },
+      { error: 'Unrecognized API key format. Use a Google Gemini (AIza… or AQ.…) or Anthropic (sk-ant-…) key.' },
       { status: 400 },
     )
   }
