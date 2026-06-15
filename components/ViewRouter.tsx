@@ -35,6 +35,7 @@ import WellnessView    from '@/components/views/SlopeDayView'
 import CustomLinksView from '@/components/views/CustomLinksView'
 import PlaceholderView from '@/components/views/PlaceholderView'
 import SettingsView    from '@/components/views/SettingsView'
+import HelpView        from '@/components/views/HelpView'
 
 /* ── Lazy imports (heavy, infrequently-needed on initial load) ── */
 import {
@@ -85,6 +86,7 @@ function resolveView(id: ViewId): JSX.Element {
   if (id === 'tournament-hub')  return <TournamentHubView />
   if (id === 'stats')           return <StatsView />
   if (id === 'settings')        return <SettingsView />
+  if (id === 'help')            return <HelpView />
 
   if (id === 'games') {
     /**

@@ -36,6 +36,7 @@ export type ViewId =
   | 'stats'
   // System
   | 'settings'
+  | 'help'
 
 export interface NavLink {
   id:       ViewId
