@@ -166,11 +166,18 @@ function FeedPanel({
 }: FeedPanelProps) {
   const [url,   setUrl]   = useState('')
   const [label, setLabel] = useState('')
+  const [gcalUrl, setGcalUrl] = useState('')
 
   const handleAdd = () => {
     onAdd(url, label)
     setUrl('')
     setLabel('')
+  }
+
+  const handleConnectGcal = () => {
+    if (!gcalUrl.trim()) return
+    onAdd(gcalUrl, label.trim() || 'Google Calendar')
+    setGcalUrl('')
   }
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -180,6 +187,58 @@ function FeedPanel({
   return (
     <div className={styles.feedPanel} role="region" aria-label="Calendar feed manager">
       <p className={styles.feedPanelLabel}>Calendar Feeds</p>
+
+      {/* ── Google Calendar connect helper ─────────────────────── */}
+      <details className={styles.gcalSection}>
+        <summary className={styles.gcalSummary}>
+          <span className={styles.gcalDot} aria-hidden="true" />
+          Sync Google Calendar
+        </summary>
+        <div className={styles.gcalBody}>
+          <p className={styles.gcalHint}>
+            Zenith imports your Google Calendar through its private iCal link — your events
+            stay read-only and sync automatically. No Google sign-in needed.
+          </p>
+          <ol className={styles.gcalSteps}>
+            <li>
+              Open{' '}
+              <a
+                className={styles.gcalLink}
+                href="https://calendar.google.com/calendar/u/0/r/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Calendar settings ↗
+              </a>
+            </li>
+            <li>Pick your calendar in the left list → <strong>Integrate calendar</strong></li>
+            <li>Copy the <strong>Secret address in iCal format</strong> (ends in <code>.ics</code>)</li>
+            <li>Paste it below and connect</li>
+          </ol>
+          <div className={styles.gcalInputRow}>
+            <input
+              type="url"
+              className={styles.feedInput}
+              placeholder="Paste your Google Calendar secret iCal address (…/basic.ics)"
+              value={gcalUrl}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setGcalUrl(e.target.value)}
+              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleConnectGcal() }}
+              aria-label="Google Calendar iCal URL"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className={styles.addFeedBtn}
+              onClick={handleConnectGcal}
+              disabled={isFetching || !gcalUrl.trim()}
+              aria-busy={isFetching}
+            >
+              {isFetching ? 'Connecting…' : 'Connect'}
+            </button>
+          </div>
+        </div>
+      </details>
 
       <div className={styles.addFeedRow}>
         <input
