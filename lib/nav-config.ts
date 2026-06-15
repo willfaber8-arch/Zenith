@@ -20,6 +20,7 @@ export type ViewId =
   | 'wellness'
   | 'meal-planning'
   | 'world-events'
+  | 'sports'
   | 'personal-brand'
   | 'subscriptions'
   | 'game-finder'
@@ -104,6 +105,7 @@ export const NAV_CONFIG: NavCategory[] = [
           { id: 'wellness',       label: 'Mental Wellness',    category: 'essentials', color: '#f9a8d4' },
           { id: 'personal-brand', label: 'Personal Brand Hub', category: 'essentials', color: '#fbbf24' },
           { id: 'world-events',   label: 'World Events',       category: 'essentials', color: '#818cf8' },
+          { id: 'sports',         label: 'Sports Tracker',     category: 'essentials', color: '#34d399' },
           { id: 'game-finder',    label: 'Game Hub',           category: 'essentials', color: '#c084fc' },
           { id: 'book-tracker',   label: 'Reading Tracker',    category: 'essentials', color: '#f97316' },
         ],
