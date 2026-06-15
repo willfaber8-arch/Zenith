@@ -1,0 +1,546 @@
+.root {
+  padding: var(--sp-8);
+  max-width: 1200px;
+}
+
+/* ── Section labels ────────────────────────────────────────────── */
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--cat-accent, var(--accent-purple));
+  margin: 0 0 var(--sp-3);
+}
+
+/* ── My Teams Dashboard ────────────────────────────────────────── */
+.dashSection {
+  margin-bottom: var(--sp-10);
+}
+
+.dashGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
+}
+
+.dashCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.dashHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dashInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashLeague {
+  font-size: 0.66rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashMeta {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Rank chip ─────────────────────────────────────────────────── */
+.rankChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-active);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-3);
+  width: fit-content;
+}
+
+.rankNum {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+
+.rankLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rankStat {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--text-dark);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Sport category tabs ───────────────────────────────────────── */
+.browserSection {
+  /* League browser sits below the dashboard */
+}
+
+.sportTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.sportTab {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-base), border-color var(--dur-base), background var(--dur-base);
+}
+
+.sportTab:hover {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+
+.sportTabActive {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 12%, var(--surface-card));
+}
+
+/* ── League selector ───────────────────────────────────────────── */
+.leagueTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-5);
+}
+
+.leagueTab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: var(--sp-1) var(--sp-3);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-base), border-color var(--dur-base), background var(--dur-base);
+}
+
+.leagueTab:hover {
+  color: var(--text-primary);
+  border-color: var(--league-accent, var(--accent-purple));
+}
+
+.leagueTabActive {
+  color: var(--text-primary);
+  border-color: var(--league-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--league-accent, var(--accent-purple)) 14%, var(--surface-card));
+}
+
+.leagueDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--league-accent, var(--accent-purple));
+  flex-shrink: 0;
+}
+
+/* ── Layout grid ───────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .dashGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Standings table ───────────────────────────────────────────── */
+.standingsCol,
+.teamsCol {
+  min-width: 0;
+}
+
+.tableScroll {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.table thead th {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  font-weight: 600;
+  text-align: center;
+  padding: var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.thRank  { width: 34px; }
+.thTeam  { text-align: left; padding-left: var(--sp-4); }
+.thGd    { width: 44px; }
+.thPts   { width: 44px; }
+.thFollow { width: 36px; }
+
+.row {
+  transition: background var(--dur-fast);
+}
+
+.row:hover {
+  background: var(--bg-hover);
+}
+
+.table td {
+  text-align: center;
+  padding: var(--sp-2);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Division header row for NFL / NBA */
+.divisionRow td {
+  border-bottom: none !important;
+}
+
+.divisionCell {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2) !important;
+  color: var(--league-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--league-accent, var(--accent-purple)) 6%, var(--surface-card));
+  text-align: left !important;
+}
+
+.tdRank {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+  border-left: 2px solid var(--league-accent, transparent);
+}
+
+.tdTeam {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: left;
+  padding-left: var(--sp-4);
+}
+
+.teamName {
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.tdGd  { color: var(--text-muted); }
+
+.tdPts {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tdFollow { padding-right: var(--sp-3); }
+
+.starBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: color var(--dur-fast), transform var(--dur-fast);
+}
+
+.starBtn:hover  { color: var(--accent-purple); transform: scale(1.18); }
+.starBtnOn      { color: #fbbf24; }
+.starBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.tableState {
+  background: var(--surface-card);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-8) var(--sp-5);
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Badges ────────────────────────────────────────────────────── */
+.badgeImg {
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.badgeFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-active);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Search ────────────────────────────────────────────────────── */
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--sp-3);
+}
+
+.searchGlyph {
+  position: absolute;
+  left: var(--sp-3);
+  display: flex;
+  align-items: center;
+  color: var(--text-dark);
+  pointer-events: none;
+  line-height: 1;
+}
+
+.searchInput {
+  width: 100%;
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-7) var(--sp-2) var(--sp-8);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color var(--dur-base);
+}
+
+.searchInput:focus { border-color: var(--accent-purple); }
+
+.searchClear {
+  position: absolute;
+  right: var(--sp-2);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: var(--sp-1);
+  line-height: 1;
+}
+
+.searchClear:hover { color: var(--text-primary); }
+
+.searchResults {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--sp-4);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.searchHint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  padding: var(--sp-2);
+  margin: 0;
+}
+
+.searchHit {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.searchHit:hover {
+  border-color: var(--accent-purple-dim);
+  background: var(--bg-hover);
+}
+
+.searchHitName {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.searchHitLeague {
+  font-size: 0.66rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchHitAction {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--accent-purple);
+  white-space: nowrap;
+}
+
+/* ── Empty / followed-count states ────────────────────────────── */
+.emptyTeams {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  background: var(--surface-card);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.emptyGlyph {
+  font-size: 1.6rem;
+  color: var(--accent-purple-dim);
+}
+
+.followedCount {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  text-align: center;
+}
+
+.followedCountNum {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Shared card elements ──────────────────────────────────────── */
+.unfollowBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  cursor: pointer;
+  font-size: 0.74rem;
+  padding: var(--sp-1);
+  line-height: 1;
+  transition: color var(--dur-fast);
+}
+
+.unfollowBtn:hover { color: #f87171; }
+
+.formRow {
+  display: flex;
+  gap: 4px;
+}
+
+.formPill {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.formWin     { background: rgba(82, 204, 163, 0.18);  color: #52cca3; }
+.formLoss    { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+.formDraw    { background: rgba(155, 163, 196, 0.18); color: #9ba3c4; }
+.formUnknown { background: var(--bg-active);          color: var(--text-dark); }
+
+.lastResult {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lastResult strong { color: var(--text-primary); }
+
+.lastDate {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dark);
+}

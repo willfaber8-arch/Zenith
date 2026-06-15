@@ -36,6 +36,7 @@ import CustomLinksView from '@/components/views/CustomLinksView'
 import PlaceholderView from '@/components/views/PlaceholderView'
 import SettingsView    from '@/components/views/SettingsView'
 import HelpView        from '@/components/views/HelpView'
+import SportsView      from '@/components/views/SportsView'
 
 /* ── Lazy imports (heavy, infrequently-needed on initial load) ── */
 import {
@@ -77,6 +78,7 @@ function resolveView(id: ViewId): JSX.Element {
   if (id === 'meal-planning')   return <MealPlanningView />
   if (id === 'workouts')        return <WorkoutsView />
   if (id === 'world-events')    return <WorldEventsView />
+  if (id === 'sports')          return <SportsView />
   if (id === 'personal-brand')  return <PersonalBrandView />
   if (id === 'vocab-builder')   return <VocabBuilderView />
   if (id === 'subscriptions')   return <SubscriptionPackagesView />
