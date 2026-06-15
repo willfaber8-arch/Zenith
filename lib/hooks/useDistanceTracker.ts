@@ -248,14 +248,21 @@ export function useDistanceTracker(): UseDistanceTrackerReturn {
   syncRef.current = performSync
 
   useEffect(() => {
-    // Trigger an immediate sync on first mount.  The 12-hour timer
-    // fires its first tick only after the full interval has elapsed,
-    // matching the "twice a day when the app is open" requirement.
+    // IMPORTANT: only auto-sync when the browser has ALREADY granted
+    // geolocation. Calling getCurrentPosition() while the permission is
+    // still 'prompt' is what made the browser ask for location on every
+    // single page load. We never auto-trigger the prompt here — the user
+    // grants location explicitly via the "Sync Location On-Demand" button
+    // (syncNow), which is the only path allowed to surface the prompt.
+    if (permissionStatus !== 'granted') return
+
+    // Permission is already granted → safe to sync silently on mount, then
+    // twice a day while the app stays open.
     syncRef.current()
 
     const timer = setInterval(() => syncRef.current(), SYNC_INTERVAL_MS)
     return () => clearInterval(timer)
-  }, [])  // empty deps — fire once on mount, clean up on unmount
+  }, [permissionStatus])  // re-arms once permission flips to 'granted'
 
   /* ── Computed return values ───────────────────────────────── */
 
