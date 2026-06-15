@@ -8,6 +8,7 @@ export type CategoryId = 'essentials' | 'creator' | 'vault'
 
 export type ViewId =
   | 'home'
+  | 'outlook'
   // Essentials → Scholastic
   | 'uni-hub'
   | 'study-shield'
@@ -75,6 +76,13 @@ export const NAV_CONFIG: NavCategory[] = [
     label: 'Zenith Essentials',
     bgTint: '#0e1018',            // Warm Deep Slate-Indigo
     subcategories: [
+      {
+        id: 'overview',
+        label: 'Overview',
+        links: [
+          { id: 'outlook', label: 'Daily Outlook', category: 'essentials', color: '#7c95ff' },
+        ],
+      },
       {
         id: 'scholastic',
         label: 'Scholastic',

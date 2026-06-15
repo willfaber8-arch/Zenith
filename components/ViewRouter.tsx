@@ -27,6 +27,7 @@ import type { ViewId }  from '@/lib/nav-config'
 
 /* ── Synchronous imports (small, used frequently) ──────────── */
 import HomeView        from '@/components/views/HomeView'
+import OutlookView     from '@/components/views/OutlookView'
 import UniHubView      from '@/components/views/UniHubView'
 import StudyShieldView from '@/components/views/StudyShieldView'
 import BotanistView    from '@/components/views/BotanistView'
@@ -62,6 +63,7 @@ import GameFinderView from '@/components/views/GameFinderView'
 
 function resolveView(id: ViewId): JSX.Element {
   if (id === 'home')            return <HomeView />
+  if (id === 'outlook')         return <OutlookView />
   if (id === 'uni-hub')         return <UniHubView />
   if (id === 'calendar')        return <CalendarView />
   if (id === 'study-shield')    return <StudyShieldView />
