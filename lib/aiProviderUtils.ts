@@ -29,3 +29,29 @@ export function detectProvider(key: string): AiProvider | null {
 export function sanitizeApiKey(key: string): string {
   return key.replace(/[^\x20-\x7E]/g, '').trim()
 }
+
+/**
+ * Map a non-OK Gemini REST response to a clear, user-facing message.
+ * Keeps the raw Google error JSON out of the UI — the user only sees an
+ * actionable sentence. Used by all three AI routes (chat, study-ai, roadmap).
+ */
+export function friendlyGeminiError(status: number, rawText: string): string {
+  switch (status) {
+    case 429:
+      return 'Gemini quota exceeded. You\'ve hit Google\'s rate limit or daily free-tier cap — wait a minute and try again, or check your plan and billing in Google AI Studio.'
+    case 400:
+      return /api[_ ]?key/i.test(rawText)
+        ? 'Gemini rejected the API key. Re-check the key in Settings → AI Provider.'
+        : 'Gemini could not process the request. Please try again.'
+    case 401:
+    case 403:
+      return 'Gemini denied access for this key. The Generative Language API may not be enabled for the key\'s Google Cloud project.'
+    case 404:
+      return 'The configured Gemini model was not found. It may have been renamed or retired.'
+    case 500:
+    case 503:
+      return 'Gemini is temporarily overloaded. Please try again in a moment.'
+    default:
+      return `Gemini API error ${status}. Please try again.`
+  }
+}

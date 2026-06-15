@@ -16,7 +16,7 @@ import Anthropic          from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import type { StudyAiResponse, GenerateOptions }      from '@/types/studyAi'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
-import { detectProvider }     from '@/lib/aiProviderUtils'
+import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 
 /* ── Gemini non-streaming helper ──────────────────────────────── */
 
@@ -45,7 +45,7 @@ async function callGemini(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 200)}`)
+    throw new Error(friendlyGeminiError(res.status, errText))
   }
 
   const data = await res.json() as Record<string, unknown>

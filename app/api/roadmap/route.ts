@@ -19,7 +19,7 @@
 import Anthropic     from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
-import { detectProvider }     from '@/lib/aiProviderUtils'
+import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 
 const GEMINI_BASE          = 'https://generativelanguage.googleapis.com/v1beta/models'
 const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
@@ -39,7 +39,7 @@ async function callGemini(apiKey: string, goal: string, maxTokens: number): Prom
   })
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 200)}`)
+    throw new Error(friendlyGeminiError(res.status, errText))
   }
   const data       = await res.json() as Record<string, unknown>
   const candidates = data.candidates as Array<Record<string, unknown>> | undefined
