@@ -7,6 +7,7 @@ import { useToast }        from '@/lib/ToastContext'
 import { useNavBadge }     from '@/lib/NavBadgeContext'
 import { useStudyMode }    from '@/lib/StudyModeContext'
 import { useHiddenNavItems } from '@/lib/hooks/useHiddenNavItems'
+import { useNotifications }  from '@/lib/hooks/useNotifications'
 import Topbar                    from './Topbar'
 import BadgeSyncEffect           from './BadgeSyncEffect'
 import MentalHealthBurnoutBanner from './MentalHealthBurnoutBanner'
@@ -77,6 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   } = useHiddenNavItems()
   const { collapsed, toggle: toggleCollapsed } = useCollapsedCategories()
   const { sidebarHidden, toggleSidebarHidden } = useSidebarHidden()
+  useNotifications()
 
   /* Right-click context menu state */
   const [ctxMenu, setCtxMenu] = useState<{

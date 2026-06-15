@@ -138,11 +138,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured) return { error: 'Supabase not configured.' }
 
       const supabase = getSupabaseClient()!
+      // Use current origin so verification emails redirect to the right
+      // environment (localhost in dev, Vercel production URL on deploy).
+      const emailRedirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/`
+        : undefined
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { display_name: displayName.trim() || email.split('@')[0] },
+          data:           { display_name: displayName.trim() || email.split('@')[0] },
+          emailRedirectTo,
         },
       })
       return { error: error?.message ?? null }

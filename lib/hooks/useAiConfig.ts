@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { detectProvider, type AiProvider }  from '@/lib/aiProviderUtils'
+import { detectProvider, sanitizeApiKey, type AiProvider } from '@/lib/aiProviderUtils'
 
 export type { AiProvider }
 export { detectProvider }
@@ -43,7 +43,7 @@ export function useAiConfig() {
   }, [])
 
   const saveKey = useCallback((rawKey: string) => {
-    const key      = rawKey.trim()
+    const key      = sanitizeApiKey(rawKey)  // strips invisible chars trim() won't catch
     const provider = detectProvider(key)
     const next: AiConfig = { userApiKey: key, provider }
     setConfig(next)

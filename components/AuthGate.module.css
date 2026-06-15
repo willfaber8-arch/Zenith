@@ -366,3 +366,64 @@
   font-weight: 500;
 }
 
+/* ── Offline mode ─────────────────────────────────────────── */
+
+.offlineNotice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background: rgba(82, 204, 163, 0.05);
+  border: 1px solid rgba(82, 204, 163, 0.12);
+  border-radius: var(--r-md);
+}
+
+.offlineTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--accent-green);
+  letter-spacing: -0.01em;
+}
+
+.offlineDesc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.optionalTag {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-dark);
+  font-size: 0.6875rem;
+}
+
+/* Separator above the offline bypass link */
+.offlineDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  opacity: 0.5;
+}
+
+.offlineBypass {
+  text-align: center;
+}
+
+.offlineLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: color 0.15s ease;
+}
+
+.offlineLink:hover {
+  color: var(--text-muted);
+}
+
