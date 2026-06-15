@@ -759,3 +759,19 @@ export async function setActiveTheme(themeId: string): Promise<boolean> {
   await db.user_profile_config.update(ACTIVE_USER_ID, { activeTheme: themeId })
   return true
 }
+
+/**
+ * Activates a free theme that bypasses the purchase gate (e.g. university
+ * brand themes, which are granted for free). Ensures the theme id is also
+ * recorded in `purchasedThemes` so the rest of the theme machinery
+ * (Shop "Equipped" state, setActiveTheme) treats it as owned afterwards.
+ */
+export async function applyFreeTheme(themeId: string): Promise<void> {
+  const db      = getGamesDb()
+  const profile = await db.user_profile_config.get(ACTIVE_USER_ID)
+  if (!profile) return
+  const purchasedThemes = profile.purchasedThemes.includes(themeId)
+    ? profile.purchasedThemes
+    : [...profile.purchasedThemes, themeId]
+  await db.user_profile_config.update(ACTIVE_USER_ID, { activeTheme: themeId, purchasedThemes })
+}

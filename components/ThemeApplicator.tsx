@@ -17,6 +17,7 @@ import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { gamesDb, seedGamesDatabase } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS, ALL_THEMEABLE_VARS } from '@/lib/themeDefinitions'
+import { UNIVERSITY_THEME_DEFINITIONS } from '@/lib/universityThemes'
 
 export default function ThemeApplicator() {
   /* Seed the Games DB if it hasn't been seeded yet (idempotent). */
@@ -32,7 +33,9 @@ export default function ThemeApplicator() {
 
   useEffect(() => {
     const themeId = profile?.activeTheme ?? 'zenith_default'
-    const def = THEME_DEFINITIONS[themeId]
+    // University brand themes (uni_<id>) live in a separate map so the
+    // school colour palette stays out of the cosmetic shop catalog.
+    const def = THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
 
     // Step 1: Clear all previously applied overrides so no stale vars bleed through
     ALL_THEMEABLE_VARS.forEach(v =>

@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { useAuth }        from '@/lib/AuthContext'
+import { useToast }       from '@/lib/ToastContext'
 import { db }             from '@/lib/db'
+import { applyFreeTheme, seedGamesDatabase } from '@/lib/gamesDb'
+import { getUniversityBrand, uniThemeId } from '@/lib/universityThemes'
 import ZenHeading         from '@/components/ui/ZenHeading'
 import UniSelector        from '@/components/UniSelector'
 import MajorSelector      from '@/components/MajorSelector'
@@ -39,8 +42,11 @@ type TopTab = 'uni-resources' | 'major-resources' | 'gpa' | 'finances'
 
 export default function UniHubView() {
   const { session } = useAuth()
+  const { toast }   = useToast()
   const [activeTab, setActiveTab]     = useState<TopTab>('uni-resources')
   const [setupStep, setSetupStep]     = useState<'uni' | 'major' | 'done'>('done')
+  /** University whose brand-theme switch is being offered (null = no prompt). */
+  const [themePrompt, setThemePrompt] = useState<UniversityEntry | null>(null)
 
   /* ── Live profile ─────────────────────────────────────────── */
   const profile = useLiveQuery(
@@ -113,7 +119,22 @@ export default function UniHubView() {
   const handleSelectUni = useCallback(async (entry: UniversityEntry) => {
     await upsertProfile({ universityName: entry.name })
     setSetupStep('major')
+    // Offer to theme all of Zenith in the school's colours, if we have a brand.
+    if (getUniversityBrand(entry.id)) setThemePrompt(entry)
   }, [upsertProfile])
+
+  /* ── University brand theme ───────────────────────────────── */
+  const applyUniTheme = useCallback(async (uniId: string) => {
+    try {
+      await seedGamesDatabase()
+      await applyFreeTheme(uniThemeId(uniId))
+      const brand = getUniversityBrand(uniId)
+      toast(`${brand?.name ?? 'School'} colors applied across Zenith.`, 'success')
+    } catch {
+      toast('Could not apply school theme.', 'error')
+    }
+    setThemePrompt(null)
+  }, [toast])
 
   const handleSelectMajor = useCallback(async (entry: MajorEntry) => {
     await upsertProfile({ majorIdentifier: entry.name })
@@ -182,6 +203,13 @@ export default function UniHubView() {
             Skip — I'll decide later
           </button>
         </div>
+        {themePrompt && (
+          <ThemePromptModal
+            entry={themePrompt}
+            onApply={() => applyUniTheme(themePrompt.id)}
+            onDismiss={() => setThemePrompt(null)}
+          />
+        )}
       </div>
     )
   }
@@ -235,6 +263,16 @@ export default function UniHubView() {
           </div>
         </div>
         <div className={styles.identityActions}>
+          {getUniversityBrand(uniEntry.id) && (
+            <button
+              type="button"
+              className={styles.changeSmallBtn}
+              onClick={() => applyUniTheme(uniEntry.id)}
+              title={`Theme Zenith in ${uniConfig.shortName} colors`}
+            >
+              School Colors
+            </button>
+          )}
           <button type="button" className={styles.changeSmallBtn} onClick={handleResetUni}>
             Change University
           </button>
@@ -350,6 +388,50 @@ function UniNoData({
         <p className={styles.noDataHint}>
           Currently live: Cornell University, Texas A&M University, UT Austin.
         </p>
+      </div>
+    </div>
+  )
+}
+
+/* ── ThemePromptModal ─────────────────────────────────────────────
+   Offered after a university is selected — asks whether to recolour
+   all of Zenith in that school's brand palette.
+   ─────────────────────────────────────────────────────────────── */
+function ThemePromptModal({
+  entry, onApply, onDismiss,
+}: {
+  entry: UniversityEntry
+  onApply: () => void
+  onDismiss: () => void
+}) {
+  const brand = getUniversityBrand(entry.id)
+  if (!brand) return null
+  return (
+    <div className={styles.themeModalBackdrop} onClick={onDismiss}>
+      <div
+        className={`${styles.themeModal} anim-scale-in`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Apply ${brand.name} theme`}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className={styles.themeSwatchRow} aria-hidden="true">
+          <span className={styles.themeSwatch} style={{ background: brand.primaryHex }} />
+          <span className={styles.themeSwatch} style={{ background: brand.secondaryHex }} />
+        </div>
+        <p className={styles.themeModalTitle}>Wear your colors?</p>
+        <p className={styles.themeModalBody}>
+          Switch all of Zenith to <strong>{brand.name}</strong>&apos;s official palette. You can
+          revert anytime from Settings → Appearance.
+        </p>
+        <div className={styles.themeModalActions}>
+          <button type="button" className={styles.themeApplyBtn} onClick={onApply}>
+            Apply {brand.name} colors
+          </button>
+          <button type="button" className={styles.themeDismissBtn} onClick={onDismiss}>
+            Keep Zenith Classic
+          </button>
+        </div>
       </div>
     </div>
   )

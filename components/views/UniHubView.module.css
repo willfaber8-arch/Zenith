@@ -351,3 +351,97 @@
     flex-wrap:    wrap;
   }
 }
+
+/* ── University brand-theme prompt modal ──────────────────────── */
+.themeModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 401;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: rgba(5, 6, 10, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.themeModal {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-6);
+  text-align: center;
+}
+
+.themeSwatchRow {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.themeSwatch {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.themeModalTitle {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-2);
+}
+
+.themeModalBody {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-5);
+}
+
+.themeModalActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.themeApplyBtn {
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--bg-main);
+  background: var(--accent-purple);
+  border: none;
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  transition: opacity var(--dur-base) var(--ease-smooth);
+}
+
+.themeApplyBtn:hover {
+  opacity: 0.88;
+}
+
+.themeDismissBtn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  transition: color var(--dur-base), border-color var(--dur-base);
+}
+
+.themeDismissBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple-dim);
+}
