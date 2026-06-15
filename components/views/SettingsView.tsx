@@ -381,7 +381,7 @@ export default function SettingsView() {
               placeholder={
                 aiMounted && aiConfig.userApiKey
                   ? 'Enter a new key to replace the current one'
-                  : 'Paste your Gemini (AIza…) or Anthropic (sk-ant-…) key'
+                  : 'Paste your Gemini (AIza… or AQ.…) or Anthropic (sk-ant-…) key'
               }
               value={aiKeyInput}
               onChange={e => setAiKeyInput(e.target.value)}
