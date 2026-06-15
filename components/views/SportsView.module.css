@@ -1,23 +1,122 @@
 .root {
   padding: var(--sp-8);
-  max-width: 1180px;
+  max-width: 1200px;
 }
 
-/* ── League selector ───────────────────────────────────────────── */
-.leagueTabs {
+/* ── Section labels ────────────────────────────────────────────── */
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--cat-accent, var(--accent-purple));
+  margin: 0 0 var(--sp-3);
+}
+
+/* ── My Teams Dashboard ────────────────────────────────────────── */
+.dashSection {
+  margin-bottom: var(--sp-10);
+}
+
+.dashGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
+}
+
+.dashCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.dashHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dashInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashLeague {
+  font-size: 0.66rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashMeta {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Rank chip ─────────────────────────────────────────────────── */
+.rankChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-active);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-3);
+  width: fit-content;
+}
+
+.rankNum {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+
+.rankLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rankStat {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--text-dark);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Sport category tabs ───────────────────────────────────────── */
+.browserSection {
+  /* League browser sits below the dashboard */
+}
+
+.sportTabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
-  margin: var(--sp-6) 0 var(--sp-5);
+  margin-bottom: var(--sp-4);
 }
 
-.leagueTab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
+.sportTab {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  border-radius: var(--r-md);
   padding: var(--sp-2) var(--sp-4);
   font-family: var(--font-body);
   font-size: 0.8rem;
@@ -27,29 +126,64 @@
   transition: color var(--dur-base), border-color var(--dur-base), background var(--dur-base);
 }
 
+.sportTab:hover {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+
+.sportTabActive {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 12%, var(--surface-card));
+}
+
+/* ── League selector ───────────────────────────────────────────── */
+.leagueTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-5);
+}
+
+.leagueTab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: var(--sp-1) var(--sp-3);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-base), border-color var(--dur-base), background var(--dur-base);
+}
+
 .leagueTab:hover {
   color: var(--text-primary);
-  border-color: var(--league-accent);
+  border-color: var(--league-accent, var(--accent-purple));
 }
 
 .leagueTabActive {
   color: var(--text-primary);
-  border-color: var(--league-accent);
-  background: color-mix(in srgb, var(--league-accent) 14%, var(--surface-card));
+  border-color: var(--league-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--league-accent, var(--accent-purple)) 14%, var(--surface-card));
 }
 
 .leagueDot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--league-accent);
+  background: var(--league-accent, var(--accent-purple));
   flex-shrink: 0;
 }
 
 /* ── Layout grid ───────────────────────────────────────────────── */
 .grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 320px;
   gap: var(--sp-6);
   align-items: start;
 }
@@ -58,14 +192,15 @@
   .grid {
     grid-template-columns: 1fr;
   }
+  .dashGrid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.sectionLabel {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.12em;
-  color: var(--cat-accent, var(--accent-purple));
-  margin: 0 0 var(--sp-3);
+@media (max-width: 600px) {
+  .dashGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Standings table ───────────────────────────────────────────── */
@@ -89,7 +224,7 @@
 
 .table thead th {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dark);
@@ -99,9 +234,10 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.thRank { width: 34px; }
-.thTeam { text-align: left; padding-left: var(--sp-4); }
-.thGd, .thPts { width: 44px; }
+.thRank  { width: 34px; }
+.thTeam  { text-align: left; padding-left: var(--sp-4); }
+.thGd    { width: 44px; }
+.thPts   { width: 44px; }
 .thFollow { width: 36px; }
 
 .row {
@@ -121,6 +257,22 @@
 
 .table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* Division header row for NFL / NBA */
+.divisionRow td {
+  border-bottom: none !important;
+}
+
+.divisionCell {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2) !important;
+  color: var(--league-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--league-accent, var(--accent-purple)) 6%, var(--surface-card));
+  text-align: left !important;
 }
 
 .tdRank {
@@ -147,7 +299,7 @@
   max-width: 180px;
 }
 
-.tdGd { color: var(--text-muted); }
+.tdGd  { color: var(--text-muted); }
 
 .tdPts {
   font-weight: 700;
@@ -166,8 +318,8 @@
   transition: color var(--dur-fast), transform var(--dur-fast);
 }
 
-.starBtn:hover { color: var(--accent-purple); transform: scale(1.18); }
-.starBtnOn { color: #fbbf24; }
+.starBtn:hover  { color: var(--accent-purple); transform: scale(1.18); }
+.starBtnOn      { color: #fbbf24; }
 .starBtn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .tableState {
@@ -211,9 +363,11 @@
 .searchGlyph {
   position: absolute;
   left: var(--sp-3);
+  display: flex;
+  align-items: center;
   color: var(--text-dark);
-  font-size: 0.9rem;
   pointer-events: none;
+  line-height: 1;
 }
 
 .searchInput {
@@ -250,7 +404,7 @@
   flex-direction: column;
   gap: 2px;
   margin-bottom: var(--sp-4);
-  max-height: 280px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
@@ -303,7 +457,7 @@
   white-space: nowrap;
 }
 
-/* ── Followed teams dashboard ──────────────────────────────────── */
+/* ── Empty / followed-count states ────────────────────────────── */
 .emptyTeams {
   display: flex;
   flex-direction: column;
@@ -324,50 +478,23 @@
   color: var(--accent-purple-dim);
 }
 
-.followGrid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-
-.followCard {
+.followedCount {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding: var(--sp-3) var(--sp-4);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  text-align: center;
 }
 
-.followHead {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-3);
-}
-
-.followInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.followName {
-  font-size: 0.88rem;
-  font-weight: 600;
+.followedCountNum {
+  font-family: var(--font-mono);
+  font-weight: 700;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.followLeague {
-  font-size: 0.66rem;
-  color: var(--text-dark);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+/* ── Shared card elements ──────────────────────────────────────── */
 .unfollowBtn {
   background: transparent;
   border: none;
@@ -381,16 +508,9 @@
 
 .unfollowBtn:hover { color: #f87171; }
 
-.followMeta {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  margin: 0;
-}
-
 .formRow {
   display: flex;
   gap: 4px;
-  margin-bottom: var(--sp-2);
 }
 
 .formPill {
@@ -401,7 +521,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   font-weight: 700;
 }
 
@@ -421,6 +541,6 @@
 
 .lastDate {
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   color: var(--text-dark);
 }

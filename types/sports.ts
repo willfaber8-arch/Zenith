@@ -1,44 +1,86 @@
 /**
- * ════════════════════════════════════════════════════════════════
  * Zenith OS — Sports Tracker types
  *
- * Soccer-first multi-league tracker. Standings + recent results are
- * sourced from TheSportsDB (free public API) via the /api/sports
- * server proxy (CORS-safe + edge-cached).
- * ════════════════════════════════════════════════════════════════
+ * Multi-sport tracker: Soccer, NFL, NBA, NCAAB, NCAAF.
+ * Standings + recent results sourced from TheSportsDB via /api/sports proxy.
  */
 
-export type SoccerLeagueId =
-  | 'premier-league'
-  | 'la-liga'
-  | 'champions-league'
-  | 'international'
+export type SportId =
+  | 'soccer'
+  | 'football'
+  | 'basketball'
+  | 'college-basketball'
+  | 'college-football'
 
-export interface SoccerLeague {
-  id:         SoccerLeagueId
+export interface League {
+  id:         string
+  sportId:    SportId
   label:      string
   shortLabel: string
-  /** TheSportsDB numeric league id (as string) */
+  /** TheSportsDB numeric league id */
   sportsDbId: string
-  /** Hex accent used for the league's active tab + badges */
   accent:     string
-  /**
-   * Whether to attempt a live standings table. Knockout / international
-   * competitions often have no league table on the free tier, so the
-   * view degrades to "follow teams + recent results" for those.
-   */
   hasTable:   boolean
+  /** 'cross-year' → "2025-2026"  |  'single' → "2025" */
+  seasonFmt:  'cross-year' | 'single'
 }
 
-/** Ordered league selector. */
-export const SOCCER_LEAGUES: readonly SoccerLeague[] = [
-  { id: 'premier-league',   label: 'Premier League',   shortLabel: 'EPL',    sportsDbId: '4328', accent: '#7c95ff', hasTable: true  },
-  { id: 'la-liga',          label: 'La Liga',          shortLabel: 'LaLiga', sportsDbId: '4335', accent: '#ee8707', hasTable: true  },
-  { id: 'champions-league', label: 'Champions League', shortLabel: 'UCL',    sportsDbId: '4480', accent: '#52cca3', hasTable: true  },
-  { id: 'international',     label: 'International',     shortLabel: 'INTL',   sportsDbId: '4429', accent: '#f59e0b', hasTable: false },
+export interface SportCategory {
+  id:         SportId
+  label:      string
+  shortLabel: string
+  leagues:    readonly League[]
+}
+
+export const SPORT_CATEGORIES: readonly SportCategory[] = [
+  {
+    id: 'soccer', label: 'Soccer', shortLabel: 'Soccer',
+    leagues: [
+      { id: 'premier-league',   sportId: 'soccer', label: 'Premier League',   shortLabel: 'EPL',    sportsDbId: '4328', accent: '#7c95ff', hasTable: true,  seasonFmt: 'cross-year' },
+      { id: 'la-liga',          sportId: 'soccer', label: 'La Liga',          shortLabel: 'LaLiga', sportsDbId: '4335', accent: '#ee8707', hasTable: true,  seasonFmt: 'cross-year' },
+      { id: 'champions-league', sportId: 'soccer', label: 'Champions League', shortLabel: 'UCL',    sportsDbId: '4480', accent: '#52cca3', hasTable: true,  seasonFmt: 'cross-year' },
+      { id: 'international',    sportId: 'soccer', label: 'International',    shortLabel: 'INTL',   sportsDbId: '4429', accent: '#f59e0b', hasTable: false, seasonFmt: 'cross-year' },
+    ],
+  },
+  {
+    id: 'football', label: 'NFL', shortLabel: 'NFL',
+    leagues: [
+      { id: 'nfl', sportId: 'football', label: 'NFL', shortLabel: 'NFL', sportsDbId: '4391', accent: '#f87171', hasTable: true, seasonFmt: 'single' },
+    ],
+  },
+  {
+    id: 'basketball', label: 'NBA', shortLabel: 'NBA',
+    leagues: [
+      { id: 'nba', sportId: 'basketball', label: 'NBA', shortLabel: 'NBA', sportsDbId: '4387', accent: '#fb923c', hasTable: true, seasonFmt: 'cross-year' },
+    ],
+  },
+  {
+    id: 'college-basketball', label: 'College Basketball', shortLabel: 'NCAAB',
+    leagues: [
+      { id: 'ncaab', sportId: 'college-basketball', label: 'College Basketball', shortLabel: 'NCAAB', sportsDbId: '4479', accent: '#a78bfa', hasTable: true, seasonFmt: 'cross-year' },
+    ],
+  },
+  {
+    id: 'college-football', label: 'College Football', shortLabel: 'NCAAF',
+    leagues: [
+      { id: 'ncaaf', sportId: 'college-football', label: 'College Football', shortLabel: 'NCAAF', sportsDbId: '4417', accent: '#34d399', hasTable: true, seasonFmt: 'single' },
+    ],
+  },
 ] as const
 
-/** One row of a league standings table. */
+export function getAllLeagues(): League[] {
+  return SPORT_CATEGORIES.flatMap(s => [...s.leagues])
+}
+
+export function findLeague(leagueId: string): League | undefined {
+  return getAllLeagues().find(l => l.id === leagueId)
+}
+
+export function findLeagueBySportsDbId(sportsDbId: string): League | undefined {
+  return getAllLeagues().find(l => l.sportsDbId === sportsDbId)
+}
+
+/** One row in a league/division standings table. */
 export interface StandingRow {
   rank:         number
   teamId:       string
@@ -52,34 +94,39 @@ export interface StandingRow {
   goalsAgainst: number
   goalDiff:     number
   points:       number
+  /** Division name for NFL/NBA conference standings (e.g. "AFC East") */
+  division?:    string
 }
 
-/** A team the user follows (persisted in localStorage). */
+/** A team the user follows — persisted in localStorage. */
 export interface FollowedTeam {
-  id:          string
-  name:        string
-  badge:       string | null
-  leagueLabel: string | null
+  id:           string
+  name:         string
+  badge:        string | null
+  leagueLabel:  string | null
+  /** TheSportsDB numeric league id — used for standings rank lookup */
+  leagueDbId:   string | null
+  sportId:      SportId | null
 }
 
 /** A single recent fixture for a followed team. */
 export interface TeamResult {
   eventId:   string
-  date:      string                  // YYYY-MM-DD
+  date:      string          // YYYY-MM-DD
   homeTeam:  string
   awayTeam:  string
   homeScore: number | null
   awayScore: number | null
   league:    string
-  /** Outcome relative to the followed team (null if score unavailable). */
   outcome:   'W' | 'L' | 'D' | null
 }
 
-/** Result of a team search. */
+/** Result of a team search hit. */
 export interface TeamSearchHit {
-  id:     string
-  name:   string
-  badge:  string | null
-  league: string | null
+  id:      string
+  name:    string
+  badge:   string | null
+  league:  string | null
   country: string | null
+  sport:   string | null
 }

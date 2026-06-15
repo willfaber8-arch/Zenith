@@ -1,18 +1,15 @@
 /**
  * Zenith OS — Sports data proxy
  *
- * GET /api/sports?action=table&league=4328[&season=2025-2026]
- * GET /api/sports?action=search&q=Arsenal
+ * GET /api/sports?action=table&league=4328[&season=2025-2026&seasonFmt=cross-year]
+ * GET /api/sports?action=search&q=Arsenal[&sport=soccer]
  * GET /api/sports?action=results&team=133604
  *
- * Server-side proxy to TheSportsDB (free public API). Keeps the
- * upstream key server-side, dodges browser CORS, and lets us normalise
- * the (inconsistent) upstream field names into the shapes in
- * types/sports.ts before they reach the client.
- *
- * The free tier can rate-limit or gate standings; every action degrades
- * gracefully — an empty array + ok:false rather than an error throw — so
- * the UI can show a friendly "unavailable" state instead of crashing.
+ * Server-side proxy to TheSportsDB (free public API). Keeps the upstream
+ * key server-side, dodges browser CORS, and normalises inconsistent field
+ * names before they reach the client. Every action degrades gracefully
+ * (empty array, ok:false) so the UI can show a friendly state instead of
+ * crashing.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -20,10 +17,10 @@ import type { StandingRow, TeamResult, TeamSearchHit } from '@/types/sports'
 
 export const revalidate = 600   // 10-minute edge cache
 
-const KEY  = process.env.SPORTSDB_KEY ?? '3'   // '3' is the public test key
+const KEY  = process.env.SPORTSDB_KEY ?? '3'
 const BASE = `https://www.thesportsdb.com/api/v1/json/${KEY}`
 
-/* ── Field pickers (upstream field names vary by endpoint/version) ── */
+/* ── Field pickers ──────────────────────────────────────────────── */
 
 function str(obj: Record<string, unknown>, ...keys: string[]): string | null {
   for (const k of keys) {
@@ -66,21 +63,39 @@ async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
   }
 }
 
-/* ── Current European season string, e.g. "2025-2026" ──────────── */
+/* ── Season string calculator ───────────────────────────────────── */
 
-function currentSeason(): string {
+function currentSeason(fmt: string = 'cross-year'): string {
   const now   = new Date()
   const year  = now.getFullYear()
-  // Seasons run Aug→May. Before August, the "current" season started last year.
-  return now.getMonth() >= 7 ? `${year}-${year + 1}` : `${year - 1}-${year}`
+  const month = now.getMonth()   // 0-indexed, 7 = August
+
+  if (fmt === 'single') {
+    // US seasonal sports: season starts Aug/Sep.
+    // Before August → the season was the previous calendar year.
+    return month >= 7 ? String(year) : String(year - 1)
+  }
+  // Cross-year (soccer, NBA, NCAAB): runs Aug → June
+  return month >= 7 ? `${year}-${year + 1}` : `${year - 1}-${year}`
+}
+
+/* ── strSport filter map ────────────────────────────────────────── */
+
+const SPORT_FILTER: Record<string, string> = {
+  soccer:              'soccer',
+  football:            'american football',
+  basketball:          'basketball',
+  'college-basketball':'basketball',
+  'college-football':  'american football',
 }
 
 /* ── Action handlers ───────────────────────────────────────────── */
 
 async function getTable(league: string, season: string): Promise<StandingRow[]> {
   const data = await fetchJson(`${BASE}/lookuptable.php?l=${league}&s=${encodeURIComponent(season)}`)
-  const rows = (data?.table ?? data?.['table']) as Array<Record<string, unknown>> | null | undefined
+  const rows = data?.table as Array<Record<string, unknown>> | null | undefined
   if (!Array.isArray(rows)) return []
+
   return rows.map((r, i): StandingRow => ({
     rank:         num(r, 'intRank') || i + 1,
     teamId:       str(r, 'idTeam', 'teamid') ?? '',
@@ -94,22 +109,31 @@ async function getTable(league: string, season: string): Promise<StandingRow[]> 
     goalsAgainst: num(r, 'intGoalsAgainst', 'goalsagainst'),
     goalDiff:     num(r, 'intGoalDifference', 'goalsdifference'),
     points:       num(r, 'intPoints', 'points'),
+    division:     str(r, 'strDivision') ?? undefined,
   }))
 }
 
-async function searchTeams(q: string): Promise<TeamSearchHit[]> {
+async function searchTeams(q: string, sport?: string): Promise<TeamSearchHit[]> {
   const data  = await fetchJson(`${BASE}/searchteams.php?t=${encodeURIComponent(q)}`)
   const teams = data?.teams as Array<Record<string, unknown>> | null | undefined
   if (!Array.isArray(teams)) return []
+
+  const sportKey   = (sport ?? '').toLowerCase()
+  const filter     = SPORT_FILTER[sportKey]
+
   return teams
-    .filter(t => (str(t, 'strSport') ?? '').toLowerCase() === 'soccer')
-    .slice(0, 12)
+    .filter(t => {
+      if (!filter) return true
+      return (str(t, 'strSport') ?? '').toLowerCase() === filter
+    })
+    .slice(0, 14)
     .map((t): TeamSearchHit => ({
       id:      str(t, 'idTeam') ?? '',
       name:    str(t, 'strTeam') ?? 'Unknown',
       badge:   str(t, 'strBadge', 'strTeamBadge'),
       league:  str(t, 'strLeague'),
       country: str(t, 'strCountry'),
+      sport:   str(t, 'strSport'),
     }))
     .filter(t => t.id)
 }
@@ -118,6 +142,7 @@ async function getResults(teamId: string): Promise<TeamResult[]> {
   const data    = await fetchJson(`${BASE}/eventslast.php?id=${encodeURIComponent(teamId)}`)
   const results = data?.results as Array<Record<string, unknown>> | null | undefined
   if (!Array.isArray(results)) return []
+
   return results.slice(0, 8).map((e): TeamResult => {
     const homeId    = str(e, 'idHomeTeam')
     const homeScore = numOrNull(e, 'intHomeScore')
@@ -154,15 +179,17 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (action === 'table') {
       const league = params.get('league')
       if (!league) return NextResponse.json({ error: 'league required' }, { status: 400 })
-      const season = params.get('season') || currentSeason()
+      const fmt    = params.get('seasonFmt') ?? 'cross-year'
+      const season = params.get('season') || currentSeason(fmt)
       const table  = await getTable(league, season)
       return NextResponse.json({ ok: table.length > 0, season, table })
     }
 
     if (action === 'search') {
-      const q = (params.get('q') ?? '').trim()
+      const q     = (params.get('q') ?? '').trim()
+      const sport = params.get('sport') ?? undefined
       if (q.length < 2) return NextResponse.json({ ok: true, teams: [] })
-      const teams = await searchTeams(q)
+      const teams = await searchTeams(q, sport)
       return NextResponse.json({ ok: true, teams })
     }
 
