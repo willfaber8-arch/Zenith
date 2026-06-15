@@ -148,6 +148,22 @@
   color: var(--text-primary);
 }
 
+.betaBadge {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  line-height: 1;
+  color: var(--accent-green);
+  background: rgba(82, 204, 163, 0.12);
+  border: 1px solid rgba(82, 204, 163, 0.30);
+  border-radius: 999px;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  align-self: center;
+  margin-left: calc(-1 * var(--sp-2));
+}
+
 /* ── Nav scroll area ──────────────────────────────────────── */
 
 .nav {

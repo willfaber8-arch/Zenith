@@ -169,6 +169,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <header className={styles.sidebarHeader}>
             <ZenithMark size={26} />
             <span className={styles.logoText}>Zenith</span>
+            <span className={styles.betaBadge} title="Zenith is in beta — features may change">BETA</span>
             <button
               type="button"
               className={styles.sidebarCollapseBtn}
@@ -339,6 +340,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <span className={styles.navIcon} aria-hidden="true">⊙</span>
               <span className={styles.navLabel}>Settings</span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.navItem} ${activeView === 'help' ? styles.navItemActive : ''}`}
+              onClick={() => navigate('help', null as unknown as typeof activeCategory)}
+              aria-label="Open Help and Feedback"
+              style={{
+                '--item-hover-bg': 'rgba(124, 149, 255, 0.08)',
+                '--item-accent':   'var(--text-muted)',
+              } as React.CSSProperties}
+            >
+              <span className={styles.navIcon} aria-hidden="true">✦</span>
+              <span className={styles.navLabel}>Help &amp; Feedback</span>
             </button>
 
             <button
