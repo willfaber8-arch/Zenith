@@ -20,7 +20,7 @@
 import Anthropic   from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
-import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
+import { detectProvider, friendlyGeminiError, classifyGeminiQuota } from '@/lib/aiProviderUtils'
 
 /* ── OpenAI error helper ──────────────────────────────────────── */
 
@@ -146,7 +146,12 @@ async function streamGemini(
 
   if (!upstream.ok) {
     const errText = await upstream.text().catch(() => '')
-    throw new Error(friendlyGeminiError(upstream.status, errText))
+    const err = new Error(friendlyGeminiError(upstream.status, errText)) as Error & { retryable?: boolean }
+    // Only a per-minute rate limit is worth retrying. A daily free-tier cap
+    // (or any non-429 error) will not clear on retry, so retrying it just
+    // burns more of the same exhausted quota — fail fast instead.
+    err.retryable = upstream.status === 429 && classifyGeminiQuota(errText) === 'per_minute'
+    throw err
   }
 
   const encoder = new TextEncoder()
@@ -304,8 +309,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     let readable: ReadableStream<Uint8Array>
 
     if (provider === 'gemini') {
-      // Retry up to 3 times on 429 — free tier has a 15-60 RPM window;
-      // progressive delays (4s, 8s) give the window time to roll over.
+      // Retry ONLY a transient per-minute rate limit (err.retryable) — a short
+      // wait lets the per-minute window roll over. A daily free-tier cap is NOT
+      // retried: every attempt consumes the same exhausted daily quota, so a
+      // single user message must cost exactly one upstream request, never three.
       const RETRY_DELAYS = [4000, 8000]
       let lastErr: Error | null = null
       let succeeded = false
@@ -316,8 +323,8 @@ export async function POST(req: NextRequest): Promise<Response> {
           succeeded = true
           break
         } catch (e) {
-          const msg = (e as Error).message ?? ''
-          if (msg.startsWith('Gemini quota exceeded') && attempt < RETRY_DELAYS.length) {
+          const retryable = (e as Error & { retryable?: boolean }).retryable === true
+          if (retryable && attempt < RETRY_DELAYS.length) {
             lastErr = e as Error
             await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]))
           } else {
