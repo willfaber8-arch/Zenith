@@ -21,6 +21,10 @@ import {
   BACKDROP_STORAGE_KEY,
   BACKDROP_DEFAULT,
 } from '@/types/backgrounds'
+import {
+  getPresets, savePreset, deletePreset, applyPreset,
+  type DashboardPreset,
+} from '@/lib/dashboardPresets'
 import ZenHeading               from '@/components/ui/ZenHeading'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
@@ -46,6 +50,7 @@ const SETTINGS_SECTIONS = [
   { id: 's-appearance',    label: 'Appearance'    },
   { id: 's-school-colors', label: 'School Colors' },
   { id: 's-widgets',       label: 'Widgets'       },
+  { id: 's-presets',       label: 'Presets'       },
   { id: 's-ai',            label: 'AI'            },
   { id: 's-help',          label: 'Help'          },
   { id: 's-account',       label: 'Account'       },
@@ -94,6 +99,57 @@ export default function SettingsView() {
 
   /* ── Ecosystem Wrapped ──────────────────────────────────────── */
   const [showWrapped, setShowWrapped] = useState(false)
+
+  /* ── Dashboard Presets ──────────────────────────────────────── */
+  const [presets,       setPresets]       = useState<DashboardPreset[]>([])
+  const [presetName,    setPresetName]    = useState('')
+  const [presetSaving,  setPresetSaving]  = useState(false)
+  const [presetApplyId, setPresetApplyId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setPresets(getPresets())
+    const sync = () => setPresets(getPresets())
+    window.addEventListener('zenith:sandbox-config-change', sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener('zenith:sandbox-config-change', sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  const handleSavePreset = useCallback(() => {
+    const name = presetName.trim()
+    if (!name) return
+    setPresetSaving(true)
+    try {
+      savePreset(name)
+      setPresets(getPresets())
+      setPresetName('')
+      toast(`Preset "${name}" saved.`, 'success')
+    } catch {
+      toast('Could not save preset.', 'error')
+    } finally {
+      setPresetSaving(false)
+    }
+  }, [presetName, toast])
+
+  const handleApplyPreset = useCallback((preset: DashboardPreset) => {
+    setPresetApplyId(preset.id)
+    try {
+      applyPreset(preset)
+      toast(`Applied "${preset.name}".`, 'success')
+    } catch {
+      toast('Could not apply preset.', 'error')
+    } finally {
+      setTimeout(() => setPresetApplyId(null), 900)
+    }
+  }, [toast])
+
+  const handleDeletePreset = useCallback((id: string, name: string) => {
+    deletePreset(id)
+    setPresets(getPresets())
+    toast(`Preset "${name}" deleted.`, 'info')
+  }, [toast])
 
   /* ── Anchor hotbar active state ─────────────────────────────── */
   const [activeAnchor, setActiveAnchor] = useState<string>(SETTINGS_SECTIONS[0].id)
@@ -540,6 +596,66 @@ export default function SettingsView() {
               checked={config.uniHub ?? true}
               onChange={() => toggleWidget('uniHub')}
             />
+          </div>
+        </Section>
+
+        {/* ── Dashboard Presets ───────────────────────────────── */}
+        <Section id="s-presets" title="Dashboard Presets">
+          <p className={styles.sectionSubtitle}>
+            Save named snapshots of your widget layout. The AI Co-Pilot can also
+            create and apply presets on your behalf.
+          </p>
+
+          {/* Saved presets list */}
+          {presets.length > 0 && (
+            <div className={styles.presetList}>
+              {presets.map(p => (
+                <div key={p.id} className={styles.presetRow}>
+                  <span className={styles.presetName}>{p.name}</span>
+                  <div className={styles.presetActions}>
+                    <button
+                      className={`${styles.presetApplyBtn} ${presetApplyId === p.id ? styles.presetApplyBtnActive : ''}`}
+                      onClick={() => handleApplyPreset(p)}
+                    >
+                      {presetApplyId === p.id ? '✓' : 'Apply'}
+                    </button>
+                    <button
+                      className={styles.presetDeleteBtn}
+                      onClick={() => handleDeletePreset(p.id, p.name)}
+                      aria-label={`Delete preset ${p.name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {presets.length === 0 && (
+            <p className={styles.presetEmpty}>
+              No presets saved yet. Configure your widgets above and save them as a preset, or ask the AI Co-Pilot to create one for you.
+            </p>
+          )}
+
+          {/* Save current layout */}
+          <div className={styles.presetSaveRow}>
+            <input
+              type="text"
+              className={styles.presetInput}
+              placeholder='Preset name, e.g. "Finals Week"'
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSavePreset() }}
+              maxLength={40}
+            />
+            <button
+              className={styles.presetSaveBtn}
+              onClick={handleSavePreset}
+              disabled={!presetName.trim() || presetSaving}
+            >
+              Save current layout
+            </button>
           </div>
         </Section>
 

@@ -794,3 +794,138 @@
 .devConsoleRunBtn:hover {
   background: color-mix(in srgb, var(--accent-green) 20%, transparent);
 }
+
+/* ── Dashboard Presets ────────────────────────────────────────── */
+
+.presetList {
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.presetRow {
+  display:        flex;
+  align-items:    center;
+  justify-content: space-between;
+  padding:        var(--sp-2) var(--sp-4);
+  background:     var(--bg-hover);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-md);
+  transition:     background 140ms;
+}
+
+.presetRow:hover {
+  background: var(--bg-active);
+}
+
+.presetName {
+  font-family: var(--font-body);
+  font-size:   0.85rem;
+  color:       var(--text-primary);
+  font-weight: 500;
+}
+
+.presetActions {
+  display: flex;
+  gap:     var(--sp-2);
+}
+
+.presetApplyBtn {
+  font-family:   var(--font-mono);
+  font-size:     0.7rem;
+  padding:       var(--sp-1) var(--sp-3);
+  border:        1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  border-radius: var(--r-sm);
+  background:    color-mix(in srgb, var(--accent-purple) 10%, transparent);
+  color:         var(--accent-purple);
+  cursor:        pointer;
+  transition:    background 140ms, color 140ms;
+  min-width:     52px;
+}
+
+.presetApplyBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 20%, transparent);
+}
+
+.presetApplyBtnActive {
+  background: color-mix(in srgb, var(--accent-green) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 40%, transparent);
+  color:       var(--accent-green);
+}
+
+.presetDeleteBtn {
+  font-size:     0.7rem;
+  padding:       var(--sp-1) var(--sp-2);
+  border:        1px solid color-mix(in srgb, var(--text-dark) 30%, transparent);
+  border-radius: var(--r-sm);
+  background:    transparent;
+  color:         var(--text-dark);
+  cursor:        pointer;
+  transition:    color 140ms, background 140ms, border-color 140ms;
+}
+
+.presetDeleteBtn:hover {
+  background:    color-mix(in srgb, #ff5c5c 12%, transparent);
+  border-color:  color-mix(in srgb, #ff5c5c 40%, transparent);
+  color:         #ff5c5c;
+}
+
+.presetEmpty {
+  font-size:   0.8rem;
+  color:       var(--text-dark);
+  font-style:  italic;
+  margin:      0 0 var(--sp-4);
+  line-height: 1.5;
+}
+
+.presetSaveRow {
+  display:   flex;
+  gap:       var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.presetInput {
+  flex:          1;
+  min-width:     180px;
+  padding:       var(--sp-2) var(--sp-3);
+  background:    var(--bg-hover);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-family:   var(--font-body);
+  font-size:     0.82rem;
+  color:         var(--text-primary);
+  outline:       none;
+  transition:    border-color 140ms;
+}
+
+.presetInput:focus {
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+.presetInput::placeholder {
+  color: var(--text-dark);
+}
+
+.presetSaveBtn {
+  padding:       var(--sp-2) var(--sp-5);
+  background:    color-mix(in srgb, var(--accent-purple) 15%, transparent);
+  border:        1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  border-radius: var(--r-md);
+  color:         var(--accent-purple);
+  font-family:   var(--font-body);
+  font-size:     0.82rem;
+  font-weight:   500;
+  cursor:        pointer;
+  transition:    background 140ms;
+  white-space:   nowrap;
+}
+
+.presetSaveBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-purple) 25%, transparent);
+}
+
+.presetSaveBtn:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}

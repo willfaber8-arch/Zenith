@@ -14,7 +14,9 @@ import type { Priority } from '@/lib/db'
 import type { BillingCycle } from '@/types/finance'
 import type { ReadingStatus } from '@/types/bookTracker'
 import { isKnownAction, DASHBOARD_WIDGET_KEYS, type CopilotAction } from '@/lib/copilotTools'
-import { SANDBOX_STORAGE_KEY } from '@/lib/hooks/useSandboxConfig'
+import { SANDBOX_STORAGE_KEY }                   from '@/lib/hooks/useSandboxConfig'
+import { savePreset, findPresetByName, applyPreset } from '@/lib/dashboardPresets'
+import type { VocabDeck, VocabCard }              from '@/types/vocabulary'
 
 const WIDGET_KEY_SET = new Set<string>(DASHBOARD_WIDGET_KEYS)
 
@@ -353,6 +355,106 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         })
       }
       return `Updated your profile.`
+    }
+
+    /* ── Save dashboard preset ──────────────────────────────────── */
+    case 'save_dashboard_preset': {
+      const name = str(a.presetName)
+      if (!name) throw new Error('A preset needs a name.')
+      const preset = savePreset(name)
+      return `Saved dashboard preset "${preset.name}".`
+    }
+
+    /* ── Load / apply dashboard preset ─────────────────────────── */
+    case 'load_dashboard_preset': {
+      const name = str(a.presetName)
+      if (!name) throw new Error('A preset name is required.')
+      const preset = findPresetByName(name)
+      if (!preset) throw new Error(`No preset named "${name}" found. Check the Presets section in Settings.`)
+      applyPreset(preset)
+      return `Applied dashboard preset "${preset.name}".`
+    }
+
+    /* ── Vocab flashcard ────────────────────────────────────────── */
+    case 'add_vocab_word': {
+      const word        = str(a.word)
+      const translation = str(a.translation)
+      const language    = str(a.language) || 'General'
+      if (!word)        throw new Error('A vocab card needs a word.')
+      if (!translation) throw new Error('A vocab card needs a translation.')
+
+      // Find or create the deck for this language.
+      const decks    = await db.vocab_decks.toArray()
+      const existing = decks.find(d => d.languageName.toLowerCase() === language.toLowerCase())
+
+      let deckId: string
+      if (existing) {
+        deckId = existing.id
+      } else {
+        deckId = crypto.randomUUID()
+        const deck: VocabDeck = {
+          id:           deckId,
+          languageName: language,
+          description:  '',
+          createdAt:    Date.now(),
+        }
+        await db.vocab_decks.add(deck)
+      }
+
+      const card: VocabCard = {
+        id:                   crypto.randomUUID(),
+        deckId,
+        foreignWord:          word,
+        nativeTranslation:    translation,
+        phoneticSpelling:     str(a.phonetic),
+        stabilityFactor:      0,
+        easeFactor:           2.5,
+        reviewIntervalDays:   1,
+        consecutiveSuccesses: 0,
+        nextReviewTimestamp:  Date.now(),
+      }
+      await db.vocab_cards.add(card)
+      return `Added "${word}" to your ${language} vocab deck.`
+    }
+
+    /* ── To-do item ─────────────────────────────────────────────── */
+    case 'add_todo': {
+      const title    = str(a.title)
+      if (!title) throw new Error('A to-do needs a title.')
+      const catName  = str(a.category) || 'General'
+      const dueDateStr = str(a.dueDate)
+
+      // Validate optional due date.
+      let dueDate: string | undefined
+      if (dueDateStr) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dueDateStr)
+        if (!m) throw new Error(`Invalid due date "${dueDateStr}" — expected YYYY-MM-DD`)
+        dueDate = dueDateStr
+      }
+
+      // Find or create the category.
+      const allCats  = await db.todo_categories.toArray()
+      const existing = allCats.find(c => c.name.toLowerCase() === catName.toLowerCase())
+
+      let categoryId: number
+      if (existing?.id != null) {
+        categoryId = existing.id
+      } else {
+        categoryId = await db.todo_categories.add({
+          name:      catName,
+          sortOrder: Date.now(),
+          createdAt: Date.now(),
+        })
+      }
+
+      await db.todo_items.add({
+        categoryId,
+        title,
+        completed: 0,
+        dueDate,
+        createdAt: Date.now(),
+      })
+      return `Added to-do "${title}"${dueDate ? ` (due ${dueDate})` : ''}.`
     }
 
     default:

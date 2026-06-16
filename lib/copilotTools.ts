@@ -188,6 +188,43 @@ export const COPILOT_TOOLS: ToolDef[] = [
       major:       { type: 'string', description: 'Major / field of study, e.g. "Computer Science"' },
     },
   },
+  {
+    name:        'save_dashboard_preset',
+    description: 'Save the current dashboard widget configuration as a named preset so the user can switch back to it later without re-prompting. Call this AFTER any set_dashboard_widget calls in the same batch so the preset captures the final state.',
+    required:    ['presetName'],
+    params: {
+      presetName: { type: 'string', description: 'Short memorable name, e.g. "Finals Week", "Weekend Chill", "Morning Routine"' },
+    },
+  },
+  {
+    name:        'load_dashboard_preset',
+    description: 'Apply a previously saved dashboard preset by name, restoring its widget visibility configuration instantly.',
+    required:    ['presetName'],
+    params: {
+      presetName: { type: 'string', description: 'Exact name of the saved preset to apply' },
+    },
+  },
+  {
+    name:        'add_vocab_word',
+    description: 'Add a vocabulary flashcard to the Polyglot Vault spaced-repetition system.',
+    required:    ['word', 'translation', 'language'],
+    params: {
+      word:        { type: 'string', description: 'The foreign word or phrase to learn' },
+      translation: { type: 'string', description: 'Native language meaning / translation' },
+      language:    { type: 'string', description: 'Target language name, e.g. "Spanish", "French", "Japanese"' },
+      phonetic:    { type: 'string', description: 'Optional phonetic spelling or IPA romanization' },
+    },
+  },
+  {
+    name:        'add_todo',
+    description: 'Add a to-do task item to the Calendar task list.',
+    required:    ['title'],
+    params: {
+      title:    { type: 'string', description: 'Task description, e.g. "Call the dentist"' },
+      category: { type: 'string', description: 'Category/list name, e.g. "Errands", "Study", "Short Term"' },
+      dueDate:  { type: 'string', description: 'Optional due date YYYY-MM-DD' },
+    },
+  },
 ]
 
 const TOOL_NAMES = new Set(COPILOT_TOOLS.map(t => t.name))
@@ -255,9 +292,11 @@ export function toolsSystemNote(todayIso: string): string {
   return `
 
 ACTION CAPABILITIES:
-You can manage the user's entire Zenith dashboard via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, add_recipe, set_dashboard_widget (show/hide home widgets), and set_profile (name / university / major). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
+You can manage the user's entire Zenith workspace via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, add_recipe, set_dashboard_widget (show/hide home widgets), set_profile (name / university / major), save_dashboard_preset (snapshot current widget config under a name), load_dashboard_preset (apply a saved preset by name), add_vocab_word (add a flashcard to Polyglot Vault), and add_todo (add a task to the Calendar to-do list). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
 
-BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response when the user asks for several things at once (e.g. "set up my dashboard for finals week" → several create_habit + add_calendar_event + set_dashboard_widget calls together). The user sees one confirmation card listing every proposed action and approves them all at once, so batching is preferred over many back-and-forth turns.
+BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response when the user asks for several things at once (e.g. "set up my dashboard for finals week" → several set_dashboard_widget calls followed by save_dashboard_preset to lock it in). The user sees one confirmation card listing every proposed action and approves them all at once, so batching is preferred over many back-and-forth turns.
+
+PRESETS WORKFLOW: When setting up a named dashboard configuration, always end the batch with save_dashboard_preset so the user can re-apply it any time. When the user mentions a saved preset by name, use load_dashboard_preset to apply it instantly.
 
 The user always sees a confirmation card before anything is saved, so calling tools is safe. Today is ${todayIso}; resolve relative dates ("today", "tomorrow", "this Friday") to an absolute YYYY-MM-DD value. After your tool calls you may add one short sentence of text, but keep it brief.`
 }
@@ -301,6 +340,14 @@ export function describeAction(a: CopilotAction): string {
       if (g('major'))       bits.push(`major → ${g('major')}`)
       return `Update profile${bits.length ? ` · ${bits.join(', ')}` : ''}`
     }
+    case 'save_dashboard_preset':
+      return `Save dashboard preset "${g('presetName')}"`
+    case 'load_dashboard_preset':
+      return `Apply dashboard preset "${g('presetName')}"`
+    case 'add_vocab_word':
+      return `Add vocab word "${g('word')}" (${g('language')}) → "${g('translation')}"`
+    case 'add_todo':
+      return `Add to-do "${g('title')}"${g('category') ? ` · ${g('category')}` : ''}${g('dueDate') ? ` · due ${g('dueDate')}` : ''}`
     default:
       return a.name
   }
