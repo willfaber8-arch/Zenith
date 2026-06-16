@@ -148,6 +148,8 @@ export default function UniHubView() {
         localStorage.removeItem('zenith_uni_brand_v1')
       }
     } catch { /* storage unavailable */ }
+    // Notify same-tab listeners (storage event only fires cross-tab)
+    window.dispatchEvent(new CustomEvent('zenith:uni-brand-change'))
   }, [uniEntry?.id])
 
   const handleSelectMajor = useCallback(async (entry: MajorEntry) => {

@@ -90,8 +90,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       } catch { /* noop */ }
     }
     read()
+    // storage fires cross-tab; zenith:uni-brand-change fires same-tab
     window.addEventListener('storage', read)
-    return () => window.removeEventListener('storage', read)
+    window.addEventListener('zenith:uni-brand-change', read)
+    return () => {
+      window.removeEventListener('storage', read)
+      window.removeEventListener('zenith:uni-brand-change', read)
+    }
   }, [])
 
   /* Right-click context menu state */

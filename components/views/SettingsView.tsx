@@ -164,6 +164,33 @@ export default function SettingsView() {
   /* ── School colors state ───────────────────────────────────── */
   const [applyingUniId, setApplyingUniId] = useState<string | null>(null)
 
+  // Toggle = is the active theme a university brand theme?
+  const schoolColorsGlobalOn = activeTheme.startsWith('uni_')
+
+  const handleToggleSchoolColors = useCallback(async (on: boolean) => {
+    try {
+      await seedGamesDatabase()
+      if (on) {
+        // Find enrolled university, fall back to first brand
+        const profile = await db.userProfile.get(1)
+        const uniId = profile?.universityName
+          ? Object.values(UNIVERSITY_BRANDS).find(b =>
+              b.name.toLowerCase().includes(profile.universityName!.toLowerCase()) ||
+              profile.universityName!.toLowerCase().includes(b.name.toLowerCase())
+            )?.id ?? Object.keys(UNIVERSITY_BRANDS)[0]
+          : Object.keys(UNIVERSITY_BRANDS)[0]
+        await applyFreeTheme(uniThemeId(uniId))
+        const brand = UNIVERSITY_BRANDS[uniId]
+        toast(`${brand?.name ?? 'School'} colors applied globally.`, 'success')
+      } else {
+        await setActiveTheme('zenith_default')
+        toast('School colors removed. Default theme restored.', 'info')
+      }
+    } catch {
+      toast('Could not update school theme.', 'error')
+    }
+  }, [toast])
+
   const handleApplySchoolColors = useCallback(async (uniId: string) => {
     setApplyingUniId(uniId)
     try {
@@ -420,9 +447,19 @@ export default function SettingsView() {
         {/* ── School Colors ───────────────────────────────────── */}
         <Section id="s-school-colors" title="School Colors">
           <p className={styles.sectionSubtitle}>
-            Apply your university&apos;s official brand colors globally across Zenith.
-            This replaces the current theme&apos;s accent color.
-            You can switch back to any theme from the Appearance section above.
+            University colors always appear inside the University Hub and sidebar.
+            Toggle global mode to apply your school&apos;s accent across the entire app.
+          </p>
+          <div className={styles.toggleList}>
+            <ToggleRow
+              label="Global School Colors"
+              hint="Apply university brand accent app-wide, not just inside the hub"
+              checked={schoolColorsGlobalOn}
+              onChange={v => void handleToggleSchoolColors(v)}
+            />
+          </div>
+          <p className={styles.sectionSubtitle} style={{ marginTop: 'var(--sp-4)' }}>
+            Pick a specific school&apos;s colors to apply globally:
           </p>
           <div className={styles.themeGrid}>
             {Object.values(UNIVERSITY_BRANDS).map(brand => {
