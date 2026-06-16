@@ -304,7 +304,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     let readable: ReadableStream<Uint8Array>
 
     if (provider === 'gemini') {
-      readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
+      // Auto-retry once on 429 — transient quota blips from the free tier
+      try {
+        readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
+      } catch (e) {
+        const msg = (e as Error).message ?? ''
+        if (msg.startsWith('Gemini quota exceeded')) {
+          await new Promise(r => setTimeout(r, 2000))
+          readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
+        } else {
+          throw e
+        }
+      }
     } else if (provider === 'openai') {
       readable = await streamOpenAI(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
     } else {
