@@ -103,6 +103,7 @@ async function streamOpenAI(
       const reader  = upstream.body!.getReader()
       const decoder = new TextDecoder()
       let   buffer  = ''
+      let   finishReason = ''
       // Accumulate streamed function-call fragments by their array index.
       const toolAcc = new Map<number, { name: string; args: string }>()
       try {
@@ -119,6 +120,8 @@ async function streamOpenAI(
             try {
               const parsed  = JSON.parse(data) as Record<string, unknown>
               const choices = parsed.choices as Array<Record<string, unknown>> | undefined
+              const fr      = choices?.[0]?.finish_reason as string | undefined
+              if (fr) finishReason = fr
               const delta   = choices?.[0]?.delta as Record<string, unknown> | undefined
               const chunk   = (delta?.content as string) ?? ''
               if (chunk) controller.enqueue(encoder.encode(chunk))
@@ -139,11 +142,20 @@ async function streamOpenAI(
         }
 
         // Parse accumulated tool calls and emit them after the sentinel.
+        // A `length` finish means the model was cut off mid-tool-call, so the
+        // accumulated JSON is incomplete — tell the user instead of silently
+        // dropping it (which leaves the confirm card empty / stuck).
         const actions: CopilotAction[] = []
+        let truncated = finishReason === 'length'
         for (const { name, args } of toolAcc.values()) {
           if (!isKnownAction(name)) continue
           try { actions.push({ name, args: args ? JSON.parse(args) : {} }) }
-          catch { /* unparsable arguments — drop this call */ }
+          catch { truncated = true }   // unparsable (usually truncated) arguments
+        }
+        if (actions.length === 0 && (truncated || toolAcc.size > 0)) {
+          controller.enqueue(encoder.encode(
+            '\n\n_[Co-Pilot: the response was cut off before the actions completed. Try again with a shorter request, or break it into fewer items.]_',
+          ))
         }
         emitActions(controller, encoder, actions)
       } catch (err) {
@@ -203,6 +215,7 @@ async function streamGemini(
       const reader  = upstream.body!.getReader()
       const decoder = new TextDecoder()
       let   buffer  = ''
+      let   finishReason = ''
       const actions: CopilotAction[] = []
       try {
         while (true) {
@@ -218,6 +231,8 @@ async function streamGemini(
             try {
               const parsed = JSON.parse(data) as Record<string, unknown>
               const candidates = parsed.candidates as Array<Record<string, unknown>> | undefined
+              const fr = candidates?.[0]?.finishReason as string | undefined
+              if (fr) finishReason = fr
               const parts = (candidates?.[0]?.content as Record<string, unknown> | undefined)
                 ?.parts as Array<Record<string, unknown>> | undefined
               for (const part of parts ?? []) {
@@ -235,6 +250,13 @@ async function streamGemini(
             } catch { /* malformed SSE line — skip */ }
           }
         }
+        // MAX_TOKENS means the model was cut off before finishing — warn so the
+        // user isn't left with no actions and no explanation.
+        if (actions.length === 0 && finishReason === 'MAX_TOKENS') {
+          controller.enqueue(encoder.encode(
+            '\n\n_[Co-Pilot: the response was cut off before the actions completed. Try again with a shorter request, or break it into fewer items.]_',
+          ))
+        }
         emitActions(controller, encoder, actions)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Stream interrupted'
@@ -250,7 +272,7 @@ async function streamGemini(
 
 const MAX_USER_MSG_CHARS   = 4_000     // hard cap per user turn
 const MAX_HISTORY_MESSAGES = 20        // sliding window — oldest pairs dropped first
-const MAX_TOKENS_RESPONSE  = 2_048     // headroom for explanations + multi-action batches
+const MAX_TOKENS_RESPONSE  = 4_096     // headroom for explanations + multi-action batches
 const MAX_BODY_BYTES       = 256 * 1024 // reject oversized request payloads
 
 /* ── Base system persona ──────────────────────────────────────── */
@@ -425,6 +447,11 @@ export async function POST(req: NextRequest): Promise<Response> {
                   args: (block.input as Record<string, unknown>) ?? {},
                 })
               }
+            }
+            if (actions.length === 0 && final.stop_reason === 'max_tokens') {
+              controller.enqueue(encoder.encode(
+                '\n\n_[Co-Pilot: the response was cut off before the actions completed. Try again with a shorter request, or break it into fewer items.]_',
+              ))
             }
             emitActions(controller, encoder, actions)
           } catch (err) {
