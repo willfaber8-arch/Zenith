@@ -24,7 +24,11 @@ export default function UniHubWidget() {
     }
     read()
     window.addEventListener('storage', read)
-    return () => window.removeEventListener('storage', read)
+    window.addEventListener('zenith:uni-brand-change', read)
+    return () => {
+      window.removeEventListener('storage', read)
+      window.removeEventListener('zenith:uni-brand-change', read)
+    }
   }, [])
 
   const uniName   = profile?.universityName || null
