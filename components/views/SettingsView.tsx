@@ -7,9 +7,15 @@ import { useToast }         from '@/lib/ToastContext'
 import { useSandboxConfig } from '@/lib/hooks/useSandboxConfig'
 import { useAiConfig }      from '@/lib/hooks/useAiConfig'
 import { db }               from '@/lib/db'
-import { gamesDb, purchaseTheme, setActiveTheme } from '@/lib/gamesDb'
+import {
+  gamesDb, purchaseTheme, setActiveTheme, applyFreeTheme,
+  addToInventory, seedGamesDatabase,
+} from '@/lib/gamesDb'
 import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
 import { SHOP_CATALOG_STATIC } from '@/lib/shopCatalog'
+import {
+  UNIVERSITY_BRANDS, UNIVERSITY_THEME_DEFINITIONS, uniThemeId,
+} from '@/lib/universityThemes'
 import {
   type BackgroundStyle,
   BACKDROP_STORAGE_KEY,
@@ -37,17 +43,19 @@ function Section({ id, title, children }: { id?: string; title: string; children
 /* ── Anchor section definitions ────────────────────────────────── */
 
 const SETTINGS_SECTIONS = [
-  { id: 's-appearance', label: 'Appearance' },
-  { id: 's-widgets',    label: 'Widgets'    },
-  { id: 's-ai',         label: 'AI'         },
-  { id: 's-help',       label: 'Help'       },
-  { id: 's-account',    label: 'Account'    },
-  { id: 's-audio',      label: 'Audio'      },
-  { id: 's-privacy',    label: 'Data'       },
-  { id: 's-analytics',  label: 'Analytics'  },
-  { id: 's-shortcuts',  label: 'Shortcuts'  },
-  { id: 's-about',      label: 'About'      },
-  { id: 's-dev',        label: 'Dev'        },
+  { id: 's-appearance',    label: 'Appearance'    },
+  { id: 's-school-colors', label: 'School Colors' },
+  { id: 's-widgets',       label: 'Widgets'       },
+  { id: 's-ai',            label: 'AI'            },
+  { id: 's-help',          label: 'Help'          },
+  { id: 's-account',       label: 'Account'       },
+  { id: 's-audio',         label: 'Audio'         },
+  { id: 's-privacy',       label: 'Data'          },
+  { id: 's-analytics',     label: 'Analytics'     },
+  { id: 's-shortcuts',     label: 'Shortcuts'     },
+  { id: 's-about',         label: 'About'         },
+  { id: 's-dev',           label: 'Dev'           },
+  { id: 's-dev-console',   label: 'Console'       },
 ]
 
 /* ── Toggle row ───────────────────────────────────────────────── */
@@ -153,6 +161,109 @@ export default function SettingsView() {
     toast('Theme applied.', 'success')
   }, [toast])
 
+  /* ── School colors state ───────────────────────────────────── */
+  const [applyingUniId, setApplyingUniId] = useState<string | null>(null)
+
+  const handleApplySchoolColors = useCallback(async (uniId: string) => {
+    setApplyingUniId(uniId)
+    try {
+      await seedGamesDatabase()
+      await applyFreeTheme(uniThemeId(uniId))
+      const brand = UNIVERSITY_BRANDS[uniId]
+      toast(`${brand?.name ?? 'School'} colors applied globally.`, 'success')
+    } catch {
+      toast('Could not apply school theme.', 'error')
+    } finally {
+      setApplyingUniId(null)
+    }
+  }, [toast])
+
+  /* ── Developer console state ────────────────────────────────── */
+  const [devCmd,      setDevCmd]      = useState('')
+  const [devOutput,   setDevOutput]   = useState<string[]>([])
+
+  const runDevCommand = useCallback(async (raw: string) => {
+    const cmd = raw.trim()
+    if (!cmd.startsWith('/')) {
+      setDevOutput(p => [...p, `Unknown command. Try /help`])
+      return
+    }
+    const [name, ...args] = cmd.slice(1).split(/\s+/)
+    const n = parseInt(args[0] ?? '', 10)
+
+    try {
+      await seedGamesDatabase()
+
+      if (name === 'help') {
+        setDevOutput(p => [...p,
+          '/give-credits N — add N cosmetic points (✦)',
+          '/give-shards N — add N raw data shards',
+          '/give-spores N — add N organic spores',
+          '/give-vp N — add N vitality points (localStorage)',
+          '/reset-arcade — wipe all gamesDb resource balances',
+          '/clear — clear this console output',
+        ])
+        return
+      }
+
+      if (name === 'clear') {
+        setDevOutput([])
+        return
+      }
+
+      if (name === 'give-credits') {
+        if (!n || n <= 0) { setDevOutput(p => [...p, 'Usage: /give-credits N (positive integer)']); return }
+        const r = await addToInventory('cosmetic_points', n)
+        if (r.ok) setDevOutput(p => [...p, `✦ Added ${r.amountActuallyAdded ?? n} cosmetic points. New balance: ${r.newBalance}`])
+        else setDevOutput(p => [...p, `Failed: ${r.reason}`])
+        return
+      }
+
+      if (name === 'give-shards') {
+        if (!n || n <= 0) { setDevOutput(p => [...p, 'Usage: /give-shards N']); return }
+        const r = await addToInventory('raw_data_shards', n)
+        if (r.ok) setDevOutput(p => [...p, `Added ${r.amountActuallyAdded ?? n} raw data shards. New balance: ${r.newBalance}`])
+        else setDevOutput(p => [...p, `Failed: ${r.reason}`])
+        return
+      }
+
+      if (name === 'give-spores') {
+        if (!n || n <= 0) { setDevOutput(p => [...p, 'Usage: /give-spores N']); return }
+        const r = await addToInventory('organic_spores', n)
+        if (r.ok) setDevOutput(p => [...p, `Added ${r.amountActuallyAdded ?? n} organic spores. New balance: ${r.newBalance}`])
+        else setDevOutput(p => [...p, `Failed: ${r.reason}`])
+        return
+      }
+
+      if (name === 'give-vp') {
+        if (!n || n <= 0) { setDevOutput(p => [...p, 'Usage: /give-vp N']); return }
+        try {
+          const raw = localStorage.getItem('zenith_vitality_v1')
+          const vp  = raw ? JSON.parse(raw) as { balance: number; lifetime: number } : { balance: 0, lifetime: 0 }
+          const next = { balance: vp.balance + n, lifetime: vp.lifetime + n }
+          localStorage.setItem('zenith_vitality_v1', JSON.stringify(next))
+          setDevOutput(p => [...p, `Added ${n} VP. New balance: ${next.balance}`])
+        } catch {
+          setDevOutput(p => [...p, 'Failed to update VP balance.'])
+        }
+        return
+      }
+
+      if (name === 'reset-arcade') {
+        if (!gamesDb) { setDevOutput(p => [...p, 'Games DB not available.']); return }
+        await gamesDb.resource_inventory.clear()
+        await gamesDb.user_profile_config.clear()
+        await seedGamesDatabase()
+        setDevOutput(p => [...p, 'Arcade data reset. All balances cleared and re-seeded.'])
+        return
+      }
+
+      setDevOutput(p => [...p, `Unknown command: /${name}. Type /help for available commands.`])
+    } catch (err) {
+      setDevOutput(p => [...p, `Error: ${err instanceof Error ? err.message : 'unknown'}`])
+    }
+  }, [])
+
   /* ── AI Provider config ────────────────────────────────────── */
   const { config: aiConfig, saveKey: saveAiKey, clearKey: clearAiKey, maskedKey, mounted: aiMounted } = useAiConfig()
   const [aiKeyInput,  setAiKeyInput]  = useState('')
@@ -194,7 +305,8 @@ export default function SettingsView() {
   /* ── Keyboard shortcuts table ───────────────────────────────── */
   const shortcuts = [
     { key: 'Esc',     action: 'Close overlay / exit study mode' },
-    { key: '⌘ ↵',    action: 'Submit AI Co-Pilot message' },
+    { key: '↵',       action: 'Send AI Co-Pilot message' },
+    { key: '⇧ ↵',    action: 'New line in AI Co-Pilot' },
     { key: '← / →',  action: 'Navigate calendar week/month' },
   ]
 
@@ -305,6 +417,50 @@ export default function SettingsView() {
           </div>
         </Section>
 
+        {/* ── School Colors ───────────────────────────────────── */}
+        <Section id="s-school-colors" title="School Colors">
+          <p className={styles.sectionSubtitle}>
+            Apply your university&apos;s official brand colors globally across Zenith.
+            This replaces the current theme&apos;s accent color.
+            You can switch back to any theme from the Appearance section above.
+          </p>
+          <div className={styles.themeGrid}>
+            {Object.values(UNIVERSITY_BRANDS).map(brand => {
+              const themeId  = uniThemeId(brand.id)
+              const def      = UNIVERSITY_THEME_DEFINITIONS[themeId]
+              const equipped = activeTheme === themeId
+              return (
+                <div
+                  key={brand.id}
+                  className={`${styles.themeCard} ${equipped ? styles.themeCardActive : ''} ${styles.themeCardOwned}`}
+                >
+                  <div
+                    className={styles.themeSwatch}
+                    style={{ background: def?.swatch ?? brand.primaryHex }}
+                  />
+                  <div className={styles.themeInfo}>
+                    <p className={styles.themeName}>{brand.name}</p>
+                    <span className={styles.themeTag}>{brand.primaryHex}</span>
+                  </div>
+                  <div className={styles.themeAction}>
+                    {equipped ? (
+                      <span className={styles.themeEquipped}>✓ Active</span>
+                    ) : (
+                      <button
+                        className={styles.themeBtn}
+                        onClick={() => void handleApplySchoolColors(brand.id)}
+                        disabled={applyingUniId === brand.id}
+                      >
+                        {applyingUniId === brand.id ? '···' : 'Apply'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Section>
+
         {/* ── Dashboard Widgets ───────────────────────────────── */}
         <Section id="s-widgets" title="Dashboard Widgets">
           <p className={styles.sectionSubtitle}>
@@ -353,17 +509,18 @@ export default function SettingsView() {
         {/* ── AI Provider ─────────────────────────────────────── */}
         <Section id="s-ai" title="AI Provider">
           <p className={styles.sectionSubtitle}>
-            Zenith&apos;s AI features (Co-Pilot, Study Shield, Roadmap) use your own API key —
-            stored only in this browser, never on our servers. Paste a key from
-            Google AI Studio (Gemini) or Anthropic Console below.
+            Zenith&apos;s AI features (Co-Pilot, Study Shield) use your own API key —
+            stored only in this browser, never on our servers. Supports Google Gemini,
+            Anthropic Claude, and OpenAI (ChatGPT).
           </p>
 
           {/* ── Current key status ─────────────────────────────── */}
           {aiMounted && aiConfig.userApiKey && (
             <div className={styles.aiKeyStatus}>
               <span className={styles.aiKeyProvider}>
-                {aiConfig.provider === 'gemini'     ? '◎ Google Gemini'    :
-                 aiConfig.provider === 'anthropic'  ? '◎ Anthropic Claude' :
+                {aiConfig.provider === 'gemini'    ? '◎ Google Gemini'    :
+                 aiConfig.provider === 'anthropic' ? '◎ Anthropic Claude' :
+                 aiConfig.provider === 'openai'    ? '◎ OpenAI'           :
                  '◎ Unknown provider'}
               </span>
               <span className={styles.aiKeyMasked}>{maskedKey}</span>
@@ -381,7 +538,7 @@ export default function SettingsView() {
               placeholder={
                 aiMounted && aiConfig.userApiKey
                   ? 'Enter a new key to replace the current one'
-                  : 'Paste your Gemini (AIza… or AQ.…) or Anthropic (sk-ant-…) key'
+                  : 'Gemini (AIza… / AQ.…) · Anthropic (sk-ant-…) · OpenAI (sk-…)'
               }
               value={aiKeyInput}
               onChange={e => setAiKeyInput(e.target.value)}
@@ -400,14 +557,14 @@ export default function SettingsView() {
 
           {/* ── Provider help links ────────────────────────────── */}
           <div className={styles.aiProviderLinks}>
-            <span className={styles.aiProviderLinkLabel}>Get a free key:</span>
+            <span className={styles.aiProviderLinkLabel}>Get a key:</span>
             <a
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.aiProviderLink}
             >
-              Google AI Studio (Gemini) →
+              Google AI Studio (Gemini · free) →
             </a>
             <a
               href="https://console.anthropic.com/settings/keys"
@@ -417,11 +574,20 @@ export default function SettingsView() {
             >
               Anthropic Console →
             </a>
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.aiProviderLink}
+            >
+              OpenAI Platform (paid, ~$5 credit for new accounts) →
+            </a>
           </div>
 
           <p className={styles.aiKeyNote}>
             🔒 Your key is stored in localStorage. It is sent only to our server
             as an HTTPS header for forwarding to the AI provider — never logged or persisted.
+            Gemini free tier is the easiest starting point; OpenAI has no permanent free tier.
           </p>
         </Section>
 
@@ -571,6 +737,55 @@ export default function SettingsView() {
             coordination.
           </p>
           <ConflictAuditPanel />
+        </Section>
+
+        {/* ── Developer Console ────────────────────────────────── */}
+        {/* TODO: remove before launch */}
+        <Section id="s-dev-console" title="Developer Console [ REMOVE BEFORE LAUNCH ]">
+          <p className={styles.sectionSubtitle}>
+            Internal command interface for testing game economy and data states.
+            Type <strong>/help</strong> to list all commands.
+          </p>
+          <div className={styles.devConsoleWrap}>
+            <div className={styles.devConsoleOutput}>
+              {devOutput.length === 0
+                ? <span className={styles.devConsolePlaceholder}>[ CONSOLE READY // TYPE /help ]</span>
+                : devOutput.map((line, i) => (
+                    <p key={i} className={styles.devConsoleLine}>{line}</p>
+                  ))
+              }
+            </div>
+            <div className={styles.devConsoleInput}>
+              <span className={styles.devConsolePrompt}>{'>'}</span>
+              <input
+                type="text"
+                className={styles.devConsoleField}
+                value={devCmd}
+                onChange={e => setDevCmd(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && devCmd.trim()) {
+                    setDevOutput(p => [...p, `> ${devCmd}`])
+                    void runDevCommand(devCmd)
+                    setDevCmd('')
+                  }
+                }}
+                placeholder="/give-credits 500"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                className={styles.devConsoleRunBtn}
+                onClick={() => {
+                  if (!devCmd.trim()) return
+                  setDevOutput(p => [...p, `> ${devCmd}`])
+                  void runDevCommand(devCmd)
+                  setDevCmd('')
+                }}
+              >
+                Run
+              </button>
+            </div>
+          </div>
         </Section>
 
         {/* ── Stability Release Console ─────────────────────────── */}

@@ -23,6 +23,7 @@ import styles from './AppShell.module.css'
 
 const COLLAPSED_KEY      = 'zenith_nav_collapsed_v1'
 const SIDEBAR_HIDDEN_KEY = 'zenith_sidebar_hidden_v1'
+const UNI_BRAND_KEY      = 'zenith_uni_brand_v1'
 
 function useCollapsedCategories() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -79,6 +80,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { collapsed, toggle: toggleCollapsed } = useCollapsedCategories()
   const { sidebarHidden, toggleSidebarHidden } = useSidebarHidden()
   useNotifications()
+
+  /* University brand color for uni-hub nav item */
+  const [uniBrandColor, setUniBrandColor] = useState<string | null>(null)
+  useEffect(() => {
+    const read = () => {
+      try {
+        setUniBrandColor(localStorage.getItem(UNI_BRAND_KEY))
+      } catch { /* noop */ }
+    }
+    read()
+    window.addEventListener('storage', read)
+    return () => window.removeEventListener('storage', read)
+  }, [])
 
   /* Right-click context menu state */
   const [ctxMenu, setCtxMenu] = useState<{
@@ -249,6 +263,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                   hideItem(link.id)
                                   toast(`"${link.label}" hidden from sidebar.`, 'info')
                                 }}
+                                colorOverride={link.id === 'uni-hub' ? (uniBrandColor ?? undefined) : undefined}
                               />
                             ))}
                           </ul>
@@ -269,6 +284,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                               hideItem(link.id)
                               toast(`"${link.label}" hidden from sidebar.`, 'info')
                             }}
+                            colorOverride={link.id === 'uni-hub' ? (uniBrandColor ?? undefined) : undefined}
                           />
                         </ul>
                       ))}
@@ -557,13 +573,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 /* ── NavLinkItem sub-component ──────────────────────────────── */
 
 function NavLinkItem({
-  link, active, badge, onClick, onHide,
+  link, active, badge, onClick, onHide, colorOverride,
 }: {
-  link:    NavLink
-  active:  boolean
-  badge:   number
-  onClick: () => void
-  onHide:  () => void
+  link:          NavLink
+  active:        boolean
+  badge:         number
+  onClick:       () => void
+  onHide:        () => void
+  colorOverride?: string
 }) {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -576,6 +593,8 @@ function NavLinkItem({
     e.currentTarget.dispatchEvent(event)
   }
 
+  const effectiveColor = colorOverride ?? link.color
+
   return (
     <li>
       <button
@@ -584,10 +603,10 @@ function NavLinkItem({
         onClick={onClick}
         onContextMenu={handleContextMenu}
         style={{
-          '--item-hover-bg':  hexToRgba(link.color, 0.12),
-          '--item-active-bg': hexToRgba(link.color, 0.18),
-          '--item-accent':    link.color,
-          '--item-border':    hexToRgba(link.color, 0.55),
+          '--item-hover-bg':  hexToRgba(effectiveColor, 0.12),
+          '--item-active-bg': hexToRgba(effectiveColor, 0.18),
+          '--item-accent':    effectiveColor,
+          '--item-border':    hexToRgba(effectiveColor, 0.55),
         } as React.CSSProperties}
       >
         <span className={styles.navDot} aria-hidden="true" />

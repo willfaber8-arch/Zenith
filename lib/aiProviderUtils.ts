@@ -3,7 +3,7 @@
  * No 'use client' directive; no browser APIs.
  */
 
-export type AiProvider = 'anthropic' | 'gemini'
+export type AiProvider = 'anthropic' | 'gemini' | 'openai'
 
 /**
  * Auto-detect the AI provider from the key prefix.
@@ -14,11 +14,13 @@ export type AiProvider = 'anthropic' | 'gemini'
  * Google issues Gemini keys in two formats: the classic "AIza…" keys and the
  * newer "AQ.…" keys from AI Studio. Both authenticate the Generative Language
  * API via the ?key= query parameter.
+ * OpenAI keys start with "sk-" (sk-ant- checked first to distinguish Anthropic).
  */
 export function detectProvider(key: string): AiProvider | null {
   const k = key.replace(/[^\x20-\x7E]/g, '').trim()
   if (k.startsWith('sk-ant-')) return 'anthropic'
   if (k.startsWith('AIza') || k.startsWith('AQ.')) return 'gemini'
+  if (k.startsWith('sk-')) return 'openai'
   return null
 }
 
@@ -45,7 +47,7 @@ export function friendlyGeminiError(status: number, rawText: string): string {
         : 'Gemini could not process the request. Please try again.'
     case 401:
     case 403:
-      return 'Gemini denied access for this key. The Generative Language API may not be enabled for the key\'s Google Cloud project.'
+      return 'Gemini denied access. Use a key from Google AI Studio (aistudio.google.com/app/apikey), not the Google Cloud Console. Cloud Console keys require manually enabling the Generative Language API — AI Studio keys work immediately and have a free tier.'
     case 404:
       return 'The configured Gemini model was not found. It may have been renamed or retired.'
     case 500:

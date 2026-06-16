@@ -514,12 +514,13 @@ export default function AiCopilotSidebar() {
     }
   }, [input, isSubmitting, messages, contextPayload])
 
-  /* ── Keyboard: Ctrl/Cmd + Enter to submit ───────────────────── */
+  /* ── Keyboard: Enter to submit, Shift+Enter for newline ────── */
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
     }
+    // Shift+Enter falls through — browser inserts a newline naturally
   }, [handleSubmit])
 
   /* ── Auth gate ───────────────────────────────────────────────── */
@@ -661,7 +662,7 @@ export default function AiCopilotSidebar() {
 
           <div className={styles.inputFooter}>
             <span id="copilot-hint" className={styles.inputHint}>
-              {isListening ? 'Listening — click ◎ to stop' : isSubmitting ? 'Generating…' : '⌘ ↵ to send'}
+              {isListening ? 'Listening — click ◎ to stop' : isSubmitting ? 'Generating…' : '↵ to send · ⇧↵ newline'}
             </span>
 
             {isSubmitting ? (

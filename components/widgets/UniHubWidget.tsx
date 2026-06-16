@@ -1,9 +1,13 @@
 'use client'
 
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db }           from '@/lib/db'
-import { useNav }       from '@/lib/NavContext'
+import { useLiveQuery }  from 'dexie-react-hooks'
+import { useState, useEffect } from 'react'
+import { db }            from '@/lib/db'
+import { useNav }        from '@/lib/NavContext'
+import { hexToRgba }     from '@/lib/nav-config'
 import styles from './Widget.module.css'
+
+const UNI_BRAND_KEY = 'zenith_uni_brand_v1'
 
 export default function UniHubWidget() {
   const { navigate } = useNav()
@@ -13,8 +17,27 @@ export default function UniHubWidget() {
     [],
   )
 
+  const [brandColor, setBrandColor] = useState<string | null>(null)
+  useEffect(() => {
+    const read = () => {
+      try { setBrandColor(localStorage.getItem(UNI_BRAND_KEY)) } catch { /* noop */ }
+    }
+    read()
+    window.addEventListener('storage', read)
+    return () => window.removeEventListener('storage', read)
+  }, [])
+
   const uniName   = profile?.universityName || null
   const majorName = profile?.majorIdentifier || null
+
+  const brandStyle = brandColor
+    ? {
+        '--widget-accent': brandColor,
+        '--accent-purple': brandColor,
+        '--accent-purple-dim': hexToRgba(brandColor, 0.35),
+        '--border-subtle': hexToRgba(brandColor, 0.10),
+      } as React.CSSProperties
+    : { '--widget-accent': 'var(--accent-purple)' } as React.CSSProperties
 
   return (
     <div
@@ -24,7 +47,7 @@ export default function UniHubWidget() {
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && navigate('uni-hub', 'essentials')}
       aria-label="University Hub"
-      style={{ '--widget-accent': 'var(--accent-green)' } as React.CSSProperties}
+      style={brandStyle}
     >
       <div className={styles.cardHeader}>
         <p className={styles.eyebrow}>University Hub</p>
