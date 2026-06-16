@@ -211,6 +211,22 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
     lines.push('  No mood logs recorded in the lookback window.')
   }
 
+  // — Dashboard presets —
+  try {
+    const presetsRaw = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('zenith_dashboard_presets_v1')
+      : null
+    if (presetsRaw) {
+      const presets = JSON.parse(presetsRaw) as Array<{ name: string }>
+      if (presets.length > 0) {
+        lines.push('')
+        lines.push('── SAVED DASHBOARD PRESETS ──')
+        presets.forEach(p => lines.push(`  • "${p.name}"`))
+        lines.push('(use load_dashboard_preset to apply one by name)')
+      }
+    }
+  } catch { /* localStorage unavailable — skip */ }
+
   lines.push('')
   lines.push('════ END CONTEXT SNAPSHOT ════')
 

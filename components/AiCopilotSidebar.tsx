@@ -30,17 +30,26 @@ import {
   compileUserContextPayload,
   type UserContextPayload,
 } from '@/utils/aiContextBridge'
+import {
+  ACTION_MARKER, describeAction, type CopilotAction,
+} from '@/lib/copilotTools'
+import { executeCopilotAction } from '@/lib/copilotActions'
 import styles from './AiCopilotSidebar.module.css'
 
 /* ══════════════════════════════════════════════════════════════
    1. TYPES
    ══════════════════════════════════════════════════════════════ */
 
+type ActionState = 'pending' | 'running' | 'done' | 'cancelled'
+
 interface ChatMsg {
-  id:          string
-  role:        'user' | 'assistant'
-  content:     string
-  isStreaming: boolean
+  id:           string
+  role:         'user' | 'assistant'
+  content:      string
+  isStreaming:  boolean
+  actions?:     CopilotAction[]   // proposed agentic actions awaiting confirmation
+  actionState?: ActionState
+  actionResult?: string           // success / error summary after execution
 }
 
 type ApiMsg = { role: 'user' | 'assistant'; content: string }
@@ -196,8 +205,18 @@ const STATUS_LABEL: Record<ContextStatus, string> = {
    4. MESSAGE BUBBLE
    ══════════════════════════════════════════════════════════════ */
 
-function MessageBubble({ msg }: { msg: ChatMsg }) {
-  const isUser = msg.role === 'user'
+interface MessageBubbleProps {
+  msg:        ChatMsg
+  onConfirm?: (id: string) => void
+  onCancel?:  (id: string) => void
+}
+
+function MessageBubble({ msg, onConfirm, onCancel }: MessageBubbleProps) {
+  const isUser   = msg.role === 'user'
+  const hasText  = msg.content.trim().length > 0
+  const actions  = msg.actions ?? []
+  const state    = msg.actionState
+
   return (
     <div className={`${styles.msgRow} ${isUser ? styles.msgRowUser : styles.msgRowAssistant}`}>
 
@@ -211,12 +230,57 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
           /* User messages: plain text only */
           ? <p className={styles.mdPara}>{msg.content}</p>
           /* Assistant messages: full markdown rendering */
-          : <MarkdownBlock text={msg.content} />
+          : hasText
+            ? <MarkdownBlock text={msg.content} />
+            : actions.length > 0 && !msg.isStreaming
+              ? <p className={styles.mdPara}>I&apos;ve prepared the following:</p>
+              : <MarkdownBlock text={msg.content} />
         }
 
         {/* Streaming cursor — visible only while tokens are arriving */}
         {msg.isStreaming && (
           <span className={styles.cursor} aria-hidden="true">▋</span>
+        )}
+
+        {/* ── Agentic action confirmation card ──────────────────── */}
+        {!msg.isStreaming && actions.length > 0 && (
+          <div className={styles.actionCard}>
+            <span className={styles.actionHead}>
+              {state === 'done'      ? '✓ COMPLETE'
+                : state === 'cancelled' ? '✕ CANCELLED'
+                : state === 'running'   ? '◌ SAVING…'
+                : `⚡ CONFIRM ${actions.length} ACTION${actions.length > 1 ? 'S' : ''}`}
+            </span>
+
+            <ul className={styles.actionList}>
+              {actions.map((a, i) => (
+                <li key={i} className={styles.actionItem}>{describeAction(a)}</li>
+              ))}
+            </ul>
+
+            {msg.actionResult && (
+              <p className={styles.actionResult}>{msg.actionResult}</p>
+            )}
+
+            {(!state || state === 'pending') && (
+              <div className={styles.actionBtns}>
+                <button
+                  type="button"
+                  className={styles.actionConfirm}
+                  onClick={() => onConfirm?.(msg.id)}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  className={styles.actionCancel}
+                  onClick={() => onCancel?.(msg.id)}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -413,6 +477,48 @@ export default function AiCopilotSidebar() {
     setMessages(prev => prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m))
   }, [])
 
+  /* ── Confirm / cancel agentic actions ───────────────────────── */
+  const confirmActions = useCallback(async (msgId: string) => {
+    let toRun: CopilotAction[] = []
+    setMessages(prev => prev.map(m => {
+      if (m.id === msgId && m.actions && (!m.actionState || m.actionState === 'pending')) {
+        toRun = m.actions
+        return { ...m, actionState: 'running' as ActionState }
+      }
+      return m
+    }))
+    if (toRun.length === 0) return
+
+    const results: string[] = []
+    let failures = 0
+    for (const a of toRun) {
+      try {
+        results.push(`✓ ${await executeCopilotAction(a)}`)
+      } catch (e) {
+        failures++
+        results.push(`✕ ${e instanceof Error ? e.message : 'Failed to save.'}`)
+      }
+    }
+
+    setMessages(prev => prev.map(m =>
+      m.id === msgId
+        ? { ...m, actionState: 'done' as ActionState, actionResult: results.join('\n') }
+        : m,
+    ))
+
+    if (failures === 0) {
+      toast(`Done — ${toRun.length} action${toRun.length > 1 ? 's' : ''} saved.`, 'success')
+    } else {
+      toast(`${failures} action${failures > 1 ? 's' : ''} couldn't be saved.`, 'error')
+    }
+  }, [toast])
+
+  const cancelActions = useCallback((msgId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === msgId ? { ...m, actionState: 'cancelled' as ActionState } : m,
+    ))
+  }, [])
+
   /* ── Submit message ──────────────────────────────────────────── */
   /*
    * Design notes:
@@ -485,20 +591,44 @@ export default function AiCopilotSidebar() {
 
       const reader  = res.body.getReader()
       const decoder = new TextDecoder()
+      let   full    = ''
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
+        full += decoder.decode(value, { stream: true })
+        // Hide any (possibly partial) action sentinel from the visible text —
+        // it begins with the marker's first (private-use-area) character.
+        const sentinel = full.indexOf(ACTION_MARKER[0])
+        const display  = sentinel >= 0 ? full.slice(0, sentinel) : full
         setMessages(prev => prev.map(m =>
-          m.id === assistantId ? { ...m, content: m.content + chunk } : m,
+          m.id === assistantId ? { ...m, content: display } : m,
         ))
       }
 
-      // Finalise: clear streaming flag
+      // Split the visible text from the trailing action payload.
+      let displayText = full
+      let actions: CopilotAction[] = []
+      const markerIdx = full.indexOf(ACTION_MARKER)
+      if (markerIdx >= 0) {
+        displayText = full.slice(0, markerIdx)
+        try {
+          const parsed = JSON.parse(full.slice(markerIdx + ACTION_MARKER.length))
+          if (Array.isArray(parsed)) actions = parsed as CopilotAction[]
+        } catch { /* malformed action payload — ignore */ }
+      }
+
       setMessages(prev => prev.map(m =>
-        m.id === assistantId ? { ...m, isStreaming: false } : m,
+        m.id === assistantId
+          ? {
+              ...m,
+              content:     displayText.trimEnd(),
+              isStreaming: false,
+              actions:     actions.length ? actions : undefined,
+              actionState: actions.length ? 'pending' : undefined,
+            }
+          : m,
       ))
 
     } catch (err) {
@@ -619,7 +749,12 @@ export default function AiCopilotSidebar() {
 
           {/* Message bubbles */}
           {messages.map(msg => (
-            <MessageBubble key={msg.id} msg={msg} />
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              onConfirm={confirmActions}
+              onCancel={cancelActions}
+            />
           ))}
 
         </div>

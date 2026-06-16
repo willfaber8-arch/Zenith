@@ -22,7 +22,7 @@ import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 
 const GEMINI_BASE          = 'https://generativelanguage.googleapis.com/v1beta/models'
-const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash-lite'
 
 async function callGemini(apiKey: string, goal: string, maxTokens: number): Promise<string> {
   const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT

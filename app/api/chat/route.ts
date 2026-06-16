@@ -20,7 +20,25 @@
 import Anthropic   from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
-import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
+import { detectProvider, friendlyGeminiError, classifyGeminiQuota } from '@/lib/aiProviderUtils'
+import {
+  ACTION_MARKER, toAnthropicTools, toOpenAITools, toGeminiTools,
+  toolsSystemNote, isKnownAction, type CopilotAction,
+} from '@/lib/copilotTools'
+
+/* ── Agentic action helpers ──────────────────────────────────── */
+
+/** Append the parsed tool calls after the sentinel so the client can render a
+ *  confirmation card. No second LLM round-trip — keeps cost at one call/turn. */
+function emitActions(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder:    TextEncoder,
+  actions:    CopilotAction[],
+): void {
+  if (actions.length > 0) {
+    controller.enqueue(encoder.encode(ACTION_MARKER + JSON.stringify(actions)))
+  }
+}
 
 /* ── OpenAI error helper ──────────────────────────────────────── */
 
@@ -69,6 +87,7 @@ async function streamOpenAI(
       messages: openaiMessages,
       max_tokens: maxTokens,
       stream: true,
+      tools: toOpenAITools(),
     }),
     signal: AbortSignal.timeout(30_000),
   })
@@ -84,6 +103,8 @@ async function streamOpenAI(
       const reader  = upstream.body!.getReader()
       const decoder = new TextDecoder()
       let   buffer  = ''
+      // Accumulate streamed function-call fragments by their array index.
+      const toolAcc = new Map<number, { name: string; args: string }>()
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -101,9 +122,30 @@ async function streamOpenAI(
               const delta   = choices?.[0]?.delta as Record<string, unknown> | undefined
               const chunk   = (delta?.content as string) ?? ''
               if (chunk) controller.enqueue(encoder.encode(chunk))
+
+              const tcs = delta?.tool_calls as Array<Record<string, unknown>> | undefined
+              if (tcs) {
+                for (const tc of tcs) {
+                  const idx = (tc.index as number) ?? 0
+                  const fn  = tc.function as Record<string, unknown> | undefined
+                  const cur = toolAcc.get(idx) ?? { name: '', args: '' }
+                  if (typeof fn?.name === 'string')      cur.name  = fn.name
+                  if (typeof fn?.arguments === 'string') cur.args += fn.arguments
+                  toolAcc.set(idx, cur)
+                }
+              }
             } catch { /* malformed SSE line — skip */ }
           }
         }
+
+        // Parse accumulated tool calls and emit them after the sentinel.
+        const actions: CopilotAction[] = []
+        for (const { name, args } of toolAcc.values()) {
+          if (!isKnownAction(name)) continue
+          try { actions.push({ name, args: args ? JSON.parse(args) : {} }) }
+          catch { /* unparsable arguments — drop this call */ }
+        }
+        emitActions(controller, encoder, actions)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Stream interrupted'
         controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
@@ -117,7 +159,7 @@ async function streamOpenAI(
 /* ── Gemini REST streaming helper ─────────────────────────────── */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash-lite'
 
 async function streamGemini(
   apiKey:       string,
@@ -140,13 +182,19 @@ async function streamGemini(
       contents:         geminiMessages,
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: { maxOutputTokens: maxTokens },
+      tools:            toGeminiTools(),
     }),
     signal: AbortSignal.timeout(30_000),
   })
 
   if (!upstream.ok) {
     const errText = await upstream.text().catch(() => '')
-    throw new Error(friendlyGeminiError(upstream.status, errText))
+    const err = new Error(friendlyGeminiError(upstream.status, errText)) as Error & { retryable?: boolean }
+    // Only a per-minute rate limit is worth retrying. A daily free-tier cap
+    // (or any non-429 error) will not clear on retry, so retrying it just
+    // burns more of the same exhausted quota — fail fast instead.
+    err.retryable = upstream.status === 429 && classifyGeminiQuota(errText) === 'per_minute'
+    throw err
   }
 
   const encoder = new TextEncoder()
@@ -155,6 +203,7 @@ async function streamGemini(
       const reader  = upstream.body!.getReader()
       const decoder = new TextDecoder()
       let   buffer  = ''
+      const actions: CopilotAction[] = []
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -169,13 +218,24 @@ async function streamGemini(
             try {
               const parsed = JSON.parse(data) as Record<string, unknown>
               const candidates = parsed.candidates as Array<Record<string, unknown>> | undefined
-              const text = (candidates?.[0]?.content as Record<string, unknown> | undefined)
-                ?.parts as Array<{ text?: string }> | undefined
-              const chunk = text?.[0]?.text ?? ''
-              if (chunk) controller.enqueue(encoder.encode(chunk))
+              const parts = (candidates?.[0]?.content as Record<string, unknown> | undefined)
+                ?.parts as Array<Record<string, unknown>> | undefined
+              for (const part of parts ?? []) {
+                if (typeof part.text === 'string' && part.text) {
+                  controller.enqueue(encoder.encode(part.text))
+                }
+                const fc = part.functionCall as Record<string, unknown> | undefined
+                if (fc && isKnownAction(fc.name)) {
+                  actions.push({
+                    name: fc.name as string,
+                    args: (fc.args as Record<string, unknown>) ?? {},
+                  })
+                }
+              }
             } catch { /* malformed SSE line — skip */ }
           }
         }
+        emitActions(controller, encoder, actions)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Stream interrupted'
         controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
@@ -190,7 +250,7 @@ async function streamGemini(
 
 const MAX_USER_MSG_CHARS   = 4_000     // hard cap per user turn
 const MAX_HISTORY_MESSAGES = 20        // sliding window — oldest pairs dropped first
-const MAX_TOKENS_RESPONSE  = 1_024     // generous for explanation-style answers
+const MAX_TOKENS_RESPONSE  = 2_048     // headroom for explanations + multi-action batches
 const MAX_BODY_BYTES       = 256 * 1024 // reject oversized request payloads
 
 /* ── Base system persona ──────────────────────────────────────── */
@@ -295,27 +355,40 @@ export async function POST(req: NextRequest): Promise<Response> {
    *   after the persona instructions so the model has full situational
    *   awareness.  We NEVER return this block to the client.
    */
-  const systemPrompt = contextPayload
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const systemPrompt = (contextPayload
     ? `${SYSTEM_BASE}\n\n${contextPayload}`
-    : SYSTEM_BASE
+    : SYSTEM_BASE) + toolsSystemNote(todayIso)
 
   /* 5 — Stream from the appropriate provider */
   try {
     let readable: ReadableStream<Uint8Array>
 
     if (provider === 'gemini') {
-      // Auto-retry once on 429 — transient quota blips from the free tier
-      try {
-        readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
-      } catch (e) {
-        const msg = (e as Error).message ?? ''
-        if (msg.startsWith('Gemini quota exceeded')) {
-          await new Promise(r => setTimeout(r, 2000))
+      // Retry ONLY a transient per-minute rate limit (err.retryable) — a short
+      // wait lets the per-minute window roll over. A daily free-tier cap is NOT
+      // retried: every attempt consumes the same exhausted daily quota, so a
+      // single user message must cost exactly one upstream request, never three.
+      const RETRY_DELAYS = [4000, 8000]
+      let lastErr: Error | null = null
+      let succeeded = false
+      readable = null! as ReadableStream<Uint8Array>
+      for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+        try {
           readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
-        } else {
-          throw e
+          succeeded = true
+          break
+        } catch (e) {
+          const retryable = (e as Error & { retryable?: boolean }).retryable === true
+          if (retryable && attempt < RETRY_DELAYS.length) {
+            lastErr = e as Error
+            await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]))
+          } else {
+            throw e
+          }
         }
       }
+      if (!succeeded) throw lastErr
     } else if (provider === 'openai') {
       readable = await streamOpenAI(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
     } else {
@@ -327,6 +400,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         max_tokens: MAX_TOKENS_RESPONSE,
         system:     systemPrompt,
         messages:   sanitised,
+        tools:      toAnthropicTools(),
       })
       const encoder = new TextEncoder()
       readable = new ReadableStream<Uint8Array>({
@@ -340,6 +414,19 @@ export async function POST(req: NextRequest): Promise<Response> {
                 controller.enqueue(encoder.encode(event.delta.text))
               }
             }
+            // finalMessage() yields fully-assembled tool_use blocks (no extra
+            // network call — it drains the stream we already consumed).
+            const final = await stream.finalMessage()
+            const actions: CopilotAction[] = []
+            for (const block of final.content) {
+              if (block.type === 'tool_use' && isKnownAction(block.name)) {
+                actions.push({
+                  name: block.name,
+                  args: (block.input as Record<string, unknown>) ?? {},
+                })
+              }
+            }
+            emitActions(controller, encoder, actions)
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Stream interrupted'
             controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
