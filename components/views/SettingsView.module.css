@@ -705,3 +705,92 @@
   border-radius: var(--r-sm);
   border-left: 2px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
 }
+
+/* ── Developer console ─────────────────────────────────────────── */
+
+.devConsoleWrap {
+  display:       flex;
+  flex-direction:column;
+  gap:           var(--sp-2);
+  border:        1px solid color-mix(in srgb, var(--accent-green) 25%, transparent);
+  border-radius: var(--r-md);
+  overflow:      hidden;
+  background:    #080d0a;
+}
+
+.devConsoleOutput {
+  min-height:    120px;
+  max-height:    260px;
+  overflow-y:    auto;
+  padding:       var(--sp-4);
+  font-family:   var(--font-mono);
+  font-size:     0.72rem;
+  line-height:   1.6;
+  color:         var(--accent-green);
+}
+
+.devConsolePlaceholder {
+  color:        var(--text-dark);
+  font-family:  var(--font-mono);
+  font-size:    0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.devConsoleLine {
+  margin:   0;
+  padding:  0;
+  color:    var(--accent-green);
+  word-break: break-all;
+}
+
+.devConsoleLine:nth-child(odd) {
+  opacity: 0.9;
+}
+
+.devConsoleInput {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-3) var(--sp-4);
+  border-top:  1px solid color-mix(in srgb, var(--accent-green) 15%, transparent);
+  background:  rgba(0,0,0,0.3);
+}
+
+.devConsolePrompt {
+  font-family: var(--font-mono);
+  font-size:   0.78rem;
+  color:       var(--accent-green);
+  flex-shrink: 0;
+}
+
+.devConsoleField {
+  flex:         1;
+  background:   transparent;
+  border:       none;
+  outline:      none;
+  font-family:  var(--font-mono);
+  font-size:    0.75rem;
+  color:        var(--text-primary);
+  padding:      0;
+  caret-color:  var(--accent-green);
+}
+
+.devConsoleField::placeholder {
+  color: var(--text-dark);
+}
+
+.devConsoleRunBtn {
+  font-family:  var(--font-mono);
+  font-size:    0.65rem;
+  padding:      var(--sp-1) var(--sp-3);
+  border:       1px solid color-mix(in srgb, var(--accent-green) 35%, transparent);
+  border-radius:var(--r-sm);
+  background:   color-mix(in srgb, var(--accent-green) 10%, transparent);
+  color:        var(--accent-green);
+  cursor:       pointer;
+  transition:   background 140ms;
+}
+
+.devConsoleRunBtn:hover {
+  background: color-mix(in srgb, var(--accent-green) 20%, transparent);
+}

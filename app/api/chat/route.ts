@@ -22,6 +22,98 @@ import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 
+/* ── OpenAI error helper ──────────────────────────────────────── */
+
+function friendlyOpenAIError(status: number, rawText: string): string {
+  switch (status) {
+    case 401:
+      return 'OpenAI rejected the API key. Verify your key at platform.openai.com/api-keys.'
+    case 403:
+      return 'OpenAI access denied. Your account may need billing set up at platform.openai.com.'
+    case 429:
+      return 'OpenAI rate limit or quota exceeded. Check your usage and billing at platform.openai.com/usage.'
+    default: {
+      const hint = /insufficient_quota/i.test(rawText) ? ' (quota exhausted)' : ''
+      return `OpenAI API error ${status}${hint}. Please try again.`
+    }
+  }
+}
+
+/* ── OpenAI REST streaming helper ─────────────────────────────── */
+
+const OPENAI_BASE          = 'https://api.openai.com/v1'
+const OPENAI_MODEL_DEFAULT = 'gpt-4o-mini'
+
+async function streamOpenAI(
+  apiKey:       string,
+  systemPrompt: string,
+  messages:     ChatMessage[],
+  maxTokens:    number,
+): Promise<ReadableStream<Uint8Array>> {
+  const model = process.env.OPENAI_MODEL ?? OPENAI_MODEL_DEFAULT
+  const url   = `${OPENAI_BASE}/chat/completions`
+
+  const openaiMessages = [
+    { role: 'system' as const, content: systemPrompt },
+    ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+  ]
+
+  const upstream = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: openaiMessages,
+      max_tokens: maxTokens,
+      stream: true,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+
+  if (!upstream.ok) {
+    const errText = await upstream.text().catch(() => '')
+    throw new Error(friendlyOpenAIError(upstream.status, errText))
+  }
+
+  const encoder = new TextEncoder()
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader  = upstream.body!.getReader()
+      const decoder = new TextDecoder()
+      let   buffer  = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6).trim()
+            if (data === '[DONE]') continue
+            try {
+              const parsed  = JSON.parse(data) as Record<string, unknown>
+              const choices = parsed.choices as Array<Record<string, unknown>> | undefined
+              const delta   = choices?.[0]?.delta as Record<string, unknown> | undefined
+              const chunk   = (delta?.content as string) ?? ''
+              if (chunk) controller.enqueue(encoder.encode(chunk))
+            } catch { /* malformed SSE line — skip */ }
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Stream interrupted'
+        controller.enqueue(encoder.encode(`\n\n_[Co-Pilot error: ${msg}]_`))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+}
+
 /* ── Gemini REST streaming helper ─────────────────────────────── */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -150,13 +242,13 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'No AI key configured. Add your Gemini or Anthropic key in Settings → AI Provider.' },
+      { error: 'No AI key configured. Add your Gemini, Anthropic, or OpenAI key in Settings → AI Provider.' },
       { status: 503 },
     )
   }
   if (!provider) {
     return NextResponse.json(
-      { error: 'Unrecognized API key format. Use a Google Gemini (AIza… or AQ.…) or Anthropic (sk-ant-…) key.' },
+      { error: 'Unrecognized API key format. Use Gemini (AIza… or AQ.…), Anthropic (sk-ant-…), or OpenAI (sk-…).' },
       { status: 400 },
     )
   }
@@ -213,6 +305,8 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     if (provider === 'gemini') {
       readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
+    } else if (provider === 'openai') {
+      readable = await streamOpenAI(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
     } else {
       // Anthropic path
       const model   = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'

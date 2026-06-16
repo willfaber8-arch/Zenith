@@ -6,7 +6,9 @@ import { useAuth }        from '@/lib/AuthContext'
 import { useToast }       from '@/lib/ToastContext'
 import { db }             from '@/lib/db'
 import { applyFreeTheme, seedGamesDatabase } from '@/lib/gamesDb'
-import { getUniversityBrand, uniThemeId } from '@/lib/universityThemes'
+import {
+  getUniversityBrand, uniThemeId, UNIVERSITY_THEME_DEFINITIONS,
+} from '@/lib/universityThemes'
 import ZenHeading         from '@/components/ui/ZenHeading'
 import UniSelector        from '@/components/UniSelector'
 import MajorSelector      from '@/components/MajorSelector'
@@ -129,12 +131,24 @@ export default function UniHubView() {
       await seedGamesDatabase()
       await applyFreeTheme(uniThemeId(uniId))
       const brand = getUniversityBrand(uniId)
-      toast(`${brand?.name ?? 'School'} colors applied across Zenith.`, 'success')
+      toast(`${brand?.name ?? 'School'} colors applied globally.`, 'success')
     } catch {
       toast('Could not apply school theme.', 'error')
     }
     setThemePrompt(null)
   }, [toast])
+
+  /* ── Persist brand color for sidebar + scoped theming ──────── */
+  useEffect(() => {
+    const brand = uniEntry ? getUniversityBrand(uniEntry.id) : null
+    try {
+      if (brand?.primaryHex) {
+        localStorage.setItem('zenith_uni_brand_v1', brand.primaryHex)
+      } else {
+        localStorage.removeItem('zenith_uni_brand_v1')
+      }
+    } catch { /* storage unavailable */ }
+  }, [uniEntry?.id])
 
   const handleSelectMajor = useCallback(async (entry: MajorEntry) => {
     await upsertProfile({ majorIdentifier: entry.name })
@@ -245,8 +259,19 @@ export default function UniHubView() {
     'finances':        'Finances',
   }
 
+  /* Scoped brand CSS vars — override accent without affecting rest of app */
+  const brandThemeDef = UNIVERSITY_THEME_DEFINITIONS[uniThemeId(uniEntry.id)]
+  const brandScopedStyle = brandThemeDef?.vars
+    ? {
+        ...Object.fromEntries(Object.entries(brandThemeDef.vars)),
+        '--cat-accent':     brandThemeDef.vars['--accent-purple'],
+        '--cat-accent-dim': brandThemeDef.vars['--accent-purple-dim'],
+        '--cat-border':     brandThemeDef.vars['--border-subtle'],
+      } as React.CSSProperties
+    : {}
+
   return (
-    <div key={uniEntry.id} className={`${styles.hubWrap} anim-scale-in`}>
+    <div key={uniEntry.id} className={`${styles.hubWrap} anim-scale-in`} style={brandScopedStyle}>
 
       {/* ── Hub identity strip ──────────────────────────────── */}
       <div className={styles.identityStrip}>
