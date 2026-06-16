@@ -23,7 +23,15 @@ export interface CopilotAction {
   args: Record<string, unknown>
 }
 
-type ParamType = 'string' | 'number'
+type ParamType = 'string' | 'number' | 'boolean'
+
+/** Dashboard widget keys the Co-Pilot may toggle (mirrors SandboxConfig). */
+export const DASHBOARD_WIDGET_KEYS = [
+  'habitSummary', 'pomodoroPreview', 'calendarToday', 'localWeather',
+  'studyStreak', 'uniHub', 'cardioSummary', 'letterbox', 'distanceTracker',
+  'timerWidget', 'stopwatch', 'readingTracker', 'customLinks', 'vocabTracker',
+  'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
+] as const
 
 interface ParamDef {
   type:        ParamType
@@ -93,6 +101,93 @@ export const COPILOT_TOOLS: ToolDef[] = [
       priority: { type: 'string', description: 'Urgency', enum: ['low', 'medium', 'high', 'critical'] },
     },
   },
+  {
+    name:        'add_link',
+    description: 'Save a bookmark / quick link to the user\'s Custom Link Manager.',
+    required:    ['label', 'url'],
+    params: {
+      label:       { type: 'string', description: 'Link display name' },
+      url:         { type: 'string', description: 'Full URL (https://…)' },
+      folder:      { type: 'string', description: 'Optional category/folder name, e.g. "Research", "Tools"' },
+      description: { type: 'string', description: 'Optional short description' },
+    },
+  },
+  {
+    name:        'add_subscription',
+    description: 'Add a recurring subscription / expense to the Subscriptions tracker.',
+    required:    ['name', 'cost'],
+    params: {
+      name:        { type: 'string', description: 'Service name, e.g. "Spotify"' },
+      cost:        { type: 'number', description: 'Price per billing period (e.g. 9.99)' },
+      billingCycle:{ type: 'string', description: 'Billing cadence', enum: ['MONTHLY', 'ANNUAL'] },
+      renewalDate: { type: 'string', description: 'Optional next renewal date YYYY-MM-DD' },
+      bundle:      { type: 'string', description: 'Optional grouping bundle, e.g. "Entertainment"' },
+    },
+  },
+  {
+    name:        'add_plant',
+    description: 'Add a houseplant to the Botanist plant-care tracker.',
+    required:    ['name'],
+    params: {
+      name:             { type: 'string', description: 'Plant name, e.g. "Monstera"' },
+      species:          { type: 'string', description: 'Optional scientific name' },
+      wateringIntervalDays: { type: 'number', description: 'Days between waterings (default 7)' },
+      location:         { type: 'string', description: 'Optional location label, e.g. "Living Room"' },
+    },
+  },
+  {
+    name:        'log_mood',
+    description: 'Record a Mental Wellness check-in for today.',
+    required:    ['stressLevel', 'energyLevel'],
+    params: {
+      stressLevel: { type: 'number', description: 'Stress level 1 (calm) – 10 (overwhelmed)' },
+      energyLevel: { type: 'number', description: 'Energy level 1 (drained) – 10 (energised)' },
+      mood:        { type: 'string', description: 'Optional one-word mood label, e.g. "happy", "tired"' },
+      notes:       { type: 'string', description: 'Optional short journal note' },
+    },
+  },
+  {
+    name:        'add_book',
+    description: 'Add a book to the Reading Tracker library.',
+    required:    ['title'],
+    params: {
+      title:      { type: 'string', description: 'Book title' },
+      author:     { type: 'string', description: 'Author name' },
+      status:     { type: 'string', description: 'Reading status', enum: ['TO_READ', 'CURRENTLY_READING', 'COMPLETED'] },
+      totalPages: { type: 'number', description: 'Optional total page count' },
+    },
+  },
+  {
+    name:        'add_recipe',
+    description: 'Save a recipe to the Meal Planning recipe box.',
+    required:    ['title'],
+    params: {
+      title:       { type: 'string', description: 'Recipe title' },
+      category:    { type: 'string', description: 'Optional category, e.g. "Breakfast", "Quick & Easy"' },
+      url:         { type: 'string', description: 'Optional source URL' },
+      description: { type: 'string', description: 'Optional short description' },
+      calories:    { type: 'number', description: 'Optional kcal per serving' },
+    },
+  },
+  {
+    name:        'set_dashboard_widget',
+    description: 'Show or hide a widget on the user\'s home dashboard. Use this to customise the dashboard layout.',
+    required:    ['widget', 'visible'],
+    params: {
+      widget:  { type: 'string', description: 'Which dashboard widget to toggle', enum: [...DASHBOARD_WIDGET_KEYS] },
+      visible: { type: 'boolean', description: 'true to show the widget, false to hide it' },
+    },
+  },
+  {
+    name:        'set_profile',
+    description: 'Update the user\'s profile: display name, university, or major. Pass only the fields to change.',
+    required:    [],
+    params: {
+      displayName: { type: 'string', description: 'New display name' },
+      university:  { type: 'string', description: 'University name, e.g. "Cornell University"' },
+      major:       { type: 'string', description: 'Major / field of study, e.g. "Computer Science"' },
+    },
+  },
 ]
 
 const TOOL_NAMES = new Set(COPILOT_TOOLS.map(t => t.name))
@@ -160,7 +255,11 @@ export function toolsSystemNote(todayIso: string): string {
   return `
 
 ACTION CAPABILITIES:
-You can take actions directly in the user's Zenith dashboard via these tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment. When the user asks you to create, add, log, or schedule something, CALL the matching tool immediately — do NOT ask for permission first and do NOT just describe how to do it manually. The user always sees a confirmation card before anything is saved, so calling a tool is safe. Today is ${todayIso}; resolve relative dates ("today", "tomorrow", "this Friday") to an absolute YYYY-MM-DD value. After a tool call you may add one short sentence of text, but keep it brief.`
+You can manage the user's entire Zenith dashboard via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, add_recipe, set_dashboard_widget (show/hide home widgets), and set_profile (name / university / major). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
+
+BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response when the user asks for several things at once (e.g. "set up my dashboard for finals week" → several create_habit + add_calendar_event + set_dashboard_widget calls together). The user sees one confirmation card listing every proposed action and approves them all at once, so batching is preferred over many back-and-forth turns.
+
+The user always sees a confirmation card before anything is saved, so calling tools is safe. Today is ${todayIso}; resolve relative dates ("today", "tomorrow", "this Friday") to an absolute YYYY-MM-DD value. After your tool calls you may add one short sentence of text, but keep it brief.`
 }
 
 /* ── Human-readable confirm-card label (pure formatter) ───────────────── */
@@ -181,6 +280,27 @@ export function describeAction(a: CopilotAction): string {
       return `Save note "${g('title')}"`
     case 'add_assignment':
       return `Add assignment "${g('title')}" due ${g('dueDate')}${g('priority') ? ` (${g('priority')})` : ''}`
+    case 'add_link':
+      return `Save link "${g('label')}"${g('folder') ? ` → ${g('folder')}` : ''}`
+    case 'add_subscription':
+      return `Add subscription "${g('name')}" · $${g('cost')}/${(g('billingCycle') || 'MONTHLY').toLowerCase() === 'annual' ? 'yr' : 'mo'}`
+    case 'add_plant':
+      return `Add plant "${g('name')}"${g('location') ? ` · ${g('location')}` : ''}`
+    case 'log_mood':
+      return `Log mood · stress ${g('stressLevel')}/10 · energy ${g('energyLevel')}/10${g('mood') ? ` (${g('mood')})` : ''}`
+    case 'add_book':
+      return `Add book "${g('title')}"${g('author') ? ` by ${g('author')}` : ''}`
+    case 'add_recipe':
+      return `Save recipe "${g('title')}"`
+    case 'set_dashboard_widget':
+      return `${String(a.args?.visible) === 'false' || a.args?.visible === false ? 'Hide' : 'Show'} dashboard widget · ${g('widget')}`
+    case 'set_profile': {
+      const bits: string[] = []
+      if (g('displayName')) bits.push(`name → ${g('displayName')}`)
+      if (g('university'))  bits.push(`university → ${g('university')}`)
+      if (g('major'))       bits.push(`major → ${g('major')}`)
+      return `Update profile${bits.length ? ` · ${bits.join(', ')}` : ''}`
+    }
     default:
       return a.name
   }

@@ -250,7 +250,7 @@ async function streamGemini(
 
 const MAX_USER_MSG_CHARS   = 4_000     // hard cap per user turn
 const MAX_HISTORY_MESSAGES = 20        // sliding window — oldest pairs dropped first
-const MAX_TOKENS_RESPONSE  = 1_024     // generous for explanation-style answers
+const MAX_TOKENS_RESPONSE  = 2_048     // headroom for explanations + multi-action batches
 const MAX_BODY_BYTES       = 256 * 1024 // reject oversized request payloads
 
 /* ── Base system persona ──────────────────────────────────────── */

@@ -121,7 +121,8 @@ export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
   arcadeEconomy:   'normal',
 }
 
-const STORAGE_KEY = 'zenith_sandbox_config_v4'
+export const SANDBOX_STORAGE_KEY = 'zenith_sandbox_config_v4'
+const STORAGE_KEY = SANDBOX_STORAGE_KEY
 
 export interface UseSandboxConfigResult {
   config:       SandboxConfig
@@ -135,14 +136,32 @@ export function useSandboxConfig(): UseSandboxConfigResult {
 
   useEffect(() => {
     setMounted(true)
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<SandboxConfig>
-        setConfig(prev => ({ ...prev, ...parsed }))
+
+    const reload = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<SandboxConfig>
+          setConfig({ ...SANDBOX_DEFAULTS, ...parsed })
+        } else {
+          setConfig(SANDBOX_DEFAULTS)
+        }
+      } catch {
+        /* Corrupt localStorage — keep defaults */
       }
-    } catch {
-      /* Corrupt localStorage — keep defaults */
+    }
+
+    reload()
+
+    // Live-update when the AI Co-Pilot (same tab → CustomEvent) or another tab
+    // (→ storage event) changes the widget config.
+    const onCustom  = () => reload()
+    const onStorage = (e: StorageEvent) => { if (e.key === STORAGE_KEY) reload() }
+    window.addEventListener('zenith:sandbox-config-change', onCustom)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('zenith:sandbox-config-change', onCustom)
+      window.removeEventListener('storage', onStorage)
     }
   }, [])
 

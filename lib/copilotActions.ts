@@ -11,7 +11,12 @@
 
 import { db } from '@/lib/db'
 import type { Priority } from '@/lib/db'
-import { isKnownAction, type CopilotAction } from '@/lib/copilotTools'
+import type { BillingCycle } from '@/types/finance'
+import type { ReadingStatus } from '@/types/bookTracker'
+import { isKnownAction, DASHBOARD_WIDGET_KEYS, type CopilotAction } from '@/lib/copilotTools'
+import { SANDBOX_STORAGE_KEY } from '@/lib/hooks/useSandboxConfig'
+
+const WIDGET_KEY_SET = new Set<string>(DASHBOARD_WIDGET_KEYS)
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -191,6 +196,163 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         updatedAt: Date.now(),
       })
       return `Added assignment "${title}" (due ${dueDate}).`
+    }
+
+    /* ── Custom link / bookmark ─────────────────────────────────────── */
+    case 'add_link': {
+      const label = str(a.label)
+      const url   = str(a.url)
+      if (!label) throw new Error('A link needs a label.')
+      if (!/^https?:\/\//i.test(url)) throw new Error('A link needs a valid http(s) URL.')
+      let host = ''
+      try { host = new URL(url).hostname } catch { /* ignore */ }
+      await db.customBookmarks.add({
+        label,
+        url,
+        folderName:  str(a.folder) || 'General',
+        description: str(a.description) || undefined,
+        iconUrl:     host ? `https://www.google.com/s2/favicons?domain=${host}&sz=32` : undefined,
+        addedAt:     Date.now(),
+      })
+      return `Saved link "${label}".`
+    }
+
+    /* ── Subscription ───────────────────────────────────────────────── */
+    case 'add_subscription': {
+      const name = str(a.name)
+      if (!name) throw new Error('A subscription needs a name.')
+      const cost = num(a.cost)
+      if (!Number.isFinite(cost) || cost < 0) throw new Error('A subscription needs a valid cost.')
+      const cycle: BillingCycle = str(a.billingCycle).toUpperCase() === 'ANNUAL' ? 'ANNUAL' : 'MONTHLY'
+      let renewal = ''
+      if (str(a.renewalDate)) {
+        const [y, mo, d] = parseDate(a.renewalDate)
+        renewal = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      }
+      await db.subscription_items.add({
+        id:                crypto.randomUUID(),
+        name,
+        monthlyCost:       Math.round(cost * 100) / 100,
+        renewalDateString: renewal,
+        categoryBundle:    str(a.bundle) || 'General',
+        billingCycle:      cycle,
+      })
+      return `Added subscription "${name}".`
+    }
+
+    /* ── Houseplant ─────────────────────────────────────────────────── */
+    case 'add_plant': {
+      const plantName = str(a.name)
+      if (!plantName) throw new Error('A plant needs a name.')
+      const intervalRaw = num(a.wateringIntervalDays)
+      const interval    = Number.isFinite(intervalRaw) && intervalRaw > 0 ? Math.floor(intervalRaw) : 7
+      await db.houseplants.add({
+        plantName,
+        species:              str(a.species),
+        lastWateredDate:      todayISO(),
+        wateringIntervalDays: interval,
+        location:             str(a.location) || 'Home',
+        healthRating:         4,
+      })
+      return `Added plant "${plantName}".`
+    }
+
+    /* ── Mental wellness check-in (one per day — upsert) ────────────── */
+    case 'log_mood': {
+      const stress = Math.max(1, Math.min(10, Math.round(num(a.stressLevel))))
+      const energy = Math.max(1, Math.min(10, Math.round(num(a.energyLevel))))
+      if (!Number.isFinite(stress) || !Number.isFinite(energy)) {
+        throw new Error('Mood needs stress and energy levels (1–10).')
+      }
+      const today  = todayISO()
+      const fields = {
+        logDate:          today,
+        stressLevel:      stress,
+        energyLevel:      energy,
+        qualitativeNotes: str(a.notes),
+        moodVector:       str(a.mood) || 'okay',
+        createdAt:        Date.now(),
+      }
+      const existing = await db.mentalHealthLogs.where('logDate').equals(today).first()
+      if (existing?.id != null) await db.mentalHealthLogs.update(existing.id, fields)
+      else                      await db.mentalHealthLogs.add(fields)
+      return `Logged today's wellness check-in.`
+    }
+
+    /* ── Library book ───────────────────────────────────────────────── */
+    case 'add_book': {
+      const title = str(a.title)
+      if (!title) throw new Error('A book needs a title.')
+      const statuses: ReadingStatus[] = ['TO_READ', 'CURRENTLY_READING', 'COMPLETED']
+      const status = statuses.includes(str(a.status) as ReadingStatus)
+        ? (str(a.status) as ReadingStatus)
+        : 'TO_READ'
+      const pagesRaw = num(a.totalPages)
+      await db.library_books.add({
+        id:            crypto.randomUUID(),
+        title,
+        author:        str(a.author) || 'Unknown',
+        userRating:    0,
+        readCount:     status === 'COMPLETED' ? 1 : 0,
+        readingStatus: status,
+        totalPages:    Number.isFinite(pagesRaw) && pagesRaw > 0 ? Math.floor(pagesRaw) : undefined,
+        addedAt:       Date.now(),
+      })
+      return `Added "${title}" to your library.`
+    }
+
+    /* ── Saved recipe ───────────────────────────────────────────────── */
+    case 'add_recipe': {
+      const title = str(a.title)
+      if (!title) throw new Error('A recipe needs a title.')
+      const calRaw = num(a.calories)
+      await db.savedMealRecipes.add({
+        title,
+        addedAt:     Date.now(),
+        category:    str(a.category) || 'Saved',
+        url:         str(a.url) || undefined,
+        description: str(a.description) || undefined,
+        calories:    Number.isFinite(calRaw) && calRaw > 0 ? Math.floor(calRaw) : undefined,
+      })
+      return `Saved recipe "${title}".`
+    }
+
+    /* ── Dashboard widget toggle (localStorage + live event) ────────── */
+    case 'set_dashboard_widget': {
+      const widget = str(a.widget)
+      if (!WIDGET_KEY_SET.has(widget)) throw new Error(`Unknown dashboard widget: ${widget}`)
+      const visible = a.visible === true || str(a.visible).toLowerCase() === 'true'
+      try {
+        const raw    = localStorage.getItem(SANDBOX_STORAGE_KEY)
+        const config = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+        config[widget] = visible
+        localStorage.setItem(SANDBOX_STORAGE_KEY, JSON.stringify(config))
+        window.dispatchEvent(new CustomEvent('zenith:sandbox-config-change'))
+      } catch {
+        throw new Error('Could not update the dashboard layout.')
+      }
+      return `${visible ? 'Showed' : 'Hid'} the ${widget} widget.`
+    }
+
+    /* ── Profile (display name / university / major) ────────────────── */
+    case 'set_profile': {
+      const changes: Record<string, string> = {}
+      if (str(a.displayName)) changes.userName       = str(a.displayName)
+      if (str(a.university))  changes.universityName  = str(a.university)
+      if (str(a.major))       changes.majorIdentifier = str(a.major)
+      if (Object.keys(changes).length === 0) throw new Error('No profile fields to update.')
+
+      const updated = await db.userProfile.update(1, changes)
+      if (updated === 0) {
+        await db.userProfile.put({
+          id:              1,
+          userName:        changes.userName ?? '',
+          universityName:  changes.universityName ?? '',
+          majorIdentifier: changes.majorIdentifier ?? '',
+          lastActiveAt:    Date.now(),
+        })
+      }
+      return `Updated your profile.`
     }
 
     default:

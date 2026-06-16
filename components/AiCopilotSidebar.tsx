@@ -246,10 +246,10 @@ function MessageBubble({ msg, onConfirm, onCancel }: MessageBubbleProps) {
         {!msg.isStreaming && actions.length > 0 && (
           <div className={styles.actionCard}>
             <span className={styles.actionHead}>
-              {state === 'done'      ? '✓ ACTION COMPLETE'
-                : state === 'cancelled' ? '✕ ACTION CANCELLED'
+              {state === 'done'      ? '✓ COMPLETE'
+                : state === 'cancelled' ? '✕ CANCELLED'
                 : state === 'running'   ? '◌ SAVING…'
-                : '⚡ CONFIRM ACTION'}
+                : `⚡ CONFIRM ${actions.length} ACTION${actions.length > 1 ? 'S' : ''}`}
             </span>
 
             <ul className={styles.actionList}>
