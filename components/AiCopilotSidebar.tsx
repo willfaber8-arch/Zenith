@@ -492,11 +492,24 @@ export default function AiCopilotSidebar() {
       m.id === msgId ? { ...m, actionState: 'running' as ActionState } : m,
     ))
 
+    // Bound each write so a stalled IndexedDB operation (e.g. a DB upgrade
+    // blocked by another open Zenith tab) can't freeze the card on "SAVING…"
+    // forever — the action surfaces a concrete error instead.
+    const withTimeout = (p: Promise<string>, ms: number): Promise<string> =>
+      Promise.race([
+        p,
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error(
+            'Save timed out — the local database did not respond. If Zenith is open in another tab, close it and reload.',
+          )), ms),
+        ),
+      ])
+
     const results: string[] = []
     let failures = 0
     for (const a of toRun) {
       try {
-        results.push(`✓ ${await executeCopilotAction(a)}`)
+        results.push(`✓ ${await withTimeout(executeCopilotAction(a), 10_000)}`)
       } catch (e) {
         failures++
         results.push(`✕ ${e instanceof Error ? e.message : 'Failed to save.'}`)
