@@ -21,7 +21,7 @@ import { detectProvider, friendlyGeminiError } from '@/lib/aiProviderUtils'
 /* ── Gemini non-streaming helper ──────────────────────────────── */
 
 const GEMINI_BASE         = 'https://generativelanguage.googleapis.com/v1beta/models'
-const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash-lite'
 
 async function callGemini(
   apiKey:       string,

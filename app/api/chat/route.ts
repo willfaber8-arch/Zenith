@@ -117,7 +117,7 @@ async function streamOpenAI(
 /* ── Gemini REST streaming helper ─────────────────────────────── */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash-lite'
 
 async function streamGemini(
   apiKey:       string,
@@ -304,18 +304,28 @@ export async function POST(req: NextRequest): Promise<Response> {
     let readable: ReadableStream<Uint8Array>
 
     if (provider === 'gemini') {
-      // Auto-retry once on 429 — transient quota blips from the free tier
-      try {
-        readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
-      } catch (e) {
-        const msg = (e as Error).message ?? ''
-        if (msg.startsWith('Gemini quota exceeded')) {
-          await new Promise(r => setTimeout(r, 2000))
+      // Retry up to 3 times on 429 — free tier has a 15-60 RPM window;
+      // progressive delays (4s, 8s) give the window time to roll over.
+      const RETRY_DELAYS = [4000, 8000]
+      let lastErr: Error | null = null
+      let succeeded = false
+      readable = null! as ReadableStream<Uint8Array>
+      for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+        try {
           readable = await streamGemini(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
-        } else {
-          throw e
+          succeeded = true
+          break
+        } catch (e) {
+          const msg = (e as Error).message ?? ''
+          if (msg.startsWith('Gemini quota exceeded') && attempt < RETRY_DELAYS.length) {
+            lastErr = e as Error
+            await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]))
+          } else {
+            throw e
+          }
         }
       }
+      if (!succeeded) throw lastErr
     } else if (provider === 'openai') {
       readable = await streamOpenAI(apiKey, systemPrompt, sanitised, MAX_TOKENS_RESPONSE)
     } else {
