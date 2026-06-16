@@ -479,15 +479,18 @@ export default function AiCopilotSidebar() {
 
   /* ── Confirm / cancel agentic actions ───────────────────────── */
   const confirmActions = useCallback(async (msgId: string) => {
-    let toRun: CopilotAction[] = []
-    setMessages(prev => prev.map(m => {
-      if (m.id === msgId && m.actions && (!m.actionState || m.actionState === 'pending')) {
-        toRun = m.actions
-        return { ...m, actionState: 'running' as ActionState }
-      }
-      return m
-    }))
+    // Read the actions synchronously from the current message list. (A previous
+    // version assigned `toRun` inside the setState updater, which React defers
+    // to render time — so the early-return below always saw an empty array and
+    // the card was left stuck on "SAVING…" without ever running anything.)
+    const target = messages.find(m => m.id === msgId)
+    const toRun  = target?.actions ?? []
     if (toRun.length === 0) return
+    if (target?.actionState && target.actionState !== 'pending') return  // already run / cancelled
+
+    setMessages(prev => prev.map(m =>
+      m.id === msgId ? { ...m, actionState: 'running' as ActionState } : m,
+    ))
 
     const results: string[] = []
     let failures = 0
@@ -511,7 +514,7 @@ export default function AiCopilotSidebar() {
     } else {
       toast(`${failures} action${failures > 1 ? 's' : ''} couldn't be saved.`, 'error')
     }
-  }, [toast])
+  }, [messages, toast])
 
   const cancelActions = useCallback((msgId: string) => {
     setMessages(prev => prev.map(m =>
