@@ -619,3 +619,96 @@
 
 /* fadeIn and pulseGlow are defined globally in globals.css and
    referenced here by class name — no duplication needed.       */
+
+/* ── Agentic action confirmation card ─────────────────────────── */
+
+.actionCard {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  background: var(--bg-active);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  animation: scaleIn var(--dur-base) var(--ease-expo);
+}
+
+.actionHead {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--accent-purple);
+  text-transform: uppercase;
+}
+
+.actionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.actionItem {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+  padding-left: var(--sp-3);
+  position: relative;
+}
+
+.actionItem::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--accent-purple);
+}
+
+.actionResult {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  white-space: pre-line;
+  margin: 0;
+}
+
+.actionBtns {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
+.actionConfirm,
+.actionCancel {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              filter var(--dur-fast) var(--ease-smooth);
+}
+
+.actionConfirm {
+  background: var(--accent-purple);
+  border: 1px solid var(--accent-purple);
+  color: var(--bg-main);
+}
+
+.actionConfirm:hover {
+  filter: brightness(1.1);
+}
+
+.actionCancel {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.actionCancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
