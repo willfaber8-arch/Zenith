@@ -10,6 +10,7 @@ import {
 import { useLiveQuery }         from 'dexie-react-hooks'
 import { db, type Habit }       from '@/lib/db'
 import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
+import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET } from '@/lib/habitPresets'
 import { calculateMovingGritScore } from '@/utils/gritScore'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import ZenHeading               from '@/components/ui/ZenHeading'
@@ -554,6 +555,18 @@ export default function HabitsView() {
   )
   const gritPoints = allHabits ? calculateMovingGritScore(allHabits) : []
 
+  /* First-run: auto-load the General starter pack (once, only when empty). */
+  useEffect(() => {
+    void ensureGeneralHabitPreset().then(seeded => {
+      if (seeded) toast('Loaded the General habit pack to get you started.', 'success')
+    })
+  }, [toast])
+
+  const handleLoadPreset = useCallback(async () => {
+    const n = await loadGeneralHabitPreset()
+    if (n > 0) toast(`Added ${n} starter habits.`, 'success')
+  }, [toast])
+
   const handleIncrement = useCallback(async (habitId: number, e: React.MouseEvent) => {
     const habit = habits.find(h => h.id === habitId)
     if (!habit) return
@@ -690,7 +703,18 @@ export default function HabitsView() {
             <div className={`${styles.emptyState} anim-fade-in`}>
               <p className={styles.emptyIcon} aria-hidden="true">◎</p>
               <p className={styles.emptyTitle}>No habits yet</p>
-              <p className={styles.emptyBody}>Create your first habit to start building streaks.</p>
+              <p className={styles.emptyBody}>
+                Load the General starter pack — {GENERAL_HABIT_PRESET.length} everyday habits,
+                pre-linked to cardio, focus, vocab, and mood — or create your own.
+              </p>
+              <div className={styles.emptyActions}>
+                <button type="button" className={styles.addBtn} onClick={() => void handleLoadPreset()}>
+                  <span aria-hidden="true">✦</span> Load General Pack
+                </button>
+                <button type="button" className={styles.toolbarBtn} onClick={() => setShowCreate(true)}>
+                  + New Habit
+                </button>
+              </div>
             </div>
           ) : categories.length === 1 ? (
             <div className={styles.habitList}>
