@@ -51,14 +51,15 @@ interface ToolDef {
 export const COPILOT_TOOLS: ToolDef[] = [
   {
     name:        'create_habit',
-    description: 'Create a new habit for the user to track. Use when they want to start tracking a recurring habit (water, reading, exercise, etc.). Set autoSource to auto-fill the habit from another part of Zenith.',
+    description: 'Create a new habit for the user to track. Use when they want to start tracking a recurring habit (water, reading, exercise, etc.). Set autoSource to auto-fill the habit from another part of Zenith. Color is inferred automatically from the name and category — do NOT pass a color unless the user explicitly specifies one.',
     required:    ['name'],
     params: {
-      name:      { type: 'string', description: 'Short habit name, e.g. "Drink water"' },
-      dailyGoal: { type: 'number', description: 'Daily target count (default 1), e.g. 8 for 8 glasses of water. For an auto-linked habit this is the goal in that source\'s unit (cardio/study = minutes, vocab = words, mood = check-ins).' },
-      unit:      { type: 'string', description: 'Optional unit label shown per tap, e.g. "glasses", "min", "pages"' },
-      color:     { type: 'string', description: 'Optional hex accent colour like #7c95ff' },
-      autoSource:{ type: 'string', description: 'Optional auto-fill link. One of: "cardio" (logging a workout), "study" (finishing a focus block), "vocab" (reviewing words), "mood" (a wellness check-in). Omit for a manually-tracked habit.' },
+      name:       { type: 'string', description: 'Short habit name, e.g. "Drink water"' },
+      category:   { type: 'string', description: 'Habit category, e.g. "Health", "Fitness", "Mindfulness", "Scholastic", "Finance", "Social", "Creativity", "Life". Defaults to "General".' },
+      dailyGoal:  { type: 'number', description: 'Daily target count (default 1), e.g. 8 for 8 glasses of water. For an auto-linked habit this is the goal in that source\'s unit (cardio/study = minutes, vocab = words, mood = check-ins).' },
+      stepAmount: { type: 'number', description: 'How much each tap adds toward the daily goal (default 1). E.g. 1 glass at a time → stepAmount=1, dailyGoal=8; 5 minutes at a time → stepAmount=5, dailyGoal=30.' },
+      unit:       { type: 'string', description: 'Optional unit label shown per tap, e.g. "glasses", "min", "pages"' },
+      autoSource: { type: 'string', description: 'Optional auto-fill link. One of: "cardio" (logging a workout), "study" (finishing a focus block), "vocab" (reviewing words), "mood" (a wellness check-in). Omit for a manually-tracked habit.' },
     },
   },
   {
@@ -311,7 +312,7 @@ export function describeAction(a: CopilotAction): string {
   }
   switch (a.name) {
     case 'create_habit':
-      return `Create habit "${g('name')}"${g('dailyGoal') ? ` · goal ${g('dailyGoal')}${g('unit') ? ' ' + g('unit') : ''}/day` : ''}${g('autoSource') ? ` · auto-fills from ${g('autoSource')}` : ''}`
+      return `Create habit "${g('name')}"${g('category') ? ` · ${g('category')}` : ''}${g('dailyGoal') ? ` · goal ${g('dailyGoal')}${g('unit') ? ' ' + g('unit') : ''}/day` : ''}${g('stepAmount') && g('stepAmount') !== '1' ? ` · +${g('stepAmount')} per tap` : ''}${g('autoSource') ? ` · auto-fills from ${g('autoSource')}` : ''}`
     case 'add_calendar_event':
       return `Add event "${g('title')}" on ${g('date')}${g('startTime') ? ` at ${g('startTime')}` : ''}`
     case 'log_cardio':

@@ -9,6 +9,7 @@ import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
+import NotificationBell from './NotificationBell'
 import styles from './Topbar.module.css'
 
 const WMO_ICONS: Record<string, string> = {
@@ -159,6 +160,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
           {isLight ? '☽' : '☀'}
         </button>
         <span className={styles.divider} aria-hidden="true" />
+
+        {/* In-app notification bell — only shown when a session is active */}
+        {session && (
+          <>
+            <NotificationBell />
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
 
         {/* AI Co-Pilot toggle — only shown when a session is active */}
         {session && (

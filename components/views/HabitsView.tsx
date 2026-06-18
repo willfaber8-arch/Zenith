@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   useHabits,
+  isoForDayOffset,
   type HabitWithCompletion,
   type DayStatus,
   type NewHabitInput,
@@ -11,7 +12,8 @@ import { useLiveQuery }         from 'dexie-react-hooks'
 import { db, type Habit }       from '@/lib/db'
 import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
 import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET } from '@/lib/habitPresets'
-import { calculateMovingGritScore } from '@/utils/gritScore'
+import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
+import { pushNotification }      from '@/lib/notificationCenter'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import ZenHeading               from '@/components/ui/ZenHeading'
 import { useToast }             from '@/lib/ToastContext'
@@ -182,11 +184,15 @@ function HabitRow({
             const day = habit.weekData.find(d => d.iso === iso)
             const isToday = iso === today
             if (!day?.scheduled) return <span key={iso} className={styles.dotEmpty} aria-hidden="true" />
+            const frac    = day.target > 0 ? Math.min(1, day.count / day.target) : 0
+            const partial = !day.done && frac > 0
+            const pctLabel = Math.round(frac * 100)
             return (
               <span
                 key={iso}
-                className={`${styles.dot} ${day.done ? styles.dotDone : ''} ${isToday ? styles.dotToday : ''}`}
-                aria-label={`${iso}: ${day.done ? 'done' : 'pending'}`}
+                className={`${styles.dot} ${day.done ? styles.dotDone : ''} ${partial ? styles.dotPartial : ''} ${isToday ? styles.dotToday : ''}`}
+                style={partial ? ({ '--day-fill': `${pctLabel}%` } as React.CSSProperties) : undefined}
+                aria-label={`${iso}: ${day.done ? 'done' : partial ? `${pctLabel}% complete` : 'pending'}`}
               />
             )
           })}
@@ -553,7 +559,18 @@ export default function HabitsView() {
     [],
     [],
   )
-  const gritPoints = allHabits ? calculateMovingGritScore(allHabits) : []
+
+  /* 30-day completion log — drives the partial-aware analytics trend. */
+  const thirtyDaysAgo = isoForDayOffset(-29)
+  const completions30 = useLiveQuery(
+    () => db?.habitCompletions.where('date').between(thirtyDaysAgo, today, true, true).toArray()
+       ?? Promise.resolve([]),
+    [thirtyDaysAgo, today],
+    [],
+  )
+  const gritPoints = (allHabits && allHabits.length > 0)
+    ? computeCompletionSeries(allHabits, completions30 ?? [], 30)
+    : []
 
   /* First-run: auto-load the General starter pack (once, only when empty). */
   useEffect(() => {
@@ -561,6 +578,37 @@ export default function HabitsView() {
       if (seeded) toast('Loaded the General habit pack to get you started.', 'success')
     })
   }, [toast])
+
+  /* Streak-loss reconciliation — runs once when the view loads. A streak
+     that's stale by 2+ days is dead: reset it to 0 (so the UI is honest),
+     surface a one-time toast, and push a notification to the bell. */
+  const reconciledRef = useRef(false)
+  useEffect(() => {
+    if (reconciledRef.current || !allHabits || allHabits.length === 0 || !db) return
+    reconciledRef.current = true
+    const broken = detectBrokenStreaks(allHabits)
+    if (broken.length === 0) return
+    void (async () => {
+      for (const b of broken) {
+        await db.habits.update(b.habitId, { streakCount: 0 })
+        const habit = allHabits.find(h => h.id === b.habitId)
+        pushNotification({
+          id:    `streak-loss-${b.habitId}-${habit?.lastCompletedDate ?? 'na'}`,
+          type:  'streak-loss',
+          icon:  '🔥',
+          view:  'habits',
+          title: `Streak lost: ${b.name}`,
+          body:  `Your ${b.lostStreak}-day streak ended. Start fresh today!`,
+        })
+      }
+      toast(
+        broken.length === 1
+          ? `"${broken[0].name}" streak ended (was ${broken[0].lostStreak} days). Begin again today.`
+          : `${broken.length} habit streaks ended. A fresh start awaits.`,
+        'info',
+      )
+    })()
+  }, [allHabits, toast])
 
   const handleLoadPreset = useCallback(async () => {
     const n = await loadGeneralHabitPreset()

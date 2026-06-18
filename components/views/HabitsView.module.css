@@ -228,6 +228,19 @@
   border-color: var(--accent-green);
 }
 
+/* Partial-fill dot — shows proportional progress via a bottom-up fill.
+   Uses --day-fill (set inline from React) to control the gradient stop. */
+.dotPartial {
+  background: linear-gradient(
+    to top,
+    rgba(124, 149, 255, 0.55) 0%,
+    rgba(124, 149, 255, 0.55) var(--day-fill, 50%),
+    rgba(124, 149, 255, 0.12) var(--day-fill, 50%),
+    rgba(124, 149, 255, 0.12) 100%
+  );
+  border-color: rgba(124, 149, 255, 0.45);
+}
+
 /* Right side */
 .habitRight {
   display: flex;
