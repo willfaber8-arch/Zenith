@@ -12,6 +12,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useLiveQuery }                   from 'dexie-react-hooks'
 import { db }                             from '@/lib/db'
+import { syncHabitSource }                from '@/lib/habitSync'
 import {
   evaluateMentalState,
   todayISO,
@@ -113,6 +114,8 @@ export function useMentalHealthLog(): MentalHealthLogState {
           createdAt:        Date.now(),
         })
       }
+      // Auto-advance any habit linked to the mood source (one check-in).
+      void syncHabitSource('mood', 1)
     } finally {
       setSubmitting(false)
     }

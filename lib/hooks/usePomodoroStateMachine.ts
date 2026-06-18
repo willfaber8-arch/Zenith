@@ -25,6 +25,7 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { db } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import { useStudyMode } from '@/lib/StudyModeContext'
+import { syncHabitSource } from '@/lib/habitSync'
 import { error }        from '@/lib/logger'
 
 /* ── Timer constants ─────────────────────────────────────────────── */
@@ -126,6 +127,9 @@ export function usePomodoroStateMachine(): PomodoroMachine {
         startedAt:        startMs,
         distractionCount: distractions,
       }).catch((err) => error('Pomodoro', 'Session IDB write failed', err))
+
+      // Auto-advance any habit linked to the focus/study source (by minutes).
+      void syncHabitSource('study', 25)
 
       // Update session counters (ref first, then state for stability)
       countRef.current += 1

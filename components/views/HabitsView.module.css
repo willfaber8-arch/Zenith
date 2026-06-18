@@ -471,6 +471,19 @@
   padding:       1px 6px;
 }
 
+.habitAutoBadge {
+  font-size:      0.58rem;
+  font-weight:    600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color:          var(--accent-green);
+  background:     rgba(82, 204, 163, 0.10);
+  border:         1px solid rgba(82, 204, 163, 0.30);
+  border-radius:  var(--r-sm);
+  padding:        1px 6px;
+  white-space:    nowrap;
+}
+
 /* ── Edit mode state ──────────────────────────────────────── */
 .habitRowEdit {
   border-color: rgba(124, 149, 255, 0.18);
@@ -727,6 +740,13 @@
 
 .labelRequired {
   color: var(--accent-purple);
+}
+
+.labelHint {
+  color: var(--text-dark);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .stepHint {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useLiveQuery }          from 'dexie-react-hooks'
 import { db }                    from '@/lib/db'
 import type { CardioSession }    from '@/lib/db'
+import { syncHabitSource }       from '@/lib/habitSync'
 import ZenHeading                from '@/components/ui/ZenHeading'
 import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import styles                    from './WorkoutsView.module.css'
@@ -197,6 +198,9 @@ export default function WorkoutsView() {
     }
 
     await db.cardioSessions.add(session as CardioSession)
+
+    // Auto-advance any habit linked to the cardio source (by minutes).
+    void syncHabitSource('cardio', mins)
 
     const next: VitalityStore = {
       balance:  vp.balance + earned,

@@ -9,6 +9,7 @@ import {
 } from '@/lib/hooks/useHabits'
 import { useLiveQuery }         from 'dexie-react-hooks'
 import { db, type Habit }       from '@/lib/db'
+import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
 import { calculateMovingGritScore } from '@/utils/gritScore'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import ZenHeading               from '@/components/ui/ZenHeading'
@@ -122,6 +123,7 @@ function HabitRow({
   const todayScheduled = habit.weekData.find(d => d.iso === today)?.scheduled ?? false
   const allTimeHigh    = habit.allTimeHighStreak ?? habit.streakCount
   const habitColor     = habit.color ?? '#7c95ff'
+  const autoMeta       = habitSourceMeta(habit.autoSource)
 
   return (
     <div
@@ -151,6 +153,14 @@ function HabitRow({
             <span className={styles.habitName}>{habit.name}</span>
             {habit.category && habit.category !== 'General' && (
               <span className={styles.habitCategoryBadge}>{habit.category}</span>
+            )}
+            {autoMeta && (
+              <span
+                className={styles.habitAutoBadge}
+                title={`Auto-fills from ${autoMeta.label}`}
+              >
+                {autoMeta.icon} auto
+              </span>
             )}
           </div>
           <span className={styles.habitMeta}>
@@ -283,6 +293,7 @@ function HabitModal({
   const [stepAmount, setStepAmount] = useState<number>(initStepAmount)
   const [stepUnit,   setStepUnit]   = useState(initial?.stepLabel ?? '')
   const [goal,       setGoal]       = useState<number>(initial?.targetCompletions ?? 0)
+  const [autoSource, setAutoSource] = useState<string>(initial?.autoSource ?? '')
 
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -304,6 +315,7 @@ function HabitModal({
       targetCompletions: goal,
       stepAmount:        stepAmount > 0 ? stepAmount : 1,
       stepLabel:         stepUnit.trim() || undefined,
+      autoSource:        autoSource || undefined,
     })
     onClose()
   }
@@ -471,6 +483,40 @@ function HabitModal({
             )}
           </div>
 
+          {/* Auto-fill link */}
+          <div className={styles.field}>
+            <span className={styles.label}>Auto-fill from <span className={styles.labelHint}>(optional)</span></span>
+            <div className={styles.dayToggleRow}>
+              <button
+                type="button"
+                className={`${styles.dayChip} ${!autoSource ? styles.dayChipOn : ''}`}
+                onClick={() => setAutoSource('')}
+              >
+                Manual
+              </button>
+              {HABIT_SOURCES.map(src => (
+                <button
+                  key={src.id}
+                  type="button"
+                  className={`${styles.dayChip} ${autoSource === src.id ? styles.dayChipOn : ''}`}
+                  onClick={() => {
+                    setAutoSource(src.id)
+                    // Helpful default: adopt the source's unit if none set yet.
+                    setStepUnit(prev => prev.trim() ? prev : src.unit)
+                  }}
+                >
+                  {src.icon} {src.label}
+                </button>
+              ))}
+            </div>
+            {autoSource && (
+              <p className={styles.stepHint}>
+                {habitSourceMeta(autoSource)?.hint}
+                {' '}Goal is measured in {habitSourceMeta(autoSource)?.unit}.
+              </p>
+            )}
+          </div>
+
           <div className={styles.formActions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
             <button type="submit" className={styles.submitBtn} disabled={!canSubmit}>
@@ -537,6 +583,7 @@ export default function HabitsView() {
       targetCompletions: input.targetCompletions,
       stepAmount:        input.stepAmount ?? 1,
       stepLabel:         input.stepLabel,
+      autoSource:        input.autoSource || undefined,
     })
     toast(`"${input.name}" updated.`, 'success')
     setEditTarget(null)

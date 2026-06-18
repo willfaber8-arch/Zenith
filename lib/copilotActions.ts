@@ -16,6 +16,7 @@ import type { ReadingStatus } from '@/types/bookTracker'
 import { isKnownAction, DASHBOARD_WIDGET_KEYS, type CopilotAction } from '@/lib/copilotTools'
 import { SANDBOX_STORAGE_KEY }                   from '@/lib/hooks/useSandboxConfig'
 import { savePreset, findPresetByName, applyPreset } from '@/lib/dashboardPresets'
+import { syncHabitSource, isHabitAutoSource }    from '@/lib/habitSync'
 import type { VocabDeck, VocabCard }              from '@/types/vocabulary'
 
 const WIDGET_KEY_SET = new Set<string>(DASHBOARD_WIDGET_KEYS)
@@ -84,6 +85,8 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
       const goal    = Number.isFinite(goalRaw) && goalRaw > 0 ? Math.floor(goalRaw) : 1
       const unit    = str(a.unit) || undefined
       const color   = /^#[0-9a-fA-F]{6}$/.test(str(a.color)) ? str(a.color) : '#7c95ff'
+      const linkRaw = str(a.autoSource).toLowerCase()
+      const autoSource = isHabitAutoSource(linkRaw) ? linkRaw : undefined
 
       await db.habits.add({
         name,
@@ -92,6 +95,7 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         targetCompletions: goal,
         stepAmount:        1,
         stepLabel:         unit,
+        autoSource,
         streakCount:       0,
         lastCompletedDate: null,
         streakSaveUsed:    false,
@@ -99,7 +103,9 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         color,
         createdAt:         Date.now(),
       })
-      return `Created habit "${name}".`
+      return autoSource
+        ? `Created habit "${name}" (auto-fills from ${autoSource}).`
+        : `Created habit "${name}".`
     }
 
     /* ── Calendar event ─────────────────────────────────────────────── */
@@ -158,6 +164,7 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         completedAt:     Date.now(),
       })
       awardVitalityPoints(vp)
+      void syncHabitSource('cardio', duration)
       return `Logged ${duration} min of ${activity} (+${vp} VP).`
     }
 
@@ -278,6 +285,7 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
       const existing = await db.mentalHealthLogs.where('logDate').equals(today).first()
       if (existing?.id != null) await db.mentalHealthLogs.update(existing.id, fields)
       else                      await db.mentalHealthLogs.add(fields)
+      void syncHabitSource('mood', 1)
       return `Logged today's wellness check-in.`
     }
 

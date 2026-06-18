@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { db }                               from '@/lib/db'
 import type { VocabCard, RecallGrade }      from '@/types/vocabulary'
 import { calculateNextReviewCardState }     from '@/utils/spacedRepetition'
+import { syncHabitSource }                  from '@/lib/habitSync'
 import styles                               from './VocabStudySession.module.css'
 
 /* ── Grade metadata ──────────────────────────────────────────── */
@@ -99,6 +100,9 @@ export default function VocabStudySession({ deckId, languageName, onRestart }: P
 
     // Atomic IDB save — nextReviewTimestamp and SM-2 state
     await db.vocab_cards.put(updated)
+
+    // Auto-advance any habit linked to the vocab source (one word reviewed).
+    void syncHabitSource('vocab', 1)
 
     // Animate exit, then advance to the next card
     setPhase('exiting')
