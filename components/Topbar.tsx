@@ -10,6 +10,7 @@ import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
 import NotificationBell from './NotificationBell'
+import ModuleSearch from './ModuleSearch'
 import styles from './Topbar.module.css'
 
 const WMO_ICONS: Record<string, string> = {
@@ -130,6 +131,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
       {/* ── Right status cluster ─────────────────────────────── */}
       <div className={styles.cluster} role="status" aria-label="System status">
 
+        {/* Module finder — jump to any Zenith view by name or keyword */}
+        {session && (
+          <>
+            <ModuleSearch />
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
+
         {/* Weather — hidden when geolocation is denied */}
         {wStatus !== 'denied' && (
           <>
@@ -178,7 +187,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               onClick={toggleCopilot}
               aria-label={copilotOpen ? 'Close Co-Pilot' : 'Open AI Co-Pilot'}
               aria-expanded={copilotOpen}
-              title="AI Co-Pilot (⌘ K)"
+              title="AI Co-Pilot"
             >
               <span className={styles.copilotIcon} aria-hidden="true">◎</span>
               <span className={styles.copilotLabel}>AI</span>

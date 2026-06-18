@@ -32,6 +32,7 @@ import {
 } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData } from '@/lib/hooks/useCalendarData'
+import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
 import { db, type CalendarFeed, type CalendarEvent, type PersonalEvent, type TodoCategory, type TodoItem } from '@/lib/db'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
@@ -811,6 +812,32 @@ const DEFAULT_CATEGORIES = [
   { name: 'Long Term',  sortOrder: 1 },
 ]
 
+/* ── Voice dictation button for the add-task row ───────────────── */
+
+function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
+  const { isListening, interim, isSupported, toggle } = useSpeechToText({ onFinal: onText })
+
+  /* Browsers without the Web Speech API simply don't show the mic. */
+  if (!isSupported) return null
+
+  return (
+    <button
+      type="button"
+      className={`${styles.taskMicBtn} ${isListening ? styles.taskMicBtnActive : ''}`}
+      onClick={toggle}
+      aria-label={isListening ? 'Stop dictation' : 'Speak to add a task'}
+      title={
+        isListening
+          ? (interim ? `Heard: ${interim}` : 'Listening… click to stop')
+          : 'Speak to add a task'
+      }
+      aria-pressed={isListening}
+    >
+      ◎
+    </button>
+  )
+}
+
 function TasksPanel() {
   const categories = useLiveQuery(
     () => db?.todo_categories.orderBy('id').toArray() ?? Promise.resolve([]),
@@ -845,6 +872,14 @@ function TasksPanel() {
       ...prev,
       [catId]: { ...getTaskState(catId), [field]: value },
     }))
+
+  /* Append dictated speech to a category's task title (race-safe on prev). */
+  const appendTaskTitle = (catId: number, text: string) =>
+    setAddTaskState(prev => {
+      const cur = prev[catId] ?? { title: '', dueDate: '' }
+      const sep = cur.title && !cur.title.endsWith(' ') ? ' ' : ''
+      return { ...prev, [catId]: { ...cur, title: cur.title + sep + text } }
+    })
 
   const handleAddCategory = async () => {
     const name = newCatName.trim()
@@ -991,6 +1026,7 @@ function TasksPanel() {
                 onChange={e => setTaskField(cat.id!, 'title', e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void handleAddTask(cat.id!) }}
               />
+              <TaskVoiceButton onText={text => appendTaskTitle(cat.id!, text)} />
               <input
                 type="date"
                 className={styles.addTaskDateInput}
