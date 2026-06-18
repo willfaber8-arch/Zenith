@@ -35,6 +35,35 @@ export const SHORT_BREAK_SECS =  5 * 60  // 300 s
 export const LONG_BREAK_SECS  = 15 * 60  // 900 s
 export const SESSIONS_PER_LONG_BREAK = 4
 
+/* ── Focus modes ─────────────────────────────────────────────────
+   A progression ladder: people new to focused work can start with a
+   tiny 5-minute block and graduate up to the true 25-minute Pomodoro
+   as their attention span grows. Mode can only be changed while IDLE.
+─────────────────────────────────────────────────────────────────── */
+
+export interface PomodoroMode {
+  id:             string
+  label:          string
+  workSecs:       number
+  shortBreakSecs: number
+  longBreakSecs:  number
+  hint:           string
+}
+
+export const POMODORO_MODES: readonly PomodoroMode[] = [
+  { id: 'starter', label: 'Starter', workSecs:  5 * 60, shortBreakSecs: 2 * 60, longBreakSecs:  5 * 60,
+    hint: 'Ease in — 5 min focus, 2 min break' },
+  { id: 'builder', label: 'Builder', workSecs: 10 * 60, shortBreakSecs: 3 * 60, longBreakSecs:  8 * 60,
+    hint: 'Build the habit — 10 min focus, 3 min break' },
+  { id: 'steady',  label: 'Steady',  workSecs: 15 * 60, shortBreakSecs: 5 * 60, longBreakSecs: 10 * 60,
+    hint: 'Find your rhythm — 15 min focus, 5 min break' },
+  { id: 'classic', label: 'Classic', workSecs: WORK_SECS, shortBreakSecs: SHORT_BREAK_SECS, longBreakSecs: LONG_BREAK_SECS,
+    hint: 'The true Pomodoro — 25 min focus, 5 min break' },
+] as const
+
+export const DEFAULT_MODE: PomodoroMode =
+  POMODORO_MODES.find(m => m.id === 'classic') ?? POMODORO_MODES[0]
+
 /* ── Types ───────────────────────────────────────────────────────── */
 
 export type TimerState = 'IDLE' | 'WORK' | 'SHORT_BREAK' | 'LONG_BREAK' | 'PAUSED'
@@ -64,14 +93,10 @@ export interface PomodoroMachine {
   reset:            () => void
   /** Increment distraction counter + fire toast (WORK only) */
   logDistraction:   () => void
-}
-
-/* ── Helper ──────────────────────────────────────────────────────── */
-
-function secsForState(s: TimerState): number {
-  if (s === 'SHORT_BREAK') return SHORT_BREAK_SECS
-  if (s === 'LONG_BREAK')  return LONG_BREAK_SECS
-  return WORK_SECS
+  /** Active focus mode (drives all phase durations) */
+  mode:             PomodoroMode
+  /** Switch focus mode — only takes effect while IDLE */
+  setMode:          (id: string) => void
 }
 
 /* ── Hook ────────────────────────────────────────────────────────── */
@@ -88,7 +113,20 @@ export function usePomodoroStateMachine(): PomodoroMachine {
      This is immune to setInterval drift and background tab throttling.
   ─────────────────────────────────────────────────────────────── */
   const epochRef        = useRef<number | null>(null)
-  const remainAtStart   = useRef(WORK_SECS)
+  const remainAtStart   = useRef(DEFAULT_MODE.workSecs)
+
+  /* ── Active focus mode (drives all phase durations) ──────────────
+     modeRef mirrors the React state so the timing callbacks (which run
+     outside the render cycle) always read the live durations. */
+  const modeRef = useRef<PomodoroMode>(DEFAULT_MODE)
+
+  /* Mode-aware phase duration resolver (reads the live mode ref). */
+  const secsForState = useCallback((s: TimerState): number => {
+    const m = modeRef.current
+    if (s === 'SHORT_BREAK') return m.shortBreakSecs
+    if (s === 'LONG_BREAK')  return m.longBreakSecs
+    return m.workSecs
+  }, [])
 
   /* ── FSM state refs (mirror React state for use inside callbacks) */
   const stateRef        = useRef<TimerState>('IDLE')
@@ -100,10 +138,11 @@ export function usePomodoroStateMachine(): PomodoroMachine {
 
   /* ── React display state ────────────────────────────────────── */
   const [timerState,       setTimerState]       = useState<TimerState>('IDLE')
-  const [remaining,        setRemaining]        = useState(WORK_SECS)
-  const [totalSecs,        setTotalSecs]        = useState(WORK_SECS)
+  const [remaining,        setRemaining]        = useState(DEFAULT_MODE.workSecs)
+  const [totalSecs,        setTotalSecs]        = useState(DEFAULT_MODE.workSecs)
   const [sessionCount,     setSessionCount]     = useState(0)
   const [distractionCount, setDistractionCount] = useState(0)
+  const [mode,             setModeState]        = useState<PomodoroMode>(DEFAULT_MODE)
 
   /* ── Latest-ref for completePhase (breaks stale-closure problem) */
   const completeFnRef = useRef<(() => void) | null>(null)
@@ -118,18 +157,19 @@ export function usePomodoroStateMachine(): PomodoroMachine {
     if (current === 'WORK') {
       const distractions = distractRef.current
       const startMs      = sessionStartRef.current
+      const workMinutes  = Math.round(modeRef.current.workSecs / 60)
 
       // Persist session record and award XP for natural completion
       db.pomodoroSessions.add({
         sessionType:      'work',
-        durationMinutes:  25,
+        durationMinutes:  workMinutes,
         completedAt:      Date.now(),
         startedAt:        startMs,
         distractionCount: distractions,
       }).catch((err) => error('Pomodoro', 'Session IDB write failed', err))
 
       // Auto-advance any habit linked to the focus/study source (by minutes).
-      void syncHabitSource('study', 25)
+      void syncHabitSource('study', workMinutes)
 
       // Update session counters (ref first, then state for stability)
       countRef.current += 1
@@ -156,12 +196,12 @@ export function usePomodoroStateMachine(): PomodoroMachine {
       // Break complete → return to IDLE; user manually starts next block
       stateRef.current      = 'IDLE'
       epochRef.current      = null
-      remainAtStart.current = WORK_SECS
+      remainAtStart.current = modeRef.current.workSecs
       setTimerState('IDLE')
-      setTotalSecs(WORK_SECS)
-      setRemaining(WORK_SECS)
+      setTotalSecs(modeRef.current.workSecs)
+      setRemaining(modeRef.current.workSecs)
     }
-  }, [incrementSession])
+  }, [incrementSession, secsForState])
 
   /* Keep completeFnRef current on every render (latest-ref pattern).
      The interval closure reads completeFnRef.current so it always
@@ -214,13 +254,13 @@ export function usePomodoroStateMachine(): PomodoroMachine {
     const now = Date.now()
     sessionStartRef.current = now
     epochRef.current        = now
-    remainAtStart.current   = WORK_SECS
+    remainAtStart.current   = modeRef.current.workSecs
     phaseDoneRef.current    = false
     distractRef.current     = 0
     stateRef.current        = 'WORK'
     setTimerState('WORK')
-    setTotalSecs(WORK_SECS)
-    setRemaining(WORK_SECS)
+    setTotalSecs(modeRef.current.workSecs)
+    setRemaining(modeRef.current.workSecs)
     setDistractionCount(0)
   }, [])
 
@@ -287,25 +327,25 @@ export function usePomodoroStateMachine(): PomodoroMachine {
       // Skipping a break → back to IDLE
       stateRef.current      = 'IDLE'
       epochRef.current      = null
-      remainAtStart.current = WORK_SECS
+      remainAtStart.current = modeRef.current.workSecs
       setTimerState('IDLE')
-      setTotalSecs(WORK_SECS)
-      setRemaining(WORK_SECS)
+      setTotalSecs(modeRef.current.workSecs)
+      setRemaining(modeRef.current.workSecs)
     }
-  }, [incrementSession])
+  }, [incrementSession, secsForState])
 
   const reset = useCallback(() => {
     phaseDoneRef.current  = false
     stateRef.current      = 'IDLE'
     prevStateRef.current  = 'WORK'
     epochRef.current      = null
-    remainAtStart.current = WORK_SECS
+    remainAtStart.current = modeRef.current.workSecs
     distractRef.current   = 0
     // sessionCount is intentionally preserved — reset means "restart the timer",
     // not "forget this session's history"
     setTimerState('IDLE')
-    setTotalSecs(WORK_SECS)
-    setRemaining(WORK_SECS)
+    setTotalSecs(modeRef.current.workSecs)
+    setRemaining(modeRef.current.workSecs)
     setDistractionCount(0)
   }, [])
 
@@ -315,6 +355,20 @@ export function usePomodoroStateMachine(): PomodoroMachine {
     setDistractionCount(distractRef.current)
     toast('Distraction logged. Refocusing...', 'info')
   }, [toast])
+
+  /* Switch focus mode. Only takes effect while IDLE — changing durations
+     mid-session would corrupt the epoch-based remaining calculation. The
+     new work duration is reflected immediately in the idle display. */
+  const setMode = useCallback((id: string) => {
+    if (stateRef.current !== 'IDLE') return
+    const next = POMODORO_MODES.find(m => m.id === id)
+    if (!next || next.id === modeRef.current.id) return
+    modeRef.current       = next
+    remainAtStart.current = next.workSecs
+    setModeState(next)
+    setTotalSecs(next.workSecs)
+    setRemaining(next.workSecs)
+  }, [])
 
   return {
     timerState,
@@ -329,5 +383,7 @@ export function usePomodoroStateMachine(): PomodoroMachine {
     skip,
     reset,
     logDistraction,
+    mode,
+    setMode,
   }
 }

@@ -7,13 +7,14 @@
  * configured (category, colour, daily goal, unit) and — crucially —
  * pre-linked to the cross-tab auto-sync sources where it makes sense:
  *
- *   • Daily movement  → fills from logged cardio   (minutes)
+ *   • Daily movement  → fills from logged cardio    (minutes)
  *   • Deep focus       → fills from Pomodoro blocks  (minutes)
  *   • Vocabulary       → fills from Polyglot reviews (words)
  *   • Mood check-in    → fills from Mental Wellness  (check-ins)
+ *   • Read             → fills from the Library      (start/finish a book)
  *
  * so the auto-sync feature works the moment the pack is loaded, with no
- * manual setup. Two manual habits (water, reading) round out the set.
+ * manual setup. Two manual habits (water, meditate) round out the set.
  *
  * Loading model
  * ───────────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ export const GENERAL_HABIT_PRESET: readonly HabitPresetItem[] = [
     targetCompletions: 1,  stepAmount: 1, stepLabel: 'check-in', autoSource: 'mood' },
 
   { name: 'Read',              category: 'Life',        color: '#fb923c',
-    targetCompletions: 20, stepAmount: 5, stepLabel: 'min' },
+    targetCompletions: 1, stepAmount: 1, stepLabel: 'session', autoSource: 'reading' },
 
   { name: 'Meditate',          category: 'Mindfulness', color: '#e879f9',
     targetCompletions: 10, stepAmount: 5, stepLabel: 'min' },

@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { useStudyMode }   from '@/lib/StudyModeContext'
-import { usePomodoroStateMachine, SESSIONS_PER_LONG_BREAK } from '@/lib/hooks/usePomodoroStateMachine'
+import { usePomodoroStateMachine, SESSIONS_PER_LONG_BREAK, POMODORO_MODES } from '@/lib/hooks/usePomodoroStateMachine'
 import PomodoroCanvas     from './PomodoroCanvas'
 import FlashcardDeck      from './FlashcardDeck'
 import { db }             from '@/lib/db'
@@ -110,6 +110,29 @@ function StudyPomodoroArena({ contextSessionCount }: { contextSessionCount: numb
         totalSecs={totalSecs}
         cyclePosition={contextSessionCount % SESSIONS_PER_CYCLE}
       />
+
+      {/* Focus-length ladder — only selectable while idle. Lets newcomers
+          start small (5 min) and graduate to the true 25-min Pomodoro. */}
+      {isIdle && (
+        <div className={styles.modeRow} role="group" aria-label="Focus length">
+          {POMODORO_MODES.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              className={`${styles.modeBtn} ${machine.mode.id === m.id ? styles.modeBtnActive : ''}`}
+              onClick={() => machine.setMode(m.id)}
+              aria-pressed={machine.mode.id === m.id}
+              title={m.hint}
+            >
+              <span className={styles.modeBtnLabel}>{m.label}</span>
+              <span className={styles.modeBtnMins}>{Math.round(m.workSecs / 60)}m</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {isIdle && (
+        <p className={styles.modeHint}>{machine.mode.hint}</p>
+      )}
 
       <div className={styles.arenaControls} role="group" aria-label="Timer controls">
         <button

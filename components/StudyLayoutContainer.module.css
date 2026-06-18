@@ -250,6 +250,74 @@
   color: var(--text-dark);
 }
 
+/* ── Focus-mode ladder (idle only) ────────────────────────── */
+
+.modeRow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.modeBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0.5rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition:
+    color        var(--dur-fast),
+    border-color var(--dur-fast),
+    background   var(--dur-fast),
+    box-shadow   var(--dur-base);
+}
+
+.modeBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple-dim);
+  background: rgba(124, 149, 255, 0.06);
+}
+
+.modeBtnActive {
+  color: var(--accent-purple);
+  border-color: var(--accent-purple);
+  background: rgba(124, 149, 255, 0.12);
+  box-shadow: 0 0 16px rgba(124, 149, 255, 0.12);
+}
+
+.modeBtnLabel {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.modeBtnMins {
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.modeHint {
+  margin-top: calc(-1 * var(--sp-4));
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  text-align: center;
+}
+
 /* ── Arena controls ───────────────────────────────────────── */
 
 .arenaControls {

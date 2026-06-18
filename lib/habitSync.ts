@@ -30,7 +30,7 @@ import { db, type Habit } from '@/lib/db'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
-export type HabitAutoSource = 'cardio' | 'study' | 'vocab' | 'mood'
+export type HabitAutoSource = 'cardio' | 'study' | 'vocab' | 'mood' | 'reading'
 
 export interface HabitSourceMeta {
   id:    HabitAutoSource
@@ -49,6 +49,8 @@ export const HABIT_SOURCES: readonly HabitSourceMeta[] = [
     hint: 'Fills automatically when you review words in the Polyglot Vault.' },
   { id: 'mood',   label: 'Mood check-in',      icon: '🌤️', unit: 'check-ins',
     hint: 'Fills automatically when you log your mood in Mental Wellness.' },
+  { id: 'reading', label: 'Reading session',   icon: '📖', unit: 'sessions',
+    hint: 'Fills automatically when you start or finish a book in the Library.' },
 ] as const
 
 const SOURCE_IDS = new Set<string>(HABIT_SOURCES.map(s => s.id))
