@@ -36,12 +36,12 @@
 
 @theme {
 
-  /* ── Base palette (Phase 11.1 · Warm Mineral-Dark Studio) ───── */
-  --color-bg-main:          #0d0f12;    /* Warm Midnight Canvas             */
-  --color-surface-card:     #14171c;    /* Charcoal Studio Surface          */
-  --color-surface-accent:   #1c2128;    /* Elevated Warm Surface            */
-  --color-accent-purple:    #7c95ff;    /* Periwinkle — primary interactive */
-  --color-accent-green:     #63a389;    /* Botanical Sage Green             */
+  /* ── Base palette (Sage Studio · Mint-Green on Dark Grey) ──── */
+  --color-bg-main:          #0f1210;    /* Sage Dark Canvas                 */
+  --color-surface-card:     #161c18;    /* Dark Grey-Green Studio Surface   */
+  --color-surface-accent:   #1e2823;    /* Elevated Sage Surface            */
+  --color-accent-purple:    #68d9a0;    /* Sage Mint — primary interactive  */
+  --color-accent-green:     #52cca3;    /* Teal Green — secondary accent    */
   --color-accent-warm:      #e5c17c;    /* Amber-Gold · warm accent tier    */
   --color-accent-crimson:   #c96a6a;    /* Dusty Crimson · critical accent  */
   --color-text-primary:     #f4f1ea;    /* Warm Parchment Cream             */
@@ -49,20 +49,20 @@
   --color-text-dark:        #7a8299;    /* Deep Mineral Slate               */
 
   /* ── Semantic / interactive ───────────────────────────────────── */
-  --color-hover:          rgba(124, 149, 255, 0.05);
-  --color-active:         rgba(124, 149, 255, 0.10);
-  --color-purple-dim:     rgba(124, 149, 255, 0.35);
-  --color-green-dim:      rgba(99,  163, 137, 0.35);   /* sage green dim */
-  --color-border-subtle:  rgba(124, 149, 255, 0.10);
+  --color-hover:          rgba(104, 217, 160, 0.05);
+  --color-active:         rgba(104, 217, 160, 0.10);
+  --color-purple-dim:     rgba(104, 217, 160, 0.35);
+  --color-green-dim:      rgba(82,  204, 163, 0.35);   /* teal green dim */
+  --color-border-subtle:  rgba(104, 217, 160, 0.10);
 
   /* ── Category background tints (Step 0.3 morph system) ───────── */
-  --color-tint-essentials: #0e1018;   /* Warm Deep Slate-Indigo          */
+  --color-tint-essentials: #0e1210;   /* Dark Grey-Green (Essentials)    */
   --color-tint-creator:    #090f0b;   /* Deep Obsidian-Green             */
-  --color-tint-vault:      #0f1012;   /* Warm Mineral Charcoal           */
+  --color-tint-vault:      #111212;   /* Warm Mineral Charcoal           */
 
   /* ── Per-category micro-interaction hover surfaces (Step 0.4) ── */
-  --color-hover-essentials: rgba(124, 149, 255, 0.12);
-  --color-hover-creator:    rgba(99,  163, 137, 0.12);  /* sage green */
+  --color-hover-essentials: rgba(104, 217, 160, 0.12);
+  --color-hover-creator:    rgba(82,  204, 163, 0.12);  /* teal green */
   --color-hover-vault:      rgba(155, 163, 196, 0.15);
 
   /* ── Typography (Phase 11.1 · Warm Humanistic Studio Stack) ──── */
@@ -224,11 +224,11 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  --tint-home:       #0d0f12;
-  --tint-essentials: #0e1018;
+  --tint-home:       #0f1210;
+  --tint-essentials: #0e1210;
   --tint-creator:    #090f0b;
-  --tint-vault:      #0f1012;
-  --topbar-bg:       rgba(13, 15, 18, 0.88);
+  --tint-vault:      #111212;
+  --topbar-bg:       rgba(15, 18, 16, 0.88);
 }
 
 
@@ -255,17 +255,17 @@ html[data-color-scheme='light'] {
   --text-main:    #181a2e;
 
   /* Accents — more saturated for visibility on light bg */
-  --accent-purple:     #4f66f0;
+  --accent-purple:     #1e9e6c;
   --accent-green:      #27966c;
-  --accent-purple-dim: rgba(79, 102, 240, 0.20);
+  --accent-purple-dim: rgba(30, 158, 108, 0.20);
   --accent-green-dim:  rgba(39, 150, 108, 0.20);
   --accent-warm:       #bf8010;
   --accent-crimson:    #b84040;
 
   /* Borders & interactions */
-  --border-subtle: rgba(24, 26, 46, 0.12);
-  --bg-hover:      rgba(79, 102, 240, 0.07);
-  --bg-active:     rgba(79, 102, 240, 0.13);
+  --border-subtle: rgba(18, 46, 36, 0.12);
+  --bg-hover:      rgba(30, 158, 108, 0.07);
+  --bg-active:     rgba(30, 158, 108, 0.13);
 
   /* Text — darkened for WCAG AA on light surfaces */
   --text-dark: #5c6387;
@@ -276,10 +276,10 @@ html[data-color-scheme='light'] {
     0 0   0   1px var(--border-subtle);
 
   /* Category tints — light pastel versions */
-  --tint-home:       #f2f4fc;
-  --tint-essentials: #edf0fd;
+  --tint-home:       #f2f4f2;
+  --tint-essentials: #edf5f0;
   --tint-creator:    #edf6f1;
-  --tint-vault:      #f2f3f8;
+  --tint-vault:      #f2f3f2;
 
   /* Topbar */
   --topbar-bg: rgba(242, 244, 252, 0.94);

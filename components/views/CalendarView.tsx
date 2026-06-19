@@ -817,18 +817,32 @@ const DEFAULT_CATEGORIES = [
 function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
   const { isListening, interim, isSupported, toggle } = useSpeechToText({ onFinal: onText })
 
-  /* Browsers without the Web Speech API simply don't show the mic. */
-  if (!isSupported) return null
+  /* Always render — disabled with a helpful tooltip when the browser doesn't
+     support the Web Speech API (Firefox, Safari). This lets users see the
+     feature exists and understand why it's grayed out. */
+  if (!isSupported) {
+    return (
+      <button
+        type="button"
+        className={styles.taskMicBtn}
+        disabled
+        aria-label="Voice input unavailable"
+        title="Voice input requires Chrome or Edge"
+      >
+        ◎
+      </button>
+    )
+  }
 
   return (
     <button
       type="button"
       className={`${styles.taskMicBtn} ${isListening ? styles.taskMicBtnActive : ''}`}
       onClick={toggle}
-      aria-label={isListening ? 'Stop dictation' : 'Speak to add a task'}
+      aria-label={isListening ? 'Stop dictation' : 'Speak to add a task (Chrome/Edge)'}
       title={
         isListening
-          ? (interim ? `Heard: ${interim}` : 'Listening… click to stop')
+          ? (interim ? `Heard: "${interim}" — click to stop` : 'Listening… click to stop')
           : 'Speak to add a task'
       }
       aria-pressed={isListening}

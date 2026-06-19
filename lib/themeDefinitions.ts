@@ -25,9 +25,25 @@ export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
 
   /* ── Base (default) — no overrides, restores globals.css baseline ── */
   zenith_default: {
-    label:  'Zenith Classic',
-    swatch: '#7c95ff',
+    label:  'Sage Studio',
+    swatch: '#68d9a0',
     vars:   {},
+  },
+
+  /* ── Classic Periwinkle — original Zenith blue-purple look ─────── */
+  zenith_periwinkle: {
+    label:  'Classic Periwinkle',
+    swatch: '#7c95ff',
+    vars: {
+      '--bg-main':           '#0b0d13',
+      '--surface-card':      '#141923',
+      '--accent-purple':     '#7c95ff',
+      '--accent-purple-dim': 'rgba(124,149,255,0.35)',
+      '--border-subtle':     'rgba(124,149,255,0.10)',
+      '--bg-hover':          'rgba(124,149,255,0.05)',
+      '--bg-active':         'rgba(124,149,255,0.10)',
+      '--shadow-card':       '0 2px 24px rgba(124,149,255,0.12), 0 0 0 1px rgba(124,149,255,0.06)',
+    },
   },
 
   /* ── Crimson Core — rose-red primary accent ─────────────────────── */
@@ -173,6 +189,302 @@ export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
       '--bg-hover':          'rgba(212,175,55,0.05)',
       '--bg-active':         'rgba(212,175,55,0.10)',
       '--shadow-card':       '0 2px 24px rgba(212,175,55,0.12), 0 0 0 1px rgba(212,175,55,0.06)',
+    },
+  },
+
+  /* ─────────────────────── EXPANDED THEME LIBRARY ─────────────────── */
+
+  /* ── Deep Ocean — teal/aqua on dark navy ────────────────────────── */
+  zenith_ocean: {
+    label:  'Deep Ocean',
+    swatch: '#1ec8d0',
+    vars: {
+      '--bg-main':           '#04101a',
+      '--surface-card':      '#091824',
+      '--accent-purple':     '#1ec8d0',
+      '--accent-purple-dim': 'rgba(30,200,208,0.35)',
+      '--border-subtle':     'rgba(30,200,208,0.10)',
+      '--bg-hover':          'rgba(30,200,208,0.05)',
+      '--bg-active':         'rgba(30,200,208,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(30,200,208,0.14), 0 0 0 1px rgba(30,200,208,0.06)',
+    },
+  },
+
+  /* ── Lavender Haze — soft violet on deep purple-grey ───────────── */
+  zenith_lavender: {
+    label:  'Lavender Haze',
+    swatch: '#b088f5',
+    vars: {
+      '--bg-main':           '#0d0b14',
+      '--surface-card':      '#15121f',
+      '--accent-purple':     '#b088f5',
+      '--accent-purple-dim': 'rgba(176,136,245,0.35)',
+      '--border-subtle':     'rgba(176,136,245,0.10)',
+      '--bg-hover':          'rgba(176,136,245,0.06)',
+      '--bg-active':         'rgba(176,136,245,0.12)',
+      '--shadow-card':       '0 2px 24px rgba(176,136,245,0.14), 0 0 0 1px rgba(176,136,245,0.07)',
+    },
+  },
+
+  /* ── Dusty Rose — rose-mauve on warm dark ───────────────────────── */
+  zenith_rose: {
+    label:  'Dusty Rose',
+    swatch: '#e87aa0',
+    vars: {
+      '--bg-main':           '#130d10',
+      '--surface-card':      '#1e1218',
+      '--accent-purple':     '#e87aa0',
+      '--accent-purple-dim': 'rgba(232,122,160,0.35)',
+      '--border-subtle':     'rgba(232,122,160,0.10)',
+      '--bg-hover':          'rgba(232,122,160,0.05)',
+      '--bg-active':         'rgba(232,122,160,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(232,122,160,0.14), 0 0 0 1px rgba(232,122,160,0.07)',
+    },
+  },
+
+  /* ── Steel Blue — cool industrial steel ─────────────────────────── */
+  zenith_steel: {
+    label:  'Steel Blue',
+    swatch: '#5b9bd5',
+    vars: {
+      '--bg-main':           '#090c12',
+      '--surface-card':      '#10151e',
+      '--accent-purple':     '#5b9bd5',
+      '--accent-purple-dim': 'rgba(91,155,213,0.35)',
+      '--border-subtle':     'rgba(91,155,213,0.10)',
+      '--bg-hover':          'rgba(91,155,213,0.05)',
+      '--bg-active':         'rgba(91,155,213,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(91,155,213,0.12), 0 0 0 1px rgba(91,155,213,0.06)',
+    },
+  },
+
+  /* ── Copper Forge — warm bronze on dark mahogany ────────────────── */
+  zenith_copper: {
+    label:  'Copper Forge',
+    swatch: '#d47a3a',
+    vars: {
+      '--bg-main':           '#110904',
+      '--surface-card':      '#1c1008',
+      '--accent-purple':     '#d47a3a',
+      '--accent-purple-dim': 'rgba(212,122,58,0.35)',
+      '--border-subtle':     'rgba(212,122,58,0.10)',
+      '--bg-hover':          'rgba(212,122,58,0.05)',
+      '--bg-active':         'rgba(212,122,58,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(212,122,58,0.14), 0 0 0 1px rgba(212,122,58,0.07)',
+    },
+  },
+
+  /* ── Arctic — icy blue-white on near-black ──────────────────────── */
+  zenith_arctic: {
+    label:  'Arctic',
+    swatch: '#9fd4f0',
+    vars: {
+      '--bg-main':           '#050a10',
+      '--surface-card':      '#0b1520',
+      '--accent-purple':     '#9fd4f0',
+      '--accent-purple-dim': 'rgba(159,212,240,0.30)',
+      '--border-subtle':     'rgba(159,212,240,0.09)',
+      '--bg-hover':          'rgba(159,212,240,0.05)',
+      '--bg-active':         'rgba(159,212,240,0.10)',
+      '--text-primary':      '#e0f0f8',
+      '--shadow-card':       '0 2px 24px rgba(159,212,240,0.12), 0 0 0 1px rgba(159,212,240,0.06)',
+    },
+  },
+
+  /* ── Emerald City — deep emerald green ──────────────────────────── */
+  zenith_emerald: {
+    label:  'Emerald City',
+    swatch: '#2ecc71',
+    vars: {
+      '--bg-main':           '#030e07',
+      '--surface-card':      '#07180d',
+      '--accent-purple':     '#2ecc71',
+      '--accent-purple-dim': 'rgba(46,204,113,0.32)',
+      '--border-subtle':     'rgba(46,204,113,0.10)',
+      '--bg-hover':          'rgba(46,204,113,0.05)',
+      '--bg-active':         'rgba(46,204,113,0.10)',
+      '--shadow-card':       '0 2px 24px rgba(46,204,113,0.14), 0 0 0 1px rgba(46,204,113,0.06)',
+    },
+  },
+
+  /* ── Sunset Drive — warm tangerine-orange ───────────────────────── */
+  zenith_sunset: {
+    label:  'Sunset Drive',
+    swatch: '#f5834a',
+    vars: {
+      '--bg-main':           '#100804',
+      '--surface-card':      '#1c1008',
+      '--accent-purple':     '#f5834a',
+      '--accent-purple-dim': 'rgba(245,131,74,0.35)',
+      '--border-subtle':     'rgba(245,131,74,0.10)',
+      '--bg-hover':          'rgba(245,131,74,0.05)',
+      '--bg-active':         'rgba(245,131,74,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(245,131,74,0.14), 0 0 0 1px rgba(245,131,74,0.06)',
+    },
+  },
+
+  /* ── Gilded — bright antique gold ──────────────────────────────── */
+  zenith_gold: {
+    label:  'Gilded',
+    swatch: '#f0c040',
+    vars: {
+      '--bg-main':           '#0c0a02',
+      '--surface-card':      '#181402',
+      '--accent-purple':     '#f0c040',
+      '--accent-purple-dim': 'rgba(240,192,64,0.35)',
+      '--border-subtle':     'rgba(240,192,64,0.10)',
+      '--bg-hover':          'rgba(240,192,64,0.05)',
+      '--bg-active':         'rgba(240,192,64,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(240,192,64,0.14), 0 0 0 1px rgba(240,192,64,0.06)',
+    },
+  },
+
+  /* ── Cyan Protocol — electric cyan on deep black ────────────────── */
+  zenith_cyan: {
+    label:  'Cyan Protocol',
+    swatch: '#00bcd4',
+    vars: {
+      '--bg-main':           '#020c0e',
+      '--surface-card':      '#061518',
+      '--accent-purple':     '#00bcd4',
+      '--accent-purple-dim': 'rgba(0,188,212,0.32)',
+      '--border-subtle':     'rgba(0,188,212,0.10)',
+      '--bg-hover':          'rgba(0,188,212,0.05)',
+      '--bg-active':         'rgba(0,188,212,0.10)',
+      '--shadow-card':       '0 2px 24px rgba(0,188,212,0.14), 0 0 0 1px rgba(0,188,212,0.06)',
+    },
+  },
+
+  /* ── Forest Sage — muted sage green, warmer than default ────────── */
+  zenith_sage: {
+    label:  'Forest Sage',
+    swatch: '#8cc68a',
+    vars: {
+      '--bg-main':           '#0a0f0a',
+      '--surface-card':      '#111a11',
+      '--accent-purple':     '#8cc68a',
+      '--accent-purple-dim': 'rgba(140,198,138,0.35)',
+      '--border-subtle':     'rgba(140,198,138,0.10)',
+      '--bg-hover':          'rgba(140,198,138,0.05)',
+      '--bg-active':         'rgba(140,198,138,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(140,198,138,0.12), 0 0 0 1px rgba(140,198,138,0.06)',
+    },
+  },
+
+  /* ── Midnight Indigo — deep indigo-purple on near-black ─────────── */
+  zenith_indigo: {
+    label:  'Midnight Indigo',
+    swatch: '#5c4fd4',
+    vars: {
+      '--bg-main':           '#080610',
+      '--surface-card':      '#0f0c1c',
+      '--accent-purple':     '#5c4fd4',
+      '--accent-purple-dim': 'rgba(92,79,212,0.35)',
+      '--border-subtle':     'rgba(92,79,212,0.11)',
+      '--bg-hover':          'rgba(92,79,212,0.06)',
+      '--bg-active':         'rgba(92,79,212,0.12)',
+      '--shadow-card':       '0 2px 24px rgba(92,79,212,0.16), 0 0 0 1px rgba(92,79,212,0.08)',
+    },
+  },
+
+  /* ── Minty Fresh — bright electric mint ─────────────────────────── */
+  zenith_mint: {
+    label:  'Minty Fresh',
+    swatch: '#50e3c2',
+    vars: {
+      '--bg-main':           '#030e0c',
+      '--surface-card':      '#081815',
+      '--accent-purple':     '#50e3c2',
+      '--accent-purple-dim': 'rgba(80,227,194,0.32)',
+      '--border-subtle':     'rgba(80,227,194,0.10)',
+      '--bg-hover':          'rgba(80,227,194,0.05)',
+      '--bg-active':         'rgba(80,227,194,0.10)',
+      '--shadow-card':       '0 2px 24px rgba(80,227,194,0.14), 0 0 0 1px rgba(80,227,194,0.06)',
+    },
+  },
+
+  /* ── Dusty Mauve — warm dusty pink-purple ───────────────────────── */
+  zenith_mauve: {
+    label:  'Dusty Mauve',
+    swatch: '#c47ab8',
+    vars: {
+      '--bg-main':           '#120a12',
+      '--surface-card':      '#1d121c',
+      '--accent-purple':     '#c47ab8',
+      '--accent-purple-dim': 'rgba(196,122,184,0.35)',
+      '--border-subtle':     'rgba(196,122,184,0.10)',
+      '--bg-hover':          'rgba(196,122,184,0.05)',
+      '--bg-active':         'rgba(196,122,184,0.11)',
+      '--shadow-card':       '0 2px 24px rgba(196,122,184,0.14), 0 0 0 1px rgba(196,122,184,0.07)',
+    },
+  },
+
+  /* ── Sakura Season — cherry blossom pink pack ───────────────────── */
+  pack_sakura: {
+    label:  'Sakura Season',
+    swatch: '#f5a0c0',
+    vars: {
+      '--bg-main':           '#120810',
+      '--surface-card':      '#1e0f1a',
+      '--accent-purple':     '#f5a0c0',
+      '--accent-purple-dim': 'rgba(245,160,192,0.35)',
+      '--border-subtle':     'rgba(245,160,192,0.10)',
+      '--bg-hover':          'rgba(245,160,192,0.05)',
+      '--bg-active':         'rgba(245,160,192,0.11)',
+      '--text-primary':      '#f8eaf2',
+      '--shadow-card':       '0 2px 24px rgba(245,160,192,0.16), 0 0 0 1px rgba(245,160,192,0.08)',
+    },
+  },
+
+  /* ── Citrus Rush — vivid yellow-orange energy ───────────────────── */
+  pack_citrus: {
+    label:  'Citrus Rush',
+    swatch: '#f5c842',
+    vars: {
+      '--bg-main':           '#0e0c02',
+      '--surface-card':      '#1a1804',
+      '--accent-purple':     '#f5c842',
+      '--accent-purple-dim': 'rgba(245,200,66,0.35)',
+      '--border-subtle':     'rgba(245,200,66,0.10)',
+      '--bg-hover':          'rgba(245,200,66,0.05)',
+      '--bg-active':         'rgba(245,200,66,0.10)',
+      '--shadow-card':       '0 2px 24px rgba(245,200,66,0.14), 0 0 0 1px rgba(245,200,66,0.06)',
+    },
+  },
+
+  /* ── Ocean Depths — deep navy with bioluminescent blue ──────────── */
+  pack_ocean_deep: {
+    label:  'Ocean Depths',
+    swatch: '#3a7bd5',
+    vars: {
+      '--bg-main':           '#020610',
+      '--surface-card':      '#04091a',
+      '--accent-purple':     '#3a7bd5',
+      '--accent-purple-dim': 'rgba(58,123,213,0.35)',
+      '--border-subtle':     'rgba(58,123,213,0.10)',
+      '--bg-hover':          'rgba(58,123,213,0.05)',
+      '--bg-active':         'rgba(58,123,213,0.11)',
+      '--text-primary':      '#dce8f8',
+      '--shadow-card':       '0 2px 24px rgba(58,123,213,0.16), 0 0 0 1px rgba(58,123,213,0.08)',
+    },
+  },
+
+  /* ── Ash & Ember — cool ash with hot ember accent ───────────────── */
+  pack_ash: {
+    label:  'Ash & Ember',
+    swatch: '#e04840',
+    vars: {
+      '--bg-main':           '#0d0c0c',
+      '--surface-card':      '#181818',
+      '--accent-purple':     '#e04840',
+      '--accent-purple-dim': 'rgba(224,72,64,0.35)',
+      '--border-subtle':     'rgba(224,72,64,0.10)',
+      '--bg-hover':          'rgba(224,72,64,0.05)',
+      '--bg-active':         'rgba(224,72,64,0.11)',
+      '--text-primary':      '#f0ece8',
+      '--text-muted':        '#a8a4a0',
+      '--text-dark':         '#6a6664',
+      '--shadow-card':       '0 2px 24px rgba(224,72,64,0.14), 0 0 0 1px rgba(224,72,64,0.06)',
     },
   },
 }
