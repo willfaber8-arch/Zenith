@@ -5,3 +5,4 @@ node_modules/
 out/
 .vercel
 tsconfig.tsbuildinfo
+.claude/worktrees/
