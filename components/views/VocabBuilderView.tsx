@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect }  from 'react'
-import { useLiveQuery }                                from 'dexie-react-hooks'
-import { db }                                          from '@/lib/db'
-import type { VocabDeck, VocabCard }                   from '@/types/vocabulary'
-import ZenHeading                                      from '@/components/ui/ZenHeading'
-import VocabStudySession                               from '@/components/VocabStudySession'
-import { useToast }                                    from '@/lib/ToastContext'
-import styles                                          from './VocabBuilderView.module.css'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useLiveQuery }                                      from 'dexie-react-hooks'
+import { db }                                               from '@/lib/db'
+import type { VocabDeck, VocabCard }                        from '@/types/vocabulary'
+import ZenHeading                                           from '@/components/ui/ZenHeading'
+import VocabStudySession                                    from '@/components/VocabStudySession'
+import { useToast }                                         from '@/lib/ToastContext'
+import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
+import styles                                               from './VocabBuilderView.module.css'
 
 /* ════════════════════════════════════════════════════════════════
    English Vocabulary — static word bank (GRE / advanced level)
@@ -1588,6 +1589,7 @@ function computeStats(cards: VocabCard[]): DeckStats {
 type ModalMode =
   | { kind: 'none' }
   | { kind: 'new-deck' }
+  | { kind: 'ai-generate' }
   | { kind: 'add-card';  deckId: string }
   | { kind: 'edit-card'; card: VocabCard }
 
@@ -1665,6 +1667,306 @@ function NewDeckModal({
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button className={styles.submitBtn} onClick={handleSubmit} disabled={!canSave}>
             Create Deck
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── AI Deck Generator Modal ────────────────────────────────── */
+type AiGenPhase = 'config' | 'generating' | 'preview' | 'saving'
+
+interface GeneratedCard {
+  foreignWord:       string
+  nativeTranslation: string
+  phoneticSpelling:  string
+}
+
+const AI_COUNT_OPTIONS: Array<number | 'ai'> = [10, 15, 20, 25, 30, 'ai']
+
+function parseAiCards(raw: string): GeneratedCard[] {
+  let cleaned = raw.trim()
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```\s*$/, '')
+  }
+  const start = cleaned.indexOf('[')
+  const end   = cleaned.lastIndexOf(']')
+  if (start === -1 || end === -1) return []
+  try {
+    const arr = JSON.parse(cleaned.slice(start, end + 1)) as unknown[]
+    return arr
+      .filter((item): item is Record<string, unknown> =>
+        typeof item === 'object' && item !== null &&
+        'foreignWord' in item && 'nativeTranslation' in item
+      )
+      .map(item => ({
+        foreignWord:      String(item.foreignWord      ?? '').trim(),
+        nativeTranslation: String(item.nativeTranslation ?? '').trim(),
+        phoneticSpelling:  String(item.phoneticSpelling  ?? '').trim(),
+      }))
+      .filter(c => c.foreignWord.length > 0 && c.nativeTranslation.length > 0)
+  } catch { return [] }
+}
+
+function AiDeckGeneratorModal({
+  onClose,
+  onCreated,
+}: {
+  onClose:   () => void
+  onCreated: (deck: VocabDeck) => void
+}) {
+  const { authHeaders }                         = useAiConfig()
+  const { toast }                               = useToast()
+  const abortRef                                = useRef<AbortController | null>(null)
+
+  const [phase,      setPhase]      = useState<AiGenPhase>('config')
+  const [deckLang,   setDeckLang]   = useState('')
+  const [topic,      setTopic]      = useState('')
+  const [cardCount,  setCardCount]  = useState<number | 'ai'>(20)
+  const [streamText, setStreamText] = useState('')
+  const [cards,      setCards]      = useState<GeneratedCard[]>([])
+  const [error,      setError]      = useState<string | null>(null)
+
+  useEffect(() => () => { abortRef.current?.abort() }, [])
+
+  const canGenerate = deckLang.trim().length > 0 && topic.trim().length > 0
+
+  async function handleGenerate() {
+    if (!canGenerate) return
+    setPhase('generating')
+    setStreamText('')
+    setError(null)
+
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    const countStr = cardCount === 'ai'
+      ? 'however many cards you think best covers the topic (aim for 15–25)'
+      : `exactly ${cardCount}`
+
+    const systemPrompt = `You are a vocabulary flashcard generator. Output ONLY a valid JSON array — no prose, no markdown, no code fences. The response must start with [ and end with ].
+
+Each element must be a JSON object with exactly these three string fields:
+- "foreignWord": the word or phrase in ${deckLang} (the target language)
+- "nativeTranslation": the English definition or translation
+- "phoneticSpelling": pronunciation guide (IPA, romanization, or ""); use "" when not applicable
+
+Generate ${countStr} flashcard objects covering this topic.`
+
+    const userMsg = `Generate flashcards for a "${deckLang}" deck. Topic / coverage: ${topic}`
+
+    try {
+      const res = await fetch('/api/chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body:    JSON.stringify({
+          messages: [{ role: 'user', content: userMsg }],
+          contextPayload: { systemPrompt },
+        }),
+        signal: ctrl.signal,
+      })
+
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response stream')
+
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        accumulated += chunk
+        setStreamText(accumulated)
+      }
+
+      const parsed = parseAiCards(accumulated)
+      if (parsed.length === 0) {
+        setError('Could not parse cards from the response. Try rephrasing your topic.')
+        setPhase('config')
+        return
+      }
+      setCards(parsed)
+      setPhase('preview')
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setError(err instanceof Error ? err.message : 'Generation failed')
+        setPhase('config')
+      }
+    }
+  }
+
+  async function handleSave() {
+    if (cards.length === 0) return
+    setPhase('saving')
+
+    const deck: VocabDeck = {
+      id:           crypto.randomUUID(),
+      languageName: deckLang.trim(),
+      description:  topic.slice(0, 120).trim(),
+      createdAt:    Date.now(),
+    }
+    const vocabCards: VocabCard[] = cards.map(c => ({
+      id:                   crypto.randomUUID(),
+      deckId:               deck.id,
+      foreignWord:          c.foreignWord,
+      nativeTranslation:    c.nativeTranslation,
+      phoneticSpelling:     c.phoneticSpelling,
+      stabilityFactor:      0,
+      easeFactor:           2.5,
+      reviewIntervalDays:   1,
+      consecutiveSuccesses: 0,
+      nextReviewTimestamp:  0,
+    }))
+
+    await db.transaction('rw', [db.vocab_decks, db.vocab_cards], async () => {
+      await db.vocab_decks.add(deck)
+      await db.vocab_cards.bulkAdd(vocabCards)
+    })
+
+    toast(`${cards.length} cards saved to "${deck.languageName}"`, 'success')
+    onCreated(deck)
+    onClose()
+  }
+
+  /* Generating / saving spinner — shared UI */
+  if (phase === 'generating' || phase === 'saving') {
+    return (
+      <div className={styles.modalBackdrop}>
+        <div className={styles.modal}>
+          <div className={styles.modalHeader}>
+            <span className={styles.modalTitle}>✦ AI Deck Generator</span>
+            {phase === 'generating' && (
+              <button
+                className={styles.modalClose}
+                onClick={() => { abortRef.current?.abort(); setPhase('config') }}
+                aria-label="Cancel"
+              >×</button>
+            )}
+          </div>
+          <div className={`${styles.modalBody} ${styles.aiGeneratingBody}`}>
+            <div className={styles.aiSpinnerWrap}>
+              <span className={styles.aiSpinnerGlyph}>✦</span>
+              <span className={styles.aiSpinnerText}>
+                {phase === 'generating' ? 'Generating flashcards…' : 'Saving deck…'}
+              </span>
+            </div>
+            {phase === 'generating' && streamText && (
+              <pre className={styles.aiStreamPreview}>
+                {streamText.slice(0, 300)}{streamText.length > 300 ? '…' : ''}
+              </pre>
+            )}
+          </div>
+          {phase === 'generating' && (
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => { abortRef.current?.abort(); setPhase('config') }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /* Preview phase */
+  if (phase === 'preview') {
+    return (
+      <div className={styles.modalBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div className={`${styles.modal} ${styles.aiPreviewModal}`}>
+          <div className={styles.modalHeader}>
+            <span className={styles.modalTitle}>✦ {cards.length} cards ready — {deckLang}</span>
+            <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+          </div>
+          <div className={`${styles.modalBody} ${styles.aiPreviewBody}`}>
+            <div className={styles.aiCardList}>
+              {cards.map((c, i) => (
+                <div key={i} className={styles.aiCardPreviewRow}>
+                  <span className={styles.aiCardNum}>{i + 1}</span>
+                  <span className={styles.aiCardForeign}>{c.foreignWord}</span>
+                  <span className={styles.aiCardSep}>→</span>
+                  <span className={styles.aiCardNative}>{c.nativeTranslation}</span>
+                  {c.phoneticSpelling && (
+                    <span className={styles.aiCardPhonetic}>[{c.phoneticSpelling}]</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className={styles.modalFooter}>
+            <button className={styles.cancelBtn} onClick={() => void handleGenerate()}>
+              ↺ Regenerate
+            </button>
+            <button className={styles.submitBtn} onClick={() => void handleSave()}>
+              Save Deck
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* Config phase (default) */
+  return (
+    <div className={styles.modalBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className={styles.modal}>
+        <div className={styles.modalHeader}>
+          <span className={styles.modalTitle}>✦ AI Deck Generator</span>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className={styles.modalBody}>
+          {error && <p className={styles.aiErrorText}>{error}</p>}
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>Language / Subject *</label>
+            <input
+              className={styles.fieldInput}
+              placeholder="e.g. Spanish, Japanese, Python, Medical Terms…"
+              value={deckLang}
+              onChange={e => setDeckLang(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>What should the deck cover? *</label>
+            <textarea
+              className={`${styles.fieldInput} ${styles.aiDescTextarea}`}
+              placeholder="e.g. Common travel phrases for beginners, food and restaurant vocabulary, A1 core words…"
+              rows={3}
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>Number of cards</label>
+            <div className={styles.aiCardCountRow}>
+              {AI_COUNT_OPTIONS.map(opt => (
+                <button
+                  key={String(opt)}
+                  className={`${styles.goalBtn} ${cardCount === opt ? styles.goalBtnActive : ''}`}
+                  onClick={() => setCardCount(opt)}
+                >
+                  {opt === 'ai' ? 'AI Decides' : opt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
+          <button
+            className={styles.submitBtn}
+            onClick={() => void handleGenerate()}
+            disabled={!canGenerate}
+          >
+            ✦ Generate Cards
           </button>
         </div>
       </div>
@@ -2063,12 +2365,21 @@ function LanguageBuilderTab() {
         <aside className={styles.deckPanel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>My Decks</span>
-            <button
-              className={styles.newDeckBtn}
-              onClick={() => setModal({ kind: 'new-deck' })}
-            >
-              + New Deck
-            </button>
+            <div className={styles.panelHeaderBtns}>
+              <button
+                className={styles.newDeckBtn}
+                onClick={() => setModal({ kind: 'ai-generate' })}
+                title="Generate a deck with AI"
+              >
+                ✦ AI
+              </button>
+              <button
+                className={styles.newDeckBtn}
+                onClick={() => setModal({ kind: 'new-deck' })}
+              >
+                + New
+              </button>
+            </div>
           </div>
 
           <div className={styles.deckList}>
@@ -2235,6 +2546,16 @@ function LanguageBuilderTab() {
           onCreated={deck => {
             setSelectedId(deck.id)
             setActiveTab('cards')
+          }}
+        />
+      )}
+
+      {modal.kind === 'ai-generate' && (
+        <AiDeckGeneratorModal
+          onClose={() => setModal({ kind: 'none' })}
+          onCreated={deck => {
+            setSelectedId(deck.id)
+            setActiveTab('study')
           }}
         />
       )}
