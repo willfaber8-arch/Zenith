@@ -1178,3 +1178,95 @@
   .engStatRow { gap: var(--sp-2); }
   .engStat    { min-width: 80px; }
 }
+
+/* ── Daily goal row ─────────────────────────────────────────── */
+
+.goalRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.goalLabel {
+  font-family:     var(--font-mono);
+  font-size:       0.62rem;
+  letter-spacing:  0.08em;
+  text-transform:  uppercase;
+  color:           var(--text-dark);
+  white-space:     nowrap;
+  margin-right:    var(--sp-1);
+}
+
+.goalSuffix {
+  font-family:     var(--font-mono);
+  font-size:       0.62rem;
+  letter-spacing:  0.08em;
+  text-transform:  uppercase;
+  color:           var(--text-dark);
+  white-space:     nowrap;
+}
+
+.goalBtn {
+  font-family:     var(--font-mono);
+  font-size:       0.65rem;
+  letter-spacing:  0.05em;
+  padding:         3px 10px;
+  border-radius:   var(--r-md);
+  border:          1px solid var(--border-subtle);
+  background:      transparent;
+  color:           var(--text-muted);
+  cursor:          pointer;
+  transition:      background   140ms var(--ease-smooth),
+                   border-color 140ms var(--ease-smooth),
+                   color        140ms var(--ease-smooth);
+}
+
+.goalBtn:hover {
+  border-color: rgba(124, 149, 255, 0.30);
+  color:        var(--text-primary);
+}
+
+.goalBtnActive {
+  border-color: rgba(124, 149, 255, 0.50);
+  background:   rgba(124, 149, 255, 0.10);
+  color:        var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Mastery badge (word list) ──────────────────────────────── */
+
+.engMasteryBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding:        2px 7px;
+  border-radius:  var(--r-sm);
+  border:         1px solid transparent;
+  white-space:    nowrap;
+  text-align:     right;
+}
+
+.engMasteryNew {
+  color:        var(--text-dark);
+  border-color: var(--border-subtle);
+}
+
+.engMasteryLearning {
+  color:        #f59e0b;
+  border-color: rgba(245, 158, 11, 0.25);
+  background:   rgba(245, 158, 11, 0.05);
+}
+
+.engMasteryGood {
+  color:        rgba(124, 149, 255, 0.90);
+  border-color: rgba(124, 149, 255, 0.25);
+  background:   rgba(124, 149, 255, 0.05);
+}
+
+.engMasteryMastered {
+  color:        var(--accent-green);
+  border-color: rgba(82, 204, 163, 0.30);
+  background:   rgba(82, 204, 163, 0.06);
+}

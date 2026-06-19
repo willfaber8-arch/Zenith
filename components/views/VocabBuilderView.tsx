@@ -13,9 +13,12 @@ import styles                                          from './VocabBuilderView.
    English Vocabulary — static word bank (GRE / advanced level)
    ════════════════════════════════════════════════════════════════ */
 
-const ENGLISH_DECK_NAME = 'Advanced English'
-const ENGLISH_DECK_LS_KEY = 'zenith_english_deck_id_v1'
-const ENGLISH_STREAK_KEY  = 'zenith_english_vocab_streak_v1'
+const ENGLISH_DECK_NAME    = 'Advanced English'
+const ENGLISH_DECK_LS_KEY  = 'zenith_english_deck_id_v1'
+const ENGLISH_STREAK_KEY   = 'zenith_english_vocab_streak_v1'
+const VOCAB_DAILY_GOAL_KEY = 'zenith_vocab_daily_goal_v1'
+const DEFAULT_DAILY_GOAL   = 20
+const MASTERED_THRESHOLD   = 5
 
 const ADVANCED_ENGLISH_WORDS: Array<{ word: string; definition: string }> = [
   { word: 'Abstruse',        definition: 'Difficult to understand; obscure or esoteric' },
@@ -1322,14 +1325,19 @@ function EnglishVocabTab() {
   const [deckId,     setDeckId]     = useState<string | null>(null)
   const [sessionKey, setSessionKey] = useState(0)
   const [streak,     setStreak]     = useState(0)
-  const [tab,        setTab]        = useState<'study' | 'progress'>('study')
+  const [tab,        setTab]        = useState<'study' | 'review' | 'words'>('study')
+  const [dailyGoal,  setDailyGoal]  = useState<number>(DEFAULT_DAILY_GOAL)
 
-  /* Bootstrap — seed deck if not present */
+  /* Bootstrap — seed deck + load persisted goal */
   useEffect(() => {
     seedEnglishDeck().then(id => {
       setDeckId(id)
       setStreak(readEngStreak().streak)
     })
+    try {
+      const raw = localStorage.getItem(VOCAB_DAILY_GOAL_KEY)
+      if (raw) setDailyGoal(Number(raw) || DEFAULT_DAILY_GOAL)
+    } catch { /* noop */ }
   }, [])
 
   const cards = (useLiveQuery(
@@ -1338,6 +1346,17 @@ function EnglishVocabTab() {
   ) ?? []) as VocabCard[]
 
   const stats = useMemo(() => computeStats(cards), [cards])
+
+  function handleGoalChange(newGoal: number) {
+    setDailyGoal(newGoal)
+    try { localStorage.setItem(VOCAB_DAILY_GOAL_KEY, String(newGoal)) } catch { /* noop */ }
+    /* Clear today's study set so it gets regenerated with the new goal */
+    if (deckId) {
+      const key = `zenith_daily_study_v2_${deckId.slice(0, 8)}`
+      try { localStorage.removeItem(key) } catch { /* noop */ }
+    }
+    setSessionKey(k => k + 1)
+  }
 
   if (!deckId) {
     return (
@@ -1358,8 +1377,8 @@ function EnglishVocabTab() {
           <span className={styles.engStatLabel}>Mastered</span>
         </div>
         <div className={styles.engStat}>
-          <span className={`${styles.engStatVal} ${stats.due > 0 ? styles.engStatValRose : ''}`}>{stats.due}</span>
-          <span className={styles.engStatLabel}>Due Today</span>
+          <span className={styles.engStatVal}>{stats.good}</span>
+          <span className={styles.engStatLabel}>Good</span>
         </div>
         <div className={styles.engStat}>
           <span className={styles.engStatVal}>{stats.total}</span>
@@ -1394,15 +1413,32 @@ function EnglishVocabTab() {
         </div>
       )}
 
+      {/* ── Daily goal row ───────────────────────────────────── */}
+      <div className={styles.goalRow}>
+        <span className={styles.goalLabel}>Daily goal:</span>
+        {[10, 20, 30, 50].map(g => (
+          <button
+            key={g}
+            className={`${styles.goalBtn} ${dailyGoal === g ? styles.goalBtnActive : ''}`}
+            onClick={() => handleGoalChange(g)}
+          >
+            {g}
+          </button>
+        ))}
+        <span className={styles.goalSuffix}>cards</span>
+      </div>
+
       {/* ── Tab bar ─────────────────────────────────────────── */}
       <div className={styles.engTabBar}>
-        {(['study', 'progress'] as const).map(t => (
+        {(['study', 'review', 'words'] as const).map(t => (
           <button
             key={t}
             className={`${styles.engTab} ${tab === t ? styles.engTabActive : ''}`}
             onClick={() => setTab(t)}
           >
-            {t === 'study' ? '◈ Study Session' : '◫ Full Word List'}
+            {t === 'study'  ? '◈ Study'     :
+             t === 'review' ? '↺ Review'    :
+             '◫ Word List'}
           </button>
         ))}
       </div>
@@ -1411,9 +1447,11 @@ function EnglishVocabTab() {
       {tab === 'study' && (
         <div className={styles.engStudyWrap}>
           <VocabStudySession
-            key={`eng-${sessionKey}`}
+            key={`eng-study-${sessionKey}`}
             deckId={deckId}
             languageName="Advanced English"
+            dailyGoal={dailyGoal}
+            mode="study"
             onRestart={() => {
               setSessionKey(k => k + 1)
               setStreak(bumpEngStreak())
@@ -1422,20 +1460,43 @@ function EnglishVocabTab() {
         </div>
       )}
 
+      {/* ── Review session (mastered cards) ─────────────────── */}
+      {tab === 'review' && (
+        <div className={styles.engStudyWrap}>
+          <VocabStudySession
+            key={`eng-review-${sessionKey}`}
+            deckId={deckId}
+            languageName="Advanced English"
+            dailyGoal={dailyGoal}
+            mode="review"
+            onRestart={() => setSessionKey(k => k + 1)}
+          />
+        </div>
+      )}
+
       {/* ── Word list ────────────────────────────────────────── */}
-      {tab === 'progress' && (
+      {tab === 'words' && (
         <div className={styles.engWordList}>
           {cards
             .slice()
-            .sort((a, b) => b.reviewIntervalDays - a.reviewIntervalDays)
+            .sort((a, b) => b.consecutiveSuccesses - a.consecutiveSuccesses)
             .map(card => {
-              const { label, isDue } = formatNextReview(card.nextReviewTimestamp)
-              const isMastered = card.reviewIntervalDays >= 21
+              const cs = card.consecutiveSuccesses
+              const masteryLabel =
+                cs >= MASTERED_THRESHOLD ? 'Mastered' :
+                cs >= 3                  ? 'Good'     :
+                cs >= 1                  ? 'Learning' :
+                'New'
+              const masteryClass =
+                cs >= MASTERED_THRESHOLD ? styles.engMasteryMastered :
+                cs >= 3                  ? styles.engMasteryGood     :
+                cs >= 1                  ? styles.engMasteryLearning :
+                styles.engMasteryNew
               return (
-                <div key={card.id} className={`${styles.engWordRow} ${isMastered ? styles.engWordRowMastered : ''}`}>
+                <div key={card.id} className={styles.engWordRow}>
                   <div className={styles.engWordFront}>{card.foreignWord}</div>
                   <div className={styles.engWordBack}>{card.nativeTranslation}</div>
-                  <span className={`${styles.engWordDue} ${isDue ? styles.engWordDueNow : ''}`}>{label}</span>
+                  <span className={`${styles.engMasteryBadge} ${masteryClass}`}>{masteryLabel}</span>
                 </div>
               )
             })}
@@ -1494,7 +1555,6 @@ function stabilityClass(
 /* ── Per-deck statistics ────────────────────────────────────── */
 interface DeckStats {
   total:    number
-  due:      number
   mastered: number
   avgEF:    number
   newCards: number
@@ -1503,21 +1563,19 @@ interface DeckStats {
 }
 
 function computeStats(cards: VocabCard[]): DeckStats {
-  const now = Date.now()
-  let due = 0, mastered = 0, newCards = 0, learning = 0, good = 0, efSum = 0
+  let mastered = 0, newCards = 0, learning = 0, good = 0, efSum = 0
 
   for (const c of cards) {
-    if (c.nextReviewTimestamp <= now)  due++
-    if (c.reviewIntervalDays >= 21)    mastered++
-    if (c.consecutiveSuccesses === 0)  newCards++
-    else if (c.stabilityFactor < 0.3)  learning++
-    else if (c.reviewIntervalDays < 21) good++
+    const cs = c.consecutiveSuccesses
+    if (cs >= MASTERED_THRESHOLD)  mastered++
+    else if (cs === 0)             newCards++
+    else if (cs <= 2)              learning++
+    else                           good++       // cs 3-4
     efSum += c.easeFactor
   }
 
   return {
     total:    cards.length,
-    due,
     mastered,
     avgEF:    cards.length > 0 ? efSum / cards.length : 0,
     newCards,
@@ -1533,7 +1591,7 @@ type ModalMode =
   | { kind: 'add-card';  deckId: string }
   | { kind: 'edit-card'; card: VocabCard }
 
-type DeckTab = 'study' | 'cards' | 'progress'
+type DeckTab = 'study' | 'review' | 'cards' | 'progress'
 
 /* ════════════════════════════════════════════════════════════════
    Sub-components
@@ -1834,8 +1892,8 @@ function ProgressTab({ cards }: { cards: VocabCard[] }) {
           <span className={styles.statLabel}>Total Cards</span>
         </div>
         <div className={`${styles.statCard} anim-scale-in`} style={{ animationDelay: '60ms' }}>
-          <span className={`${styles.statValue} ${styles.statValueRose}`}>{stats.due}</span>
-          <span className={styles.statLabel}>Due Today</span>
+          <span className={`${styles.statValue} ${styles.statValueRose}`}>{stats.learning}</span>
+          <span className={styles.statLabel}>Learning</span>
         </div>
         <div className={`${styles.statCard} anim-scale-in`} style={{ animationDelay: '120ms' }}>
           <span className={`${styles.statValue} ${styles.statValueGreen}`}>{stats.mastered}</span>
@@ -1938,6 +1996,15 @@ function LanguageBuilderTab() {
   const [modal,         setModal]         = useState<ModalMode>({ kind: 'none' })
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [sessionKey,    setSessionKey]    = useState(0)   // increment to restart session
+  const [dailyGoal,     setDailyGoal]     = useState<number>(DEFAULT_DAILY_GOAL)
+
+  /* Load persisted daily goal */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VOCAB_DAILY_GOAL_KEY)
+      if (raw) setDailyGoal(Number(raw) || DEFAULT_DAILY_GOAL)
+    } catch { /* noop */ }
+  }, [])
 
   // Auto-select first deck when list is populated
   useEffect(() => {
@@ -2079,15 +2146,41 @@ function LanguageBuilderTab() {
                 </div>
               </div>
 
+              {/* Goal row */}
+              <div className={styles.goalRow}>
+                <span className={styles.goalLabel}>Daily goal:</span>
+                {[10, 20, 30, 50].map(g => (
+                  <button
+                    key={g}
+                    className={`${styles.goalBtn} ${dailyGoal === g ? styles.goalBtnActive : ''}`}
+                    onClick={() => {
+                      setDailyGoal(g)
+                      try {
+                        localStorage.setItem(VOCAB_DAILY_GOAL_KEY, String(g))
+                        if (selectedDeck) {
+                          const key = `zenith_daily_study_v2_${selectedDeck.id.slice(0, 8)}`
+                          localStorage.removeItem(key)
+                        }
+                      } catch { /* noop */ }
+                      setSessionKey(k => k + 1)
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+                <span className={styles.goalSuffix}>cards</span>
+              </div>
+
               {/* Tab bar */}
               <div className={styles.tabBar}>
-                {(['study', 'cards', 'progress'] as DeckTab[]).map(tab => (
+                {(['study', 'review', 'cards', 'progress'] as DeckTab[]).map(tab => (
                   <button
                     key={tab}
                     className={`${styles.tabItem} ${activeTab === tab ? styles.tabItemActive : ''}`}
                     onClick={() => setActiveTab(tab)}
                   >
                     {tab === 'study'    ? 'Study'    :
+                     tab === 'review'   ? 'Review'   :
                      tab === 'cards'    ? 'Cards'    :
                      'Progress'}
                   </button>
@@ -2098,9 +2191,22 @@ function LanguageBuilderTab() {
               <div className={styles.tabContent}>
                 {activeTab === 'study' && (
                   <VocabStudySession
-                    key={`${selectedDeck.id}-${sessionKey}`}
+                    key={`${selectedDeck.id}-study-${sessionKey}`}
                     deckId={selectedDeck.id}
                     languageName={selectedDeck.languageName}
+                    dailyGoal={dailyGoal}
+                    mode="study"
+                    onRestart={() => setSessionKey(k => k + 1)}
+                  />
+                )}
+
+                {activeTab === 'review' && (
+                  <VocabStudySession
+                    key={`${selectedDeck.id}-review-${sessionKey}`}
+                    deckId={selectedDeck.id}
+                    languageName={selectedDeck.languageName}
+                    dailyGoal={dailyGoal}
+                    mode="review"
                     onRestart={() => setSessionKey(k => k + 1)}
                   />
                 )}
