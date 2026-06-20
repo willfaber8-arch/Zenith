@@ -1057,6 +1057,7 @@ function RecipesTab({
       fat:           r.fat,
       calories:      r.calories,
       servings:      1,
+      url:           `https://www.allrecipes.com/search?q=${encodeURIComponent(r.name)}`,
     })
     toast(`"${r.name}" saved to your recipes!`, 'success')
   }
@@ -1191,6 +1192,14 @@ function RecipesTab({
                   ))}
                 </div>
                 <p className={styles.libraryTip}>{r.tips}</p>
+                <a
+                  href={`https://www.allrecipes.com/search?q=${encodeURIComponent(r.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.libraryRecipeLink}
+                >
+                  View instructions →
+                </a>
               </div>
             ))}
           </div>
