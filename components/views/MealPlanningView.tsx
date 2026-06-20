@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db }             from '@/lib/db'
 import ZenHeading         from '@/components/ui/ZenHeading'
@@ -33,6 +33,19 @@ const LS_KITCHEN  = 'zenith_kitchen_setup_v1'
 const LS_STORE    = 'zenith_preferred_store_v1'
 const LS_PREFS    = 'zenith_food_prefs_v1'
 const LS_GEN_CFG  = 'zenith_meal_gen_config_v1'
+const LS_HIDDEN   = 'zenith_hidden_recipes_v1'
+
+function loadHiddenIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(LS_HIDDEN)
+    return raw ? new Set<string>(JSON.parse(raw) as string[]) : new Set()
+  } catch { return new Set() }
+}
+
+function saveHiddenIds(ids: Set<string>) {
+  try { localStorage.setItem(LS_HIDDEN, JSON.stringify([...ids])) } catch { /* noop */ }
+}
 
 function loadGenConfig(): GenConfig {
   if (typeof window === 'undefined') return DEFAULT_GEN_CONFIG
@@ -96,7 +109,8 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
   const [ingQuery,    setIngQuery]    = useState('')
   const [showSuggest, setShowSuggest] = useState(false)
 
-  const isHome = planType === 'home'
+  const isHome       = planType === 'home'
+  const isDiningHall = planType === 'dining_hall'
 
   const estimatedCost = useMemo(() =>
     isHome ? Math.round(ingredients.reduce((s, i) => s + i.estimatedPrice, 0) * 100) / 100 : 0,
@@ -143,10 +157,10 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
       mealType,
       mealName:          mealName.trim(),
       planType,
-      ingredients,
-      estimatedCost:     isHome ? estimatedCost     : manualCost,
-      estimatedCalories: isHome ? estimatedCalories : manualCalories,
-      cookMinutes:       isHome ? cookMinutes        : 0,
+      ingredients:       isDiningHall ? [] : ingredients,
+      estimatedCost:     isDiningHall ? 0 : isHome ? estimatedCost : manualCost,
+      estimatedCalories: isDiningHall ? manualCalories : isHome ? estimatedCalories : manualCalories,
+      cookMinutes:       isHome ? cookMinutes : 0,
       recipeUrl:         recipeUrl.trim() || undefined,
       notes:             notes.trim()     || undefined,
     })
@@ -231,21 +245,39 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
           <div className={styles.field}>
             <label className={styles.fieldLabel}>Type</label>
             <div className={styles.planTypeRow}>
-              {(['home', 'dining_out', 'takeout', 'delivery'] as PlanType[]).map(pt => (
+              {(['home', 'dining_hall', 'dining_out', 'takeout', 'delivery'] as PlanType[]).map(pt => (
                 <button
                   key={pt}
                   type="button"
-                  className={`${styles.typeChip} ${planType === pt ? styles.typeChipOn : ''}`}
+                  className={`${styles.typeChip} ${planType === pt ? styles.typeChipOn : ''} ${pt === 'dining_hall' ? styles.typeChipDiningHall : ''}`}
                   onClick={() => setPlanType(pt)}
                 >
-                  {PLAN_TYPE_LABELS[pt]}
+                  {pt === 'dining_hall' ? '🏫 ' : ''}{PLAN_TYPE_LABELS[pt]}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Cost: auto-calculated for home, manual for out */}
-          {isHome ? (
+          {/* Cost: auto-calculated for home, simplified for dining hall, manual for out */}
+          {isDiningHall ? (
+            <div className={styles.diningHallInfo}>
+              <div className={styles.diningHallBadge}>🏫 Dining Hall</div>
+              <p className={styles.diningHallNote}>
+                Covered by your meal plan — no cost or ingredient tracking needed.
+              </p>
+              <div className={styles.field}>
+                <label className={styles.fieldLabel}>Calories (optional)</label>
+                <input
+                  type="number"
+                  min={0}
+                  className={`${styles.fieldInput} ${styles.fieldInputSm}`}
+                  value={manualCalories || ''}
+                  onChange={e => setManualCalories(Math.max(0, Number(e.target.value)))}
+                  placeholder="e.g. 650"
+                />
+              </div>
+            </div>
+          ) : isHome ? (
             <>
               {/* Ingredients */}
               <div className={styles.field}>
@@ -351,6 +383,7 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
               </div>
             </div>
           )}
+
 
           {/* Notes */}
           <div className={styles.field}>
@@ -525,9 +558,10 @@ interface PlannerTabProps {
   weekBudget: number
   disliked:   string[]
   dietary:    string[]
+  hiddenIds:  Set<string>
 }
 
-function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: PlannerTabProps) {
+function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hiddenIds }: PlannerTabProps) {
   const { toast }  = useToast()
   const weekDays   = getWeekDays(weekStart)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -591,7 +625,7 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: Pla
 
       const result = generateWeekPlan({
         config, equipment, disliked, dietary, weekStart,
-        existingKeys, savedRecipes, weekBudget,
+        existingKeys, savedRecipes, weekBudget, hiddenIds,
       })
 
       if (result.emptyPools) {
@@ -691,16 +725,18 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: Pla
                 <button
                   key={di}
                   type="button"
-                  className={`${styles.plannerCell} ${slot ? styles.plannerCellFilled : styles.plannerCellEmpty}`}
+                  className={`${styles.plannerCell} ${slot ? (slot.planType === 'dining_hall' ? styles.plannerCellDiningHall : styles.plannerCellFilled) : styles.plannerCellEmpty}`}
                   onClick={() => setEditing({ dayIndex: di, mealType: mt })}
                 >
                   {slot ? (
                     <div className={styles.slotContent}>
-                      <span className={styles.slotName}>{slot.mealName}</span>
+                      <span className={styles.slotName}>
+                        {slot.planType === 'dining_hall' ? '🏫 ' : ''}{slot.mealName}
+                      </span>
                       <span className={styles.slotMeta}>
-                        {slot.planType !== 'home' ? PLAN_TYPE_LABELS[slot.planType] : ''}
-                        {slot.estimatedCost > 0     ? ` ~$${slot.estimatedCost.toFixed(2)}` : ''}
-                        {slot.cookMinutes > 0        ? ` · ${slot.cookMinutes}m`            : ''}
+                        {slot.planType === 'dining_hall' ? 'Dining Hall' : slot.planType !== 'home' ? PLAN_TYPE_LABELS[slot.planType] : ''}
+                        {slot.planType !== 'dining_hall' && slot.estimatedCost > 0 ? ` ~$${slot.estimatedCost.toFixed(2)}` : ''}
+                        {slot.cookMinutes > 0 ? ` · ${slot.cookMinutes}m` : ''}
                       </span>
                       {slot.estimatedCalories > 0 && (
                         <span className={styles.slotCal}>{slot.estimatedCalories} kcal</span>
@@ -941,7 +977,15 @@ function AddRecipeModal({ onSave, onClose }: { onSave: (r: Omit<SavedMealRecipe,
   )
 }
 
-function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier[]; disliked: string[]; dietary: string[] }) {
+function RecipesTab({
+  equipment, disliked, dietary, hiddenIds, setHiddenIds,
+}: {
+  equipment: EquipmentTier[]
+  disliked:  string[]
+  dietary:   string[]
+  hiddenIds: Set<string>
+  setHiddenIds: Dispatch<SetStateAction<Set<string>>>
+}) {
   const { toast } = useToast()
   const [catFilter,  setCatFilter]  = useState<string>('All')
   const [showAdd,    setShowAdd]    = useState(false)
@@ -953,6 +997,23 @@ function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier
   const [libCat,   setLibCat]   = useState('All')
   const [libRespectKitchen, setLibRespectKitchen] = useState(false)
 
+  const hideRecipe = (id: string) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      saveHiddenIds(next)
+      return next
+    })
+    toast('Recipe hidden. You can restore it below.', 'info')
+  }
+
+  const restoreAllHidden = () => {
+    const empty = new Set<string>()
+    saveHiddenIds(empty)
+    setHiddenIds(() => empty)
+    toast('All hidden recipes restored.', 'success')
+  }
+
   const libraryResults = useMemo(() =>
     filterLibrary({
       category:  libCat,
@@ -960,8 +1021,9 @@ function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier
       equipment: libRespectKitchen ? equipment : [],
       dietary:   libRespectKitchen ? dietary : [],
       disliked:  libRespectKitchen ? disliked : [],
+      hiddenIds,
     }),
-    [libCat, libQuery, libRespectKitchen, equipment, dietary, disliked],
+    [libCat, libQuery, libRespectKitchen, equipment, dietary, disliked, hiddenIds],
   )
 
   const handleSaveLibrary = async (r: LibraryRecipe) => {
@@ -1021,7 +1083,18 @@ function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier
         <div className={styles.libraryHead}>
           <div>
             <h3 className={styles.libraryTitle}>Recipe Library</h3>
-            <p className={styles.librarySub}>{libraryResults.length} recipes · tap ＋ to save to your collection</p>
+            <p className={styles.librarySub}>
+              {libraryResults.length} recipes · tap ＋ to save
+              {hiddenIds.size > 0 && (
+                <button
+                  type="button"
+                  className={styles.restoreHiddenBtn}
+                  onClick={restoreAllHidden}
+                >
+                  · {hiddenIds.size} hidden — restore all
+                </button>
+              )}
+            </p>
           </div>
           <button
             type="button"
@@ -1068,12 +1141,21 @@ function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier
               <div key={r.id} className={styles.libraryCard}>
                 <div className={styles.libraryCardHead}>
                   <h4 className={styles.libraryCardName}>{r.name}</h4>
-                  <button
-                    type="button"
-                    className={styles.libraryAddBtn}
-                    onClick={() => handleSaveLibrary(r)}
-                    aria-label={`Save ${r.name}`}
-                  >＋</button>
+                  <div className={styles.libraryCardActions}>
+                    <button
+                      type="button"
+                      className={styles.libraryHideBtn}
+                      onClick={() => hideRecipe(r.id)}
+                      aria-label={`Hide ${r.name}`}
+                      title="Hide this recipe"
+                    >✕</button>
+                    <button
+                      type="button"
+                      className={styles.libraryAddBtn}
+                      onClick={() => handleSaveLibrary(r)}
+                      aria-label={`Save ${r.name}`}
+                    >＋</button>
+                  </div>
                 </div>
                 <div className={styles.libraryMacroRow}>
                   <span className={`${styles.recipeMacroChip} ${styles.macroCalChip}`}>{r.calories} kcal</span>
@@ -1590,6 +1672,7 @@ function KitchenSetupTab({
 export default function MealPlanningView() {
   const [activeTab,  setActiveTab]  = useState<Tab>('planner')
   const [weekOffset, setWeekOffset] = useState(0)
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(loadHiddenIds)
 
   const weekStart = useMemo(() => {
     const base = new Date()
@@ -1658,10 +1741,10 @@ export default function MealPlanningView() {
       {/* Tab content */}
       <div className="anim-fade-in delay-2">
         <div className={activeTab === 'planner'  ? '' : styles.hidden}>
-          <PlannerTab weekStart={weekStart} equipment={equipment} weekBudget={weekBudget} disliked={prefs.disliked} dietary={prefs.dietary} />
+          <PlannerTab weekStart={weekStart} equipment={equipment} weekBudget={weekBudget} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} />
         </div>
         <div className={activeTab === 'recipes'  ? '' : styles.hidden}>
-          <RecipesTab equipment={equipment} disliked={prefs.disliked} dietary={prefs.dietary} />
+          <RecipesTab equipment={equipment} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} setHiddenIds={setHiddenIds} />
         </div>
         <div className={activeTab === 'budget'   ? '' : styles.hidden}>
           <BudgetTab weekStart={weekStart} weekBudget={weekBudget} setWeekBudget={setWeekBudget} />

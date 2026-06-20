@@ -174,7 +174,7 @@ export interface QuickNote {
 /* ── Meal Planning (v17) ─────────────────────────────────────────── */
 
 export type MealType  = 'breakfast' | 'lunch' | 'dinner'
-export type PlanType  = 'home' | 'dining_out' | 'takeout' | 'delivery'
+export type PlanType  = 'home' | 'dining_hall' | 'dining_out' | 'takeout' | 'delivery'
 
 export interface MealIngredient {
   name:           string

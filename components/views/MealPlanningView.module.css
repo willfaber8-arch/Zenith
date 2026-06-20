@@ -269,6 +269,12 @@
 .plannerCellFilled { background: rgba(124,149,255,0.04); }
 .plannerCellFilled:hover { background: rgba(124,149,255,0.08); }
 
+.plannerCellDiningHall {
+  background:   rgba(82,204,163,0.05);
+  border-color: rgba(82,204,163,0.18);
+}
+.plannerCellDiningHall:hover { background: rgba(82,204,163,0.09); }
+
 .slotAdd {
   font-size: 18px;
   color:     rgba(124,149,255,0.25);
@@ -524,6 +530,37 @@
   background:   rgba(124,149,255,0.12);
   border-color: rgba(124,149,255,0.30);
   color:        var(--accent-purple);
+}
+
+.typeChipDiningHall.typeChipOn {
+  background:   rgba(82,204,163,0.12);
+  border-color: rgba(82,204,163,0.30);
+  color:        var(--accent-green);
+}
+
+/* ── Dining Hall simplified form ──────────────────────────── */
+.diningHallInfo {
+  background:    rgba(82,204,163,0.05);
+  border:        1px solid rgba(82,204,163,0.15);
+  border-radius: var(--r-md);
+  padding:       var(--sp-4);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-3);
+}
+
+.diningHallBadge {
+  font-family:   var(--font-mono);
+  font-size:     0.75rem;
+  color:         var(--accent-green);
+  letter-spacing: 0.04em;
+}
+
+.diningHallNote {
+  font-size:   0.8125rem;
+  color:       var(--text-muted);
+  margin:      0;
+  line-height: 1.5;
 }
 
 /* ── Ingredient search ────────────────────────────────────── */
@@ -1951,6 +1988,49 @@
   background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 22%, transparent);
   transform: scale(1.08);
 }
+
+.libraryCardActions {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  flex-shrink: 0;
+}
+
+.libraryHideBtn {
+  flex-shrink:   0;
+  width:         22px;
+  height:        22px;
+  border-radius: var(--r-sm);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-dark);
+  font-size:     0.7rem;
+  cursor:        pointer;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  transition:    background 0.15s ease, color 0.15s ease;
+}
+
+.libraryHideBtn:hover {
+  background: rgba(248,113,113,0.10);
+  color:      #f87171;
+  border-color: rgba(248,113,113,0.25);
+}
+
+.restoreHiddenBtn {
+  background:  none;
+  border:      none;
+  padding:     0;
+  cursor:      pointer;
+  color:       var(--accent-green);
+  font-size:   inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.restoreHiddenBtn:hover { opacity: 0.8; }
 
 .libraryMacroRow {
   display: flex;

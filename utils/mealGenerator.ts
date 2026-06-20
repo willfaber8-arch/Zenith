@@ -103,6 +103,7 @@ export interface GeneratorInput {
   existingKeys: Set<string>          // "dayIndex:mealType" already filled
   savedRecipes: SavedMealRecipe[]
   weekBudget:   number               // 0 = no budget set
+  hiddenIds?:   Set<string>          // recipe IDs hidden by the user
 }
 
 export interface GeneratorResult {
@@ -131,7 +132,7 @@ const CATEGORY_MEAL_MAP: Record<string, MealTypeKey[]> = {
  * and college meals — all filtered by equipment / dietary / disliked.
  */
 function buildPools(input: GeneratorInput): Record<MealTypeKey, GenCandidate[]> {
-  const { equipment, disliked, dietary, savedRecipes } = input
+  const { equipment, disliked, dietary, savedRecipes, hiddenIds } = input
   const lowerDislike = disliked.map(d => d.toLowerCase())
 
   const pools: Record<MealTypeKey, GenCandidate[]> = { breakfast: [], lunch: [], dinner: [] }
@@ -144,6 +145,7 @@ function buildPools(input: GeneratorInput): Record<MealTypeKey, GenCandidate[]> 
   /* 1 — Library recipes (rich macro data) */
   for (const mt of MEAL_ORDER) {
     for (const r of RECIPES_BY_MEAL[mt]) {
+      if (hiddenIds && hiddenIds.has(r.id)) continue
       if (!passesEquip(r.equipment)) continue
       if (!passesDietary(r.dietaryTags)) continue
       if (!passesDislike(r.ingredients)) continue
