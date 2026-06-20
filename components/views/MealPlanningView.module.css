@@ -1510,6 +1510,40 @@
   cursor:  not-allowed;
 }
 
+.generateActions {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+}
+
+.clearWeekBtn {
+  flex-shrink:    0;
+  padding:        var(--sp-2) var(--sp-4);
+  background:     rgba(248, 113, 113, 0.06);
+  border:         1px solid rgba(248, 113, 113, 0.22);
+  border-radius:  var(--r-md);
+  font-family:    var(--font-mono);
+  font-size:      0.5625rem;
+  font-weight:    600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          #f87171;
+  cursor:         pointer;
+  transition:     background var(--dur-fast), border-color var(--dur-fast);
+  white-space:    nowrap;
+}
+
+.clearWeekBtn:hover:not(:disabled) {
+  background:   rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.50);
+}
+
+.clearWeekBtn:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RECIPE URL IMPORT
    ═══════════════════════════════════════════════════════════════ */

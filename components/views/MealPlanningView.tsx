@@ -614,6 +614,11 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
     setEditing(null)
   }
 
+  const handleClearWeek = useCallback(async () => {
+    const count = await db.mealPlanSlots.where('weekStart').equals(weekStart).delete()
+    toast(`Cleared ${count} meal slot${count !== 1 ? 's' : ''} — ready to regenerate.`, 'info')
+  }, [weekStart, toast])
+
   const handleRunGenerate = useCallback(async (config: GenConfig) => {
     setShowGenConfig(false)
     setIsGenerating(true)
@@ -664,14 +669,26 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
         <p className={styles.generateHint}>
           Auto-fill empty slots from the recipe library, tuned to your calorie goal, protein, and budget.
         </p>
-        <button
-          type="button"
-          className={styles.generateBtn}
-          onClick={() => setShowGenConfig(true)}
-          disabled={isGenerating}
-        >
-          {isGenerating ? 'Generating…' : '⟳ Generate Week Plan'}
-        </button>
+        <div className={styles.generateActions}>
+          {slots.length > 0 && (
+            <button
+              type="button"
+              className={styles.clearWeekBtn}
+              onClick={handleClearWeek}
+              disabled={isGenerating}
+            >
+              ✕ Clear Week
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.generateBtn}
+            onClick={() => setShowGenConfig(true)}
+            disabled={isGenerating}
+          >
+            {isGenerating ? 'Generating…' : '⟳ Generate Week Plan'}
+          </button>
+        </div>
       </div>
 
       {/* Budget summary strip */}
