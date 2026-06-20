@@ -1603,3 +1603,393 @@
   color:        #f87171;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERATE CONFIG MODAL
+   ═══════════════════════════════════════════════════════════════ */
+
+.genIntro {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-2);
+}
+
+.genSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.genSectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.genBudgetNote {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cat-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 12%, transparent);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.genOptionRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+.genOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.genOption:hover {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 35%, transparent);
+}
+
+.genOptionOn {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 60%, transparent);
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 12%, transparent);
+}
+
+.genOptionName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.genOptionSub {
+  font-size: 0.625rem;
+  color: var(--text-dark);
+}
+
+.genToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.genToggleRow + .genToggleRow { margin-top: var(--sp-2); }
+
+.genToggleRowOn {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 40%, transparent);
+}
+
+.genToggleName {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.genToggleSub {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+  margin-top: 1px;
+}
+
+.genSwitch {
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.genSwitchOn {
+  background: var(--cat-accent, var(--accent-purple));
+}
+
+.genSwitchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s var(--ease-smooth);
+}
+
+.genSwitchOn .genSwitchThumb {
+  transform: translateX(16px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RECIPE LIBRARY (browse)
+   ═══════════════════════════════════════════════════════════════ */
+
+.librarySection {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+
+.libraryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.libraryTitle {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.librarySub {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  margin: 2px 0 0;
+}
+
+.libKitchenToggle {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.libKitchenToggleOn {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 14%, transparent);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.librarySearchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  margin-bottom: var(--sp-3);
+}
+
+.librarySearchGlyph {
+  color: var(--text-dark);
+  font-size: 0.9rem;
+}
+
+.librarySearchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: var(--sp-3) 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.librarySearchInput::placeholder { color: var(--text-dark); }
+
+.librarySearchClear {
+  border: none;
+  background: transparent;
+  color: var(--text-dark);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+}
+
+.libraryCatTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.libraryCatTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.libraryCatTab:hover { color: var(--text-primary); }
+
+.libraryCatTabOn {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 14%, transparent);
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.libraryCatCount {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--text-dark);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  padding: 0 5px;
+}
+
+.libraryCatTabOn .libraryCatCount {
+  color: var(--cat-accent, var(--accent-purple));
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 18%, transparent);
+}
+
+.libraryEmpty {
+  font-size: 0.8125rem;
+  color: var(--text-dark);
+  padding: var(--sp-4) 0;
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-3);
+}
+
+.libraryCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.libraryCard:hover {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 30%, transparent);
+  transform: translateY(-2px);
+}
+
+.libraryCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.libraryCardName {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.libraryAddBtn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 35%, transparent);
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 10%, transparent);
+  color: var(--cat-accent, var(--accent-purple));
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.libraryAddBtn:hover {
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 22%, transparent);
+  transform: scale(1.08);
+}
+
+.libraryMacroRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.libraryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-dark);
+}
+
+.libraryTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.libraryTag {
+  font-size: 0.5625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--r-sm);
+  padding: 2px 6px;
+}
+
+.libraryTip {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@media (max-width: 540px) {
+  .genOptionRow { grid-template-columns: 1fr; }
+}

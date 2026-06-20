@@ -123,6 +123,9 @@ function TodayPanel() {
   )
 
   const scheduledHabits = habits.filter(h => isHabitScheduledOn(h, todayStr))
+  const habitsDone      = scheduledHabits.filter(h => h.todayDone).length
+  const habitsPct       = scheduledHabits.length > 0 ? habitsDone / scheduledHabits.length : 0
+  const overdueCount    = todayTasks.filter(a => (a.dueDate ?? '').slice(0, 10) < todayStr).length
 
   async function markDone(id: number) {
     await db?.assignments.update(id, { status: 'completed' })
@@ -131,9 +134,29 @@ function TodayPanel() {
   return (
     <div className={styles.panel}>
 
+      {/* ── Summary hero strip ──────────────────────────── */}
+      <div className={styles.summaryRow}>
+        <div className={`${styles.statCard} ${styles.statCalendar}`}>
+          <span className={styles.statIcon}>◇</span>
+          <span className={styles.statNum}>{allEvts.length}</span>
+          <span className={styles.statLabel}>{allEvts.length === 1 ? 'Event' : 'Events'}</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.statHabits}`}>
+          <HabitRing pct={habitsPct} color="#52cca3" />
+          <span className={styles.statNum}>{habitsDone}<span className={styles.statOf}>/{scheduledHabits.length}</span></span>
+          <span className={styles.statLabel}>Habits</span>
+        </div>
+        <div className={`${styles.statCard} ${overdueCount > 0 ? styles.statTasksAlert : styles.statTasks}`}>
+          <span className={styles.statIcon}>{overdueCount > 0 ? '!' : '✓'}</span>
+          <span className={styles.statNum}>{todayTasks.length}</span>
+          <span className={styles.statLabel}>{todayTasks.length === 1 ? 'Task due' : 'Tasks due'}</span>
+        </div>
+      </div>
+
       {/* ── Events ──────────────────────────────────────── */}
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.sectionCard}`}>
         <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphCalendar}`}>◇</span>
           Calendar
           {allEvts.length > 0 && (
             <span className={styles.count}>{allEvts.length}</span>
@@ -159,8 +182,9 @@ function TodayPanel() {
       </section>
 
       {/* ── Habits ──────────────────────────────────────── */}
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.sectionCard}`}>
         <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphHabits}`}>◆</span>
           Habits
           {scheduledHabits.length > 0 && (
             <span className={styles.count}>
@@ -205,8 +229,9 @@ function TodayPanel() {
       </section>
 
       {/* ── Tasks ───────────────────────────────────────── */}
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.sectionCard}`}>
         <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphTasks}`}>✓</span>
           Due Today
           {todayTasks.length > 0 && (
             <span className={styles.count}>{todayTasks.length}</span>

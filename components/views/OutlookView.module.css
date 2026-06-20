@@ -48,7 +48,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
   animation: panelFade 0.22s ease both;
 }
 
@@ -57,12 +57,108 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Summary hero strip ──────────────────────────────────── */
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.statCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--sp-4) var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  overflow: hidden;
+  transition: transform 0.18s var(--ease-smooth), border-color 0.18s ease;
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 100% 0%, var(--glow, rgba(124,149,255,0.14)) 0%, transparent 55%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+}
+
+.statCalendar     { --glow: rgba(124,149,255,0.18); }
+.statCalendar:hover { border-color: rgba(124,149,255,0.35); }
+.statHabits       { --glow: rgba(82,204,163,0.18); }
+.statHabits:hover { border-color: rgba(82,204,163,0.35); }
+.statTasks        { --glow: rgba(82,204,163,0.14); }
+.statTasks:hover  { border-color: rgba(82,204,163,0.30); }
+.statTasksAlert   { --glow: rgba(248,113,113,0.20); }
+.statTasksAlert:hover { border-color: rgba(248,113,113,0.40); }
+
+.statIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: var(--sp-1);
+}
+
+.statCalendar  .statIcon { color: var(--accent-purple); }
+.statTasks     .statIcon { color: var(--accent-green); }
+.statTasksAlert .statIcon { color: #f87171; }
+
+.statNum {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.statOf {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.statLabel {
+  position: relative;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
 /* ── Section ─────────────────────────────────────────────── */
 
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+}
+
+.sectionCard {
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .sectionLabel {
@@ -77,6 +173,21 @@
   color: var(--text-dark);
   margin: 0;
 }
+
+.sectionGlyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  letter-spacing: 0;
+}
+
+.glyphCalendar { color: var(--accent-purple); background: rgba(124,149,255,0.12); }
+.glyphHabits   { color: var(--accent-green);  background: rgba(82,204,163,0.12); }
+.glyphTasks    { color: var(--accent-green);  background: rgba(82,204,163,0.12); }
 
 .count {
   font-size: 0.625rem;
@@ -417,4 +528,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 540px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+  .statCard {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .statCard .statLabel { margin-left: auto; }
 }

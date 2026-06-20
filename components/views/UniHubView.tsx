@@ -17,7 +17,6 @@ import MajorHub           from '@/components/MajorHub'
 import GpaSimulator       from '@/components/GpaSimulator'
 import BrbBurnRate              from '@/components/BrbBurnRate'
 import DeliveriesLogger         from '@/components/DeliveriesLogger'
-import SubscriptionPackagesView from './SubscriptionPackagesView'
 import {
   UNIVERSITY_REGISTRY,
   getUniversityConfig,
@@ -375,15 +374,12 @@ export default function UniHubView() {
       <div className={activeTab === 'finances' ? styles.tabPane : styles.tabPaneHidden}>
         <div className={styles.tabPadded}>
           <p className={styles.financesNote}>
-            Track your {uniConfig.currencyName ?? 'campus dining balance'} spend rate and manage deliveries and subscriptions.
+            Track your {uniConfig.currencyName ?? 'campus dining balance'} spend rate and manage your campus mailroom deliveries.
           </p>
           <BrbBurnRate currencyName={uniConfig.currencyName ?? 'Campus Dollars'} />
           <div style={{ marginTop: 'var(--sp-8)' }}>
             <DeliveriesLogger />
           </div>
-        </div>
-        <div style={{ marginTop: 'var(--sp-6)' }}>
-          <SubscriptionPackagesView />
         </div>
       </div>
 

@@ -16,6 +16,15 @@ import {
   filterIngredients, filterCollegeMeals,
   type EquipmentTier, type MealTypeKey,
 } from '@/utils/mealData'
+import {
+  filterLibrary, recipeCountForCategory, type LibraryRecipe,
+} from '@/utils/recipeLibrary'
+import {
+  generateWeekPlan, DEFAULT_GEN_CONFIG,
+  CALORIE_GOAL_LABELS, CALORIE_GOAL_SUB,
+  BUDGET_LEVEL_LABELS, BUDGET_LEVEL_SUB,
+  type GenConfig, type CalorieGoal, type BudgetLevel,
+} from '@/utils/mealGenerator'
 import styles from './MealPlanningView.module.css'
 
 /* ── localStorage keys ───────────────────────────────────────── */
@@ -23,6 +32,23 @@ const LS_BUDGET   = 'zenith_meal_budget_v1'
 const LS_KITCHEN  = 'zenith_kitchen_setup_v1'
 const LS_STORE    = 'zenith_preferred_store_v1'
 const LS_PREFS    = 'zenith_food_prefs_v1'
+const LS_GEN_CFG  = 'zenith_meal_gen_config_v1'
+
+function loadGenConfig(): GenConfig {
+  if (typeof window === 'undefined') return DEFAULT_GEN_CONFIG
+  try {
+    const raw = localStorage.getItem(LS_GEN_CFG)
+    return raw ? { ...DEFAULT_GEN_CONFIG, ...JSON.parse(raw) } : DEFAULT_GEN_CONFIG
+  } catch { return DEFAULT_GEN_CONFIG }
+}
+
+/* Friendly label for the easiest equipment a library recipe needs. */
+function equipLabel(tiers: EquipmentTier[]): string {
+  if (tiers.includes('no_kitchen'))  return 'No-cook'
+  if (tiers.includes('microwave'))   return 'Microwave'
+  if (tiers.includes('mini_fridge')) return 'Kettle / Fridge'
+  return 'Stove'
+}
 
 /* ── Food preferences ────────────────────────────────────────── */
 interface FoodPrefs {
@@ -366,6 +392,130 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   GENERATE WEEK PLAN — preferences modal
+   ═══════════════════════════════════════════════════════════════ */
+
+function GenerateConfigModal({
+  initial, weekBudget, onConfirm, onClose,
+}: {
+  initial:    GenConfig
+  weekBudget: number
+  onConfirm:  (cfg: GenConfig) => void
+  onClose:    () => void
+}) {
+  const [cfg, setCfg] = useState<GenConfig>(initial)
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onClose])
+
+  const calorieGoals: CalorieGoal[] = ['cut', 'maintain', 'bulk']
+  const budgetLevels: BudgetLevel[] = ['low', 'medium', 'high']
+
+  return (
+    <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className={`${styles.modal} anim-scale-in`}>
+        <div className={styles.modalHead}>
+          <div>
+            <p className={styles.modalEyebrow}>Auto-Generate</p>
+            <h2 className={styles.modalTitle}>Plan My Week</h2>
+          </div>
+          <button type="button" className={styles.modalClose} onClick={onClose}>✕</button>
+        </div>
+
+        <div className={styles.modalBody}>
+          <p className={styles.genIntro}>
+            We&apos;ll fill empty slots from the recipe library, your saved recipes, and college meals —
+            tuned to your kitchen, dietary filters, and the preferences below.
+          </p>
+
+          {/* Calorie goal */}
+          <div className={styles.genSection}>
+            <p className={styles.genSectionLabel}>Calorie goal</p>
+            <div className={styles.genOptionRow}>
+              {calorieGoals.map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  className={`${styles.genOption} ${cfg.calorieGoal === g ? styles.genOptionOn : ''}`}
+                  onClick={() => setCfg(c => ({ ...c, calorieGoal: g }))}
+                >
+                  <span className={styles.genOptionName}>{CALORIE_GOAL_LABELS[g]}</span>
+                  <span className={styles.genOptionSub}>{CALORIE_GOAL_SUB[g]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Budget level */}
+          <div className={styles.genSection}>
+            <p className={styles.genSectionLabel}>
+              Budget level
+              {weekBudget > 0 && <span className={styles.genBudgetNote}>weekly budget ${weekBudget.toFixed(0)}</span>}
+            </p>
+            <div className={styles.genOptionRow}>
+              {budgetLevels.map(b => (
+                <button
+                  key={b}
+                  type="button"
+                  className={`${styles.genOption} ${cfg.budgetLevel === b ? styles.genOptionOn : ''}`}
+                  onClick={() => setCfg(c => ({ ...c, budgetLevel: b }))}
+                >
+                  <span className={styles.genOptionName}>{BUDGET_LEVEL_LABELS[b]}</span>
+                  <span className={styles.genOptionSub}>{BUDGET_LEVEL_SUB[b]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div className={styles.genSection}>
+            <button
+              type="button"
+              className={`${styles.genToggleRow} ${cfg.emphasizeProtein ? styles.genToggleRowOn : ''}`}
+              onClick={() => setCfg(c => ({ ...c, emphasizeProtein: !c.emphasizeProtein }))}
+            >
+              <div>
+                <span className={styles.genToggleName}>💪 Emphasize protein</span>
+                <span className={styles.genToggleSub}>Prefer high-protein recipes</span>
+              </div>
+              <span className={`${styles.genSwitch} ${cfg.emphasizeProtein ? styles.genSwitchOn : ''}`}>
+                <span className={styles.genSwitchThumb} />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.genToggleRow} ${cfg.noRepeat ? styles.genToggleRowOn : ''}`}
+              onClick={() => setCfg(c => ({ ...c, noRepeat: !c.noRepeat }))}
+            >
+              <div>
+                <span className={styles.genToggleName}>🔀 Maximize variety</span>
+                <span className={styles.genToggleSub}>Avoid repeating recipes across the week</span>
+              </div>
+              <span className={`${styles.genSwitch} ${cfg.noRepeat ? styles.genSwitchOn : ''}`}>
+                <span className={styles.genSwitchThumb} />
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.modalFoot}>
+          <div className={styles.modalFootRight}>
+            <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button type="button" className={styles.saveBtn} onClick={() => onConfirm(cfg)}>
+              ⟳ Generate Plan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
    WEEKLY PLANNER TAB
    ═══════════════════════════════════════════════════════════════ */
 
@@ -377,24 +527,11 @@ interface PlannerTabProps {
   dietary:    string[]
 }
 
-/* Category → meal type mapping for auto-generate */
-const CATEGORY_MEAL_MAP: Record<string, MealType[]> = {
-  'Breakfast':       ['breakfast'],
-  'Lunch':           ['lunch'],
-  'Dinner':          ['dinner'],
-  'Snacks':          ['breakfast'],
-  'College Dorm':    ['breakfast', 'lunch', 'dinner'],
-  'Quick & Easy':    ['lunch', 'dinner'],
-  'Meal Prep':       ['lunch', 'dinner'],
-  'Budget Friendly': ['lunch', 'dinner'],
-  'Vegetarian':      ['lunch', 'dinner'],
-  'High Protein':    ['breakfast', 'lunch', 'dinner'],
-}
-
 function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: PlannerTabProps) {
   const { toast }  = useToast()
   const weekDays   = getWeekDays(weekStart)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showGenConfig, setShowGenConfig] = useState(false)
 
   const slots = useLiveQuery(
     () => db?.mealPlanSlots?.where('weekStart').equals(weekStart).toArray() ?? Promise.resolve([]),
@@ -443,73 +580,45 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: Pla
     setEditing(null)
   }
 
-  const handleGenerateWeekPlan = useCallback(async () => {
+  const handleRunGenerate = useCallback(async (config: GenConfig) => {
+    setShowGenConfig(false)
     setIsGenerating(true)
     try {
-      /* Load saved recipes from IDB */
-      const savedRecs = await db.savedMealRecipes.toArray()
+      try { localStorage.setItem(LS_GEN_CFG, JSON.stringify(config)) } catch { /* noop */ }
 
-      /* Build per-meal-type pools */
-      const pools: Record<MealType, { name: string; cost: number; calories: number; cookMins: number; ingredients: MealIngredient[] }[]> = {
-        breakfast: [], lunch: [], dinner: [],
+      const savedRecipes = await db.savedMealRecipes.toArray()
+      const existingKeys  = new Set(slots.map(s => `${s.dayIndex}:${s.mealType}`))
+
+      const result = generateWeekPlan({
+        config, equipment, disliked, dietary, weekStart,
+        existingKeys, savedRecipes, weekBudget,
+      })
+
+      if (result.emptyPools) {
+        toast('No recipes match your filters — loosen dietary or equipment settings.', 'error')
+        return
       }
-
-      /* College meals filtered by equipment + preferences */
-      const collegeMealsFiltered = filterCollegeMeals(
-        COLLEGE_MEALS.filter(m => equipment.length === 0 || equipment.some(e => m.equipment.includes(e))),
-        disliked, dietary,
-      )
-      for (const cm of collegeMealsFiltered) {
-        const ings: MealIngredient[] = cm.ingredients.map(n => {
-          const p = INGREDIENT_PRICE_MAP[n.toLowerCase()]
-          return { name: n, quantity: p?.unit ?? '1 serving', estimatedPrice: p?.price ?? 1.00 }
-        })
-        pools[cm.mealType].push({ name: cm.name, cost: cm.cost, calories: cm.calories, cookMins: cm.cookMinutes, ingredients: ings })
-      }
-
-      /* Saved recipes mapped to meal type pools */
-      for (const r of savedRecs) {
-        const mealTypes = CATEGORY_MEAL_MAP[r.category] ?? (['lunch', 'dinner'] as MealType[])
-        for (const mt of mealTypes) {
-          pools[mt].push({ name: r.title, cost: r.estimatedCost ?? 0, calories: r.calories ?? 0, cookMins: r.cookTime ?? 0, ingredients: [] })
-        }
-      }
-
-      /* Fill empty slots */
-      const newSlots: Omit<MealPlanSlot, 'id'>[] = []
-      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        for (const mt of (['breakfast', 'lunch', 'dinner'] as MealType[])) {
-          if (slotMap.get(`${dayIndex}:${mt}`)) continue
-          const pool = pools[mt]
-          if (pool.length === 0) continue
-          const pick = pool[Math.floor(Math.random() * pool.length)]
-          newSlots.push({
-            weekStart, dayIndex, mealType: mt,
-            mealName:          pick.name,
-            planType:          'home',
-            ingredients:       pick.ingredients,
-            estimatedCost:     pick.cost,
-            estimatedCalories: pick.calories,
-            cookMinutes:       pick.cookMins,
-          })
-        }
-      }
-
-      if (newSlots.length === 0) {
+      if (result.slots.length === 0) {
         toast('All slots are already filled for this week!', 'info')
         return
       }
 
       await db.transaction('rw', db.mealPlanSlots, async () => {
-        for (const s of newSlots) await db.mealPlanSlots.add(s)
+        for (const s of result.slots) await db.mealPlanSlots.add(s)
       })
-      toast(`Generated ${newSlots.length} meal${newSlots.length !== 1 ? 's' : ''}!`, 'success')
+
+      let msg = `Generated ${result.slots.length} meal${result.slots.length !== 1 ? 's' : ''} · ~$${result.projectedCost.toFixed(2)}`
+      if (weekBudget > 0) {
+        const projectedWeek = weekTotal + result.projectedCost
+        msg += projectedWeek > weekBudget ? ' · over budget ⚠' : ' · within budget ✓'
+      }
+      toast(msg, 'success')
     } catch {
       toast('Could not generate plan', 'error')
     } finally {
       setIsGenerating(false)
     }
-  }, [weekStart, equipment, disliked, dietary, slotMap, toast])
+  }, [slots, equipment, disliked, dietary, weekStart, weekBudget, weekTotal, toast])
 
   const budgetUsedPct = weekBudget > 0 ? Math.min(100, (weekTotal / weekBudget) * 100) : 0
   const overBudget    = weekBudget > 0 && weekTotal > weekBudget
@@ -519,12 +628,12 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: Pla
       {/* Auto-generate strip */}
       <div className={styles.generateStrip}>
         <p className={styles.generateHint}>
-          Fill empty slots automatically from your saved recipes &amp; college meals.
+          Auto-fill empty slots from the recipe library, tuned to your calorie goal, protein, and budget.
         </p>
         <button
           type="button"
           className={styles.generateBtn}
-          onClick={handleGenerateWeekPlan}
+          onClick={() => setShowGenConfig(true)}
           disabled={isGenerating}
         >
           {isGenerating ? 'Generating…' : '⟳ Generate Week Plan'}
@@ -644,6 +753,15 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary }: Pla
           onSave={handleSave}
           onClear={handleClear}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {showGenConfig && (
+        <GenerateConfigModal
+          initial={loadGenConfig()}
+          weekBudget={weekBudget}
+          onConfirm={handleRunGenerate}
+          onClose={() => setShowGenConfig(false)}
         />
       )}
     </>
@@ -823,12 +941,46 @@ function AddRecipeModal({ onSave, onClose }: { onSave: (r: Omit<SavedMealRecipe,
   )
 }
 
-function RecipesTab({ equipment }: { equipment: EquipmentTier[] }) {
+function RecipesTab({ equipment, disliked, dietary }: { equipment: EquipmentTier[]; disliked: string[]; dietary: string[] }) {
   const { toast } = useToast()
   const [catFilter,  setCatFilter]  = useState<string>('All')
   const [showAdd,    setShowAdd]    = useState(false)
   const [showCollege, setShowCollege] = useState(false)
   const [collegeMealType, setCollegeMealType] = useState<MealTypeKey>('breakfast')
+
+  /* ── Built-in recipe library (browse) ─────────────────────── */
+  const [libQuery, setLibQuery] = useState('')
+  const [libCat,   setLibCat]   = useState('All')
+  const [libRespectKitchen, setLibRespectKitchen] = useState(false)
+
+  const libraryResults = useMemo(() =>
+    filterLibrary({
+      category:  libCat,
+      query:     libQuery,
+      equipment: libRespectKitchen ? equipment : [],
+      dietary:   libRespectKitchen ? dietary : [],
+      disliked:  libRespectKitchen ? disliked : [],
+    }),
+    [libCat, libQuery, libRespectKitchen, equipment, dietary, disliked],
+  )
+
+  const handleSaveLibrary = async (r: LibraryRecipe) => {
+    await db.savedMealRecipes.add({
+      title:         r.name,
+      addedAt:       Date.now(),
+      category:      r.categories[0] ?? 'Dinner',
+      description:   r.tips,
+      cookTime:      r.cookMinutes,
+      equipment:     equipLabel(r.equipment),
+      estimatedCost: r.cost,
+      protein:       r.protein,
+      carbs:         r.carbs,
+      fat:           r.fat,
+      calories:      r.calories,
+      servings:      1,
+    })
+    toast(`"${r.name}" saved to your recipes!`, 'success')
+  }
 
   const rawRecipes = useLiveQuery(
     () => db?.savedMealRecipes?.toArray() ?? Promise.resolve([]),
@@ -864,6 +1016,88 @@ function RecipesTab({ equipment }: { equipment: EquipmentTier[] }) {
 
   return (
     <>
+      {/* ── Built-in Recipe Library (browse) ─────────────────── */}
+      <div className={styles.librarySection}>
+        <div className={styles.libraryHead}>
+          <div>
+            <h3 className={styles.libraryTitle}>Recipe Library</h3>
+            <p className={styles.librarySub}>{libraryResults.length} recipes · tap ＋ to save to your collection</p>
+          </div>
+          <button
+            type="button"
+            className={`${styles.libKitchenToggle} ${libRespectKitchen ? styles.libKitchenToggleOn : ''}`}
+            onClick={() => setLibRespectKitchen(v => !v)}
+            title="Filter by your kitchen equipment & dietary settings"
+          >
+            {libRespectKitchen ? '✓ My kitchen' : 'My kitchen'}
+          </button>
+        </div>
+
+        <div className={styles.librarySearchRow}>
+          <span className={styles.librarySearchGlyph}>⊕</span>
+          <input
+            className={styles.librarySearchInput}
+            placeholder="Search recipes or ingredients…"
+            value={libQuery}
+            onChange={e => setLibQuery(e.target.value)}
+          />
+          {libQuery && (
+            <button type="button" className={styles.librarySearchClear} onClick={() => setLibQuery('')}>✕</button>
+          )}
+        </div>
+
+        <div className={styles.libraryCatTabs}>
+          {['All', ...RECIPE_CATEGORIES].map(c => (
+            <button
+              key={c}
+              type="button"
+              className={`${styles.libraryCatTab} ${libCat === c ? styles.libraryCatTabOn : ''}`}
+              onClick={() => setLibCat(c)}
+            >
+              {c}
+              <span className={styles.libraryCatCount}>{recipeCountForCategory(c)}</span>
+            </button>
+          ))}
+        </div>
+
+        {libraryResults.length === 0 ? (
+          <p className={styles.libraryEmpty}>No recipes match — try clearing the search or the kitchen filter.</p>
+        ) : (
+          <div className={styles.libraryGrid}>
+            {libraryResults.map(r => (
+              <div key={r.id} className={styles.libraryCard}>
+                <div className={styles.libraryCardHead}>
+                  <h4 className={styles.libraryCardName}>{r.name}</h4>
+                  <button
+                    type="button"
+                    className={styles.libraryAddBtn}
+                    onClick={() => handleSaveLibrary(r)}
+                    aria-label={`Save ${r.name}`}
+                  >＋</button>
+                </div>
+                <div className={styles.libraryMacroRow}>
+                  <span className={`${styles.recipeMacroChip} ${styles.macroCalChip}`}>{r.calories} kcal</span>
+                  <span className={`${styles.recipeMacroChip} ${styles.macroPChip}`}>P {r.protein}g</span>
+                  <span className={`${styles.recipeMacroChip} ${styles.macroCChip}`}>C {r.carbs}g</span>
+                  <span className={`${styles.recipeMacroChip} ${styles.macroFChip}`}>F {r.fat}g</span>
+                </div>
+                <div className={styles.libraryMeta}>
+                  <span>~${r.cost.toFixed(2)}</span>
+                  <span>⏱ {r.cookMinutes}m</span>
+                  <span>🍳 {equipLabel(r.equipment)}</span>
+                </div>
+                <div className={styles.libraryTags}>
+                  {r.categories.slice(0, 3).map(c => (
+                    <span key={c} className={styles.libraryTag}>{c}</span>
+                  ))}
+                </div>
+                <p className={styles.libraryTip}>{r.tips}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* College dorm quick-reference */}
       <div className={styles.collegePanel}>
         <button
@@ -1427,7 +1661,7 @@ export default function MealPlanningView() {
           <PlannerTab weekStart={weekStart} equipment={equipment} weekBudget={weekBudget} disliked={prefs.disliked} dietary={prefs.dietary} />
         </div>
         <div className={activeTab === 'recipes'  ? '' : styles.hidden}>
-          <RecipesTab equipment={equipment} />
+          <RecipesTab equipment={equipment} disliked={prefs.disliked} dietary={prefs.dietary} />
         </div>
         <div className={activeTab === 'budget'   ? '' : styles.hidden}>
           <BudgetTab weekStart={weekStart} weekBudget={weekBudget} setWeekBudget={setWeekBudget} />
