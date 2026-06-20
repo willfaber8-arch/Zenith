@@ -852,6 +852,164 @@
   cursor: not-allowed;
 }
 
+/* ── Panel header buttons group ─────────────────────────────── */
+
+.panelHeaderBtns {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+/* ── AI Deck Generator Modal ────────────────────────────────── */
+
+.aiErrorText {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.20);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.aiDescTextarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: var(--font-body) !important;
+  line-height: 1.5;
+}
+
+.aiCardCountRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.aiGeneratingBody {
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.aiSpinnerWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+@keyframes aiGlyphPulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.3); opacity: 0.5; }
+}
+
+.aiSpinnerGlyph {
+  font-size: 2rem;
+  color: var(--cat-accent, var(--accent-purple));
+  animation: aiGlyphPulse 1.6s ease-in-out infinite;
+}
+
+.aiSpinnerText {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.aiStreamPreview {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dark);
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+  max-height: 100px;
+  overflow-y: auto;
+  margin-top: var(--sp-4);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.aiPreviewModal {
+  width: min(700px, calc(100vw - 32px));
+}
+
+.aiPreviewBody {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.aiCardList {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: min(480px, calc(100vh - 240px));
+}
+
+.aiCardPreviewRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 120ms;
+  min-width: 0;
+}
+
+.aiCardPreviewRow:last-child {
+  border-bottom: none;
+}
+
+.aiCardPreviewRow:hover {
+  background: var(--bg-hover);
+}
+
+.aiCardNum {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+  width: 20px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.aiCardForeign {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--cat-accent, var(--accent-purple));
+  flex: 1;
+  min-width: 0;
+}
+
+.aiCardSep {
+  font-size: 0.65rem;
+  color: var(--text-dark);
+  flex-shrink: 0;
+}
+
+.aiCardNative {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  flex: 1.4;
+  min-width: 0;
+}
+
+.aiCardPhonetic {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dark);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -1177,4 +1335,96 @@
   .engWordDue { display: none; }
   .engStatRow { gap: var(--sp-2); }
   .engStat    { min-width: 80px; }
+}
+
+/* ── Daily goal row ─────────────────────────────────────────── */
+
+.goalRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.goalLabel {
+  font-family:     var(--font-mono);
+  font-size:       0.62rem;
+  letter-spacing:  0.08em;
+  text-transform:  uppercase;
+  color:           var(--text-dark);
+  white-space:     nowrap;
+  margin-right:    var(--sp-1);
+}
+
+.goalSuffix {
+  font-family:     var(--font-mono);
+  font-size:       0.62rem;
+  letter-spacing:  0.08em;
+  text-transform:  uppercase;
+  color:           var(--text-dark);
+  white-space:     nowrap;
+}
+
+.goalBtn {
+  font-family:     var(--font-mono);
+  font-size:       0.65rem;
+  letter-spacing:  0.05em;
+  padding:         3px 10px;
+  border-radius:   var(--r-md);
+  border:          1px solid var(--border-subtle);
+  background:      transparent;
+  color:           var(--text-muted);
+  cursor:          pointer;
+  transition:      background   140ms var(--ease-smooth),
+                   border-color 140ms var(--ease-smooth),
+                   color        140ms var(--ease-smooth);
+}
+
+.goalBtn:hover {
+  border-color: rgba(124, 149, 255, 0.30);
+  color:        var(--text-primary);
+}
+
+.goalBtnActive {
+  border-color: rgba(124, 149, 255, 0.50);
+  background:   rgba(124, 149, 255, 0.10);
+  color:        var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Mastery badge (word list) ──────────────────────────────── */
+
+.engMasteryBadge {
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding:        2px 7px;
+  border-radius:  var(--r-sm);
+  border:         1px solid transparent;
+  white-space:    nowrap;
+  text-align:     right;
+}
+
+.engMasteryNew {
+  color:        var(--text-dark);
+  border-color: var(--border-subtle);
+}
+
+.engMasteryLearning {
+  color:        #f59e0b;
+  border-color: rgba(245, 158, 11, 0.25);
+  background:   rgba(245, 158, 11, 0.05);
+}
+
+.engMasteryGood {
+  color:        rgba(124, 149, 255, 0.90);
+  border-color: rgba(124, 149, 255, 0.25);
+  background:   rgba(124, 149, 255, 0.05);
+}
+
+.engMasteryMastered {
+  color:        var(--accent-green);
+  border-color: rgba(82, 204, 163, 0.30);
+  background:   rgba(82, 204, 163, 0.06);
 }

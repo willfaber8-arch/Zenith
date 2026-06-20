@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { fetchWeather, type WeatherData, type DayForecast } from '@/lib/weather'
+import { type DayForecast } from '@/lib/weather'
+import { useWeather }       from '@/lib/hooks/useWeather'
 import { useNav } from '@/lib/NavContext'
 import styles from './WeatherWidget.module.css'
-
-type Status = 'idle' | 'loading' | 'ok' | 'denied' | 'error'
 
 /* ── Weather icon map ─────────────────────────────────────── */
 const CONDITION_ICON: Record<string, string> = {
@@ -66,44 +64,8 @@ function ForecastStrip({ forecast }: { forecast: DayForecast[] }) {
 
 /* ── Main widget ──────────────────────────────────────────── */
 export default function WeatherWidget() {
-  const [status,  setStatus]  = useState<Status>('idle')
-  const [weather, setWeather] = useState<WeatherData | null>(null)
-  const [city,    setCity]    = useState<string | null>(null)
+  const { status, weather, city } = useWeather()
   const { navigate } = useNav()
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setStatus('denied')
-      return
-    }
-    setStatus('loading')
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        /* Reverse-geocode city */
-        try {
-          const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
-            { headers: { 'Accept-Language': 'en' } },
-          )
-          if (geoRes.ok) {
-            const geo = await geoRes.json()
-            setCity(
-              geo?.address?.city ??
-              geo?.address?.town ??
-              geo?.address?.village ??
-              null,
-            )
-          }
-        } catch { /* city is optional */ }
-
-        const data = await fetchWeather(coords.latitude, coords.longitude)
-        if (data) { setWeather(data); setStatus('ok') }
-        else        setStatus('error')
-      },
-      () => setStatus('denied'),
-      { timeout: 8000 },
-    )
-  }, [])
 
   const isLoading  = status === 'idle' || status === 'loading'
   const hasFailed  = status === 'denied' || status === 'error'

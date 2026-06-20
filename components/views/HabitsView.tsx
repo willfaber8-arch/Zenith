@@ -3,13 +3,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   useHabits,
+  isoForDayOffset,
   type HabitWithCompletion,
   type DayStatus,
   type NewHabitInput,
 } from '@/lib/hooks/useHabits'
 import { useLiveQuery }         from 'dexie-react-hooks'
 import { db, type Habit }       from '@/lib/db'
-import { calculateMovingGritScore } from '@/utils/gritScore'
+import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
+import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET } from '@/lib/habitPresets'
+import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
+import { pushNotification }      from '@/lib/notificationCenter'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import ZenHeading               from '@/components/ui/ZenHeading'
 import { useToast }             from '@/lib/ToastContext'
@@ -122,6 +126,7 @@ function HabitRow({
   const todayScheduled = habit.weekData.find(d => d.iso === today)?.scheduled ?? false
   const allTimeHigh    = habit.allTimeHighStreak ?? habit.streakCount
   const habitColor     = habit.color ?? '#7c95ff'
+  const autoMeta       = habitSourceMeta(habit.autoSource)
 
   return (
     <div
@@ -152,6 +157,14 @@ function HabitRow({
             {habit.category && habit.category !== 'General' && (
               <span className={styles.habitCategoryBadge}>{habit.category}</span>
             )}
+            {autoMeta && (
+              <span
+                className={styles.habitAutoBadge}
+                title={`Auto-fills from ${autoMeta.label}`}
+              >
+                {autoMeta.icon} auto
+              </span>
+            )}
           </div>
           <span className={styles.habitMeta}>
             {habit.todayCount}/{habit.targetCompletions}
@@ -171,11 +184,15 @@ function HabitRow({
             const day = habit.weekData.find(d => d.iso === iso)
             const isToday = iso === today
             if (!day?.scheduled) return <span key={iso} className={styles.dotEmpty} aria-hidden="true" />
+            const frac    = day.target > 0 ? Math.min(1, day.count / day.target) : 0
+            const partial = !day.done && frac > 0
+            const pctLabel = Math.round(frac * 100)
             return (
               <span
                 key={iso}
-                className={`${styles.dot} ${day.done ? styles.dotDone : ''} ${isToday ? styles.dotToday : ''}`}
-                aria-label={`${iso}: ${day.done ? 'done' : 'pending'}`}
+                className={`${styles.dot} ${day.done ? styles.dotDone : ''} ${partial ? styles.dotPartial : ''} ${isToday ? styles.dotToday : ''}`}
+                style={partial ? ({ '--day-fill': `${pctLabel}%` } as React.CSSProperties) : undefined}
+                aria-label={`${iso}: ${day.done ? 'done' : partial ? `${pctLabel}% complete` : 'pending'}`}
               />
             )
           })}
@@ -283,6 +300,7 @@ function HabitModal({
   const [stepAmount, setStepAmount] = useState<number>(initStepAmount)
   const [stepUnit,   setStepUnit]   = useState(initial?.stepLabel ?? '')
   const [goal,       setGoal]       = useState<number>(initial?.targetCompletions ?? 0)
+  const [autoSource, setAutoSource] = useState<string>(initial?.autoSource ?? '')
 
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -304,6 +322,7 @@ function HabitModal({
       targetCompletions: goal,
       stepAmount:        stepAmount > 0 ? stepAmount : 1,
       stepLabel:         stepUnit.trim() || undefined,
+      autoSource:        autoSource || undefined,
     })
     onClose()
   }
@@ -471,6 +490,40 @@ function HabitModal({
             )}
           </div>
 
+          {/* Auto-fill link */}
+          <div className={styles.field}>
+            <span className={styles.label}>Auto-fill from <span className={styles.labelHint}>(optional)</span></span>
+            <div className={styles.dayToggleRow}>
+              <button
+                type="button"
+                className={`${styles.dayChip} ${!autoSource ? styles.dayChipOn : ''}`}
+                onClick={() => setAutoSource('')}
+              >
+                Manual
+              </button>
+              {HABIT_SOURCES.map(src => (
+                <button
+                  key={src.id}
+                  type="button"
+                  className={`${styles.dayChip} ${autoSource === src.id ? styles.dayChipOn : ''}`}
+                  onClick={() => {
+                    setAutoSource(src.id)
+                    // Helpful default: adopt the source's unit if none set yet.
+                    setStepUnit(prev => prev.trim() ? prev : src.unit)
+                  }}
+                >
+                  {src.icon} {src.label}
+                </button>
+              ))}
+            </div>
+            {autoSource && (
+              <p className={styles.stepHint}>
+                {habitSourceMeta(autoSource)?.hint}
+                {' '}Goal is measured in {habitSourceMeta(autoSource)?.unit}.
+              </p>
+            )}
+          </div>
+
           <div className={styles.formActions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
             <button type="submit" className={styles.submitBtn} disabled={!canSubmit}>
@@ -506,7 +559,61 @@ export default function HabitsView() {
     [],
     [],
   )
-  const gritPoints = allHabits ? calculateMovingGritScore(allHabits) : []
+
+  /* 30-day completion log — drives the partial-aware analytics trend. */
+  const thirtyDaysAgo = isoForDayOffset(-29)
+  const completions30 = useLiveQuery(
+    () => db?.habitCompletions.where('date').between(thirtyDaysAgo, today, true, true).toArray()
+       ?? Promise.resolve([]),
+    [thirtyDaysAgo, today],
+    [],
+  )
+  const gritPoints = (allHabits && allHabits.length > 0)
+    ? computeCompletionSeries(allHabits, completions30 ?? [], 30)
+    : []
+
+  /* First-run: auto-load the General starter pack (once, only when empty). */
+  useEffect(() => {
+    void ensureGeneralHabitPreset().then(seeded => {
+      if (seeded) toast('Loaded the General habit pack to get you started.', 'success')
+    })
+  }, [toast])
+
+  /* Streak-loss reconciliation — runs once when the view loads. A streak
+     that's stale by 2+ days is dead: reset it to 0 (so the UI is honest),
+     surface a one-time toast, and push a notification to the bell. */
+  const reconciledRef = useRef(false)
+  useEffect(() => {
+    if (reconciledRef.current || !allHabits || allHabits.length === 0 || !db) return
+    reconciledRef.current = true
+    const broken = detectBrokenStreaks(allHabits)
+    if (broken.length === 0) return
+    void (async () => {
+      for (const b of broken) {
+        await db.habits.update(b.habitId, { streakCount: 0 })
+        const habit = allHabits.find(h => h.id === b.habitId)
+        pushNotification({
+          id:    `streak-loss-${b.habitId}-${habit?.lastCompletedDate ?? 'na'}`,
+          type:  'streak-loss',
+          icon:  '🔥',
+          view:  'habits',
+          title: `Streak lost: ${b.name}`,
+          body:  `Your ${b.lostStreak}-day streak ended. Start fresh today!`,
+        })
+      }
+      toast(
+        broken.length === 1
+          ? `"${broken[0].name}" streak ended (was ${broken[0].lostStreak} days). Begin again today.`
+          : `${broken.length} habit streaks ended. A fresh start awaits.`,
+        'info',
+      )
+    })()
+  }, [allHabits, toast])
+
+  const handleLoadPreset = useCallback(async () => {
+    const n = await loadGeneralHabitPreset()
+    if (n > 0) toast(`Added ${n} starter habits.`, 'success')
+  }, [toast])
 
   const handleIncrement = useCallback(async (habitId: number, e: React.MouseEvent) => {
     const habit = habits.find(h => h.id === habitId)
@@ -537,6 +644,7 @@ export default function HabitsView() {
       targetCompletions: input.targetCompletions,
       stepAmount:        input.stepAmount ?? 1,
       stepLabel:         input.stepLabel,
+      autoSource:        input.autoSource || undefined,
     })
     toast(`"${input.name}" updated.`, 'success')
     setEditTarget(null)
@@ -643,7 +751,18 @@ export default function HabitsView() {
             <div className={`${styles.emptyState} anim-fade-in`}>
               <p className={styles.emptyIcon} aria-hidden="true">◎</p>
               <p className={styles.emptyTitle}>No habits yet</p>
-              <p className={styles.emptyBody}>Create your first habit to start building streaks.</p>
+              <p className={styles.emptyBody}>
+                Load the General starter pack — {GENERAL_HABIT_PRESET.length} everyday habits,
+                pre-linked to cardio, focus, vocab, and mood — or create your own.
+              </p>
+              <div className={styles.emptyActions}>
+                <button type="button" className={styles.addBtn} onClick={() => void handleLoadPreset()}>
+                  <span aria-hidden="true">✦</span> Load General Pack
+                </button>
+                <button type="button" className={styles.toolbarBtn} onClick={() => setShowCreate(true)}>
+                  + New Habit
+                </button>
+              </div>
             </div>
           ) : categories.length === 1 ? (
             <div className={styles.habitList}>

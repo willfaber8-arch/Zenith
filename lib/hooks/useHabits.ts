@@ -3,6 +3,7 @@
 import { useCallback }    from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db, type Habit, type HabitCompletion } from '@/lib/db'
+import { addHabitProgress } from '@/lib/habitSync'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -51,6 +52,7 @@ export interface NewHabitInput {
   stepAmount?:       number    // how much each click adds (e.g. 5 oz)
   stepLabel?:        string    // unit label for display (e.g. "oz")
   goalDescription?:  string    // optional text descriptor
+  autoSource?:       string    // HabitAutoSource id — auto-fills from another tab
 }
 
 /* ── Week dates helper ────────────────────────────────────── */
@@ -64,7 +66,6 @@ export function getWeekDates(): string[] {
 export function useHabits() {
   const today     = todayISO()
   const weekDates = getWeekDates()
-  const yesterday = isoForDayOffset(-1)
 
   const habits = useLiveQuery(
     () => db?.habits.toArray() ?? Promise.resolve([]),
@@ -112,38 +113,10 @@ export function useHabits() {
     if (!db) return
     const habit = await db.habits.get(habitId)
     if (!habit) return
-    if (!isHabitScheduledOn(habit, today)) return
-
-    const step = habit.stepAmount ?? 1
-
-    const existing = await db.habitCompletions
-      .where('[habitId+date]').equals([habitId, today])
-      .first()
-
-    const prevCount = existing?.count ?? 0
-    // Don't exceed the goal
-    if (prevCount >= habit.targetCompletions) return
-    const newCount = Math.min(prevCount + step, habit.targetCompletions)
-
-    if (existing?.id != null) {
-      await db.habitCompletions.update(existing.id, { count: newCount })
-    } else {
-      await db.habitCompletions.add({ habitId, date: today, count: newCount })
-    }
-
-    /* Update streak on first full completion today */
-    if (newCount >= habit.targetCompletions && prevCount < habit.targetCompletions) {
-      const consecutive = habit.lastCompletedDate === yesterday ||
-        habit.lastCompletedDate === today
-      const newStreak = consecutive ? habit.streakCount + 1 : 1
-      const newAllTime = Math.max(newStreak, habit.allTimeHighStreak ?? 0)
-      await db.habits.update(habitId, {
-        streakCount:       newStreak,
-        lastCompletedDate: today,
-        allTimeHighStreak: newAllTime,
-      })
-    }
-  }, [today, yesterday])
+    // Manual "+" press: advance by one step. Completion + streak logic
+    // lives in the shared engine so manual and auto-sync paths can't drift.
+    await addHabitProgress(habitId, habit.stepAmount ?? 1, today)
+  }, [today])
 
   const createHabit = useCallback(async (input: NewHabitInput) => {
     if (!db) return
@@ -155,6 +128,7 @@ export function useHabits() {
       stepAmount:        input.stepAmount ?? 1,
       stepLabel:         input.stepLabel?.trim() || undefined,
       goalDescription:   input.goalDescription?.trim() || undefined,
+      autoSource:        input.autoSource || undefined,
       streakCount:       0,
       lastCompletedDate: null,
       streakSaveUsed:    false,

@@ -52,6 +52,7 @@ import ThemeBackground   from '@/components/ThemeBackground'
 import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
 import Toast             from '@/components/Toast'
+import HabitSyncToaster  from '@/components/HabitSyncToaster'
 import ErrorBoundary     from '@/components/ErrorBoundary'
 import ThemeApplicator from '@/components/ThemeApplicator'
 import {
@@ -172,6 +173,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                           <AppContent>{children}</AppContent>
                         </ErrorBoundary>
                         <Toast />
+                        <HabitSyncToaster />
                         <AiCopilotSidebar />
                         <TutorialSpotlight />
                         <OnboardingCinematic />

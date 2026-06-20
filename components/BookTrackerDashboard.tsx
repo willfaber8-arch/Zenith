@@ -13,6 +13,7 @@ import {
   spineColorFor,
 } from '@/types/bookTracker'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
+import { syncHabitSource } from '@/lib/habitSync'
 import ZenHeading from '@/components/ui/ZenHeading'
 import { useToast } from '@/lib/ToastContext'
 import styles from './BookTrackerDashboard.module.css'
@@ -519,6 +520,17 @@ export default function BookTrackerDashboard() {
       updates.readCount = (book.readCount ?? 0) + 1
     }
     await db.library_books.update(book.id, updates)
+
+    // Cross-tab habit auto-sync: starting or finishing a book counts as a
+    // reading session, advancing any habit linked to the 'reading' source.
+    // Only fire on a real transition INTO an active-reading state (not when
+    // re-saving the same status) so it never double-counts.
+    if (
+      newStatus !== book.readingStatus &&
+      (newStatus === 'CURRENTLY_READING' || newStatus === 'COMPLETED')
+    ) {
+      void syncHabitSource('reading', 1)
+    }
   }
 
   const handleSaveReview = async (bookId: string) => {

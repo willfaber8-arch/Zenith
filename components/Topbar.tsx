@@ -5,10 +5,12 @@ import { useAuth }         from '@/lib/AuthContext'
 import { useNav }          from '@/lib/NavContext'
 import { useCopilot }      from '@/lib/CopilotContext'
 import { useColorScheme }  from '@/lib/hooks/useColorScheme'
-import { fetchWeather, type WeatherData } from '@/lib/weather'
+import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
+import NotificationBell from './NotificationBell'
+import ModuleSearch from './ModuleSearch'
 import styles from './Topbar.module.css'
 
 const WMO_ICONS: Record<string, string> = {
@@ -58,32 +60,13 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
   const { isLight, toggle: toggleScheme } = useColorScheme()
 
   const [now,     setNow]     = useState<Date | null>(null)
-  const [weather, setWeather] = useState<WeatherData | null>(null)
-  const [wStatus, setWStatus] = useState<'idle' | 'loading' | 'done' | 'denied'>('idle')
+  const { status: wStatus, weather } = useWeather()
 
   /* ── Live clock ─────────────────────────────────────────── */
   useEffect(() => {
     setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
-  }, [])
-
-  /* ── Weather (one-shot on mount, geolocation-gated) ─────── */
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setWStatus('denied')
-      return
-    }
-    setWStatus('loading')
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const data = await fetchWeather(coords.latitude, coords.longitude)
-        setWeather(data)
-        setWStatus('done')
-      },
-      () => setWStatus('denied'),
-      { timeout: 6000 },
-    )
   }, [])
 
   /* ── Breadcrumb ─────────────────────────────────────────── */
@@ -108,8 +91,8 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
 
   /* ── Weather display string ─────────────────────────────── */
   let weatherStr = '— °'
-  if (wStatus === 'loading') weatherStr = '·· °'
-  if (wStatus === 'done' && weather) {
+  if (wStatus === 'idle' || wStatus === 'loading') weatherStr = '·· °'
+  if (wStatus === 'ok' && weather) {
     const icon = WMO_ICONS[weather.condition] ?? '·'
     weatherStr = `${icon} ${weather.tempF}°F`
   }
@@ -148,6 +131,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
       {/* ── Right status cluster ─────────────────────────────── */}
       <div className={styles.cluster} role="status" aria-label="System status">
 
+        {/* Module finder — jump to any Zenith view by name or keyword */}
+        {session && (
+          <>
+            <ModuleSearch />
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
+
         {/* Weather — hidden when geolocation is denied */}
         {wStatus !== 'denied' && (
           <>
@@ -179,6 +170,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
         </button>
         <span className={styles.divider} aria-hidden="true" />
 
+        {/* In-app notification bell — only shown when a session is active */}
+        {session && (
+          <>
+            <NotificationBell />
+            <span className={styles.divider} aria-hidden="true" />
+          </>
+        )}
+
         {/* AI Co-Pilot toggle — only shown when a session is active */}
         {session && (
           <>
@@ -188,7 +187,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               onClick={toggleCopilot}
               aria-label={copilotOpen ? 'Close Co-Pilot' : 'Open AI Co-Pilot'}
               aria-expanded={copilotOpen}
-              title="AI Co-Pilot (⌘ K)"
+              title="AI Co-Pilot"
             >
               <span className={styles.copilotIcon} aria-hidden="true">◎</span>
               <span className={styles.copilotLabel}>AI</span>

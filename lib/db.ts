@@ -122,6 +122,7 @@ export interface Habit {
   color?:             string            //   hex accent colour for the habit row
   allTimeHighStreak?: number            //   all-time highest streak
   streakSaveUsed?:    boolean           //   grace-period save used this streak
+  autoSource?:        string            //   HabitAutoSource id — auto-fills from another tab
   notes?:             string
   createdAt:          number
   supabaseId?:        string

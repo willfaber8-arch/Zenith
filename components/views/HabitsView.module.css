@@ -228,6 +228,19 @@
   border-color: var(--accent-green);
 }
 
+/* Partial-fill dot — shows proportional progress via a bottom-up fill.
+   Uses --day-fill (set inline from React) to control the gradient stop. */
+.dotPartial {
+  background: linear-gradient(
+    to top,
+    rgba(124, 149, 255, 0.55) 0%,
+    rgba(124, 149, 255, 0.55) var(--day-fill, 50%),
+    rgba(124, 149, 255, 0.12) var(--day-fill, 50%),
+    rgba(124, 149, 255, 0.12) 100%
+  );
+  border-color: rgba(124, 149, 255, 0.45);
+}
+
 /* Right side */
 .habitRight {
   display: flex;
@@ -274,6 +287,16 @@
 .emptyBody {
   font-size: 0.85rem;
   color: var(--text-muted);
+  max-width: 38ch;
+  margin: 0 auto;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  justify-content: center;
+  margin-top: var(--sp-5);
 }
 
 /* ── Colour picker ────────────────────────────────────────── */
@@ -469,6 +492,19 @@
   border:        1px solid var(--border-subtle);
   border-radius: var(--r-sm);
   padding:       1px 6px;
+}
+
+.habitAutoBadge {
+  font-size:      0.58rem;
+  font-weight:    600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color:          var(--accent-green);
+  background:     rgba(82, 204, 163, 0.10);
+  border:         1px solid rgba(82, 204, 163, 0.30);
+  border-radius:  var(--r-sm);
+  padding:        1px 6px;
+  white-space:    nowrap;
 }
 
 /* ── Edit mode state ──────────────────────────────────────── */
@@ -727,6 +763,13 @@
 
 .labelRequired {
   color: var(--accent-purple);
+}
+
+.labelHint {
+  color: var(--text-dark);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .stepHint {

@@ -4,14 +4,18 @@
  * PomodoroCanvas
  * Phase 3 · Step 3.2 — Radial Countdown Viewport
  *
- * An SVG-based radial progress ring that reflects the exact time
- * remaining in the active Pomodoro phase, down to the second.
+ * An SVG-based radial progress ring + a tomato that gradually fills as
+ * the active phase elapses, reflecting the exact time remaining down to
+ * the second.
  *
  * Visual contract:
- *   WORK / PAUSED-on-WORK → periwinkle (--accent-purple) sweep arc
- *   SHORT_BREAK / LONG_BREAK → ocean-sage (--accent-green) sweep arc
- *   PAUSED → arc at reduced opacity (frozen at pause position)
- *   IDLE → no arc, track ring only, shows "25:00 / Ready"
+ *   WORK / PAUSED-on-WORK → periwinkle (--accent-purple) sweep arc + red tomato fill
+ *   SHORT_BREAK / LONG_BREAK → ocean-sage (--accent-green) sweep arc + green fill
+ *   PAUSED → arc + fill at reduced opacity (frozen at pause position)
+ *   IDLE → empty tomato, track ring only, shows "25:00 / Ready"
+ *
+ * The tomato fills bottom-to-top in lock-step with the progress arc, so
+ * the harvest metaphor (a ripening tomato) doubles as the time readout.
  *
  * Session pips row below the ring mirrors the current cycle position
  * (0–3) using the same filled/empty visual language as the top bar.
@@ -25,6 +29,21 @@ const R    = 80
 const CX   = 100
 const CY   = 100
 const CIRC = 2 * Math.PI * R  // ≈ 502.655
+
+/* ── Tomato geometry (centred, sits inside the ring) ─────────────── */
+const TOM_CX = 100
+const TOM_CY = 118
+const TOM_RX = 58
+const TOM_RY = 52
+const TOM_TOP    = TOM_CY - TOM_RY   // 66
+const TOM_HEIGHT = TOM_RY * 2        // 104
+
+/* Tomato palette (no design token exists for tomato red — kept literal,
+   mirroring the canvas colour-constant convention). */
+const TOMATO_RED = '#e8604c'
+const TOMATO_BG  = '#2c1a18'   // unfilled flesh, dark
+const LEAF_GREEN = '#4f9d63'
+const STALK      = '#5f7d3c'
 
 const SESSIONS_PER_CYCLE = 4
 
@@ -47,14 +66,15 @@ function phaseLabel(state: TimerState): string {
 }
 
 /**
- * Derive the phase description from totalSecs so the label stays
- * accurate even in PAUSED state (where timerState = 'PAUSED' but
- * totalSecs still holds the pre-pause phase duration).
+ * Derive the phase description from the live state + duration so the
+ * label stays accurate for any focus mode (5/10/15/25-min) — not just
+ * the classic Pomodoro lengths.
  */
-function intervalLabel(totalSecs: number): string {
-  if (totalSecs === 300) return '5-min reset'
-  if (totalSecs === 900) return '15-min rest'
-  return '25-min block'
+function intervalLabel(state: TimerState, totalSecs: number): string {
+  const mins = Math.max(1, Math.round(totalSecs / 60))
+  if (state === 'SHORT_BREAK') return `${mins}-min break`
+  if (state === 'LONG_BREAK')  return `${mins}-min rest`
+  return `${mins}-min block`
 }
 
 /* ── Component ───────────────────────────────────────────────────── */
@@ -90,6 +110,14 @@ export default function PomodoroCanvas({
 
   /* Track ring dims when idle to soften the "empty" appearance */
   const trackOpacity = isIdle ? 0.04 : 0.07
+
+  /* Tomato fill rises bottom-to-top with progress. The fill rect spans
+     the whole body and is translated down so only the bottom `progress`
+     fraction shows through the body-shaped clip — a transform transition
+     is universally supported (unlike y/height geometry transitions). */
+  const fillColor    = isBreak ? 'var(--accent-green)' : TOMATO_RED
+  const fillOpacity  = isPaused ? 0.45 : 1
+  const fillShiftY   = (1 - progress) * (TOM_HEIGHT + 14)  // +14 fully clears at p=0
 
   return (
     <div className={styles.root}>
@@ -131,6 +159,79 @@ export default function PomodoroCanvas({
             style={{ transition: 'stroke-opacity 400ms ease' }}
           />
 
+          {/* ── Tomato ────────────────────────────────────────────
+             Body-shaped clip reveals a rising fill rect; leaves + stalk
+             sit on top. The whole fruit "ripens" as the phase elapses. */}
+          <defs>
+            <clipPath id="tomatoBodyClip">
+              <ellipse cx={TOM_CX} cy={TOM_CY} rx={TOM_RX} ry={TOM_RY} />
+            </clipPath>
+          </defs>
+
+          {/* Unfilled flesh */}
+          <ellipse
+            cx={TOM_CX} cy={TOM_CY} rx={TOM_RX} ry={TOM_RY}
+            fill={TOMATO_BG}
+          />
+
+          {/* Rising fill — clipped to the body silhouette */}
+          <g clipPath="url(#tomatoBodyClip)">
+            <rect
+              x={TOM_CX - TOM_RX - 4}
+              y={TOM_TOP - 6}
+              width={TOM_RX * 2 + 8}
+              height={TOM_HEIGHT + 20}
+              fill={fillColor}
+              fillOpacity={fillOpacity}
+              transform={`translate(0 ${fillShiftY})`}
+              style={{
+                transition: isRunning
+                  ? 'transform 0.6s linear, fill 400ms ease, fill-opacity 300ms ease'
+                  : 'transform 0.4s ease, fill 400ms ease, fill-opacity 300ms ease',
+              }}
+            />
+          </g>
+
+          {/* Glossy highlight — fixed, gives the fruit volume */}
+          <ellipse
+            cx={TOM_CX - 18} cy={TOM_CY - 20} rx={15} ry={10}
+            fill="rgba(255,255,255,0.16)"
+            clipPath="url(#tomatoBodyClip)"
+          />
+
+          {/* Body rim */}
+          <ellipse
+            cx={TOM_CX} cy={TOM_CY} rx={TOM_RX} ry={TOM_RY}
+            fill="none"
+            stroke={isBreak ? 'rgba(82,204,163,0.55)' : 'rgba(232,96,76,0.55)'}
+            strokeWidth={2}
+            style={{ transition: 'stroke 400ms ease' }}
+          />
+
+          {/* Stalk */}
+          <path
+            d={`M${TOM_CX} ${TOM_TOP - 2} L${TOM_CX} ${TOM_TOP - 16}`}
+            stroke={STALK} strokeWidth={4} strokeLinecap="round" fill="none"
+          />
+
+          {/* 5-point leafy sepal */}
+          <path
+            d={`M${TOM_CX} ${TOM_TOP - 18}
+                L${TOM_CX + 9} ${TOM_TOP - 2}
+                L${TOM_CX + 26} ${TOM_TOP - 4}
+                L${TOM_CX + 13} ${TOM_TOP + 9}
+                L${TOM_CX + 19} ${TOM_TOP + 25}
+                L${TOM_CX} ${TOM_TOP + 14}
+                L${TOM_CX - 19} ${TOM_TOP + 25}
+                L${TOM_CX - 13} ${TOM_TOP + 9}
+                L${TOM_CX - 26} ${TOM_TOP - 4}
+                L${TOM_CX - 9} ${TOM_TOP - 2} Z`}
+            fill={LEAF_GREEN}
+            stroke="rgba(0,0,0,0.18)"
+            strokeWidth={0.75}
+            strokeLinejoin="round"
+          />
+
           {/* Progress arc — starts at 12 o'clock */}
           <circle
             cx={CX} cy={CY} r={R}
@@ -167,7 +268,7 @@ export default function PomodoroCanvas({
           </time>
 
           <span className={styles.intervalLabel}>
-            {intervalLabel(totalSecs)}
+            {intervalLabel(timerState, totalSecs)}
           </span>
         </div>
       </div>

@@ -8,7 +8,7 @@ import {
 import { useLiveQuery }     from 'dexie-react-hooks'
 import { useAuth }          from '@/lib/AuthContext'
 import { db }               from '@/lib/db'
-import { fetchWeather }     from '@/lib/weather'
+import { useWeather }       from '@/lib/hooks/useWeather'
 import {
   WIDGET_LABELS,
   type SandboxConfig,
@@ -351,25 +351,14 @@ function GreetingCard() {
   const name = profile?.userName ?? session?.userHandle ?? '—'
 
   const [now,   setNow]   = useState<Date | null>(null)
-  const [tempF, setTempF] = useState<number | null>(null)
   const [query, setQuery] = useState('')
+  const { weather } = useWeather()
+  const tempF = weather?.tempF ?? null
 
   useEffect(() => {
     setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const data = await fetchWeather(coords.latitude, coords.longitude)
-        if (data) setTempF(data.tempF)
-      },
-      () => {},
-      { timeout: 8000 },
-    )
   }, [])
 
   const period  = now ? getPeriod(now.getHours()) : 'Good evening'
