@@ -29,6 +29,7 @@ export interface GenConfig {
   emphasizeProtein: boolean
   budgetLevel:      BudgetLevel
   noRepeat:         boolean
+  skipMeals:        MealTypeKey[]
 }
 
 export const DEFAULT_GEN_CONFIG: GenConfig = {
@@ -36,6 +37,7 @@ export const DEFAULT_GEN_CONFIG: GenConfig = {
   emphasizeProtein: false,
   budgetLevel:      'medium',
   noRepeat:         true,
+  skipMeals:        [],
 }
 
 export const DAILY_CALORIE_TARGETS: Record<CalorieGoal, number> = {
@@ -104,6 +106,7 @@ export interface GeneratorInput {
   savedRecipes: SavedMealRecipe[]
   weekBudget:   number               // 0 = no budget set
   hiddenIds?:   Set<string>          // recipe IDs hidden by the user
+  ratings:      Record<string, number>  // recipe name → star rating (1-5); unrated treated as 5
 }
 
 export interface GeneratorResult {
@@ -130,6 +133,9 @@ const CATEGORY_MEAL_MAP: Record<string, MealTypeKey[]> = {
 /**
  * Build per-meal candidate pools from the library, the user's saved recipes,
  * and college meals — all filtered by equipment / dietary / disliked.
+ *
+ * If equipment filtering empties a pool, a second pass is run without the
+ * equipment constraint so the generator always has candidates to work with.
  */
 function buildPools(input: GeneratorInput): Record<MealTypeKey, GenCandidate[]> {
   const { equipment, disliked, dietary, savedRecipes, hiddenIds } = input
@@ -184,6 +190,22 @@ function buildPools(input: GeneratorInput): Record<MealTypeKey, GenCandidate[]> 
     }
   }
 
+  /* 4 — Equipment fallback: if kitchen was configured but left a meal type pool
+     empty, re-run the library scan without the equipment constraint so the
+     generator can still fill every meal type. */
+  if (equipment.length > 0) {
+    for (const mt of MEAL_ORDER) {
+      if (pools[mt].length === 0) {
+        for (const r of RECIPES_BY_MEAL[mt]) {
+          if (hiddenIds && hiddenIds.has(r.id)) continue
+          if (!passesDietary(r.dietaryTags)) continue
+          if (!passesDislike(r.ingredients)) continue
+          pools[mt].push(fromLibrary(r))
+        }
+      }
+    }
+  }
+
   return pools
 }
 
@@ -193,6 +215,7 @@ function scoreCandidate(
   slotCalTarget: number,
   config: GenConfig,
   used: Set<string>,
+  ratings: Record<string, number>,
 ): number {
   // Calorie closeness (1 = perfect, 0 = far off)
   const calScore = 1 - Math.min(1, Math.abs(cand.calories - slotCalTarget) / slotCalTarget)
@@ -207,10 +230,15 @@ function scoreCandidate(
   else if (config.budgetLevel === 'high') budgetScore = 0.35 + costNorm * 0.5
   else                                    budgetScore = 0.35
 
+  // Rating boost: unrated recipes get 5 stars (max); lower ratings reduce score
+  const starRating = ratings[cand.name] ?? 5
+  const ratingScore = starRating / 5   // 0.2 – 1.0
+
   let total =
-    calScore * 1.0 +
+    calScore    * 1.0 +
     proteinScore * 0.9 +
     budgetScore * 0.6 +
+    ratingScore * 1.2 +
     Math.random() * 0.25
 
   // No-repeat penalty (soft — still picks if the pool is exhausted)
@@ -224,7 +252,7 @@ function scoreCandidate(
  * Pure and deterministic except for a small random tie-breaker.
  */
 export function generateWeekPlan(input: GeneratorInput): GeneratorResult {
-  const { config, weekStart, existingKeys } = input
+  const { config, weekStart, existingKeys, ratings } = input
   const pools = buildPools(input)
 
   const dailyTarget = DAILY_CALORIE_TARGETS[config.calorieGoal]
@@ -233,13 +261,15 @@ export function generateWeekPlan(input: GeneratorInput): GeneratorResult {
   const projectedDailyCalories = Array<number>(7).fill(0)
   let projectedCost = 0
 
-  const hasAny = MEAL_ORDER.some(mt => pools[mt].length > 0)
+  // Only consider non-skipped meal types for the "any pool has items" check
+  const activeMealOrder = MEAL_ORDER.filter(mt => !config.skipMeals.includes(mt))
+  const hasAny = activeMealOrder.some(mt => pools[mt].length > 0)
   if (!hasAny) {
     return { slots: [], projectedCost: 0, projectedDailyCalories, emptyPools: true }
   }
 
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    for (const mt of MEAL_ORDER) {
+    for (const mt of activeMealOrder) {
       const key = `${dayIndex}:${mt}`
       if (existingKeys.has(key)) continue
       const pool = pools[mt]
@@ -249,7 +279,7 @@ export function generateWeekPlan(input: GeneratorInput): GeneratorResult {
       let best: GenCandidate | null = null
       let bestScore = -Infinity
       for (const cand of pool) {
-        const s = scoreCandidate(cand, slotCalTarget, config, used)
+        const s = scoreCandidate(cand, slotCalTarget, config, used, ratings)
         if (s > bestScore) { bestScore = s; best = cand }
       }
       if (!best) continue

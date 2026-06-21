@@ -2126,3 +2126,77 @@
 @media (max-width: 540px) {
   .genOptionRow { grid-template-columns: 1fr; }
 }
+
+/* ── Star Rating ─────────────────────────────────────────────── */
+.starRating {
+  display:     flex;
+  align-items: center;
+  gap:         2px;
+  margin-top:  var(--sp-2);
+}
+
+.starBtn {
+  background:  none;
+  border:      none;
+  padding:     0 1px;
+  cursor:      pointer;
+  font-size:   0.875rem;
+  line-height: 1;
+  transition:  transform var(--dur-fast), color var(--dur-fast);
+}
+
+.starBtn:hover { transform: scale(1.25); }
+
+.starFilled { color: #f59e0b; }
+.starEmpty  { color: var(--text-dark); opacity: 0.45; }
+
+/* ── Generate config — skip meal chips ──────────────────────── */
+.genSectionSub {
+  font-size:   0.6875rem;
+  color:       var(--text-dark);
+  margin:      -4px 0 0;
+}
+
+.genSkipRow {
+  display:   flex;
+  gap:       var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.genSkipChip {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--sp-2);
+  padding:         var(--sp-2) var(--sp-3);
+  border-radius:   999px;
+  border:          1px solid var(--border-subtle);
+  background:      rgba(255, 255, 255, 0.03);
+  font-family:     var(--font-mono);
+  font-size:       0.625rem;
+  font-weight:     600;
+  letter-spacing:  0.08em;
+  text-transform:  uppercase;
+  color:           var(--text-muted);
+  cursor:          pointer;
+  transition:      background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+
+.genSkipChip:hover {
+  border-color: rgba(248, 113, 113, 0.35);
+  color:        #f87171;
+  background:   rgba(248, 113, 113, 0.06);
+}
+
+.genSkipChipOn {
+  border-color: rgba(248, 113, 113, 0.45);
+  background:   rgba(248, 113, 113, 0.10);
+  color:        #f87171;
+}
+
+.genSkipDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    #f87171;
+  flex-shrink:   0;
+}

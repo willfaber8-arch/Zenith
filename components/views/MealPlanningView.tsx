@@ -34,6 +34,7 @@ const LS_STORE    = 'zenith_preferred_store_v1'
 const LS_PREFS    = 'zenith_food_prefs_v1'
 const LS_GEN_CFG  = 'zenith_meal_gen_config_v1'
 const LS_HIDDEN   = 'zenith_hidden_recipes_v1'
+const LS_RATINGS  = 'zenith_recipe_ratings_v1'
 
 function loadHiddenIds(): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -53,6 +54,46 @@ function loadGenConfig(): GenConfig {
     const raw = localStorage.getItem(LS_GEN_CFG)
     return raw ? { ...DEFAULT_GEN_CONFIG, ...JSON.parse(raw) } : DEFAULT_GEN_CONFIG
   } catch { return DEFAULT_GEN_CONFIG }
+}
+
+function loadRatings(): Record<string, number> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(LS_RATINGS)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
+function saveRating(ratings: Record<string, number>, recipeName: string, stars: number) {
+  const next = { ...ratings, [recipeName]: stars }
+  try { localStorage.setItem(LS_RATINGS, JSON.stringify(next)) } catch { /* noop */ }
+  return next
+}
+
+/* ── Star Rating component ───────────────────────────────────── */
+
+function StarRating({
+  recipeName, ratings, onRate,
+}: {
+  recipeName: string
+  ratings:    Record<string, number>
+  onRate:     (name: string, stars: number) => void
+}) {
+  const current = ratings[recipeName] ?? 0
+  return (
+    <div className={styles.starRating} aria-label={`Rate ${recipeName}`}>
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          type="button"
+          className={`${styles.starBtn} ${star <= current ? styles.starFilled : styles.starEmpty}`}
+          onClick={() => onRate(recipeName, star === current ? 0 : star)}
+          aria-label={`${star} star${star !== 1 ? 's' : ''}`}
+          title={star === current ? 'Clear rating' : `Rate ${star} star${star !== 1 ? 's' : ''}`}
+        >★</button>
+      ))}
+    </div>
+  )
 }
 
 /* Friendly label for the easiest equipment a library recipe needs. */
@@ -533,6 +574,34 @@ function GenerateConfigModal({
               </span>
             </button>
           </div>
+
+          {/* Skip meal types */}
+          <div className={styles.genSection}>
+            <p className={styles.genSectionLabel}>Skip meal types</p>
+            <p className={styles.genSectionSub}>These meal slots will be left empty when generating.</p>
+            <div className={styles.genSkipRow}>
+              {(['breakfast', 'lunch', 'dinner'] as const).map(mt => {
+                const skipped = cfg.skipMeals.includes(mt)
+                const labels: Record<string, string> = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' }
+                return (
+                  <button
+                    key={mt}
+                    type="button"
+                    className={`${styles.genSkipChip} ${skipped ? styles.genSkipChipOn : ''}`}
+                    onClick={() => setCfg(c => ({
+                      ...c,
+                      skipMeals: skipped
+                        ? c.skipMeals.filter(m => m !== mt)
+                        : [...c.skipMeals, mt],
+                    }))}
+                  >
+                    {labels[mt]}
+                    {skipped && <span className={styles.genSkipDot} />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         <div className={styles.modalFoot}>
@@ -559,9 +628,10 @@ interface PlannerTabProps {
   disliked:   string[]
   dietary:    string[]
   hiddenIds:  Set<string>
+  ratings:    Record<string, number>
 }
 
-function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hiddenIds }: PlannerTabProps) {
+function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hiddenIds, ratings }: PlannerTabProps) {
   const { toast }  = useToast()
   const weekDays   = getWeekDays(weekStart)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -630,7 +700,7 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
 
       const result = generateWeekPlan({
         config, equipment, disliked, dietary, weekStart,
-        existingKeys, savedRecipes, weekBudget, hiddenIds,
+        existingKeys, savedRecipes, weekBudget, hiddenIds, ratings,
       })
 
       if (result.emptyPools) {
@@ -657,7 +727,7 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
     } finally {
       setIsGenerating(false)
     }
-  }, [slots, equipment, disliked, dietary, weekStart, weekBudget, weekTotal, toast])
+  }, [slots, equipment, disliked, dietary, weekStart, weekBudget, weekTotal, toast, ratings, hiddenIds])
 
   const budgetUsedPct = weekBudget > 0 ? Math.min(100, (weekTotal / weekBudget) * 100) : 0
   const overBudget    = weekBudget > 0 && weekTotal > weekBudget
@@ -995,13 +1065,15 @@ function AddRecipeModal({ onSave, onClose }: { onSave: (r: Omit<SavedMealRecipe,
 }
 
 function RecipesTab({
-  equipment, disliked, dietary, hiddenIds, setHiddenIds,
+  equipment, disliked, dietary, hiddenIds, setHiddenIds, ratings, onRate,
 }: {
-  equipment: EquipmentTier[]
-  disliked:  string[]
-  dietary:   string[]
-  hiddenIds: Set<string>
+  equipment:    EquipmentTier[]
+  disliked:     string[]
+  dietary:      string[]
+  hiddenIds:    Set<string>
   setHiddenIds: Dispatch<SetStateAction<Set<string>>>
+  ratings:      Record<string, number>
+  onRate:       (name: string, stars: number) => void
 }) {
   const { toast } = useToast()
   const [catFilter,  setCatFilter]  = useState<string>('All')
@@ -1192,6 +1264,7 @@ function RecipesTab({
                   ))}
                 </div>
                 <p className={styles.libraryTip}>{r.tips}</p>
+                <StarRating recipeName={r.name} ratings={ratings} onRate={onRate} />
                 <a
                   href={`https://www.allrecipes.com/search?q=${encodeURIComponent(r.name)}`}
                   target="_blank"
@@ -1322,6 +1395,7 @@ function RecipesTab({
                 </div>
               )}
               {r.notes && <p className={styles.recipeCardNotes}>{r.notes}</p>}
+              <StarRating recipeName={r.title} ratings={ratings} onRate={onRate} />
               {r.url && (
                 <a href={r.url} target="_blank" rel="noopener noreferrer" className={styles.recipeCardLink}>
                   Open recipe →
@@ -1699,6 +1773,19 @@ export default function MealPlanningView() {
   const [activeTab,  setActiveTab]  = useState<Tab>('planner')
   const [weekOffset, setWeekOffset] = useState(0)
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(loadHiddenIds)
+  const [ratings, setRatings] = useState<Record<string, number>>(loadRatings)
+
+  const handleRate = useCallback((recipeName: string, stars: number) => {
+    setRatings(prev => {
+      if (stars === 0) {
+        const next = { ...prev }
+        delete next[recipeName]
+        try { localStorage.setItem(LS_RATINGS, JSON.stringify(next)) } catch { /* noop */ }
+        return next
+      }
+      return saveRating(prev, recipeName, stars)
+    })
+  }, [])
 
   const weekStart = useMemo(() => {
     const base = new Date()
@@ -1767,10 +1854,10 @@ export default function MealPlanningView() {
       {/* Tab content */}
       <div className="anim-fade-in delay-2">
         <div className={activeTab === 'planner'  ? '' : styles.hidden}>
-          <PlannerTab weekStart={weekStart} equipment={equipment} weekBudget={weekBudget} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} />
+          <PlannerTab weekStart={weekStart} equipment={equipment} weekBudget={weekBudget} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} ratings={ratings} />
         </div>
         <div className={activeTab === 'recipes'  ? '' : styles.hidden}>
-          <RecipesTab equipment={equipment} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} setHiddenIds={setHiddenIds} />
+          <RecipesTab equipment={equipment} disliked={prefs.disliked} dietary={prefs.dietary} hiddenIds={hiddenIds} setHiddenIds={setHiddenIds} ratings={ratings} onRate={handleRate} />
         </div>
         <div className={activeTab === 'budget'   ? '' : styles.hidden}>
           <BudgetTab weekStart={weekStart} weekBudget={weekBudget} setWeekBudget={setWeekBudget} />
