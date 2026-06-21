@@ -296,7 +296,7 @@ export default function AiCopilotSidebar() {
   const { isOpen, close }   = useCopilot()
   const { session }         = useAuth()
   const { toast }           = useToast()
-  const { authHeaders }     = useAiConfig()
+  const { authHeaders, config, mounted: aiMounted } = useAiConfig()
 
   /* ── State ─────────────────────────────────────────────────── */
   const [messages,       setMessages]       = useState<ChatMsg[]>([])
@@ -755,8 +755,23 @@ export default function AiCopilotSidebar() {
             </div>
           )}
 
+          {/* No API key notice */}
+          {aiMounted && !config.userApiKey && (
+            <div className={styles.noKeyBanner}>
+              <span className={styles.noKeyIcon}>◈</span>
+              <div>
+                <p className={styles.noKeyTitle}>API key required</p>
+                <p className={styles.noKeyBody}>
+                  To chat with Zenith AI, add your API key in{' '}
+                  <strong>Settings → AI Provider</strong>.
+                  Google Gemini has a free tier — no credit card needed.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Empty state before first open */}
-          {messages.length === 0 && contextStatus === 'idle' && (
+          {messages.length === 0 && contextStatus === 'idle' && (!aiMounted || config.userApiKey) && (
             <div className={styles.emptyState}>
               <span className={styles.emptyIcon} aria-hidden="true">◎</span>
               <p className={styles.emptyText}>Open to connect with your workspace context.</p>
