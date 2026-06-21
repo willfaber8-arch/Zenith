@@ -1,9 +1,9 @@
-/* ZenHeading — Display heading with Syne geometric font */
+/* ZenHeading — Display heading with Space Grotesk font */
 
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-2);
 }
 
 /* Overline label above the heading — inherits --cat-accent from .viewport */
@@ -15,24 +15,24 @@
   color: var(--cat-accent, var(--accent-purple));
 }
 
-/* Title — always Syne, always near-black leading */
+/* Title — smaller, non-dominating label */
 .title {
   font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 0.96;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   color: var(--text-primary);
 }
 
-/* Fluid size scale using clamp() for viewport-relative scaling */
-.sm { font-size: clamp(1.5rem,  3vw, 2.25rem); }
-.md { font-size: clamp(2rem,    5vw, 3.5rem);  }
-.lg { font-size: clamp(3rem,    8vw, 6rem);    }
+/* Fluid size scale — compact across all sizes */
+.sm { font-size: clamp(0.9rem,  1.5vw, 1.0rem);  }
+.md { font-size: clamp(1.0rem,  2vw,   1.25rem); }
+.lg { font-size: clamp(1.125rem, 2vw,  1.375rem); }
 
-/* Supporting paragraph below the title */
+/* Supporting paragraph — smaller, less intrusive */
 .subtitle {
-  font-size: 1.0625rem;
+  font-size: 0.8125rem;
   color: var(--text-muted);
-  line-height: 1.7;
-  max-width: 440px;
+  line-height: 1.6;
+  max-width: 520px;
 }
