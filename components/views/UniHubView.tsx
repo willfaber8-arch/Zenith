@@ -187,7 +187,7 @@ export default function UniHubView() {
             eyebrow="Scholastic · University Hub"
             title="Select your University."
             subtitle="We'll load resources, a GPA calculator, and tools tailored to your institution."
-            size="md"
+            size="sm"
           />
         </div>
         <UniSelector onSelect={handleSelectUni} />
@@ -204,7 +204,7 @@ export default function UniHubView() {
             eyebrow={`${profile?.universityName ?? 'University Hub'} · Major`}
             title="Select your Major."
             subtitle="We'll load major-specific resources alongside your university hub."
-            size="md"
+            size="sm"
           />
         </div>
         <div className={styles.majorSetupBack}>

@@ -41,7 +41,7 @@
 
 .uniName {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.15;
@@ -343,3 +343,309 @@
   color:     var(--text-dark);
   padding:   var(--sp-6) 0;
 }
+
+/* ════════════════════════════════════════════════════════════
+   Customization system — edit mode, pin/hide/reorder
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Header action cluster ───────────────────────────────── */
+
+.headerActions {
+  display:     flex;
+  align-items: flex-start;
+  gap:         var(--sp-2);
+  flex-shrink: 0;
+  margin-top:  var(--sp-2);
+}
+
+/* ── Customize / Done toggle button ──────────────────────── */
+
+.editBtn {
+  padding:       var(--sp-2) var(--sp-3);
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color:         var(--text-dark);
+  font-family:   var(--font-mono);
+  font-size:     0.5625rem;
+  font-weight:   500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:
+    color            var(--dur-fast),
+    border-color     var(--dur-fast),
+    background-color var(--dur-fast);
+}
+
+.editBtn:hover {
+  color:        var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+.editBtnActive {
+  background:   rgba(124,149,255,0.12);
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.editBtnActive:hover {
+  background:   rgba(124,149,255,0.18);
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+/* ── Edit mode info bar ──────────────────────────────────── */
+
+.editInfoBar {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  padding:     var(--sp-2) var(--sp-4);
+  background:  rgba(124,149,255,0.04);
+  border:      1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size:   0.5rem;
+  letter-spacing: 0.10em;
+  color:       var(--text-dark);
+  flex-wrap:   wrap;
+}
+
+.editInfoSep {
+  opacity: 0.35;
+}
+
+.resetPrefsBtn {
+  background:  transparent;
+  border:      none;
+  color:       var(--text-dark);
+  font-family: var(--font-mono);
+  font-size:   0.5rem;
+  letter-spacing: 0.10em;
+  cursor:      pointer;
+  padding:     0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition:  color var(--dur-fast);
+}
+
+.resetPrefsBtn:hover {
+  color: var(--text-muted);
+}
+
+/* ── Subline muted chip (hidden count) ───────────────────── */
+
+.sublineChipMuted {
+  font-family: var(--font-mono);
+  font-size:   0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  color:       var(--text-dark);
+  opacity:     0.55;
+}
+
+/* ── Hidden count badge on category label ────────────────── */
+
+.hiddenCount {
+  font-weight: 400;
+  opacity:     0.55;
+}
+
+/* ── Card wrapper (link card + controls below) ───────────── */
+
+.cardWrapper {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.cardWrapperHidden {
+  opacity: 0.55;
+}
+
+/* ── Card modifier: pinned ───────────────────────────────── */
+
+.cardPinned {
+  border-color: rgba(245,158,11,0.30) !important;
+  box-shadow:
+    0 2px 16px rgba(0,0,0,0.38),
+    0 0 0 1px rgba(245,158,11,0.15) !important;
+}
+
+.cardPinned::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(245,158,11,0.25),
+    transparent
+  ) !important;
+}
+
+/* ── Card modifier: hidden ───────────────────────────────── */
+
+.cardHidden {
+  opacity:        0.38;
+  filter:         saturate(0.25);
+  pointer-events: none;
+  cursor:         default;
+}
+
+/* ── Pinned badge (★ shown on card in normal mode) ────────── */
+
+.pinnedBadge {
+  position:    absolute;
+  top:         var(--sp-2);
+  right:       var(--sp-2);
+  font-size:   0.5625rem;
+  color:       #f59e0b;
+  line-height: 1;
+}
+
+/* ── Category label: source label on pinned cards ─────────── */
+
+.cardCatLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.4375rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  opacity:        0.70;
+  margin-bottom:  calc(-1 * var(--sp-1));
+}
+
+/* ── Edit-mode control buttons row ───────────────────────── */
+
+.cardControls {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-1);
+  flex-wrap:   wrap;
+  padding:     0 2px;
+}
+
+.controlBtn {
+  padding:       2px 8px;
+  font-family:   var(--font-mono);
+  font-size:     0.4375rem;
+  letter-spacing: 0.10em;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background:    transparent;
+  cursor:        pointer;
+  transition:
+    color            var(--dur-fast),
+    border-color     var(--dur-fast),
+    background-color var(--dur-fast);
+  white-space:   nowrap;
+}
+
+.controlBtnPin {
+  color: var(--text-dark);
+}
+
+.controlBtnPin:hover {
+  color:        #f59e0b;
+  border-color: rgba(245,158,11,0.30);
+  background:   rgba(245,158,11,0.06);
+}
+
+.controlBtnPinActive {
+  color:        #f59e0b;
+  border-color: rgba(245,158,11,0.35);
+  background:   rgba(245,158,11,0.08);
+}
+
+.controlBtnPinActive:hover {
+  background: rgba(245,158,11,0.14);
+}
+
+.controlBtnMove {
+  color: var(--text-dark);
+}
+
+.controlBtnMove:hover:not(:disabled) {
+  color:        var(--text-muted);
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-hover);
+}
+
+.controlBtnMove:disabled {
+  opacity: 0.25;
+  cursor:  default;
+}
+
+.controlBtnHide {
+  color: var(--text-dark);
+}
+
+.controlBtnHide:hover {
+  color:        #f87171;
+  border-color: rgba(248,113,113,0.30);
+  background:   rgba(248,113,113,0.06);
+}
+
+.controlBtnRestore {
+  color:        var(--accent-green);
+  border-color: rgba(82,204,163,0.25);
+}
+
+.controlBtnRestore:hover {
+  background: rgba(82,204,163,0.08);
+  border-color: rgba(82,204,163,0.40);
+}
+
+/* ── Important tab indicator on tab button ───────────────── */
+
+.resourceTabImportant {
+  color: rgba(245,158,11,0.70);
+}
+
+.resourceTabImportant:hover {
+  color:      #f59e0b;
+  background: rgba(245,158,11,0.06);
+}
+
+/* ── Important tab empty state ───────────────────────────── */
+
+.importantEmpty {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            var(--sp-3);
+  padding:        var(--sp-10) var(--sp-4);
+  max-width:      480px;
+}
+
+.importantEmptyGlyph {
+  font-size:   1.5rem;
+  color:       rgba(245,158,11,0.30);
+  line-height: 1;
+}
+
+.importantEmptyTitle {
+  font-family:    var(--font-display);
+  font-size:      1rem;
+  font-weight:    600;
+  color:          var(--text-primary);
+}
+
+.importantEmptyBody {
+  font-size:   0.82rem;
+  color:       var(--text-muted);
+  line-height: 1.65;
+}
+
+.inlineEditTrigger {
+  background:  transparent;
+  border:      none;
+  color:       var(--accent-purple);
+  font:        inherit;
+  cursor:      pointer;
+  padding:     0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
