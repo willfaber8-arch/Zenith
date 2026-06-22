@@ -116,7 +116,7 @@ export default function NotificationBell() {
           className={styles.panel}
           role="dialog"
           aria-label="Notifications"
-          onMouseDown={e => e.stopPropagation()}
+          onMouseDown={e => e.nativeEvent.stopImmediatePropagation()}
         >
 
           {/* ── Today summary ─────────────────────────────────── */}
