@@ -303,9 +303,6 @@
   border: 1px solid rgba(124, 149, 255, 0.3);
   background: transparent;
   color: var(--accent-purple);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -317,6 +314,12 @@
 .habitBtn:hover {
   background: rgba(124, 149, 255, 0.12);
   border-color: rgba(124, 149, 255, 0.55);
+}
+
+/* Force the crosshair SVG to a block box so no inline-baseline gap can
+   nudge it off-center inside the flex-centered circle. */
+.habitBtn svg {
+  display: block;
 }
 
 .doneCheck {
