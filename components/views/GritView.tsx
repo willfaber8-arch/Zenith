@@ -18,7 +18,6 @@ import {
   calculateMovingGritScore,
 }                               from '@/utils/gritScore'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
-import ZenHeading               from '@/components/ui/ZenHeading'
 import styles from './GritView.module.css'
 
 /* ── Difficulty label map ─────────────────────────────────── */
@@ -73,13 +72,6 @@ export default function GritView() {
 
   return (
     <div className={styles.page}>
-
-      <ZenHeading
-        eyebrow="Behavioral Analytics · Grit Engine"
-        title={`Grit\nScore.`}
-        subtitle="A parametric composite of habit difficulty, consistency, streak bonuses, and atrophy decay — visualised as a 30-day rolling trend."
-        size="md"
-      />
 
       {/* Active habit chips */}
       {activeHabits.length > 0 && (

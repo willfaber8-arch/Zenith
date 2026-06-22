@@ -3,7 +3,6 @@
 import { useState, useCallback }   from 'react'
 import { useLiveQuery }             from 'dexie-react-hooks'
 import { db, type QuickNote }       from '@/lib/db'
-import ZenHeading                   from '@/components/ui/ZenHeading'
 import AiIngestionDock              from '@/components/AiIngestionDock'
 import FlashcardDeck                from '@/components/FlashcardDeck'
 import MultiplayerLobby             from '@/components/MultiplayerLobby'
@@ -224,16 +223,6 @@ export default function StudyShieldView() {
 
   return (
     <div className={styles.view}>
-
-      {/* ── Page heading ─────────────────────────────────────── */}
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Scholastic · Study Shield"
-          title="Study Shield."
-          subtitle={subtitles[activeTab]}
-          size="lg"
-        />
-      </div>
 
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <div className={styles.tabBar} role="tablist">

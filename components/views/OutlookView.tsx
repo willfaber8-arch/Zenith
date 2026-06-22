@@ -9,7 +9,6 @@ import {
   todayISO as getTodayISO,
   type HabitWithCompletion,
 } from '@/lib/hooks/useHabits'
-import ZenHeading             from '@/components/ui/ZenHeading'
 import styles                 from './OutlookView.module.css'
 
 /* ── Unified event shape passed to both panels ───────────── */
@@ -446,12 +445,6 @@ export default function OutlookView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Essentials · Daily Overview"
-        title="Outlook"
-        subtitle={dateLabel}
-        size="md"
-      />
 
       <div className={styles.tabBar}>
         <button

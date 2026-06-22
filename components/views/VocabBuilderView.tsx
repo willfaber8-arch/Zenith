@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useLiveQuery }                                      from 'dexie-react-hooks'
 import { db }                                               from '@/lib/db'
 import type { VocabDeck, VocabCard }                        from '@/types/vocabulary'
-import ZenHeading                                           from '@/components/ui/ZenHeading'
 import VocabStudySession                                    from '@/components/VocabStudySession'
 import { useToast }                                         from '@/lib/ToastContext'
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
@@ -2352,13 +2351,6 @@ function LanguageBuilderTab() {
   /* ── Render ───────────────────────────────────────────────── */
   return (
     <div className={styles.wrapper}>
-      <ZenHeading
-        eyebrow="Scholastic · Language Lab"
-        title="Polyglot Vault."
-        subtitle="Build vocabulary decks and let spaced repetition surface the right cards at the right time."
-        size="md"
-      />
-
       <div className={styles.layout}>
 
         {/* ── Left: Deck list ───────────────────────────────── */}

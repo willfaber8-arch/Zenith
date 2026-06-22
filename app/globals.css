@@ -290,6 +290,11 @@ html[data-color-scheme='light'] canvas.cosmosCanvas {
   opacity: 0.06;
 }
 
+/* Remove the periwinkle dot pattern on light backgrounds */
+html[data-color-scheme='light'] body {
+  background-image: none;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    3.  GLOBAL RESET & BASE ELEMENT STYLES

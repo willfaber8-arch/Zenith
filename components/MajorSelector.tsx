@@ -21,7 +21,6 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import { MAJOR_REGISTRY, type MajorEntry } from '@/config/majors'
 import styles from './MajorSelector.module.css'
 
@@ -107,15 +106,6 @@ export default function MajorSelector({ onSelect }: MajorSelectorProps) {
 
   return (
     <div className={`${styles.wrap} anim-scale-in`}>
-
-      <div className={styles.heading}>
-        <ZenHeading
-          eyebrow="Scholastic · Major Hub"
-          title={`Declare your\nMajor Track.`}
-          subtitle="Select your declared major to load a tailored matrix of specialised academic resources, tools, and technical references."
-          size="lg"
-        />
-      </div>
 
       <div className={styles.fieldGroup}>
 

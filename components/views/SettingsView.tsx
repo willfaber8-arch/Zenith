@@ -25,7 +25,6 @@ import {
   getPresets, savePreset, deletePreset, applyPreset,
   type DashboardPreset,
 } from '@/lib/dashboardPresets'
-import ZenHeading               from '@/components/ui/ZenHeading'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -396,13 +395,6 @@ export default function SettingsView() {
   return (
     <>
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="System · Configuration"
-        title="Settings"
-        subtitle="Customise your Zenith workspace."
-        size="md"
-      />
-
       {/* ── Anchor hotbar ───────────────────────────────────────── */}
       <nav className={styles.anchorBar} aria-label="Settings sections">
         {SETTINGS_SECTIONS.map(s => (

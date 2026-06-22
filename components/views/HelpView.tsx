@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import styles from './HelpView.module.css'
 
 const BUG_AREAS = [
@@ -104,12 +103,6 @@ export default function HelpView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="System · Beta"
-        title="Help &amp; Feedback"
-        subtitle="Found a bug or have a suggestion? Send it directly to the dev team."
-        size="md"
-      />
 
       <div className={styles.grid}>
         {/* ── Feedback form ─── */}

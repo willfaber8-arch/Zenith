@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import ZenHeading          from '@/components/ui/ZenHeading'
 import GameFinderDashboard from '@/components/GameFinderDashboard'
 import TournamentHubView   from './TournamentHubView'
 
@@ -34,11 +33,6 @@ export default function GameFinderView() {
   return (
     <div>
       <div style={{ padding: 'var(--sp-8) var(--sp-8) var(--sp-3)' }}>
-        <ZenHeading
-          eyebrow="Life · Social"
-          title="Game Hub."
-          subtitle="Find the perfect multiplayer game or run a tournament with your group."
-        />
         <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-5)', flexWrap: 'wrap' }}>
           <button
             style={{ ...TAB_STYLE_BASE, ...(tab === 'finder' ? TAB_STYLE_ACTIVE : {}) }}

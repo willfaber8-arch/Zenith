@@ -5,7 +5,6 @@ import { useLiveQuery }          from 'dexie-react-hooks'
 import { db }                    from '@/lib/db'
 import type { CardioSession }    from '@/lib/db'
 import { syncHabitSource }       from '@/lib/habitSync'
-import ZenHeading                from '@/components/ui/ZenHeading'
 import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import styles                    from './WorkoutsView.module.css'
 
@@ -270,13 +269,6 @@ export default function WorkoutsView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Life · Movement"
-        title="Workouts"
-        subtitle="Log cardio, earn Vitality Points, and build your cozy biome."
-        size="md"
-      />
-
       {/* VP Balance chip */}
       <div className={styles.vpBar}>
         <div className={styles.vpChip}>

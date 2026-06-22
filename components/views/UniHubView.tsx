@@ -9,7 +9,6 @@ import { applyFreeTheme, seedGamesDatabase } from '@/lib/gamesDb'
 import {
   getUniversityBrand, uniThemeId, UNIVERSITY_THEME_DEFINITIONS,
 } from '@/lib/universityThemes'
-import ZenHeading         from '@/components/ui/ZenHeading'
 import UniSelector        from '@/components/UniSelector'
 import MajorSelector      from '@/components/MajorSelector'
 import UniversityHub      from '@/components/UniversityHub'
@@ -182,14 +181,6 @@ export default function UniHubView() {
   if (setupStep === 'uni') {
     return (
       <div className={`${styles.setupWrap} anim-scale-in`}>
-        <div className={styles.setupHeading}>
-          <ZenHeading
-            eyebrow="Scholastic · University Hub"
-            title="Select your University."
-            subtitle="We'll load resources, a GPA calculator, and tools tailored to your institution."
-            size="sm"
-          />
-        </div>
         <UniSelector onSelect={handleSelectUni} />
       </div>
     )
@@ -199,14 +190,6 @@ export default function UniHubView() {
   if (setupStep === 'major') {
     return (
       <div className={`${styles.setupWrap} anim-scale-in`}>
-        <div className={styles.setupHeading}>
-          <ZenHeading
-            eyebrow={`${profile?.universityName ?? 'University Hub'} · Major`}
-            title="Select your Major."
-            subtitle="We'll load major-specific resources alongside your university hub."
-            size="sm"
-          />
-        </div>
         <div className={styles.majorSetupBack}>
           <button type="button" className={styles.changeBtn} onClick={() => setSetupStep('uni')}>
             ← Change University
@@ -396,14 +379,6 @@ function UniNoData({
 }) {
   return (
     <div className={`${styles.noDataWrap} anim-scale-in`}>
-      <div className={styles.noDataHeading}>
-        <ZenHeading
-          eyebrow="Scholastic · University Hub"
-          title={universityName}
-          subtitle="Zenith is building a full resource integration for your institution. Check back in a future update."
-          size="md"
-        />
-      </div>
       <div className={`${styles.noDataActions} anim-slide-in delay-1`}>
         <button type="button" className={styles.changeBtn} onClick={onResetUni}>
           ← Change University

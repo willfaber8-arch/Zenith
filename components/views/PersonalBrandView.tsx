@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import ZenHeading      from '@/components/ui/ZenHeading'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import styles from './PersonalBrandView.module.css'
 
@@ -189,12 +188,6 @@ export default function PersonalBrandView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Life · Career"
-        title="Personal Brand Hub"
-        subtitle="Resources, tools, and AI-powered content to build your professional presence."
-        size="md"
-      />
 
       {/* ── Career Resources ──────────────────────────────────── */}
       <section className={styles.section}>

@@ -14,7 +14,6 @@ import {
 } from '@/types/bookTracker'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
 import { syncHabitSource } from '@/lib/habitSync'
-import ZenHeading from '@/components/ui/ZenHeading'
 import { useToast } from '@/lib/ToastContext'
 import styles from './BookTrackerDashboard.module.css'
 
@@ -572,13 +571,6 @@ export default function BookTrackerDashboard() {
   /* ── Render ──────────────────────────── */
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Essentials · Life"
-        title="Literary Ledger."
-        subtitle="Your personal bookshelf — track what you've read and what's next."
-        size="lg"
-      />
-
       <input
         ref={fileInputRef}
         type="file"

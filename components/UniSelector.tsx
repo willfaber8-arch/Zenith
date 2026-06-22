@@ -26,7 +26,6 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import {
   UNIVERSITY_REGISTRY,
   type UniversityEntry,
@@ -133,16 +132,6 @@ export default function UniSelector({ onSelect }: UniSelectorProps) {
 
   return (
     <div className={`${styles.wrap} anim-scale-in`}>
-
-      {/* ── Page heading ────────────────────────────────────── */}
-      <div className={styles.heading}>
-        <ZenHeading
-          eyebrow="Scholastic · University Hub"
-          title={`Configure your\nInstitution.`}
-          subtitle="Search for your school to load its personalised resource links, portals, and campus tools."
-          size="lg"
-        />
-      </div>
 
       {/* ── Search field ────────────────────────────────────── */}
       <div className={styles.fieldGroup}>

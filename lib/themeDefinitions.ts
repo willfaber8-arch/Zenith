@@ -19,6 +19,9 @@ export interface ThemeDefinition {
   readonly label: string
   /** Accent swatch hex for the Settings theme-picker dot. */
   readonly swatch: string
+  /** When true, this theme already provides a light background + dark text.
+   *  ThemeApplicator will NOT overlay the generic light-mode base vars on top. */
+  readonly isLightTheme?: boolean
 }
 
 export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
@@ -485,6 +488,103 @@ export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
       '--text-muted':        '#a8a4a0',
       '--text-dark':         '#6a6664',
       '--shadow-card':       '0 2px 24px rgba(224,72,64,0.14), 0 0 0 1px rgba(224,72,64,0.06)',
+    },
+  },
+
+  /* ── Light Themes ─────────────────────────────────────────────── */
+
+  light_clean: {
+    label:        'Morning Studio',
+    swatch:       '#1e9e6c',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#f2f4fc',
+      '--surface-card':      '#ffffff',
+      '--accent-purple':     '#1e9e6c',
+      '--accent-purple-dim': 'rgba(30, 158, 108, 0.25)',
+      '--border-subtle':     'rgba(18, 46, 36, 0.12)',
+      '--bg-hover':          'rgba(30, 158, 108, 0.07)',
+      '--bg-active':         'rgba(30, 158, 108, 0.13)',
+      '--text-primary':      '#181a2e',
+      '--text-muted':        '#464870',
+      '--text-dark':         '#8890b4',
+      '--shadow-card':       '0 2px 12px rgba(20, 24, 60, 0.10), 0 0 0 1px rgba(18, 46, 36, 0.12)',
+    },
+  },
+
+  light_warm: {
+    label:        'Parchment Studio',
+    swatch:       '#8b6c3c',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#f7f3eb',
+      '--surface-card':      '#fefcf6',
+      '--accent-purple':     '#8b6c3c',
+      '--accent-purple-dim': 'rgba(139, 108, 60, 0.30)',
+      '--border-subtle':     'rgba(100, 70, 20, 0.12)',
+      '--bg-hover':          'rgba(139, 108, 60, 0.06)',
+      '--bg-active':         'rgba(139, 108, 60, 0.11)',
+      '--text-primary':      '#2a2118',
+      '--text-muted':        '#5a4d3e',
+      '--text-dark':         '#7a6e60',
+      '--shadow-card':       '0 2px 12px rgba(80, 50, 20, 0.09), 0 0 0 1px rgba(100, 70, 20, 0.09)',
+    },
+  },
+
+  light_rose: {
+    label:        'Petal',
+    swatch:       '#b04060',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#fdf2f4',
+      '--surface-card':      '#fff8f9',
+      '--accent-purple':     '#b04060',
+      '--accent-purple-dim': 'rgba(176, 64, 96, 0.25)',
+      '--border-subtle':     'rgba(120, 40, 60, 0.10)',
+      '--bg-hover':          'rgba(176, 64, 96, 0.05)',
+      '--bg-active':         'rgba(176, 64, 96, 0.09)',
+      '--text-primary':      '#261018',
+      '--text-muted':        '#5a3844',
+      '--text-dark':         '#7a5860',
+      '--shadow-card':       '0 2px 12px rgba(100, 20, 40, 0.08), 0 0 0 1px rgba(120, 40, 60, 0.08)',
+    },
+  },
+
+  light_ocean: {
+    label:        'Coastal',
+    swatch:       '#1a6e8a',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#f0f6f8',
+      '--surface-card':      '#f8fcfd',
+      '--accent-purple':     '#1a6e8a',
+      '--accent-purple-dim': 'rgba(26, 110, 138, 0.25)',
+      '--border-subtle':     'rgba(10, 60, 80, 0.10)',
+      '--bg-hover':          'rgba(26, 110, 138, 0.06)',
+      '--bg-active':         'rgba(26, 110, 138, 0.11)',
+      '--text-primary':      '#0e2028',
+      '--text-muted':        '#3a5058',
+      '--text-dark':         '#5a7080',
+      '--shadow-card':       '0 2px 12px rgba(10, 60, 80, 0.08), 0 0 0 1px rgba(10, 60, 80, 0.08)',
+    },
+  },
+
+  light_dusk: {
+    label:        'Golden Hour',
+    swatch:       '#9e6020',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#faf4e8',
+      '--surface-card':      '#fdfaf2',
+      '--accent-purple':     '#9e6020',
+      '--accent-purple-dim': 'rgba(158, 96, 32, 0.28)',
+      '--border-subtle':     'rgba(80, 50, 10, 0.12)',
+      '--bg-hover':          'rgba(158, 96, 32, 0.06)',
+      '--bg-active':         'rgba(158, 96, 32, 0.11)',
+      '--text-primary':      '#28200a',
+      '--text-muted':        '#5a4c28',
+      '--text-dark':         '#7a6840',
+      '--shadow-card':       '0 2px 12px rgba(80, 50, 0, 0.09), 0 0 0 1px rgba(80, 50, 10, 0.09)',
     },
   },
 }

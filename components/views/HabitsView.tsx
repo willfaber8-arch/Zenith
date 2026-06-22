@@ -15,7 +15,6 @@ import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET 
 import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
 import { pushNotification }      from '@/lib/notificationCenter'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
-import ZenHeading               from '@/components/ui/ZenHeading'
 import { useToast }             from '@/lib/ToastContext'
 import styles from './HabitsView.module.css'
 
@@ -680,14 +679,6 @@ export default function HabitsView() {
 
       {/* ── Heading + daily badge ──────────────────────────── */}
       <div className={styles.headingRow}>
-        <div className="anim-scale-in">
-          <ZenHeading
-            eyebrow="Life · Habits"
-            title="Habits."
-            subtitle="Build consistency one day at a time. Every check-off counts."
-            size="md"
-          />
-        </div>
         <div className={styles.headingRight}>
           <div className={`${styles.dailyBadge} anim-fade-in`} aria-live="polite">
             <CircleProgress pct={dailyPct} size={72} done={dailyPct === 100} />

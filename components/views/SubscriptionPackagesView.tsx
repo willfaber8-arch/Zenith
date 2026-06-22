@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import { useSubscriptionAnalytics } from '@/lib/hooks/useSubscriptionAnalytics'
 import { calculateTrueMonthlyCost } from '@/types/finance'
 import type { BillingCycle } from '@/types/finance'
@@ -148,12 +147,6 @@ export default function SubscriptionPackagesView() {
 
   return (
     <div className={styles.container}>
-      <ZenHeading
-        eyebrow="Life · Finance"
-        title="Subscriptions."
-        subtitle="Track, bundle, and optimize your recurring expenses."
-      />
-
       {/* ── Burn-Rate Panel ─────────────────────────────── */}
       <div className={`${styles.burnPanel} ${criticalBurn ? styles.burnPanelCritical : ''}`}>
         <div className={styles.burnTopRow}>

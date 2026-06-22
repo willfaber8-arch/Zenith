@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db }             from '@/lib/db'
-import ZenHeading         from '@/components/ui/ZenHeading'
 import { useToast }       from '@/lib/ToastContext'
 import type { MealPlanSlot, SavedMealRecipe, MealIngredient, MealType, PlanType } from '@/lib/db'
 import {
@@ -1814,15 +1813,6 @@ export default function MealPlanningView() {
 
   return (
     <div className={styles.page}>
-
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Life · Meal Planning"
-          title="Meal Planning."
-          subtitle="Plan your week, track your grocery budget, and cook smarter with college-friendly meal ideas."
-          size="md"
-        />
-      </div>
 
       {/* Tab bar + week navigator */}
       <div className={`${styles.tabBar} anim-fade-in delay-1`}>

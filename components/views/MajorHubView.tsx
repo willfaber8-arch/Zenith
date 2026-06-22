@@ -25,7 +25,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useLiveQuery }  from 'dexie-react-hooks'
 import { useAuth }       from '@/lib/AuthContext'
 import { db }            from '@/lib/db'
-import ZenHeading        from '@/components/ui/ZenHeading'
 import MajorSelector     from '@/components/MajorSelector'
 import MajorHub          from '@/components/MajorHub'
 import {
@@ -143,13 +142,6 @@ function MajorNoData({
 }) {
   return (
     <div className={`${styles.noDataWrap} anim-scale-in`}>
-
-      <ZenHeading
-        eyebrow="Scholastic · Major Hub"
-        title={majorName}
-        subtitle="Zenith is building a full resource integration for this major track. The complete link matrix will be activated in a future phase."
-        size="md"
-      />
 
       <div className={`${styles.noDataActions} anim-slide-in delay-1`}>
         <button

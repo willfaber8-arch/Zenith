@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import ZenHeading            from '@/components/ui/ZenHeading'
 import AquascapingValidator  from '@/components/AquascapingValidator'
 import SupplierCartSimulator from '@/components/SupplierCartSimulator'
 import WaterParameterLogger  from '@/components/WaterParameterLogger'
@@ -33,15 +32,6 @@ export default function AquascapingView() {
 
   return (
     <div className={styles.wrap}>
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Creator's Choice · Aquascaping Engine"
-          title={meta.title}
-          subtitle={meta.subtitle}
-          size="lg"
-        />
-      </div>
-
       {/* Tab bar */}
       <div className={styles.tabBar}>
         <button
