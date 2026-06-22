@@ -61,24 +61,10 @@
   50%      { box-shadow: 0 0 10px rgba(124, 149, 255, 0.9); }
 }
 
-/* ── Click-outside backdrop ───────────────────────────────── */
-
-/* Transparent full-viewport layer. Sits directly beneath the panel; any
-   click that lands here (i.e. outside the panel) closes the dropdown.
-   Clicks on the panel never reach this element. */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 319;
-  background: transparent;
-}
-
 /* ── Dropdown panel ───────────────────────────────────────── */
+/* position / top / right / z-index are set via inline styles on the portal */
 
 .panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
   width: 340px;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 560px);
