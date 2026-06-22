@@ -5,27 +5,53 @@
  *
  * Reads the player's active cosmetic theme from the Games IDB singleton
  * and applies CSS custom-property overrides to document.documentElement.
- * This makes every themed CSS var across the entire app respond instantly
- * to theme changes without a page reload.
- *
- * Mount location: inside CopilotProvider in layout.tsx (always present when
- * authenticated or not — seeds the Games DB if the user has never opened the
- * Arcade Hub).
+ * Also monitors data-color-scheme attribute changes so light-mode vars
+ * are applied as inline styles (overriding any dark theme's bg/text).
  */
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { gamesDb, seedGamesDatabase } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS, ALL_THEMEABLE_VARS } from '@/lib/themeDefinitions'
 import { UNIVERSITY_THEME_DEFINITIONS } from '@/lib/universityThemes'
 
+/* Light-mode inline overrides — mirrors html[data-color-scheme='light'] in globals.css.
+   Applied as inline styles so they beat any dark cosmetic theme's bg/text vars. */
+const LIGHT_BASE_VARS: Readonly<Record<string, string>> = {
+  '--bg-main':           '#ffffff',
+  '--surface-card':      '#ffffff',
+  '--text-primary':      '#14151c',
+  '--text-muted':        '#33364a',
+  '--text-dark':         '#565b78',
+  '--accent-purple':     '#1e9e6c',
+  '--accent-purple-dim': 'rgba(30, 158, 108, 0.20)',
+  '--border-subtle':     'rgba(18, 46, 36, 0.12)',
+  '--bg-hover':          'rgba(30, 158, 108, 0.07)',
+  '--bg-active':         'rgba(30, 158, 108, 0.13)',
+  '--shadow-card':       '0 2px 12px rgba(20, 24, 60, 0.10), 0 0 0 1px rgba(18, 46, 36, 0.12)',
+  '--tint-home':         '#ffffff',
+  '--tint-essentials':   '#ffffff',
+  '--tint-creator':      '#ffffff',
+  '--tint-vault':        '#ffffff',
+}
+
 export default function ThemeApplicator() {
-  /* Seed the Games DB if it hasn't been seeded yet (idempotent). */
+  const [isLight, setIsLight] = useState(false)
+
   useEffect(() => {
     seedGamesDatabase().catch(() => {})
   }, [])
 
-  /* Reactively watch the active theme from the user_profile_config table. */
+  /* Watch data-color-scheme attribute so theme re-applies on scheme toggle */
+  useEffect(() => {
+    const check = () =>
+      setIsLight(document.documentElement.getAttribute('data-color-scheme') === 'light')
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-color-scheme'] })
+    return () => obs.disconnect()
+  }, [])
+
   const profile = useLiveQuery(
     () => gamesDb?.user_profile_config.get('active_user'),
     [],
@@ -33,22 +59,37 @@ export default function ThemeApplicator() {
 
   useEffect(() => {
     const themeId = profile?.activeTheme ?? 'zenith_default'
-    // University brand themes (uni_<id>) live in a separate map so the
-    // school colour palette stays out of the cosmetic shop catalog.
     const def = THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
 
-    // Step 1: Clear all previously applied overrides so no stale vars bleed through
+    /* Step 1: Clear all previously applied overrides so no stale vars bleed through */
     ALL_THEMEABLE_VARS.forEach(v =>
       document.documentElement.style.removeProperty(v),
     )
 
-    // Step 2: Apply the new theme's CSS custom-property overrides
+    /* Step 2: Apply the new theme's CSS custom-property overrides */
     if (def) {
       Object.entries(def.vars).forEach(([key, value]) => {
         document.documentElement.style.setProperty(key, value)
       })
     }
-  }, [profile?.activeTheme])
+
+    /* Step 3: If light mode is active and the theme is not itself a light theme,
+       overlay the light-mode base vars so dark bg/text values are overridden */
+    if (isLight && !def?.isLightTheme) {
+      Object.entries(LIGHT_BASE_VARS).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value)
+      })
+    }
+
+    /* Step 4: Set data-light-mode attribute so CSS rules can target both the
+       color-scheme toggle AND cosmetic light themes with a single selector */
+    const isLightMode = isLight || !!def?.isLightTheme
+    if (isLightMode) {
+      document.documentElement.setAttribute('data-light-mode', 'true')
+    } else {
+      document.documentElement.removeAttribute('data-light-mode')
+    }
+  }, [profile?.activeTheme, isLight])
 
   return null
 }

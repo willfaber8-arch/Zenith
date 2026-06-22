@@ -336,6 +336,31 @@
   color: #f87171;
 }
 
+.noKeyNotice {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+}
+
+.noKeyGlyph {
+  font-size: 1rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.noKeyNotice p {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.noKeyNotice strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }

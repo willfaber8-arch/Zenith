@@ -23,7 +23,6 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import styles     from './TournamentHubView.module.css'
 
 // ─────────────────────────────────────────────────────────────
@@ -748,17 +747,6 @@ export default function TournamentHubView() {
 
   return (
     <div className={styles.shell}>
-      <ZenHeading
-        eyebrow="Life · Social"
-        title={tab === 'wheel' ? 'Wheel\nof Names.' : 'Bracket\nBuilder.'}
-        subtitle={
-          tab === 'wheel'
-            ? 'Add participants and spin for a random selection.'
-            : 'Generate and manage a single-elimination tournament.'
-        }
-        size="lg"
-      />
-
       {/* Tab bar */}
       <div className={styles.tabBar} role="tablist">
         <button

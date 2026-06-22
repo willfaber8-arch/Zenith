@@ -453,6 +453,7 @@ export const MEAL_TYPES: { key: MealTypeKey; label: string; emoji: string }[] = 
 
 export const PLAN_TYPE_LABELS: Record<string, string> = {
   home:        'Home Cooked',
+  dining_hall: 'Dining Hall',
   dining_out:  'Dining Out',
   takeout:     'Takeout',
   delivery:    'Delivery',

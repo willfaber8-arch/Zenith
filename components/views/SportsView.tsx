@@ -12,7 +12,6 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import { useFollowedTeams } from '@/lib/hooks/useFollowedTeams'
 import {
   SPORT_CATEGORIES,
@@ -435,13 +434,6 @@ export default function SportsView() {
      ════════════════════════════════════════════ */
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Life · Sports Tracker"
-        title="Sports."
-        subtitle="Follow your clubs, see their form, and browse league standings across all major sports."
-        size="md"
-      />
-
       {/* ── My Teams Dashboard ───────────────────────────────────── */}
       {teams.length > 0 && (
         <section className={styles.dashSection}>

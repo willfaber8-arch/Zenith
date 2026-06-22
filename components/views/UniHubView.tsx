@@ -9,7 +9,6 @@ import { applyFreeTheme, seedGamesDatabase } from '@/lib/gamesDb'
 import {
   getUniversityBrand, uniThemeId, UNIVERSITY_THEME_DEFINITIONS,
 } from '@/lib/universityThemes'
-import ZenHeading         from '@/components/ui/ZenHeading'
 import UniSelector        from '@/components/UniSelector'
 import MajorSelector      from '@/components/MajorSelector'
 import UniversityHub      from '@/components/UniversityHub'
@@ -17,7 +16,6 @@ import MajorHub           from '@/components/MajorHub'
 import GpaSimulator       from '@/components/GpaSimulator'
 import BrbBurnRate              from '@/components/BrbBurnRate'
 import DeliveriesLogger         from '@/components/DeliveriesLogger'
-import SubscriptionPackagesView from './SubscriptionPackagesView'
 import {
   UNIVERSITY_REGISTRY,
   getUniversityConfig,
@@ -183,13 +181,12 @@ export default function UniHubView() {
   if (setupStep === 'uni') {
     return (
       <div className={`${styles.setupWrap} anim-scale-in`}>
-        <div className={styles.setupHeading}>
-          <ZenHeading
-            eyebrow="Scholastic · University Hub"
-            title="Select your University."
-            subtitle="We'll load resources, a GPA calculator, and tools tailored to your institution."
-            size="md"
-          />
+        <div className={styles.setupIntro}>
+          <p className={styles.setupEyebrow}>Scholastic · University Hub</p>
+          <h1 className={styles.setupTitle}>Configure your institution.</h1>
+          <p className={styles.setupSubtitle}>
+            Select your university to unlock tailored resources, GPA tools, and campus links curated for your school.
+          </p>
         </div>
         <UniSelector onSelect={handleSelectUni} />
       </div>
@@ -200,14 +197,6 @@ export default function UniHubView() {
   if (setupStep === 'major') {
     return (
       <div className={`${styles.setupWrap} anim-scale-in`}>
-        <div className={styles.setupHeading}>
-          <ZenHeading
-            eyebrow={`${profile?.universityName ?? 'University Hub'} · Major`}
-            title="Select your Major."
-            subtitle="We'll load major-specific resources alongside your university hub."
-            size="md"
-          />
-        </div>
         <div className={styles.majorSetupBack}>
           <button type="button" className={styles.changeBtn} onClick={() => setSetupStep('uni')}>
             ← Change University
@@ -375,15 +364,12 @@ export default function UniHubView() {
       <div className={activeTab === 'finances' ? styles.tabPane : styles.tabPaneHidden}>
         <div className={styles.tabPadded}>
           <p className={styles.financesNote}>
-            Track your {uniConfig.currencyName ?? 'campus dining balance'} spend rate and manage deliveries and subscriptions.
+            Track your {uniConfig.currencyName ?? 'campus dining balance'} spend rate and manage your campus mailroom deliveries.
           </p>
           <BrbBurnRate currencyName={uniConfig.currencyName ?? 'Campus Dollars'} />
           <div style={{ marginTop: 'var(--sp-8)' }}>
             <DeliveriesLogger />
           </div>
-        </div>
-        <div style={{ marginTop: 'var(--sp-6)' }}>
-          <SubscriptionPackagesView />
         </div>
       </div>
 
@@ -400,14 +386,6 @@ function UniNoData({
 }) {
   return (
     <div className={`${styles.noDataWrap} anim-scale-in`}>
-      <div className={styles.noDataHeading}>
-        <ZenHeading
-          eyebrow="Scholastic · University Hub"
-          title={universityName}
-          subtitle="Zenith is building a full resource integration for your institution. Check back in a future update."
-          size="md"
-        />
-      </div>
       <div className={`${styles.noDataActions} anim-slide-in delay-1`}>
         <button type="button" className={styles.changeBtn} onClick={onResetUni}>
           ← Change University

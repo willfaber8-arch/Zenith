@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import ZenHeading from '@/components/ui/ZenHeading'
 import type { NewsArticle } from '@/app/api/world-news/route'
 import styles from './WorldEventsView.module.css'
 
@@ -55,13 +54,6 @@ export default function WorldEventsView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Life · World News"
-        title="World Events"
-        subtitle="Live headlines from BBC World, NPR, and The Guardian. Refreshes every 10 minutes."
-        size="md"
-      />
-
       <div className={styles.controls}>
         <div className={styles.sourceFilter}>
           {newsSources.map(src => (

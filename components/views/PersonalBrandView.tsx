@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import ZenHeading      from '@/components/ui/ZenHeading'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import styles from './PersonalBrandView.module.css'
 
@@ -114,7 +113,7 @@ type Tone = typeof TONES[number]
    ════════════════════════════════════════════════════════════════ */
 
 export default function PersonalBrandView() {
-  const { authHeaders }           = useAiConfig()
+  const { authHeaders, config, mounted: aiMounted } = useAiConfig()
   const [activeTag, setActiveTag] = useState('All')
 
   /* ── LinkedIn generator state ───────────────────────────────── */
@@ -189,12 +188,6 @@ export default function PersonalBrandView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Life · Career"
-        title="Personal Brand Hub"
-        subtitle="Resources, tools, and AI-powered content to build your professional presence."
-        size="md"
-      />
 
       {/* ── Career Resources ──────────────────────────────────── */}
       <section className={styles.section}>
@@ -286,7 +279,7 @@ export default function PersonalBrandView() {
             <button
               className={styles.generateBtn}
               onClick={() => void handleGenerate()}
-              disabled={!topic.trim() || generating}
+              disabled={!topic.trim() || generating || (aiMounted && !config.userApiKey)}
             >
               {generating ? (
                 <><span className={styles.generating} /> Generating…</>
@@ -307,7 +300,15 @@ export default function PersonalBrandView() {
               )}
             </div>
             <div className={styles.outputBox}>
-              {generatedPost ? (
+              {aiMounted && !config.userApiKey ? (
+                <div className={styles.noKeyNotice}>
+                  <span className={styles.noKeyGlyph}>◈</span>
+                  <p>
+                    Add your API key in <strong>Settings → AI Provider</strong> to generate posts.
+                    Google Gemini has a free tier — no credit card needed.
+                  </p>
+                </div>
+              ) : generatedPost ? (
                 <p className={styles.outputText}>{generatedPost}{generating && <span className={styles.cursor} />}</p>
               ) : generating ? (
                 <p className={styles.outputPlaceholder}><span className={styles.cursor} /></p>

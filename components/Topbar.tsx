@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useAuth }         from '@/lib/AuthContext'
 import { useNav }          from '@/lib/NavContext'
 import { useCopilot }      from '@/lib/CopilotContext'
-import { useColorScheme }  from '@/lib/hooks/useColorScheme'
 import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
@@ -57,7 +56,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
   const { session }                       = useAuth()
   const { activeView, activeCategory }    = useNav()
   const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilot()
-  const { isLight, toggle: toggleScheme } = useColorScheme()
 
   const [now,     setNow]     = useState<Date | null>(null)
   const { status: wStatus, weather } = useWeather()
@@ -156,18 +154,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
         {/* Sync status micro-indicator */}
         <SyncIndicator />
 
-        <span className={styles.divider} aria-hidden="true" />
-
-        {/* Light / dark mode toggle */}
-        <button
-          type="button"
-          className={styles.themeToggleBtn}
-          onClick={toggleScheme}
-          aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
-          title={isLight ? 'Dark mode' : 'Light mode'}
-        >
-          {isLight ? '☽' : '☀'}
-        </button>
         <span className={styles.divider} aria-hidden="true" />
 
         {/* In-app notification bell — only shown when a session is active */}

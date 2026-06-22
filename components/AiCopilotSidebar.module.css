@@ -211,6 +211,45 @@
   letter-spacing: 0.04em;
 }
 
+/* ── No API key banner ───────────────────────────────────────── */
+
+.noKeyBanner {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  margin: var(--sp-4);
+  padding: var(--sp-4);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: var(--r-md);
+  animation: fadeIn var(--dur-slow) var(--ease-smooth) both;
+}
+
+.noKeyIcon {
+  font-size: 1rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.noKeyTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #f59e0b;
+  margin-bottom: var(--sp-1);
+}
+
+.noKeyBody {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.noKeyBody strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .emptyState {
   flex: 1;
   display: flex;

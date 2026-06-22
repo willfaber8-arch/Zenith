@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useLiveQuery }  from 'dexie-react-hooks'
 import { db }            from '@/lib/db'
-import ZenHeading        from '@/components/ui/ZenHeading'
 import type { CustomBookmark } from '@/lib/db'
 import styles from './CustomLinksView.module.css'
 
@@ -304,16 +303,6 @@ export default function CustomLinksView() {
 
   return (
     <div className={styles.wrap}>
-
-      {/* Heading */}
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Personalized Vault"
-          title="Custom Links."
-          subtitle="Your personal link dashboard. Organize websites, tools, and resources by category."
-          size="lg"
-        />
-      </div>
 
       {/* Category tab bar + Add button */}
       <div className={`${styles.tabBar} anim-fade-in delay-1`}>

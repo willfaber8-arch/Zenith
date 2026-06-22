@@ -37,8 +37,9 @@
 }
 
 .bellIcon {
-  font-size: 0.8125rem;
-  filter: grayscale(0.2);
+  display: block;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* "New" dot indicator */

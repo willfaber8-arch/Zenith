@@ -48,8 +48,8 @@ export default function AiIngestionDock({ onResult, isCompact = false }: AiInges
   const [expanded,   setExpanded]   = useState(true)
   const [notConfigured, setNotConfigured] = useState(false)
 
-  const { toast }       = useToast()
-  const { authHeaders } = useAiConfig()
+  const { toast }                    = useToast()
+  const { authHeaders, config, mounted } = useAiConfig()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const toggleGenerate = (key: keyof GenerateOptions) => {
@@ -173,19 +173,16 @@ export default function AiIngestionDock({ onResult, isCompact = false }: AiInges
         </div>
       )}
 
-      {/* ── Not-configured banner ──────────────────────────── */}
-      {notConfigured && (
+      {/* ── No API key banner ──────────────────────────────── */}
+      {(notConfigured || (mounted && !config.userApiKey)) && (
         <div className={styles.notConfigured}>
-          <span className={styles.notConfiguredIcon}>⚠</span>
+          <span className={styles.notConfiguredIcon}>◈</span>
           <div>
-            <p className={styles.notConfiguredTitle}>AI service not configured</p>
+            <p className={styles.notConfiguredTitle}>API key required</p>
             <p className={styles.notConfiguredBody}>
-              Add <code className={styles.code}>LLM_API_KEY=sk-ant-...</code> to your{' '}
-              <code className={styles.code}>.env.local</code> file, then restart the dev server.
-              Get a key at{' '}
-              <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className={styles.configLink}>
-                console.anthropic.com
-              </a>
+              To use AI study tools, add your API key in{' '}
+              <strong>Settings → AI Provider</strong>.
+              Google Gemini has a free tier — no credit card needed.
             </p>
           </div>
         </div>

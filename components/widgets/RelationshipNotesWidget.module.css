@@ -11,7 +11,7 @@
 /* ── Outer shell ─────────────────────────────────────────────── */
 
 .card {
-  background:    #0d0f12;
+  background:    var(--surface-card);
   border:        1px solid rgba(45, 212, 191, 0.10);
   border-radius: var(--r-xl);
   padding:       var(--sp-5) var(--sp-6);
@@ -233,9 +233,10 @@
   50%       { opacity: 0.25; transform: scale(0.70); }
 }
 
-/* ── Light mode overrides ─────────────────────────────────── */
+/* ── Light mode overrides (toggle + cosmetic light themes) ─── */
 
-:global(html[data-color-scheme='light']) .card {
+:global(html[data-color-scheme='light']) .card,
+:global(html[data-light-mode]) .card {
   background:    var(--surface-card);
   border-color:  rgba(45, 212, 191, 0.22);
   box-shadow:
@@ -244,7 +245,8 @@
     0 0 0 1px rgba(45, 212, 191, 0.08);
 }
 
-:global(html[data-color-scheme='light']) .card:hover {
+:global(html[data-color-scheme='light']) .card:hover,
+:global(html[data-light-mode]) .card:hover {
   border-color: rgba(45, 212, 191, 0.35);
   box-shadow:
     inset 0 1px 0 rgba(45, 212, 191, 0.16),
@@ -252,28 +254,34 @@
     0 0 0 1px rgba(45, 212, 191, 0.12);
 }
 
-:global(html[data-color-scheme='light']) .headerLabel {
+:global(html[data-color-scheme='light']) .headerLabel,
+:global(html[data-light-mode]) .headerLabel {
   color: rgba(20, 160, 140, 0.75);
 }
 
-:global(html[data-color-scheme='light']) .headerIcon {
+:global(html[data-color-scheme='light']) .headerIcon,
+:global(html[data-light-mode]) .headerIcon {
   color: rgba(20, 160, 140, 0.55);
 }
 
-:global(html[data-color-scheme='light']) .emptyText {
+:global(html[data-color-scheme='light']) .emptyText,
+:global(html[data-light-mode]) .emptyText {
   color: rgba(20, 160, 140, 0.65);
 }
 
-:global(html[data-color-scheme='light']) .newBadge {
+:global(html[data-color-scheme='light']) .newBadge,
+:global(html[data-light-mode]) .newBadge {
   color:       rgba(20, 160, 140, 0.80);
   background:  rgba(45, 212, 191, 0.10);
   border-color: rgba(45, 212, 191, 0.22);
 }
 
-:global(html[data-color-scheme='light']) .senderName {
+:global(html[data-color-scheme='light']) .senderName,
+:global(html[data-light-mode]) .senderName {
   color: rgba(20, 160, 140, 0.85);
 }
 
-:global(html[data-color-scheme='light']) .footer {
+:global(html[data-color-scheme='light']) .footer,
+:global(html[data-light-mode]) .footer {
   border-color: rgba(45, 212, 191, 0.12);
 }

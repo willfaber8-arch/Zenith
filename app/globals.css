@@ -241,18 +241,17 @@
 html[data-color-scheme='light'] {
   color-scheme: light;
 
-  /* Backgrounds */
-  --bg-main:        #f2f4fc;
+  /* Backgrounds — pure white for maximum legibility */
+  --bg-main:        #ffffff;
   --surface-card:   #ffffff;
-  --surface-accent: #e8ecf8;
-  --background:     #f2f4fc;
+  --surface-accent: #f1f3f8;
+  --background:     #ffffff;
   --surface:        #ffffff;
 
-  /* Text */
-  --text-primary: #181a2e;
-  --text-muted:   #464870;
-  --text-dark:    #8890b4;
-  --text-main:    #181a2e;
+  /* Text — near-black for strong contrast on white */
+  --text-primary: #14151c;
+  --text-muted:   #33364a;
+  --text-main:    #14151c;
 
   /* Accents — more saturated for visibility on light bg */
   --accent-purple:     #1e9e6c;
@@ -268,26 +267,33 @@ html[data-color-scheme='light'] {
   --bg-active:     rgba(30, 158, 108, 0.13);
 
   /* Text — darkened for WCAG AA on light surfaces */
-  --text-dark: #5c6387;
+  --text-dark: #565b78;
 
   /* Shadow */
   --shadow-card:
     0 2px 12px rgba(20, 24, 60, 0.10),
     0 0   0   1px var(--border-subtle);
 
-  /* Category tints — light pastel versions */
-  --tint-home:       #f2f4f2;
-  --tint-essentials: #edf5f0;
-  --tint-creator:    #edf6f1;
-  --tint-vault:      #f2f3f2;
+  /* Category tints — pure white so view backdrops stay clean */
+  --tint-home:       #ffffff;
+  --tint-essentials: #ffffff;
+  --tint-creator:    #ffffff;
+  --tint-vault:      #ffffff;
 
   /* Topbar */
-  --topbar-bg: rgba(242, 244, 252, 0.94);
+  --topbar-bg: rgba(255, 255, 255, 0.94);
 }
 
-/* CosmosCanvas stars are white — too invisible on light bg; dim them */
-html[data-color-scheme='light'] canvas.cosmosCanvas {
+/* CosmosCanvas stars are white — too invisible on light bg; dim them.
+   data-light-mode covers both the toggle AND cosmetic light themes. */
+html[data-color-scheme='light'] canvas.cosmosCanvas,
+html[data-light-mode] canvas.cosmosCanvas {
   opacity: 0.06;
+}
+
+/* Remove the periwinkle dot pattern on light backgrounds */
+html[data-color-scheme='light'] body {
+  background-image: none;
 }
 
 
@@ -314,7 +320,7 @@ html {
 body {
   min-height: 100%;
   background-color: var(--bg-main);
-  background-image: radial-gradient(circle, rgba(124, 149, 255, 0.055) 1px, transparent 1px);
+  background-image: var(--body-bg-image, radial-gradient(circle, rgba(124, 149, 255, 0.055) 1px, transparent 1px));
   background-size: 30px 30px;
   color: var(--text-primary);
   font-family: var(--font-body);

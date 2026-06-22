@@ -93,7 +93,21 @@ export default function NotificationBell() {
         aria-expanded={open}
         title="Notifications"
       >
-        <span className={styles.bellIcon} aria-hidden="true">🔔</span>
+        <svg
+          className={styles.bellIcon}
+          aria-hidden="true"
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 1.5a3 3 0 0 0-3 3v3L2.5 9.5h9L10 7.5v-3a3 3 0 0 0-3-3z" />
+          <path d="M5.75 11.5a1.25 1.25 0 0 0 2.5 0" />
+        </svg>
         {unseen > 0 && <span className={styles.dot} aria-hidden="true" />}
       </button>
 

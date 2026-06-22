@@ -19,6 +19,9 @@ export interface ThemeDefinition {
   readonly label: string
   /** Accent swatch hex for the Settings theme-picker dot. */
   readonly swatch: string
+  /** When true, this theme already provides a light background + dark text.
+   *  ThemeApplicator will NOT overlay the generic light-mode base vars on top. */
+  readonly isLightTheme?: boolean
 }
 
 export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
@@ -487,6 +490,128 @@ export const THEME_DEFINITIONS: Readonly<Record<string, ThemeDefinition>> = {
       '--shadow-card':       '0 2px 24px rgba(224,72,64,0.14), 0 0 0 1px rgba(224,72,64,0.06)',
     },
   },
+
+  /* ── Light Themes ─────────────────────────────────────────────── */
+
+  light_clean: {
+    label:        'Morning Studio',
+    swatch:       '#1e9e6c',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#ffffff',
+      '--surface-card':      '#ffffff',
+      '--accent-purple':     '#1e9e6c',
+      '--accent-purple-dim': 'rgba(30, 158, 108, 0.25)',
+      '--border-subtle':     'rgba(18, 46, 36, 0.12)',
+      '--bg-hover':          'rgba(30, 158, 108, 0.07)',
+      '--bg-active':         'rgba(30, 158, 108, 0.13)',
+      '--text-primary':      '#14151c',
+      '--text-muted':        '#33364a',
+      '--text-dark':         '#565b78',
+      '--shadow-card':       '0 2px 12px rgba(20, 24, 60, 0.10), 0 0 0 1px rgba(18, 46, 36, 0.12)',
+      '--tint-home':         '#ffffff',
+      '--tint-essentials':   '#ffffff',
+      '--tint-creator':      '#ffffff',
+      '--tint-vault':        '#ffffff',
+      '--body-bg-image':     'none',
+    },
+  },
+
+  light_warm: {
+    label:        'Parchment Studio',
+    swatch:       '#8b6c3c',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#f7f3eb',
+      '--surface-card':      '#fefcf6',
+      '--accent-purple':     '#8b6c3c',
+      '--accent-purple-dim': 'rgba(139, 108, 60, 0.30)',
+      '--border-subtle':     'rgba(100, 70, 20, 0.12)',
+      '--bg-hover':          'rgba(139, 108, 60, 0.06)',
+      '--bg-active':         'rgba(139, 108, 60, 0.11)',
+      '--text-primary':      '#2a2118',
+      '--text-muted':        '#5a4d3e',
+      '--text-dark':         '#7a6e60',
+      '--shadow-card':       '0 2px 12px rgba(80, 50, 20, 0.09), 0 0 0 1px rgba(100, 70, 20, 0.09)',
+      '--tint-home':         '#f7f3eb',
+      '--tint-essentials':   '#f4f0e6',
+      '--tint-creator':      '#f2f0e2',
+      '--tint-vault':        '#f5f3ec',
+      '--body-bg-image':     'none',
+    },
+  },
+
+  light_rose: {
+    label:        'Petal',
+    swatch:       '#b04060',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#fdf2f4',
+      '--surface-card':      '#fff8f9',
+      '--accent-purple':     '#b04060',
+      '--accent-purple-dim': 'rgba(176, 64, 96, 0.25)',
+      '--border-subtle':     'rgba(120, 40, 60, 0.10)',
+      '--bg-hover':          'rgba(176, 64, 96, 0.05)',
+      '--bg-active':         'rgba(176, 64, 96, 0.09)',
+      '--text-primary':      '#261018',
+      '--text-muted':        '#5a3844',
+      '--text-dark':         '#7a5860',
+      '--shadow-card':       '0 2px 12px rgba(100, 20, 40, 0.08), 0 0 0 1px rgba(120, 40, 60, 0.08)',
+      '--tint-home':         '#fdf2f4',
+      '--tint-essentials':   '#fbeef1',
+      '--tint-creator':      '#fbedf0',
+      '--tint-vault':        '#fdf3f5',
+      '--body-bg-image':     'none',
+    },
+  },
+
+  light_ocean: {
+    label:        'Coastal',
+    swatch:       '#1a6e8a',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#f0f6f8',
+      '--surface-card':      '#f8fcfd',
+      '--accent-purple':     '#1a6e8a',
+      '--accent-purple-dim': 'rgba(26, 110, 138, 0.25)',
+      '--border-subtle':     'rgba(10, 60, 80, 0.10)',
+      '--bg-hover':          'rgba(26, 110, 138, 0.06)',
+      '--bg-active':         'rgba(26, 110, 138, 0.11)',
+      '--text-primary':      '#0e2028',
+      '--text-muted':        '#3a5058',
+      '--text-dark':         '#5a7080',
+      '--shadow-card':       '0 2px 12px rgba(10, 60, 80, 0.08), 0 0 0 1px rgba(10, 60, 80, 0.08)',
+      '--tint-home':         '#f0f6f8',
+      '--tint-essentials':   '#ecf4f7',
+      '--tint-creator':      '#ecf5f6',
+      '--tint-vault':        '#f0f4f6',
+      '--body-bg-image':     'none',
+    },
+  },
+
+  light_dusk: {
+    label:        'Golden Hour',
+    swatch:       '#9e6020',
+    isLightTheme: true,
+    vars: {
+      '--bg-main':           '#faf4e8',
+      '--surface-card':      '#fdfaf2',
+      '--accent-purple':     '#9e6020',
+      '--accent-purple-dim': 'rgba(158, 96, 32, 0.28)',
+      '--border-subtle':     'rgba(80, 50, 10, 0.12)',
+      '--bg-hover':          'rgba(158, 96, 32, 0.06)',
+      '--bg-active':         'rgba(158, 96, 32, 0.11)',
+      '--text-primary':      '#28200a',
+      '--text-muted':        '#5a4c28',
+      '--text-dark':         '#7a6840',
+      '--shadow-card':       '0 2px 12px rgba(80, 50, 0, 0.09), 0 0 0 1px rgba(80, 50, 10, 0.09)',
+      '--tint-home':         '#faf4e8',
+      '--tint-essentials':   '#f7f1e3',
+      '--tint-creator':      '#f4eedc',
+      '--tint-vault':        '#f8f3e8',
+      '--body-bg-image':     'none',
+    },
+  },
 }
 
 /**
@@ -506,4 +631,9 @@ export const ALL_THEMEABLE_VARS: readonly string[] = [
   '--text-muted',
   '--text-dark',
   '--shadow-card',
+  '--tint-home',
+  '--tint-essentials',
+  '--tint-creator',
+  '--tint-vault',
+  '--body-bg-image',
 ] as const

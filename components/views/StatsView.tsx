@@ -5,7 +5,6 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { gamesDb }      from '@/lib/gamesDb'
 import { calcGpa }      from '@/utils/gpaMath'
-import ZenHeading       from '@/components/ui/ZenHeading'
 import EcosystemWrapped from '@/components/EcosystemWrapped'
 import styles from './StatsView.module.css'
 
@@ -95,13 +94,6 @@ export default function StatsView() {
 
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Personalized Vault · Analytics"
-        title="Stats &amp; Analytics"
-        subtitle="Your Zenith workspace at a glance — habits, focus, GPA, and economy."
-        size="md"
-      />
-
       {/* ── Annual review trigger ─────────────────────────────── */}
       <button
         type="button"

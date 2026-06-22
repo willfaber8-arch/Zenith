@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import ZenHeading      from '@/components/ui/ZenHeading'
 import TrailHunter     from '@/components/TrailHunter'
 import HikerPackSafety from '@/components/HikerPackSafety'
 import styles from './TrailHunterView.module.css'
@@ -27,15 +26,6 @@ export default function TrailHunterView() {
 
   return (
     <div className={styles.wrap}>
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Creator's Choice · Trail Hunter"
-          title={meta.title}
-          subtitle={meta.subtitle}
-          size="md"
-        />
-      </div>
-
       <div className={styles.tabBar}>
         {(['scout', 'safety'] as Tab[]).map(tab => (
           <button

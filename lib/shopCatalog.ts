@@ -14,6 +14,13 @@ export interface ShopCatalogItem {
 }
 
 export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
+  /* ── Light Themes (pinned first) ────────────────────────────── */
+  { id: 'light_clean', name: 'Morning Studio',  tagline: 'Clean white canvas with sage accents. The light default.',  category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_warm',  name: 'Parchment Studio', tagline: 'Warm cream surface with amber warmth.',                    category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_rose',  name: 'Petal',            tagline: 'Pale blush canvas with deep rose accent.',                 category: 'theme', cost: 200, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_ocean', name: 'Coastal',          tagline: 'Pale seafoam surface with deep ocean teal.',               category: 'theme', cost: 250, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_dusk',  name: 'Golden Hour',      tagline: 'Warm ochre canvas with burnished amber accent.',           category: 'theme', cost: 300, icon: '◈', tag: 'LIGHT' },
+
   /* ── Core Themes ─────────────────────────────────────────────── */
   { id: 'zenith_default',    name: 'Sage Studio',           tagline: 'Lightish green on dark grey — the Zenith default.',       category: 'theme', cost:   0, icon: '◈' },
   { id: 'zenith_periwinkle', name: 'Classic Periwinkle',    tagline: 'The original cosmos blue-purple aesthetic.',              category: 'theme', cost: 100, icon: '◈', tag: 'CLASSIC' },

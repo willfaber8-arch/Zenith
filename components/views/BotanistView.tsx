@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
-import ZenHeading from '@/components/ui/ZenHeading'
 import type {
   Houseplant, PlantCatalogEntry,
   LightRequirement, LightPosition, HumidityLevel,
@@ -418,15 +417,6 @@ export default function BotanistView() {
 
   return (
     <div className={styles.page}>
-      <div className="anim-scale-in">
-        <ZenHeading
-          eyebrow="Creator's Choice · Botanist Guide"
-          title="Plant Care."
-          subtitle="Track your collection, log waterings, record health, and get care reminders based on each plant's requirements."
-          size="md"
-        />
-      </div>
-
       {/* ── Toolbar ───────────────────────────────────────── */}
       <div className={styles.toolbar}>
         <input

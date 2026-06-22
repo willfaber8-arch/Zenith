@@ -7,24 +7,34 @@ import {
   useHabits,
   isHabitScheduledOn,
   todayISO as getTodayISO,
+  type HabitWithCompletion,
 } from '@/lib/hooks/useHabits'
-import ZenHeading             from '@/components/ui/ZenHeading'
 import styles                 from './OutlookView.module.css'
 
-/* ── Date utilities ──────────────────────────────────────────── */
+/* ── Unified event shape passed to both panels ───────────── */
+interface ViewEvent {
+  id?:          number
+  startMs:      number
+  title:        string
+  displayColor: string
+}
 
+/* ── Minimal assignment shape for panel props ─────────────── */
+interface AsmtRow {
+  id?:      number
+  title:    string
+  dueDate?: string
+  status?:  string
+  priority?: string
+}
+
+/* ── Date utilities ──────────────────────────────────────────── */
 function toISO(d: Date): string {
   return [
     d.getFullYear(),
     String(d.getMonth() + 1).padStart(2, '0'),
     String(d.getDate()).padStart(2, '0'),
   ].join('-')
-}
-
-function dayBounds(d: Date): [number, number] {
-  const s = new Date(d); s.setHours(0, 0, 0, 0)
-  const e = new Date(d); e.setHours(23, 59, 59, 999)
-  return [s.getTime(), e.getTime()]
 }
 
 function fmtTime(ms: number): string {
@@ -45,7 +55,6 @@ function addDays(d: Date, n: number): Date {
 }
 
 /* ── Priority colours ────────────────────────────────────────── */
-
 const PRIORITY_DOT: Record<string, string> = {
   critical: '#f87171',
   high:     '#fb923c',
@@ -54,13 +63,12 @@ const PRIORITY_DOT: Record<string, string> = {
 }
 
 /* ── SVG habit progress ring ─────────────────────────────────── */
-
 const R = 9, CIRC = 2 * Math.PI * R
 
 function HabitRing({ pct, color }: { pct: number; color: string }) {
   return (
     <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" className={styles.ring}>
-      <circle cx="13" cy="13" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+      <circle cx="13" cy="13" r={R} fill="none" stroke="var(--border-subtle)" strokeWidth="2.5" />
       <circle
         cx="13" cy="13" r={R}
         fill="none"
@@ -76,40 +84,29 @@ function HabitRing({ pct, color }: { pct: number; color: string }) {
   )
 }
 
+/* ── Shared panel props ───────────────────────────────────────── */
+interface PanelProps {
+  habits:      HabitWithCompletion[]
+  increment:   (id: number) => Promise<void>
+  events:      ViewEvent[]
+  assignments: AsmtRow[]
+}
+
 /* ════════════════════════════════════════════════════════════
    TODAY PANEL
    ════════════════════════════════════════════════════════════ */
 
-function TodayPanel() {
+function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
   const today     = new Date()
   const todayStr  = toISO(today)
-  const [s, e]    = dayBounds(today)
 
-  const { habits, increment } = useHabits()
-
-  // Calendar events today
-  const calEvts = useLiveQuery(
-    () => db?.calendarEvents.where('startMs').between(s, e, true, true).sortBy('startMs') ?? Promise.resolve([]),
-    [s, e],
-  ) ?? []
-
-  // Personal events today
-  const persEvts = useLiveQuery(
-    () => db?.personalEvents.where('startMs').between(s, e, true, true).sortBy('startMs') ?? Promise.resolve([]),
-    [s, e],
-  ) ?? []
-
-  // All events merged + sorted
+  // Filter the pre-fetched 7-day events window to today only
   const allEvts = useMemo(
-    () => [...calEvts, ...persEvts].sort((a, b) => a.startMs - b.startMs),
-    [calEvts, persEvts],
+    () => events
+      .filter(ev => toISO(new Date(ev.startMs)) === todayStr)
+      .sort((a, b) => a.startMs - b.startMs),
+    [events, todayStr],
   )
-
-  // Assignments — overdue OR due today
-  const assignments = useLiveQuery(
-    () => db?.assignments.toArray() ?? Promise.resolve([]),
-    [],
-  ) ?? []
 
   const todayTasks = useMemo(
     () => assignments
@@ -123,6 +120,9 @@ function TodayPanel() {
   )
 
   const scheduledHabits = habits.filter(h => isHabitScheduledOn(h, todayStr))
+  const habitsDone      = scheduledHabits.filter(h => h.todayDone).length
+  const habitsPct       = scheduledHabits.length > 0 ? habitsDone / scheduledHabits.length : 0
+  const overdueCount    = todayTasks.filter(a => (a.dueDate ?? '').slice(0, 10) < todayStr).length
 
   async function markDone(id: number) {
     await db?.assignments.update(id, { status: 'completed' })
@@ -131,25 +131,39 @@ function TodayPanel() {
   return (
     <div className={styles.panel}>
 
-      {/* ── Events ──────────────────────────────────────── */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionLabel}>
-          Calendar
-          {allEvts.length > 0 && (
-            <span className={styles.count}>{allEvts.length}</span>
-          )}
-        </h2>
+      {/* ── Summary hero strip ──────────────────────────────── */}
+      <div className={styles.summaryRow}>
+        <div className={`${styles.statCard} ${styles.statCalendar}`}>
+          <span className={styles.statIcon}>◇</span>
+          <span className={styles.statNum}>{allEvts.length}</span>
+          <span className={styles.statLabel}>{allEvts.length === 1 ? 'Event' : 'Events'}</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.statHabits}`}>
+          <HabitRing pct={habitsPct} color="#52cca3" />
+          <span className={styles.statNum}>{habitsDone}<span className={styles.statOf}>/{scheduledHabits.length}</span></span>
+          <span className={styles.statLabel}>Habits</span>
+        </div>
+        <div className={`${styles.statCard} ${overdueCount > 0 ? styles.statTasksAlert : styles.statTasks}`}>
+          <span className={styles.statIcon}>{overdueCount > 0 ? '!' : '✓'}</span>
+          <span className={styles.statNum}>{todayTasks.length}</span>
+          <span className={styles.statLabel}>{todayTasks.length === 1 ? 'Task due' : 'Tasks due'}</span>
+        </div>
+      </div>
 
+      {/* ── Events ──────────────────────────────────────────── */}
+      <section className={`${styles.section} ${styles.sectionCard}`}>
+        <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphCalendar}`}>◇</span>
+          Calendar
+          {allEvts.length > 0 && <span className={styles.count}>{allEvts.length}</span>}
+        </h2>
         {allEvts.length === 0 ? (
           <p className={styles.empty}>No events scheduled today.</p>
         ) : (
           <ul className={styles.list}>
             {allEvts.map((ev, i) => (
               <li key={`${ev.id}-${i}`} className={styles.eventRow}>
-                <span
-                  className={styles.eventDot}
-                  style={{ background: (ev as { _color?: string })._color ?? 'var(--accent-purple)' }}
-                />
+                <span className={styles.eventDot} style={{ background: ev.displayColor }} />
                 <span className={styles.eventTime}>{fmtTime(ev.startMs)}</span>
                 <span className={styles.eventTitle}>{ev.title}</span>
               </li>
@@ -158,9 +172,10 @@ function TodayPanel() {
         )}
       </section>
 
-      {/* ── Habits ──────────────────────────────────────── */}
-      <section className={styles.section}>
+      {/* ── Habits ──────────────────────────────────────────── */}
+      <section className={`${styles.section} ${styles.sectionCard}`}>
         <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphHabits}`}>◆</span>
           Habits
           {scheduledHabits.length > 0 && (
             <span className={styles.count}>
@@ -168,13 +183,12 @@ function TodayPanel() {
             </span>
           )}
         </h2>
-
         {scheduledHabits.length === 0 ? (
           <p className={styles.empty}>No habits scheduled today.</p>
         ) : (
           <ul className={styles.list}>
             {scheduledHabits.map(h => {
-              const pct  = h.todayCount / h.targetCompletions
+              const pct   = h.todayCount / h.targetCompletions
               const color = h.color ?? '#7c95ff'
               const label = h.stepLabel
                 ? `${h.todayCount}/${h.targetCompletions} ${h.stepLabel}`
@@ -190,13 +204,9 @@ function TodayPanel() {
                       onClick={() => increment(h.id!)}
                       aria-label={`Log ${h.name}`}
                       type="button"
-                    >
-                      +
-                    </button>
+                    >+</button>
                   )}
-                  {h.todayDone && (
-                    <span className={styles.doneCheck} aria-label="Complete">✓</span>
-                  )}
+                  {h.todayDone && <span className={styles.doneCheck} aria-label="Complete">✓</span>}
                 </li>
               )
             })}
@@ -204,17 +214,15 @@ function TodayPanel() {
         )}
       </section>
 
-      {/* ── Tasks ───────────────────────────────────────── */}
-      <section className={styles.section}>
+      {/* ── Tasks ───────────────────────────────────────────── */}
+      <section className={`${styles.section} ${styles.sectionCard}`}>
         <h2 className={styles.sectionLabel}>
+          <span className={`${styles.sectionGlyph} ${styles.glyphTasks}`}>✓</span>
           Due Today
-          {todayTasks.length > 0 && (
-            <span className={styles.count}>{todayTasks.length}</span>
-          )}
+          {todayTasks.length > 0 && <span className={styles.count}>{todayTasks.length}</span>}
         </h2>
-
         {todayTasks.length === 0 ? (
-          <p className={styles.empty}>No tasks due today — you're clear.</p>
+          <p className={styles.empty}>No tasks due today — you&apos;re clear.</p>
         ) : (
           <ul className={styles.list}>
             {todayTasks.map(a => {
@@ -249,11 +257,10 @@ function TodayPanel() {
    WEEK PANEL
    ════════════════════════════════════════════════════════════ */
 
-function WeekPanel() {
+function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
   const todayDate = new Date()
   const todayStr  = toISO(todayDate)
 
-  // Build 7 day objects starting today
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => {
       const d = addDays(todayDate, i)
@@ -263,56 +270,27 @@ function WeekPanel() {
     [todayStr],
   )
 
-  const weekStart = days[0].date
-  const weekEnd   = addDays(days[6].date, 1)
-  const wsMs      = weekStart.getTime()
-  const weMs      = weekEnd.getTime()
-
-  // All cal events this week
-  const calEvts = useLiveQuery(
-    () => db?.calendarEvents.where('startMs').between(wsMs, weMs, true, false).toArray() ?? Promise.resolve([]),
-    [wsMs, weMs],
-  ) ?? []
-
-  const persEvts = useLiveQuery(
-    () => db?.personalEvents.where('startMs').between(wsMs, weMs, true, false).toArray() ?? Promise.resolve([]),
-    [wsMs, weMs],
-  ) ?? []
-
-  const assignments = useLiveQuery(
-    () => db?.assignments.toArray() ?? Promise.resolve([]),
-    [],
-  ) ?? []
-
-  // Habits summary for today
-  const { habits, increment } = useHabits()
   const scheduledToday = habits.filter(h => isHabitScheduledOn(h, todayStr))
   const doneToday      = scheduledToday.filter(h => h.todayDone).length
 
   // Group events by day ISO
   const evtsByDay = useMemo(() => {
-    const map = new Map<string, { startMs: number; title: string; color?: string }[]>()
-    for (const ev of [...calEvts, ...persEvts]) {
+    const map = new Map<string, { startMs: number; title: string; displayColor: string }[]>()
+    for (const ev of events) {
       const iso = toISO(new Date(ev.startMs))
       if (!map.has(iso)) map.set(iso, [])
-      map.get(iso)!.push({
-        startMs: ev.startMs,
-        title:   ev.title,
-        color:   (ev as { _color?: string })._color,
-      })
+      map.get(iso)!.push({ startMs: ev.startMs, title: ev.title, displayColor: ev.displayColor })
     }
-    // Sort each day's events by time
     map.forEach(arr => arr.sort((a, b) => a.startMs - b.startMs))
     return map
-  }, [calEvts, persEvts])
+  }, [events])
 
-  // Group assignments by due date
+  // Group tasks by due date (overdue → today)
   const tasksByDay = useMemo(() => {
-    const map = new Map<string, typeof assignments>()
+    const map = new Map<string, AsmtRow[]>()
     for (const a of assignments) {
       if (a.status === 'completed') continue
       const iso = (a.dueDate ?? '').slice(0, 10)
-      // Include overdue tasks on today's row
       const key = iso < todayStr ? todayStr : iso
       if (!days.find(d => d.iso === key)) continue
       if (!map.has(key)) map.set(key, [])
@@ -328,7 +306,7 @@ function WeekPanel() {
   return (
     <div className={styles.panel}>
 
-      {/* ── Habit streak row ──────────────────────────────── */}
+      {/* ── Habit strip for today ────────────────────────────── */}
       {scheduledToday.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionLabel}>
@@ -341,7 +319,7 @@ function WeekPanel() {
                 <button
                   className={styles.habitWeekDot}
                   style={{
-                    background: h.todayDone ? (h.color ?? '#7c95ff') : 'transparent',
+                    background:  h.todayDone ? (h.color ?? '#7c95ff') : 'transparent',
                     borderColor: h.color ?? '#7c95ff',
                   }}
                   onClick={() => !h.todayDone && increment(h.id!)}
@@ -355,7 +333,7 @@ function WeekPanel() {
         </section>
       )}
 
-      {/* ── 7-day list ────────────────────────────────────── */}
+      {/* ── 7-day list ────────────────────────────────────────── */}
       {days.map(({ iso, label, isToday }) => {
         const evts  = evtsByDay.get(iso) ?? []
         const tasks = tasksByDay.get(iso) ?? []
@@ -376,18 +354,13 @@ function WeekPanel() {
               {label}
               {isToday && <span className={styles.todayBadge}>Today</span>}
             </div>
-
             {evts.map((ev, i) => (
               <div key={i} className={styles.weekEventRow}>
-                <span
-                  className={styles.weekEventDot}
-                  style={{ background: ev.color ?? 'var(--accent-purple)' }}
-                />
+                <span className={styles.weekEventDot} style={{ background: ev.displayColor }} />
                 <span className={styles.weekEventTime}>{fmtTime(ev.startMs)}</span>
                 <span className={styles.weekEventTitle}>{ev.title}</span>
               </div>
             ))}
-
             {tasks.map(a => (
               <div key={a.id} className={styles.weekTaskRow}>
                 <button
@@ -411,7 +384,8 @@ function WeekPanel() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   ROOT
+   ROOT — data fetched here so all queries start immediately
+          when the view opens, before any tab panel renders
    ════════════════════════════════════════════════════════════ */
 
 type OutlookTab = 'today' | 'week'
@@ -420,21 +394,57 @@ export default function OutlookView() {
   const [tab, setTab] = useState<OutlookTab>('today')
   const today = getTodayISO()
 
-  // Nice header date like "Sunday, June 15"
   const dateLabel = useMemo(() => {
     const d = new Date()
     return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today])
 
+  // Habits — reactive, covers today + week grid
+  const { habits, increment } = useHabits()
+
+  // Assignments — reactive, used by both panels
+  const assignments = (useLiveQuery(
+    () => db?.assignments.toArray() ?? Promise.resolve([]),
+    [],
+  ) ?? []) as AsmtRow[]
+
+  // Events — query the full 7-day window once; panels filter per-day
+  const todayObj = useMemo(() => new Date(), [today])
+  const [rangeStart, rangeEnd] = useMemo(() => {
+    const s = new Date(todayObj); s.setHours(0, 0, 0, 0)
+    const e = addDays(todayObj, 7); e.setHours(23, 59, 59, 999)
+    return [s.getTime(), e.getTime()]
+  }, [todayObj])
+
+  const calEvts = useLiveQuery(
+    () => db?.calendarEvents.where('startMs').between(rangeStart, rangeEnd, true, true).toArray() ?? Promise.resolve([]),
+    [rangeStart, rangeEnd],
+  ) ?? []
+
+  const persEvts = useLiveQuery(
+    () => db?.personalEvents.where('startMs').between(rangeStart, rangeEnd, true, true).toArray() ?? Promise.resolve([]),
+    [rangeStart, rangeEnd],
+  ) ?? []
+
+  // Normalize both sources into a single unified array
+  const events = useMemo<ViewEvent[]>(() => [
+    ...(calEvts ?? []).map(ev => ({
+      id:           ev.id,
+      startMs:      ev.startMs,
+      title:        ev.title,
+      displayColor: 'var(--accent-purple)',
+    })),
+    ...(persEvts ?? []).map(ev => ({
+      id:           ev.id,
+      startMs:      ev.startMs,
+      title:        ev.title,
+      displayColor: ev.color ?? 'var(--accent-purple)',
+    })),
+  ], [calEvts, persEvts])
+
   return (
     <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Essentials · Daily Overview"
-        title={`Outlook`}
-        subtitle={dateLabel}
-        size="md"
-      />
 
       <div className={styles.tabBar}>
         <button
@@ -453,7 +463,10 @@ export default function OutlookView() {
         </button>
       </div>
 
-      {tab === 'today' ? <TodayPanel /> : <WeekPanel />}
+      {tab === 'today'
+        ? <TodayPanel habits={habits} increment={increment} events={events} assignments={assignments} />
+        : <WeekPanel  habits={habits} increment={increment} events={events} assignments={assignments} />
+      }
     </div>
   )
 }
