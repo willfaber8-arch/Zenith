@@ -14,6 +14,13 @@ export interface ShopCatalogItem {
 }
 
 export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
+  /* ── Light Themes (pinned first) ────────────────────────────── */
+  { id: 'light_clean', name: 'Morning Studio',  tagline: 'Clean white canvas with sage accents. The light default.',  category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_warm',  name: 'Parchment Studio', tagline: 'Warm cream surface with amber warmth.',                    category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_rose',  name: 'Petal',            tagline: 'Pale blush canvas with deep rose accent.',                 category: 'theme', cost: 200, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_ocean', name: 'Coastal',          tagline: 'Pale seafoam surface with deep ocean teal.',               category: 'theme', cost: 250, icon: '◈', tag: 'LIGHT' },
+  { id: 'light_dusk',  name: 'Golden Hour',      tagline: 'Warm ochre canvas with burnished amber accent.',           category: 'theme', cost: 300, icon: '◈', tag: 'LIGHT' },
+
   /* ── Core Themes ─────────────────────────────────────────────── */
   { id: 'zenith_default',    name: 'Sage Studio',           tagline: 'Lightish green on dark grey — the Zenith default.',       category: 'theme', cost:   0, icon: '◈' },
   { id: 'zenith_periwinkle', name: 'Classic Periwinkle',    tagline: 'The original cosmos blue-purple aesthetic.',              category: 'theme', cost: 100, icon: '◈', tag: 'CLASSIC' },
@@ -38,13 +45,6 @@ export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
   { id: 'zenith_indigo',     name: 'Midnight Indigo',       tagline: 'Deep indigo-violet on starless black.',                  category: 'theme', cost: 300, icon: '◈' },
   { id: 'zenith_mint',       name: 'Minty Fresh',           tagline: 'Vivid mint on cool dark canvas. Energising.',            category: 'theme', cost: 350, icon: '◈', tag: 'NEW' },
   { id: 'zenith_mauve',      name: 'Dusty Mauve',           tagline: 'Antique mauve on warm near-black.',                      category: 'theme', cost: 350, icon: '◈' },
-
-  /* ── Light Themes ───────────────────────────────────────────── */
-  { id: 'light_clean', name: 'Morning Studio',  tagline: 'Clean white canvas with sage accents. The light default.',  category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
-  { id: 'light_warm',  name: 'Parchment Studio', tagline: 'Warm cream surface with amber warmth.',                    category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
-  { id: 'light_rose',  name: 'Petal',            tagline: 'Pale blush canvas with deep rose accent.',                 category: 'theme', cost: 200, icon: '◈', tag: 'LIGHT' },
-  { id: 'light_ocean', name: 'Coastal',          tagline: 'Pale seafoam surface with deep ocean teal.',               category: 'theme', cost: 250, icon: '◈', tag: 'LIGHT' },
-  { id: 'light_dusk',  name: 'Golden Hour',      tagline: 'Warm ochre canvas with burnished amber accent.',           category: 'theme', cost: 300, icon: '◈', tag: 'LIGHT' },
 
   /* ── Packs ───────────────────────────────────────────────────── */
   { id: 'pack_study',        name: "Scholar's Focus Pack",  tagline: 'Enhanced study cockpit and academic overlays.',          category: 'pack',  cost:  75, icon: '◧' },
