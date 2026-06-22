@@ -358,6 +358,37 @@
 .feedItem[data-type='assignment-due']     { border-left: 2px solid #f59e0b; }
 .feedItem[data-type='habit-milestone']    { border-left: 2px solid var(--accent-green); }
 
+/* Swipe-off-to-the-right exit. The row collapses its height as it slides so
+   the rows beneath glide up cleanly instead of snapping. */
+.feedItemExiting {
+  animation: feedSwipeOut 240ms var(--ease-smooth) forwards;
+  pointer-events: none;
+}
+
+@keyframes feedSwipeOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 80px;
+    margin-bottom: 0;
+  }
+  60% {
+    transform: translateX(115%);
+    opacity: 0;
+    max-height: 80px;
+    margin-bottom: 0;
+  }
+  100% {
+    transform: translateX(115%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: -4px;   /* absorb the parent's 4px gap */
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
 .feedMain {
   display: flex;
   align-items: flex-start;

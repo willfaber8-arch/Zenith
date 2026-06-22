@@ -49,6 +49,10 @@ export default function NotificationBell() {
   const [open, setOpen]          = useState(false)
   const [customizing, setCustom] = useState(false)
   const [mounted, setMounted]    = useState(false)
+  /* Notifications mid-swipe-out — kept in the DOM until the animation ends,
+     then removed from the store. Lets users rapid-fire ✕ individual rows
+     while the rest of the panel stays put. */
+  const [exiting, setExiting]    = useState<Set<string>>(new Set())
 
   const rootRef      = useRef<HTMLDivElement>(null)
   const panelRef     = useRef<HTMLDivElement>(null)
@@ -98,6 +102,25 @@ export default function NotificationBell() {
     navigate(view, view === 'home' ? null : (VIEW_CATEGORY[view] ?? 'essentials'))
     setOpen(false)
   }, [navigate])
+
+  /* Swipe a single notification off-screen, then drop it from the store.
+     Panel stays open the whole time. */
+  const handleDismiss = useCallback((id: string) => {
+    setExiting(prev => {
+      if (prev.has(id)) return prev          // already animating — ignore repeat
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    window.setTimeout(() => {
+      dismiss(id)
+      setExiting(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }, 240)
+  }, [dismiss])
 
   const enabledIds = new Set(checklist.map(c => c.id))
 
@@ -211,7 +234,11 @@ export default function NotificationBell() {
         ) : (
           <ul className={styles.feedList}>
             {notifications.map(n => (
-              <li key={n.id} className={styles.feedItem} data-type={n.type}>
+              <li
+                key={n.id}
+                className={`${styles.feedItem} ${exiting.has(n.id) ? styles.feedItemExiting : ''}`}
+                data-type={n.type}
+              >
                 <button
                   type="button"
                   className={styles.feedMain}
@@ -227,7 +254,7 @@ export default function NotificationBell() {
                 <button
                   type="button"
                   className={styles.feedDismiss}
-                  onClick={() => dismiss(n.id)}
+                  onClick={() => handleDismiss(n.id)}
                   aria-label="Dismiss notification"
                 >
                   ✕
