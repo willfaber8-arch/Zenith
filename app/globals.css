@@ -285,8 +285,10 @@ html[data-color-scheme='light'] {
   --topbar-bg: rgba(242, 244, 252, 0.94);
 }
 
-/* CosmosCanvas stars are white — too invisible on light bg; dim them */
-html[data-color-scheme='light'] canvas.cosmosCanvas {
+/* CosmosCanvas stars are white — too invisible on light bg; dim them.
+   data-light-mode covers both the toggle AND cosmetic light themes. */
+html[data-color-scheme='light'] canvas.cosmosCanvas,
+html[data-light-mode] canvas.cosmosCanvas {
   opacity: 0.06;
 }
 

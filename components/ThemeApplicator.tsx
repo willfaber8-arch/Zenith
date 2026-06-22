@@ -76,6 +76,15 @@ export default function ThemeApplicator() {
         document.documentElement.style.setProperty(key, value)
       })
     }
+
+    /* Step 4: Set data-light-mode attribute so CSS rules can target both the
+       color-scheme toggle AND cosmetic light themes with a single selector */
+    const isLightMode = isLight || !!def?.isLightTheme
+    if (isLightMode) {
+      document.documentElement.setAttribute('data-light-mode', 'true')
+    } else {
+      document.documentElement.removeAttribute('data-light-mode')
+    }
   }, [profile?.activeTheme, isLight])
 
   return null

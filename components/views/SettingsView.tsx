@@ -422,7 +422,6 @@ export default function SettingsView() {
           </p>
           <div className={styles.themeGrid}>
             {SHOP_CATALOG_STATIC.map(item => {
-              const def      = THEME_DEFINITIONS[item.id]
               const owned    = ownedThemes.includes(item.id)
               const equipped = activeTheme === item.id
               const afford   = cpBalance >= item.cost
@@ -431,15 +430,11 @@ export default function SettingsView() {
                   key={item.id}
                   className={`${styles.themeCard} ${equipped ? styles.themeCardActive : ''} ${owned ? styles.themeCardOwned : ''}`}
                 >
-                  <div
-                    className={styles.themeSwatch}
-                    style={{ background: def?.swatch ?? '#7c95ff' }}
-                  />
-                  <div className={styles.themeInfo}>
-                    <p className={styles.themeName}>{item.name}</p>
-                    {item.tag && <span className={styles.themeTag}>{item.tag}</span>}
-                  </div>
-                  <div className={styles.themeAction}>
+                  {item.tag && <span className={styles.themeTag}>{item.tag}</span>}
+                  <div className={styles.themeCardIcon}>{item.icon}</div>
+                  <p className={styles.themeCardName}>{item.name}</p>
+                  <p className={styles.themeCardTagline}>{item.tagline}</p>
+                  <div className={styles.themeCardFooter}>
                     {equipped ? (
                       <span className={styles.themeEquipped}>✓ Active</span>
                     ) : owned ? (
@@ -520,14 +515,12 @@ export default function SettingsView() {
                   className={`${styles.themeCard} ${equipped ? styles.themeCardActive : ''} ${styles.themeCardOwned}`}
                 >
                   <div
-                    className={styles.themeSwatch}
+                    className={styles.themeCardSwatch}
                     style={{ background: def?.swatch ?? brand.primaryHex }}
                   />
-                  <div className={styles.themeInfo}>
-                    <p className={styles.themeName}>{brand.name}</p>
-                    <span className={styles.themeTag}>{brand.primaryHex}</span>
-                  </div>
-                  <div className={styles.themeAction}>
+                  <p className={styles.themeCardName}>{brand.name}</p>
+                  <p className={styles.themeCardTagline}>{brand.primaryHex.toUpperCase()}</p>
+                  <div className={styles.themeCardFooter}>
                     {equipped ? (
                       <span className={styles.themeEquipped}>✓ Active</span>
                     ) : (
