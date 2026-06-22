@@ -316,6 +316,12 @@
   border-color: rgba(124, 149, 255, 0.55);
 }
 
+/* Force the crosshair SVG to a block box so no inline-baseline gap can
+   nudge it off-center inside the flex-centered circle. */
+.habitBtn svg {
+  display: block;
+}
+
 .doneCheck {
   font-size: 0.75rem;
   color: var(--accent-green);

@@ -60,19 +60,15 @@ export default function NotificationBell() {
     })
   }, [markAllSeen])
 
-  /* Click-outside + Escape close. */
+  /* Escape closes. Click-outside is handled by a transparent backdrop
+     element (rendered below the panel) rather than a document listener —
+     clicks on the panel itself can never reach the backdrop, so
+     interacting inside the panel never closes it. */
   useEffect(() => {
     if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
-    }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [open])
 
   const go = useCallback((view?: ViewId) => {
@@ -112,11 +108,19 @@ export default function NotificationBell() {
       </button>
 
       {open && (
+        <>
+          {/* Transparent full-viewport backdrop — the only thing that closes
+              the panel on an outside click. The panel sits above it and is
+              NOT its child, so panel clicks never bubble here. */}
+          <div
+            className={styles.backdrop}
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />
         <div
           className={styles.panel}
           role="dialog"
           aria-label="Notifications"
-          onMouseDown={e => e.nativeEvent.stopImmediatePropagation()}
         >
 
           {/* ── Today summary ─────────────────────────────────── */}
@@ -243,6 +247,7 @@ export default function NotificationBell() {
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   )
