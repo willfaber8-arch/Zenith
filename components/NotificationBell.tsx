@@ -112,7 +112,12 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className={styles.panel} role="dialog" aria-label="Notifications">
+        <div
+          className={styles.panel}
+          role="dialog"
+          aria-label="Notifications"
+          onMouseDown={e => e.stopPropagation()}
+        >
 
           {/* ── Today summary ─────────────────────────────────── */}
           <div className={styles.section}>

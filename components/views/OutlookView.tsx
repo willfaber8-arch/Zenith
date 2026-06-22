@@ -204,7 +204,12 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
                       onClick={() => increment(h.id!)}
                       aria-label={`Log ${h.name}`}
                       type="button"
-                    >+</button>
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                        <line x1="5" y1="1" x2="5" y2="9" />
+                        <line x1="1" y1="5" x2="9" y2="5" />
+                      </svg>
+                    </button>
                   )}
                   {h.todayDone && <span className={styles.doneCheck} aria-label="Complete">✓</span>}
                 </li>

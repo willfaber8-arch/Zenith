@@ -303,9 +303,6 @@
   border: 1px solid rgba(124, 149, 255, 0.3);
   background: transparent;
   color: var(--accent-purple);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
