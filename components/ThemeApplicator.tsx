@@ -18,17 +18,21 @@ import { UNIVERSITY_THEME_DEFINITIONS } from '@/lib/universityThemes'
 /* Light-mode inline overrides — mirrors html[data-color-scheme='light'] in globals.css.
    Applied as inline styles so they beat any dark cosmetic theme's bg/text vars. */
 const LIGHT_BASE_VARS: Readonly<Record<string, string>> = {
-  '--bg-main':           '#f2f4fc',
+  '--bg-main':           '#ffffff',
   '--surface-card':      '#ffffff',
-  '--text-primary':      '#181a2e',
-  '--text-muted':        '#464870',
-  '--text-dark':         '#8890b4',
+  '--text-primary':      '#14151c',
+  '--text-muted':        '#33364a',
+  '--text-dark':         '#565b78',
   '--accent-purple':     '#1e9e6c',
   '--accent-purple-dim': 'rgba(30, 158, 108, 0.20)',
   '--border-subtle':     'rgba(18, 46, 36, 0.12)',
   '--bg-hover':          'rgba(30, 158, 108, 0.07)',
   '--bg-active':         'rgba(30, 158, 108, 0.13)',
   '--shadow-card':       '0 2px 12px rgba(20, 24, 60, 0.10), 0 0 0 1px rgba(18, 46, 36, 0.12)',
+  '--tint-home':         '#ffffff',
+  '--tint-essentials':   '#ffffff',
+  '--tint-creator':      '#ffffff',
+  '--tint-vault':        '#ffffff',
 }
 
 export default function ThemeApplicator() {
