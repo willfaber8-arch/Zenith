@@ -181,6 +181,13 @@ export default function UniHubView() {
   if (setupStep === 'uni') {
     return (
       <div className={`${styles.setupWrap} anim-scale-in`}>
+        <div className={styles.setupIntro}>
+          <p className={styles.setupEyebrow}>Scholastic · University Hub</p>
+          <h1 className={styles.setupTitle}>Configure your institution.</h1>
+          <p className={styles.setupSubtitle}>
+            Select your university to unlock tailored resources, GPA tools, and campus links curated for your school.
+          </p>
+        </div>
         <UniSelector onSelect={handleSelectUni} />
       </div>
     )

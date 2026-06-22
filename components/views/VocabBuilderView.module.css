@@ -1345,6 +1345,7 @@
   gap: var(--sp-2);
   flex-wrap: wrap;
   flex-shrink: 0;
+  padding-left: var(--sp-1);
 }
 
 .goalLabel {
@@ -1354,7 +1355,7 @@
   text-transform:  uppercase;
   color:           var(--text-dark);
   white-space:     nowrap;
-  margin-right:    var(--sp-1);
+  margin-right:    var(--sp-2);
 }
 
 .goalSuffix {
