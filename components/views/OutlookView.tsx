@@ -68,7 +68,7 @@ const R = 9, CIRC = 2 * Math.PI * R
 function HabitRing({ pct, color }: { pct: number; color: string }) {
   return (
     <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" className={styles.ring}>
-      <circle cx="13" cy="13" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+      <circle cx="13" cy="13" r={R} fill="none" stroke="var(--border-subtle)" strokeWidth="2.5" />
       <circle
         cx="13" cy="13" r={R}
         fill="none"

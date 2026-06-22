@@ -531,6 +531,44 @@
   text-overflow: ellipsis;
 }
 
+/* ── Light mode — opaque white rectangles so content sits on a
+   clean, legible surface instead of the near-transparent dark-mode
+   white overlays (which vanish against a white page). ─────────── */
+
+:global(html[data-color-scheme='light']) .sectionCard,
+:global(html[data-light-mode]) .sectionCard,
+:global(html[data-color-scheme='light']) .statCard,
+:global(html[data-light-mode]) .statCard,
+:global(html[data-color-scheme='light']) .dayCard,
+:global(html[data-light-mode]) .dayCard {
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+:global(html[data-color-scheme='light']) .dayCardToday,
+:global(html[data-light-mode]) .dayCardToday {
+  background: color-mix(in srgb, var(--accent-purple) 6%, var(--surface-card));
+}
+
+:global(html[data-color-scheme='light']) .tabBar,
+:global(html[data-light-mode]) .tabBar {
+  background: var(--surface-card);
+}
+
+:global(html[data-color-scheme='light']) .eventRow,
+:global(html[data-light-mode]) .eventRow,
+:global(html[data-color-scheme='light']) .habitRow,
+:global(html[data-light-mode]) .habitRow,
+:global(html[data-color-scheme='light']) .taskRow,
+:global(html[data-light-mode]) .taskRow {
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+
+:global(html[data-color-scheme='light']) .taskCheck,
+:global(html[data-light-mode]) .taskCheck {
+  border-color: color-mix(in srgb, var(--text-primary) 30%, transparent);
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 
 @media (max-width: 540px) {
