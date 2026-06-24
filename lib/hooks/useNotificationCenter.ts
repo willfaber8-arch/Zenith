@@ -202,7 +202,7 @@ export function useNotificationCenter(): NotificationCenterApi {
     parts.push(`${checklist.length} daily goal${checklist.length === 1 ? '' : 's'}`)
     pushNotification({
       id: `daily-summary-${iso}`,
-      type: 'info', icon: '☀', view: 'home',
+      type: 'info', icon: '☀', view: 'outlook',
       title: 'Your day at a glance',
       body: parts.join(' · '),
     })

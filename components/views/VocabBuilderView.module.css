@@ -885,6 +885,29 @@
   gap: var(--sp-2);
 }
 
+.customCountInput {
+  margin-top: var(--sp-2);
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 150ms var(--ease-smooth);
+}
+
+.customCountInput:focus {
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent-purple)) 55%, transparent);
+}
+
+.customCountInput::placeholder {
+  color: var(--text-dark);
+}
+
 .aiGeneratingBody {
   align-items: center;
   justify-content: center;

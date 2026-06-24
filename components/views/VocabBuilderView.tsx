@@ -1956,6 +1956,23 @@ Generate ${countStr} flashcard objects covering this topic.`
                 </button>
               ))}
             </div>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              placeholder="Custom amount…"
+              className={styles.customCountInput}
+              value={
+                typeof cardCount === 'number' && !(AI_COUNT_OPTIONS as (number | string)[]).includes(cardCount)
+                  ? String(cardCount)
+                  : ''
+              }
+              onChange={e => {
+                const n = parseInt(e.target.value, 10)
+                if (!isNaN(n) && n >= 1) setCardCount(n)
+                else if (e.target.value === '') setCardCount(20)
+              }}
+            />
           </div>
         </div>
         <div className={styles.modalFooter}>
@@ -2404,7 +2421,7 @@ function LanguageBuilderTab() {
                         <span className={styles.deckStatChip}>{s.total} cards</span>
                         {s.due > 0 && (
                           <span className={`${styles.deckStatChip} ${styles.deckStatChipDue}`}>
-                            {s.due} due
+                            {Math.min(s.due, dailyGoal)} due
                           </span>
                         )}
                       </div>
