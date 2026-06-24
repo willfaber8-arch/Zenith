@@ -1416,6 +1416,45 @@
   color:        var(--cat-accent, var(--accent-purple));
 }
 
+/* ── Category pills ─────────────────────────────────────────── */
+
+.catPillRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-wrap:   wrap;
+  flex-shrink: 0;
+  padding-left: var(--sp-1);
+}
+
+.catPill {
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding:        3px 10px;
+  border-radius:  var(--r-xl);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     background   140ms var(--ease-smooth),
+                  border-color 140ms var(--ease-smooth),
+                  color        140ms var(--ease-smooth);
+}
+
+.catPill:hover {
+  border-color: rgba(124, 149, 255, 0.30);
+  color:        var(--text-primary);
+}
+
+.catPillActive {
+  border-color: rgba(124, 149, 255, 0.55);
+  background:   rgba(124, 149, 255, 0.12);
+  color:        var(--cat-accent, var(--accent-purple));
+}
+
 /* ── Mastery badge (word list) ──────────────────────────────── */
 
 .engMasteryBadge {
