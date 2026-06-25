@@ -168,6 +168,13 @@
   cursor: default;
 }
 
+.plusBtnWarn {
+  color: #f87171;
+}
+.plusBtnWarn:hover {
+  color: #fca5a5 !important;
+}
+
 .habitInfo {
   display: flex;
   flex-direction: column;

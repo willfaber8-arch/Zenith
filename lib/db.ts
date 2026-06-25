@@ -123,6 +123,9 @@ export interface Habit {
   allTimeHighStreak?: number            //   all-time highest streak
   streakSaveUsed?:    boolean           //   grace-period save used this streak
   autoSource?:        string            //   HabitAutoSource id — auto-fills from another tab
+  goalType?:          'at_least' | 'at_most'  // default at_least; at_most = stay under target
+  overGoalStreak?:    number            //   consecutive days exceeding target (at_least only)
+  lastExceededDate?:  string            //   last ISO date when count > target (at_least only)
   notes?:             string
   createdAt:          number
   supabaseId?:        string

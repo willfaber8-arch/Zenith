@@ -60,6 +60,7 @@ export interface NewHabitInput {
   stepLabel?:        string    // unit label for display (e.g. "oz")
   goalDescription?:  string    // optional text descriptor
   autoSource?:       string    // HabitAutoSource id — auto-fills from another tab
+  goalType?:         'at_least' | 'at_most'  // default at_least
 }
 
 /* ── Week dates helper ────────────────────────────────────── */
@@ -95,7 +96,9 @@ export function useHabits() {
       .forEach(c => completionMap.set(c.date, c.count))
 
     const todayCount = completionMap.get(today) ?? 0
-    const todayDone  = todayCount >= habit.targetCompletions
+    const todayDone  = habit.goalType === 'at_most'
+      ? todayCount > 0 && todayCount <= habit.targetCompletions
+      : todayCount >= habit.targetCompletions
 
     const weekData: DayStatus[] = weekDates.map(iso => ({
       iso,
@@ -136,6 +139,7 @@ export function useHabits() {
       stepLabel:         input.stepLabel?.trim() || undefined,
       goalDescription:   input.goalDescription?.trim() || undefined,
       autoSource:        input.autoSource || undefined,
+      goalType:          input.goalType ?? 'at_least',
       streakCount:       0,
       lastCompletedDate: null,
       streakSaveUsed:    false,

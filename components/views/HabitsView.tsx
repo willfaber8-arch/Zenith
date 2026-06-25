@@ -41,14 +41,19 @@ const COLOR_PRESETS = [
 
 /* ── Circle progress SVG ──────────────────────────────────── */
 function CircleProgress({
-  pct, size = 48, done, color,
+  pct, size = 48, done, color, overflowPct = 0, warning = false,
 }: {
   pct: number; size?: number; done: boolean; color?: string
+  overflowPct?: number; warning?: boolean
 }) {
   const r    = (size - 6) / 2
   const circ = 2 * Math.PI * r
   const dash = circ * Math.min(pct / 100, 1)
-  const stroke = done ? 'var(--accent-green)' : (color ?? 'var(--accent-purple)')
+  // warning = at_most habit exceeded limit (red); done = at_least reached goal (green)
+  const stroke = warning ? '#f87171' : done ? 'var(--accent-green)' : (color ?? 'var(--accent-purple)')
+  // Overflow arc: amber for at_least over-achievement, rose for at_most excess
+  const overflowDash  = overflowPct > 0 ? circ * Math.min(overflowPct / 100, 1) : 0
+  const overflowColor = warning ? '#f87171' : '#f59e0b'
   return (
     <svg width={size} height={size} className={styles.circle} aria-hidden="true">
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border-subtle)" strokeWidth={3} />
@@ -63,6 +68,19 @@ function CircleProgress({
         transform={`rotate(-90 ${size/2} ${size/2})`}
         style={{ transition: 'stroke-dasharray 350ms var(--ease-smooth)' }}
       />
+      {overflowDash > 0 && (
+        <circle
+          cx={size/2} cy={size/2} r={r}
+          fill="none"
+          stroke={overflowColor}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray={`${overflowDash} ${circ}`}
+          strokeDashoffset={0}
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{ transition: 'stroke-dasharray 350ms var(--ease-smooth)', opacity: 0.85 }}
+        />
+      )}
     </svg>
   )
 }
@@ -120,8 +138,13 @@ function HabitRow({
   onEdit:      (habit: HabitWithCompletion) => void
   editMode:    boolean
 }) {
-  const pct           = habit.targetCompletions > 0
+  const isAtMost       = (habit.goalType ?? 'at_least') === 'at_most'
+  const pct            = habit.targetCompletions > 0
     ? Math.round((habit.todayCount / habit.targetCompletions) * 100) : 0
+  const overflowPct    = habit.targetCompletions > 0 && habit.todayCount > habit.targetCompletions
+    ? Math.round(((habit.todayCount - habit.targetCompletions) / habit.targetCompletions) * 100)
+    : 0
+  const isWarning      = isAtMost && habit.todayCount > habit.targetCompletions
   const todayScheduled = habit.weekData.find(d => d.iso === today)?.scheduled ?? false
   const allTimeHigh    = habit.allTimeHighStreak ?? habit.streakCount
   const habitColor     = habit.color ?? '#7c95ff'
@@ -136,16 +159,21 @@ function HabitRow({
       {/* Left: circle + name */}
       <div className={styles.habitLeft}>
         <div className={styles.circleWrap}>
-          <CircleProgress pct={pct} done={habit.todayDone && todayScheduled} color={habitColor} />
+          <CircleProgress
+            pct={pct}
+            done={habit.todayDone && todayScheduled}
+            color={habitColor}
+            overflowPct={overflowPct}
+            warning={isWarning}
+          />
           {todayScheduled && !editMode && (
             <button
               type="button"
-              className={styles.plusBtn}
+              className={`${styles.plusBtn} ${isWarning ? styles.plusBtnWarn : ''}`}
               onClick={(e) => onIncrement(habit.id, e)}
-              disabled={habit.todayDone}
               aria-label={`Add completion for ${habit.name}`}
             >
-              {habit.todayDone ? '✓' : '+'}
+              {habit.todayDone && overflowPct === 0 ? '✓' : '+'}
             </button>
           )}
         </div>
@@ -166,7 +194,7 @@ function HabitRow({
             )}
           </div>
           <span className={styles.habitMeta}>
-            {habit.todayCount}/{habit.targetCompletions}
+            {isAtMost ? '≤' : ''}{habit.todayCount}/{habit.targetCompletions}
             {habit.stepLabel ? ` ${habit.stepLabel}` : ''}
             {' · '}
             {habit.activeDays.length === 0
@@ -299,6 +327,7 @@ function HabitModal({
   const [stepAmount, setStepAmount] = useState<number>(initStepAmount)
   const [stepUnit,   setStepUnit]   = useState(initial?.stepLabel ?? '')
   const [goal,       setGoal]       = useState<number>(initial?.targetCompletions ?? 0)
+  const [goalType,   setGoalType]   = useState<'at_least' | 'at_most'>(initial?.goalType ?? 'at_least')
   const [autoSource, setAutoSource] = useState<string>(initial?.autoSource ?? '')
 
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -322,6 +351,7 @@ function HabitModal({
       stepAmount:        stepAmount > 0 ? stepAmount : 1,
       stepLabel:         stepUnit.trim() || undefined,
       autoSource:        autoSource || undefined,
+      goalType,
     })
     onClose()
   }
@@ -440,6 +470,32 @@ function HabitModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Goal direction */}
+          <div className={styles.field}>
+            <span className={styles.label}>Goal direction</span>
+            <div className={styles.dayToggleRow}>
+              <button
+                type="button"
+                className={`${styles.dayChip} ${goalType === 'at_least' ? styles.dayChipOn : ''}`}
+                onClick={() => setGoalType('at_least')}
+              >
+                ≥ At least
+              </button>
+              <button
+                type="button"
+                className={`${styles.dayChip} ${goalType === 'at_most' ? styles.dayChipOn : ''}`}
+                onClick={() => setGoalType('at_most')}
+              >
+                ≤ At most
+              </button>
+            </div>
+            <p className={styles.stepHint}>
+              {goalType === 'at_least'
+                ? 'Complete when you reach or exceed the target (e.g. drink 8 glasses of water).'
+                : 'Track usage and stay under the limit (e.g. keep caffeine under 140 mg).'}
+            </p>
           </div>
 
           {/* Step model */}
@@ -617,9 +673,12 @@ export default function HabitsView() {
   const handleIncrement = useCallback(async (habitId: number, e: React.MouseEvent) => {
     const habit = habits.find(h => h.id === habitId)
     if (!habit) return
-    const prevDone = habit.todayDone
+    const prevDone   = habit.todayDone
+    const isAtLeast  = (habit.goalType ?? 'at_least') === 'at_least'
+    const step       = habit.stepAmount ?? 1
     await increment(habitId)
-    if (!prevDone && (habit.todayCount + 1) >= habit.targetCompletions) {
+    // Only burst + toast on the first press that completes an at_least habit.
+    if (isAtLeast && !prevDone && habit.todayCount + step >= habit.targetCompletions) {
       burst(e.clientX, e.clientY)
       toast(`${habit.name} — completed! 🎉`, 'success')
     }
@@ -644,6 +703,7 @@ export default function HabitsView() {
       stepAmount:        input.stepAmount ?? 1,
       stepLabel:         input.stepLabel,
       autoSource:        input.autoSource || undefined,
+      goalType:          input.goalType ?? 'at_least',
     })
     toast(`"${input.name}" updated.`, 'success')
     setEditTarget(null)
