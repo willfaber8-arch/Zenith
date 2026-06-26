@@ -80,9 +80,12 @@ export function computeCompletionSeries(
       if (!isScheduledOn(h, iso)) continue
       scheduledCount++
 
-      const count  = countMap.get(`${h.id}|${iso}`) ?? 0
-      const target = h.targetCompletions > 0 ? h.targetCompletions : 1
-      sum += Math.min(1, count / target)
+      const count    = countMap.get(`${h.id}|${iso}`) ?? 0
+      const target   = h.targetCompletions > 0 ? h.targetCompletions : 1
+      const fraction = (h.goalType ?? 'at_least') === 'at_most'
+        ? Math.max(0, 1 - count / target)   // 0 count = perfect; over target = 0
+        : Math.min(1, count / target)
+      sum += fraction
     }
 
     const score = scheduledCount > 0

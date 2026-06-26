@@ -51,9 +51,11 @@ function CircleProgress({
   const dash = circ * Math.min(pct / 100, 1)
   // warning = at_most habit exceeded limit (red); done = at_least reached goal (green)
   const stroke = warning ? '#f87171' : done ? 'var(--accent-green)' : (color ?? 'var(--accent-purple)')
-  // Overflow arc: amber for at_least over-achievement, rose for at_most excess
-  const overflowDash  = overflowPct > 0 ? circ * Math.min(overflowPct / 100, 1) : 0
-  const overflowColor = warning ? '#f87171' : '#f59e0b'
+  // Overflow arc: lap-based color for at_least (amber → violet → amber…), rose for at_most warning
+  const lap        = overflowPct > 0 ? Math.floor(overflowPct / 100) : 0
+  const withinLap  = overflowPct > 0 ? overflowPct % 100 : 0
+  const overflowDash  = withinLap > 0 ? circ * (withinLap / 100) : 0
+  const overflowColor = warning ? '#f87171' : (lap % 2 === 0 ? '#f59e0b' : '#a78bfa')
   return (
     <svg width={size} height={size} className={styles.circle} aria-hidden="true">
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border-subtle)" strokeWidth={3} />
@@ -139,9 +141,12 @@ function HabitRow({
   editMode:    boolean
 }) {
   const isAtMost       = (habit.goalType ?? 'at_least') === 'at_most'
-  const pct            = habit.targetCompletions > 0
-    ? Math.round((habit.todayCount / habit.targetCompletions) * 100) : 0
-  const overflowPct    = habit.targetCompletions > 0 && habit.todayCount > habit.targetCompletions
+  const target         = habit.targetCompletions > 0 ? habit.targetCompletions : 1
+  // at_most: ring starts full and depletes; at_least: ring fills from empty
+  const pct            = isAtMost
+    ? Math.max(0, Math.round((1 - habit.todayCount / target) * 100))
+    : Math.round((habit.todayCount / target) * 100)
+  const overflowPct    = habit.todayCount > habit.targetCompletions && habit.targetCompletions > 0
     ? Math.round(((habit.todayCount - habit.targetCompletions) / habit.targetCompletions) * 100)
     : 0
   const isWarning      = isAtMost && habit.todayCount > habit.targetCompletions
@@ -161,7 +166,7 @@ function HabitRow({
         <div className={styles.circleWrap}>
           <CircleProgress
             pct={pct}
-            done={habit.todayDone && todayScheduled}
+            done={!isAtMost && habit.todayDone && todayScheduled}
             color={habitColor}
             overflowPct={overflowPct}
             warning={isWarning}
@@ -173,7 +178,7 @@ function HabitRow({
               onClick={(e) => onIncrement(habit.id, e)}
               aria-label={`Add completion for ${habit.name}`}
             >
-              {habit.todayDone && overflowPct === 0 ? '✓' : '+'}
+              {habit.todayDone && !isWarning ? '✓' : '+'}
             </button>
           )}
         </div>
