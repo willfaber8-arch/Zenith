@@ -19,6 +19,7 @@ import {
   loadCustomTheme, buildCustomThemeDefinition,
 } from '@/lib/customTheme'
 import { subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { resolveShopBackground, isShopBackgroundId } from '@/lib/shopBackgrounds'
 
 /* Light-mode inline overrides — mirrors html[data-color-scheme='light'] in globals.css.
    Applied as inline styles so they beat any dark cosmetic theme's bg/text vars. */
@@ -100,7 +101,28 @@ export default function ThemeApplicator() {
       })
     }
 
-    /* Step 3: If light mode is active and the theme is not itself a light theme,
+    /* Step 3: Apply active background pattern (not for Theme Forge — it has its own backdrop picker).
+       Reads the equipped background from the player profile and converts it to CSS var overrides. */
+    if (themeId !== CUSTOM_THEME_ID) {
+      const bgId = profile?.activeBackground
+      if (bgId && isShopBackgroundId(bgId)) {
+        const accentHex = def?.swatch ?? '#7c95ff'
+        const bgHex     = (def?.vars as Record<string, string>)?.['--bg-main'] ?? '#0b0d13'
+        const spec      = resolveShopBackground(bgId, accentHex, bgHex)
+        if (spec) {
+          document.documentElement.style.setProperty('--body-bg-image',  spec.image)
+          document.documentElement.style.setProperty('--body-bg-size',   spec.size)
+          document.documentElement.style.setProperty('--body-bg-repeat', spec.repeat)
+        }
+      } else {
+        // No shop background equipped — remove overrides so globals.css baseline shows
+        document.documentElement.style.removeProperty('--body-bg-image')
+        document.documentElement.style.removeProperty('--body-bg-size')
+        document.documentElement.style.removeProperty('--body-bg-repeat')
+      }
+    }
+
+    /* Step 4: If light mode is active and the theme is not itself a light theme,
        overlay the light-mode base vars so dark bg/text values are overridden */
     if (isLight && !def?.isLightTheme) {
       Object.entries(LIGHT_BASE_VARS).forEach(([key, value]) => {
@@ -108,7 +130,7 @@ export default function ThemeApplicator() {
       })
     }
 
-    /* Step 4: Set data-light-mode attribute so CSS rules can target both the
+    /* Step 5: Set data-light-mode attribute so CSS rules can target both the
        color-scheme toggle AND cosmetic light themes with a single selector */
     const isLightMode = isLight || !!def?.isLightTheme
     if (isLightMode) {
@@ -116,7 +138,7 @@ export default function ThemeApplicator() {
     } else {
       document.documentElement.removeAttribute('data-light-mode')
     }
-  }, [profile?.activeTheme, isLight, previewId, customVersion])
+  }, [profile?.activeTheme, profile?.activeBackground, isLight, previewId, customVersion])
 
   return null
 }

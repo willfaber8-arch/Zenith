@@ -1271,6 +1271,13 @@
 
 .shopBuyBtnLocked { opacity: 0.40; }
 
+.shopPerkBalance {
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-2) 0;
+}
+
 .shopBuyIcon {
   font-size: 0.55rem;
   color: var(--text-dark);

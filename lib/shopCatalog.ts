@@ -7,7 +7,7 @@ export interface ShopCatalogItem {
   readonly id:       string
   readonly name:     string
   readonly tagline:  string
-  readonly category: 'theme' | 'pack'
+  readonly category: 'theme' | 'pack' | 'background' | 'perk'
   readonly cost:     number
   readonly icon:     string
   readonly tag?:     string
@@ -50,12 +50,41 @@ export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
   { id: 'zenith_mauve',      name: 'Dusty Mauve',           tagline: 'Antique mauve on warm near-black.',                      category: 'theme', cost: 350, icon: '◈' },
 
   /* ── Packs ───────────────────────────────────────────────────── */
-  { id: 'pack_study',        name: "Scholar's Focus Pack",  tagline: 'Enhanced study cockpit and academic overlays.',          category: 'pack',  cost:  75, icon: '◧' },
-  { id: 'pack_midnight',     name: 'Midnight Terminal',     tagline: 'Terminal-style interface for late-night sessions.',      category: 'pack',  cost: 125, icon: '◧', tag: 'NEW' },
-  { id: 'pack_flora',        name: 'Botanical Interface',   tagline: 'Organic botanical motifs across the workspace.',         category: 'pack',  cost: 175, icon: '◧' },
-  { id: 'pack_elite',        name: 'Arcade Elite Badge',    tagline: 'Prestige badge and foil effects in the Arcade.',        category: 'pack',  cost: 225, icon: '✦', tag: 'POPULAR' },
-  { id: 'pack_sakura',       name: 'Sakura Season',         tagline: 'Cherry blossom pink on warm dark canvas.',              category: 'pack',  cost: 175, icon: '◧' },
-  { id: 'pack_citrus',       name: 'Citrus Rush',           tagline: 'Bold citrus yellow on dark warm brown.',                category: 'pack',  cost: 200, icon: '◧' },
-  { id: 'pack_ocean_deep',   name: 'Ocean Depths',          tagline: 'Rich ocean blue gradient on abyssal black.',            category: 'pack',  cost: 225, icon: '◧', tag: 'NEW' },
-  { id: 'pack_ash',          name: 'Ash & Ember',           tagline: 'Ember red on charcoal ash. Heat and restraint.',        category: 'pack',  cost: 250, icon: '◧' },
+  { id: 'pack_study',        name: "Scholar's Focus Pack",  tagline: 'Scholar-blue colour overlay + Star Field background.',   category: 'pack',  cost:  75, icon: '◧' },
+  { id: 'pack_midnight',     name: 'Midnight Terminal',     tagline: 'Terminal-green palette + Circuit Board background.',     category: 'pack',  cost: 125, icon: '◧', tag: 'NEW' },
+  { id: 'pack_flora',        name: 'Botanical Interface',   tagline: 'Organic sage palette + Honeycomb background.',          category: 'pack',  cost: 175, icon: '◧' },
+  { id: 'pack_elite',        name: 'Arcade Elite Badge',    tagline: 'Prestige gold foil + Constellation background.',        category: 'pack',  cost: 225, icon: '✦', tag: 'POPULAR' },
+  { id: 'pack_sakura',       name: 'Sakura Season',         tagline: 'Cherry blossom pink + Bubbles background.',             category: 'pack',  cost: 175, icon: '◧' },
+  { id: 'pack_citrus',       name: 'Citrus Rush',           tagline: 'Bold citrus yellow + Zigzag background.',               category: 'pack',  cost: 200, icon: '◧' },
+  { id: 'pack_ocean_deep',   name: 'Ocean Depths',          tagline: 'Rich ocean gradient + Waves background.',               category: 'pack',  cost: 225, icon: '◧', tag: 'NEW' },
+  { id: 'pack_ash',          name: 'Ash & Ember',           tagline: 'Ember red on charcoal + Diamonds background.',          category: 'pack',  cost: 250, icon: '◧' },
+
+  /* ── Backgrounds ─────────────────────────────────────────────── */
+  { id: 'bg_zigzag',        name: 'Zigzag',          tagline: 'Sharp sawtooth repeating wave across the workspace.',         category: 'background', cost:  50, icon: '▲' },
+  { id: 'bg_stars',         name: 'Star Field',       tagline: 'Sparse sparkling star points in three depth layers.',        category: 'background', cost:  75, icon: '✦' },
+  { id: 'bg_honeycomb',     name: 'Honeycomb',        tagline: 'Interlocking hexagonal lattice — organic and structured.',   category: 'background', cost:  75, icon: '⬡', tag: 'NEW' },
+  { id: 'bg_bubbles',       name: 'Bubbles',          tagline: 'Soft floating circle clusters at varying depths.',           category: 'background', cost:  75, icon: '○' },
+  { id: 'bg_triangles',     name: 'Triangle Mesh',    tagline: 'Interlocking triangular grid with light hatching.',          category: 'background', cost:  50, icon: '▵' },
+  { id: 'bg_chevrons',      name: 'Chevrons',         tagline: 'Repeating directional arrow pattern.',                       category: 'background', cost:  50, icon: '›' },
+  { id: 'bg_waves',         name: 'Waves',            tagline: 'Overlapping multi-angle horizontal ripples.',                category: 'background', cost:  75, icon: '〜' },
+  { id: 'bg_circuit',       name: 'Circuit Board',    tagline: 'PCB-style right-angle traces — two scale layers.',           category: 'background', cost: 100, icon: '⊞', tag: 'POPULAR' },
+  { id: 'bg_constellation', name: 'Constellation',    tagline: 'Distant star clusters with faint glowing halos.',            category: 'background', cost: 100, icon: '✧' },
+  { id: 'bg_diamonds',      name: 'Diamonds',         tagline: 'Rotated square lattice — clean geometric elegance.',        category: 'background', cost:  75, icon: '◇' },
+
+  /* ── Perks ───────────────────────────────────────────────────── */
+  { id: 'perk_streak_saver_5',  name: 'Streak Savers ×5',  tagline: 'Manually restore a broken habit streak. Grants 5 uses.',        category: 'perk', cost: 150, icon: '🔥', tag: 'USEFUL' },
+  { id: 'perk_streak_saver_15', name: 'Streak Savers ×15', tagline: 'Manually restore a broken habit streak. Grants 15 uses.',       category: 'perk', cost: 400, icon: '🔥' },
+  { id: 'perk_extra_stats',     name: 'Analytics Vault',    tagline: 'Unlock extended habit analytics — weekday breakdowns, streaks per-period, and all-time totals.', category: 'perk', cost: 500, icon: '◎', tag: 'USEFUL' },
 ] as const
+
+/** Map from pack ID to its bundled background ID (granted on purchase). */
+export const PACK_BACKGROUND_GRANTS: Readonly<Record<string, string>> = {
+  pack_study:      'bg_stars',
+  pack_midnight:   'bg_circuit',
+  pack_flora:      'bg_honeycomb',
+  pack_elite:      'bg_constellation',
+  pack_sakura:     'bg_bubbles',
+  pack_citrus:     'bg_zigzag',
+  pack_ocean_deep: 'bg_waves',
+  pack_ash:        'bg_diamonds',
+} as const

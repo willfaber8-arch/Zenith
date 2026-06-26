@@ -1149,3 +1149,251 @@
   cursor: pointer;
 }
 .forgeResetBtn:hover { color: var(--text-muted); }
+
+/* ── New Appearance Section styles ─────────────────────────────── */
+.appearanceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.buyMoreBtn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 8%, transparent);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition: background 140ms var(--ease-smooth), border-color 140ms var(--ease-smooth);
+  white-space: nowrap;
+}
+.buyMoreBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 60%, transparent);
+}
+
+/* Theme Forge CTA (when not owned) */
+.forgeCta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 7%, transparent);
+  margin-bottom: var(--sp-5);
+  flex-wrap: wrap;
+}
+.forgeCtaLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.forgeCtaIcon {
+  font-size: 1.4rem;
+  color: var(--accent-purple);
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+.forgeCtaTitle {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-1) 0;
+}
+.forgeCtaDesc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 340px;
+  line-height: 1.5;
+}
+.forgeCtaBtn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 15%, transparent);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms var(--ease-smooth);
+}
+.forgeCtaBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 25%, transparent);
+}
+
+/* Owned section labels */
+.ownedLabel {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin: var(--sp-5) 0 var(--sp-3) 0;
+}
+.ownedEmpty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-4) 0;
+}
+.textLink {
+  background: none;
+  border: none;
+  color: var(--accent-purple);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+.textLink:hover { text-decoration-color: var(--accent-purple); }
+
+/* Backgrounds grid */
+.bgGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.bgCard {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  transition: border-color 140ms var(--ease-smooth);
+}
+.bgCard:hover { border-color: color-mix(in srgb, var(--accent-purple) 35%, transparent); }
+.bgCardActive {
+  border-color: color-mix(in srgb, var(--accent-purple) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 7%, var(--surface-card));
+}
+.bgCardLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-1) 0;
+}
+.bgCardHint {
+  font-size: 0.70rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-3) 0;
+  line-height: 1.4;
+}
+.bgCardFooter { display: flex; }
+.bgEquipBtn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition: color 140ms, border-color 140ms, background 140ms;
+}
+.bgEquipBtn:hover {
+  color: var(--accent-purple);
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 8%, transparent);
+}
+.bgCardActive .bgEquipBtn {
+  color: var(--accent-purple);
+  border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+}
+
+/* Perks section */
+.perksSection { margin-bottom: var(--sp-4); }
+.perkList { display: flex; flex-direction: column; gap: var(--sp-3); }
+.perkCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  flex-wrap: wrap;
+}
+.perkCardOwned {
+  border-color: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 5%, var(--surface-card));
+}
+.perkCardLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+}
+.perkIcon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+.perkCardName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-1) 0;
+}
+.perkCardDesc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 380px;
+}
+.saverBalance {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin: var(--sp-2) 0 0 0;
+}
+.saverBalance strong {
+  color: var(--accent-purple);
+}
+.perkBuyGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.saverBuyBtn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms var(--ease-smooth);
+}
+.saverBuyBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 20%, transparent);
+}
+.perkCost {
+  color: var(--accent-purple);
+  margin-left: var(--sp-1);
+}
+.perkOwnedBadge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--accent-green);
+  flex-shrink: 0;
+  align-self: center;
+}
