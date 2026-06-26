@@ -9,12 +9,11 @@ import { useAiConfig }      from '@/lib/hooks/useAiConfig'
 import { db }               from '@/lib/db'
 import {
   gamesDb, purchaseTheme, setActiveTheme, applyFreeTheme,
-  purchaseBackground, equipBackground, grantBackground,
-  purchasePerk, consumeStreakSaver,
+  equipBackground,
   addToInventory, seedGamesDatabase,
 } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
-import { SHOP_CATALOG_STATIC, PACK_BACKGROUND_GRANTS } from '@/lib/shopCatalog'
+import { SHOP_CATALOG_STATIC } from '@/lib/shopCatalog'
 import { SHOP_BACKGROUND_PRESETS } from '@/lib/shopBackgrounds'
 import { useNav } from '@/lib/NavContext'
 import { requestGamesTab } from '@/lib/gamesNavState'
@@ -37,6 +36,7 @@ import {
 import { BACKDROP_PRESETS, type BackdropId } from '@/lib/backdrops'
 import { normalizeHex } from '@/lib/themeColor'
 import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -335,13 +335,19 @@ export default function SettingsView() {
 
   /* ── Theme preview ──────────────────────────────────────────── */
   const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+  const [bgPreviewing, setBgPreviewing] = useState<string | null>(getBgPreviewId())
   useEffect(() => subscribePreview(setPreviewing), [])
+  useEffect(() => subscribeBgPreview(setBgPreviewing), [])
   // End any preview when leaving Settings so it never "sticks".
-  useEffect(() => () => clearPreview(), [])
+  useEffect(() => () => { clearPreview(); clearBgPreview() }, [])
 
   const handlePreview = useCallback((id: string) => {
     setPreviewId(previewing === id ? null : id)
   }, [previewing])
+
+  const handleBgPreview = useCallback((id: string) => {
+    setBgPreviewId(bgPreviewing === id ? null : id)
+  }, [bgPreviewing])
 
   const handleBuyTheme = useCallback(async (id: string, cost: number) => {
     setBuyingId(id)
@@ -367,17 +373,6 @@ export default function SettingsView() {
     setEquippingBgId(null)
     toast(bgId ? 'Background equipped.' : 'Background removed.', 'success')
   }, [toast])
-
-  const handleBuyPerk = useCallback(async (perkId: string, cost: number, grantCount: number) => {
-    const result = await purchasePerk(perkId, cost, grantCount)
-    if (!result.ok) {
-      toast(result.reason ?? 'Purchase failed.', 'error')
-    } else if (grantCount > 0) {
-      toast(`Added ${grantCount} Streak Savers! You now have ${(streakSavers) + grantCount}.`, 'success')
-    } else {
-      toast('Perk unlocked!', 'success')
-    }
-  }, [toast, streakSavers])
 
   const goToShop = useCallback(() => {
     requestGamesTab('shop')
@@ -711,6 +706,13 @@ export default function SettingsView() {
                             {equippingBgId === bg.id ? '···' : 'Equip'}
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className={`${styles.previewBtn} ${bgPreviewing === bg.id ? styles.previewBtnOn : ''}`}
+                          onClick={() => handleBgPreview(bg.id)}
+                        >
+                          {bgPreviewing === bg.id ? '■ Stop' : '◉ Preview'}
+                        </button>
                       </div>
                     </div>
                   )
@@ -719,9 +721,14 @@ export default function SettingsView() {
             </div>
           )}
 
-          {/* ── Perks ─────────────────────────────────────────── */}
+          {/* ── Perks (purchased in the Shop; shown here) ─────── */}
           <div className={styles.perksSection}>
-            <p className={styles.ownedLabel}>Perks</p>
+            <div className={styles.appearanceHeader}>
+              <p className={styles.ownedLabel} style={{ margin: 0 }}>Perks</p>
+              <button type="button" className={styles.buyMoreBtn} onClick={goToShop}>
+                Buy Perks in Shop →
+              </button>
+            </div>
             <div className={styles.perkList}>
               {/* Streak Savers balance */}
               <div className={styles.perkCard}>
@@ -735,24 +742,13 @@ export default function SettingsView() {
                     </p>
                   </div>
                 </div>
-                <div className={styles.perkBuyGroup}>
-                  <button
-                    type="button"
-                    className={styles.saverBuyBtn}
-                    onClick={() => void handleBuyPerk('perk_streak_saver_5', 150, 5)}
-                    title="Add 5 streak savers for ✦ 150"
-                  >
-                    +5 <span className={styles.perkCost}>✦ 150</span>
+                {streakSavers > 0 ? (
+                  <span className={styles.perkOwnedBadge}>{streakSavers} ready</span>
+                ) : (
+                  <button type="button" className={styles.textLink} onClick={goToShop}>
+                    Buy in Shop →
                   </button>
-                  <button
-                    type="button"
-                    className={styles.saverBuyBtn}
-                    onClick={() => void handleBuyPerk('perk_streak_saver_15', 400, 15)}
-                    title="Add 15 streak savers for ✦ 400"
-                  >
-                    +15 <span className={styles.perkCost}>✦ 400</span>
-                  </button>
-                </div>
+                )}
               </div>
 
               {/* Analytics Vault */}
@@ -769,13 +765,8 @@ export default function SettingsView() {
                 {unlockedPerks.includes('perk_extra_stats') ? (
                   <span className={styles.perkOwnedBadge}>✓ Unlocked</span>
                 ) : (
-                  <button
-                    type="button"
-                    className={styles.saverBuyBtn}
-                    onClick={() => void handleBuyPerk('perk_extra_stats', 500, 0)}
-                    title="Unlock Analytics Vault for ✦ 500"
-                  >
-                    ✦ 500
+                  <button type="button" className={styles.textLink} onClick={goToShop}>
+                    Unlock in Shop →
                   </button>
                 )}
               </div>
@@ -1303,6 +1294,36 @@ export default function SettingsView() {
             {buyMode ? `Buy ✦ ${shopItem!.cost.toLocaleString()}` : 'Apply'}
           </button>
           <button type="button" className={styles.previewBarStop} onClick={() => clearPreview()}>
+            Stop preview
+          </button>
+        </div>
+      )
+    })()}
+
+    {/* ── Live background preview bar ──────────────────────────── */}
+    {bgPreviewing && (() => {
+      const bg     = SHOP_BACKGROUND_PRESETS.find(b => b.id === bgPreviewing)
+      const ownedB = ownedBgs.includes(bgPreviewing)
+      return (
+        <div className={`${styles.previewBar} ${styles.previewBarBg}`} role="status">
+          <span className={styles.previewBarDot} aria-hidden="true" />
+          <span className={styles.previewBarLabel}>
+            Previewing <strong>{bg?.label ?? bgPreviewing}</strong> background
+          </span>
+          {ownedB ? (
+            <button
+              type="button"
+              className={styles.previewBarApply}
+              onClick={() => { void handleEquipBackground(bgPreviewing); clearBgPreview() }}
+            >
+              Equip
+            </button>
+          ) : (
+            <button type="button" className={styles.previewBarApply} onClick={goToShop}>
+              Get in Shop →
+            </button>
+          )}
+          <button type="button" className={styles.previewBarStop} onClick={() => clearBgPreview()}>
             Stop preview
           </button>
         </div>

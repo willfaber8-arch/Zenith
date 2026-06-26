@@ -36,10 +36,11 @@ import { RESOURCE_IDS, RESOURCE_META, type ResourceId, gamesDb, purchaseTheme, s
 import { PACK_BACKGROUND_GRANTS } from '@/lib/shopCatalog'
 import { SHOP_BACKGROUND_PRESETS } from '@/lib/shopBackgrounds'
 import SkillTreeCanvas, { type SkillTreeNode } from '@/components/games/skills/SkillTreeCanvas'
-import { consumeRequestedTab }       from '@/lib/gamesNavState'
+import { peekRequestedTab, consumeRequestedTab, subscribeGamesTab } from '@/lib/gamesNavState'
 import { SHOP_CATALOG_STATIC, type ShopCatalogItem } from '@/lib/shopCatalog'
 import { CUSTOM_THEME_ID }           from '@/lib/customTheme'
 import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import { useNav }                    from '@/lib/NavContext'
 import styles from './GamesTabShell.module.css'
 
@@ -278,12 +279,15 @@ function ShopPanel() {
   const [equipping,  setEquipping]  = useState<string | null>(null)
   const [shopMsg, setShopMsg]       = useState<{ text: string; ok: boolean } | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+  const [bgPreviewing, setBgPreviewing] = useState<string | null>(getBgPreviewId())
 
   useEffect(() => subscribePreview(setPreviewing), [])
+  useEffect(() => subscribeBgPreview(setBgPreviewing), [])
   // Never let a preview outlive the shop view.
-  useEffect(() => () => clearPreview(), [])
+  useEffect(() => () => { clearPreview(); clearBgPreview() }, [])
 
-  const togglePreview = (id: string) => setPreviewId(previewing === id ? null : id)
+  const togglePreview   = (id: string) => setPreviewId(previewing === id ? null : id)
+  const toggleBgPreview = (id: string) => setBgPreviewId(bgPreviewing === id ? null : id)
 
   const ownedThemes  = useMemo(() => new Set(profile?.purchasedThemes  ?? ['zenith_default']), [profile])
   const ownedBgs     = useMemo(() => new Set(profile?.purchasedBackgrounds ?? []),              [profile])
@@ -514,7 +518,7 @@ function ShopPanel() {
                   )
                 )}
 
-                {/* Preview only for themes (not backgrounds/perks) */}
+                {/* Theme / pack preview */}
                 {isThemeOrPack && (
                   <button
                     type="button"
@@ -522,6 +526,17 @@ function ShopPanel() {
                     onClick={() => togglePreview(item.id)}
                   >
                     {previewing === item.id ? '■ Stop' : '◉ Preview'}
+                  </button>
+                )}
+
+                {/* Background preview */}
+                {isBg && (
+                  <button
+                    type="button"
+                    className={`${styles.shopPreviewBtn} ${bgPreviewing === item.id ? styles.shopPreviewBtnOn : ''}`}
+                    onClick={() => toggleBgPreview(item.id)}
+                  >
+                    {bgPreviewing === item.id ? '■ Stop' : '◉ Preview'}
                   </button>
                 )}
               </div>
@@ -1033,11 +1048,20 @@ export default function GamesTabShell({
 }: GamesTabShellSlots = {}) {
 
   /* ── Internal navigation state ────────────────────────────── */
+  // peek (pure) for the initial value; the mount effect below consumes it.
   const [rightTab, setRightTab] = useState<GamesRightTab>(
-    () => (consumeRequestedTab() as GamesRightTab) ?? 'arcade',
+    () => (peekRequestedTab() as GamesRightTab) ?? 'arcade',
   )
   const [activeStation,   setActiveStation]   = useState<BiosphereStation>('terminal')
   const [bioPaneOpenMob,  setBioPaneOpenMob]  = useState(false)
+
+  /* Consume any pending deep-link on mount, and keep listening so a request
+     fired while the shell is already on screen still switches the tab. */
+  useEffect(() => {
+    const pending = consumeRequestedTab()
+    if (pending) setRightTab(pending as GamesRightTab)
+    return subscribeGamesTab(tab => setRightTab(tab as GamesRightTab))
+  }, [])
 
   /* ── Active crucible job count for tab badge ─────────────── */
   const { activeJobs } = useCosmicCrucible()
