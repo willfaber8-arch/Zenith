@@ -1111,6 +1111,16 @@
   background: rgba(248, 113, 113, 0.06);
 }
 
+/* Shop root — when a background is previewed, the pattern is set here as an
+   inline background-image so the whole shop panel shows the backdrop in
+   context. Padding + radius give a visible pattern frame around the grid. */
+.shopRoot {
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  margin: calc(-1 * var(--sp-3));
+  transition: background-color 220ms var(--ease-smooth);
+}
+
 .shopGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

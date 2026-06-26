@@ -1271,11 +1271,26 @@
   margin-bottom: var(--sp-4);
 }
 .bgCard {
+  position: relative;
   padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   border: 1px solid var(--border-subtle);
   background: var(--surface-card);
   transition: border-color 140ms var(--ease-smooth);
+}
+.bgCardTag {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 99px;
+  color: var(--accent-green);
+  background: color-mix(in srgb, var(--accent-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
 }
 .bgCard:hover { border-color: color-mix(in srgb, var(--accent-purple) 35%, transparent); }
 .bgCardActive {
@@ -1294,7 +1309,16 @@
   margin: 0 0 var(--sp-3) 0;
   line-height: 1.4;
 }
-.bgCardFooter { display: flex; }
+.bgCardFooter { display: flex; gap: var(--sp-2); align-items: center; }
+.bgActiveLabel {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.02em;
+}
 .bgEquipBtn {
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-sm);

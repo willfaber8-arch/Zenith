@@ -370,8 +370,22 @@ function ShopPanel() {
     all: 'All Items', theme: 'Themes', pack: 'Packs', background: 'Backgrounds', perk: 'Perks',
   }
 
+  /* When a background is being previewed, flood the shop panel's own background
+     with that pattern so the user sees it in context (the per-card swatch shows
+     a thumbnail; this shows it full-bleed behind the grid). */
+  const shopPreviewSpec = bgPreviewing
+    ? resolveShopBackground(bgPreviewing, accentHex, bgHex)
+    : null
+
   return (
-    <div>
+    <div
+      className={styles.shopRoot}
+      style={shopPreviewSpec ? {
+        backgroundImage:  shopPreviewSpec.image,
+        backgroundSize:   shopPreviewSpec.size,
+        backgroundRepeat: shopPreviewSpec.repeat,
+      } : undefined}
+    >
       {/* ── Balance header ─────────────────────────────── */}
       <div className={styles.shopHeader}>
         <div>
@@ -412,9 +426,17 @@ function ShopPanel() {
           const isBg   = item.category === 'background'
           const isPerk = item.category === 'perk'
 
+          // bg_default is the baseline texture: always owned, equipped when
+          // no shop background is active, and "equipping" it clears the override.
+          const isDefaultBg = item.id === 'bg_default'
+
           /* Ownership / equipped state per category */
-          const owned    = isThemeOrPack ? ownedThemes.has(item.id) : isBg ? ownedBgs.has(item.id) : unlockedPerks.has(item.id)
-          const equipped = isThemeOrPack ? activeThemeId === item.id : isBg ? activeBgId === item.id : false
+          const owned    = isThemeOrPack ? ownedThemes.has(item.id)
+                         : isBg          ? (isDefaultBg || ownedBgs.has(item.id))
+                         :                  unlockedPerks.has(item.id)
+          const equipped = isThemeOrPack ? activeThemeId === item.id
+                         : isBg          ? (isDefaultBg ? !activeBgId : activeBgId === item.id)
+                         :                  false
           // Streak savers are always re-purchasable
           const isRepurchasable = item.id === 'perk_streak_saver_5' || item.id === 'perk_streak_saver_15'
           const canBuy   = !owned || isRepurchasable
@@ -495,17 +517,11 @@ function ShopPanel() {
                 {isBg && (
                   owned ? (
                     equipped ? (
-                      <button
-                        className={styles.shopEquipBtn}
-                        onClick={() => void handleEquipBackground(null)}
-                        disabled={isProcessing}
-                      >
-                        {equipping === item.id ? '···' : '✓ Remove'}
-                      </button>
+                      <span className={styles.shopEquippedLabel}>✓ Equipped</span>
                     ) : (
                       <button
                         className={styles.shopEquipBtn}
-                        onClick={() => void handleEquipBackground(item.id)}
+                        onClick={() => void handleEquipBackground(isDefaultBg ? null : item.id)}
                         disabled={isProcessing}
                       >
                         {equipping === item.id ? '···' : 'Equip'}
@@ -554,8 +570,8 @@ function ShopPanel() {
                   </button>
                 )}
 
-                {/* Background preview */}
-                {isBg && (
+                {/* Background preview (not for the baseline default) */}
+                {isBg && !isDefaultBg && (
                   <button
                     type="button"
                     className={`${styles.shopPreviewBtn} ${bgPreviewing === item.id ? styles.shopPreviewBtnOn : ''}`}

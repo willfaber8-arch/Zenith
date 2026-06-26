@@ -665,61 +665,76 @@ export default function SettingsView() {
           )}
 
           {/* ── Owned Backgrounds ────────────────────────────── */}
-          <p className={styles.ownedLabel}>Your Backgrounds</p>
-          {ownedBgs.length === 0 ? (
-            <p className={styles.ownedEmpty}>
-              No backgrounds yet.{' '}
-              <button type="button" className={styles.textLink} onClick={goToShop}>
-                Browse the shop →
-              </button>
-            </p>
-          ) : (
-            <div className={styles.bgGrid}>
-              {SHOP_BACKGROUND_PRESETS
-                .filter(bg => ownedBgs.includes(bg.id))
-                .map(bg => {
-                  const isActive = activeBg === bg.id
-                  return (
-                    <div
-                      key={bg.id}
-                      className={`${styles.bgCard} ${isActive ? styles.bgCardActive : ''}`}
-                    >
-                      <p className={styles.bgCardLabel}>{bg.label}</p>
-                      <p className={styles.bgCardHint}>{bg.hint}</p>
-                      <div className={styles.bgCardFooter}>
-                        {isActive ? (
-                          <button
-                            type="button"
-                            className={styles.bgEquipBtn}
-                            onClick={() => void handleEquipBackground(null)}
-                            disabled={equippingBgId !== null}
-                          >
-                            ✓ Remove
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className={styles.bgEquipBtn}
-                            onClick={() => void handleEquipBackground(bg.id)}
-                            disabled={equippingBgId === bg.id}
-                          >
-                            {equippingBgId === bg.id ? '···' : 'Equip'}
-                          </button>
-                        )}
+          <div className={styles.appearanceHeader}>
+            <p className={styles.ownedLabel} style={{ margin: 0 }}>Your Backgrounds</p>
+            <button type="button" className={styles.buyMoreBtn} onClick={goToShop}>
+              Browse Shop →
+            </button>
+          </div>
+          <div className={styles.bgGrid}>
+            {/* Default "Classic Dots" — always owned; equipping clears the override */}
+            {(() => {
+              const isActive = !activeBg
+              return (
+                <div className={`${styles.bgCard} ${isActive ? styles.bgCardActive : ''}`}>
+                  <span className={styles.bgCardTag}>DEFAULT</span>
+                  <p className={styles.bgCardLabel}>Classic Dots</p>
+                  <p className={styles.bgCardHint}>The original faint dot grid — the Zenith baseline.</p>
+                  <div className={styles.bgCardFooter}>
+                    {isActive ? (
+                      <span className={styles.bgActiveLabel}>✓ Active</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.bgEquipBtn}
+                        onClick={() => void handleEquipBackground(null)}
+                        disabled={equippingBgId !== null}
+                      >
+                        Equip
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {SHOP_BACKGROUND_PRESETS
+              .filter(bg => ownedBgs.includes(bg.id))
+              .map(bg => {
+                const isActive = activeBg === bg.id
+                return (
+                  <div
+                    key={bg.id}
+                    className={`${styles.bgCard} ${isActive ? styles.bgCardActive : ''}`}
+                  >
+                    <p className={styles.bgCardLabel}>{bg.label}</p>
+                    <p className={styles.bgCardHint}>{bg.hint}</p>
+                    <div className={styles.bgCardFooter}>
+                      {isActive ? (
+                        <span className={styles.bgActiveLabel}>✓ Active</span>
+                      ) : (
                         <button
                           type="button"
-                          className={`${styles.previewBtn} ${bgPreviewing === bg.id ? styles.previewBtnOn : ''}`}
-                          onClick={() => handleBgPreview(bg.id)}
+                          className={styles.bgEquipBtn}
+                          onClick={() => void handleEquipBackground(bg.id)}
+                          disabled={equippingBgId === bg.id}
                         >
-                          {bgPreviewing === bg.id ? '■ Stop' : '◉ Preview'}
+                          {equippingBgId === bg.id ? '···' : 'Equip'}
                         </button>
-                      </div>
+                      )}
+                      <button
+                        type="button"
+                        className={`${styles.previewBtn} ${bgPreviewing === bg.id ? styles.previewBtnOn : ''}`}
+                        onClick={() => handleBgPreview(bg.id)}
+                      >
+                        {bgPreviewing === bg.id ? '■ Stop' : '◉ Preview'}
+                      </button>
                     </div>
-                  )
-                })
-              }
-            </div>
-          )}
+                  </div>
+                )
+              })
+            }
+          </div>
 
           {/* ── Perks (purchased in the Shop; shown here) ─────── */}
           <div className={styles.perksSection}>

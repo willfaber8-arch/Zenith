@@ -25,7 +25,7 @@ export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
   { id: 'light_dusk',  name: 'Golden Hour',      tagline: 'Warm ochre canvas with burnished amber accent.',           category: 'theme', cost: 300, icon: '◈', tag: 'LIGHT' },
 
   /* ── Core Themes ─────────────────────────────────────────────── */
-  { id: 'zenith_default',    name: 'Sage Studio',           tagline: 'Lightish green on dark grey — the Zenith default.',       category: 'theme', cost:   0, icon: '◈' },
+  { id: 'zenith_default',    name: 'Sage Studio',           tagline: 'Lightish green on dark grey — the Zenith default.',       category: 'theme', cost:   0, icon: '◈', tag: 'DEFAULT' },
   { id: 'zenith_periwinkle', name: 'Classic Periwinkle',    tagline: 'The original cosmos blue-purple aesthetic.',              category: 'theme', cost: 100, icon: '◈', tag: 'CLASSIC' },
   { id: 'zenith_crimson',    name: 'Crimson Core',          tagline: 'Deep crimson accent with warm contrast.',                 category: 'theme', cost: 150, icon: '◈' },
   { id: 'zenith_amber',      name: 'Solar Dusk',            tagline: 'Amber and ember tones across the interface.',             category: 'theme', cost: 200, icon: '◈' },
@@ -60,6 +60,7 @@ export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
   { id: 'pack_ash',          name: 'Ash & Ember',           tagline: 'Ember red on charcoal + Diamonds background.',          category: 'pack',  cost: 250, icon: '◧' },
 
   /* ── Backgrounds ─────────────────────────────────────────────── */
+  { id: 'bg_default',       name: 'Classic Dots',     tagline: 'The original faint dot grid. Always owned — the Zenith baseline.', category: 'background', cost:   0, icon: '⠿', tag: 'DEFAULT' },
   { id: 'bg_zigzag',        name: 'Zigzag',          tagline: 'Sharp sawtooth repeating wave across the workspace.',         category: 'background', cost:  50, icon: '▲' },
   { id: 'bg_stars',         name: 'Star Field',       tagline: 'Sparse sparkling star points in three depth layers.',        category: 'background', cost:  75, icon: '✦' },
   { id: 'bg_honeycomb',     name: 'Honeycomb',        tagline: 'Interlocking hexagonal lattice — organic and structured.',   category: 'background', cost:  75, icon: '⬡', tag: 'NEW' },

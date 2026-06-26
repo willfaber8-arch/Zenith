@@ -636,7 +636,7 @@
   font-family: var(--font-mono);
   font-size:   2rem;
   color:       var(--text-dark);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.015em;
 }
 
 .bracketEmptyText {

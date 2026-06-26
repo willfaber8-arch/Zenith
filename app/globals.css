@@ -329,6 +329,9 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.6;
+  /* Gentle positive tracking improves legibility with DM Sans, whose default
+     letter-spacing is tighter than the previous display stack. */
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

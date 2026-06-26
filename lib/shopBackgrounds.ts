@@ -13,6 +13,7 @@ import { withAlpha } from '@/lib/themeColor'
 import type { BackdropSpec } from '@/lib/backdrops'
 
 export type ShopBackgroundId =
+  | 'bg_default'
   | 'bg_zigzag'
   | 'bg_stars'
   | 'bg_honeycomb'
@@ -23,6 +24,15 @@ export type ShopBackgroundId =
   | 'bg_circuit'
   | 'bg_constellation'
   | 'bg_diamonds'
+
+/** The accent-agnostic baseline texture — what shows when no background is
+ *  equipped. Mirrors the fallback in globals.css / ThemeBackground so the
+ *  shop swatch and "Default" card preview match the real default exactly. */
+export const DEFAULT_BG_SPEC: BackdropSpec = {
+  image:  'radial-gradient(circle, rgba(150, 160, 190, 0.18) 1px, transparent 1px)',
+  size:   '18px 18px',
+  repeat: 'repeat',
+}
 
 export interface ShopBackgroundPreset {
   id:    ShopBackgroundId
@@ -186,6 +196,9 @@ export function isShopBackgroundId(id: string): id is ShopBackgroundId {
 }
 
 export function resolveShopBackground(id: string, accent: string, bg: string): BackdropSpec | null {
+  /* bg_default is the "no background equipped" sentinel — return the neutral
+     baseline texture so swatches/previews can render it like any other. */
+  if (id === 'bg_default') return DEFAULT_BG_SPEC
   const preset = SHOP_BACKGROUND_MAP[id as ShopBackgroundId]
   return preset ? preset.build(accent, bg) : null
 }
