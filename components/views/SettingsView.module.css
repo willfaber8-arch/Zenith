@@ -1163,6 +1163,9 @@
 }
 
 .buyMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--sp-1) var(--sp-3);
   border-radius: 99px;
   border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
@@ -1374,6 +1377,9 @@
   flex-shrink: 0;
 }
 .saverBuyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-sm);
   border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);

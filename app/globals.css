@@ -72,16 +72,15 @@
    * display-swap-optimised version with system fallbacks if either
    * isn't loaded yet.
    *
-   * --font-display → Space Grotesk  (soft geometric display; clean,
-   *   warm letterforms that sit well on the mineral-dark canvas.
-   *   Upgrade path: Cabinet Grotesk or Clash Display — see layout.tsx)
-   * --font-sans    → Plus Jakarta Sans  (warm, humanistic geometric sans;
-   *   approachable at small sizes, expressive at display scale)
+   * --font-display → DM Sans  (soft, humanistic geometric sans;
+   *   warm and inviting at display scale; excellent at heavy weights)
+   * --font-sans    → DM Sans  (same family — cohesive typographic voice;
+   *   clean and approachable at small body-copy sizes)
    * --font-mono    → Cascadia Code  (ligature-enabled; readable warmth
    *   in data-dense panes and terminal-inspired sections)
    */
-  --font-display: var(--font-cabinet), 'Space Grotesk', 'DM Sans',      ui-sans-serif, sans-serif;
-  --font-sans:    var(--font-jakarta), 'Plus Jakarta Sans', 'DM Sans',  ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cabinet), 'DM Sans', ui-sans-serif, sans-serif;
+  --font-sans:    var(--font-jakarta), 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'Cascadia Code', 'JetBrains Mono', 'SF Mono',          ui-monospace,  monospace;
 
   /* ── Border radii (override Tailwind defaults) ────────────────── */

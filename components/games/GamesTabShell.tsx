@@ -34,7 +34,8 @@ import { CRUCIBLE_RECIPES }          from '@/lib/engines/CosmicCrucibleEngine'
 import { SKILL_TREE_MAP }            from '@/lib/engines/SkillTreeFirewall'
 import { RESOURCE_IDS, RESOURCE_META, type ResourceId, gamesDb, purchaseTheme, setActiveTheme, purchaseBackground, grantBackground, equipBackground, purchasePerk } from '@/lib/gamesDb'
 import { PACK_BACKGROUND_GRANTS } from '@/lib/shopCatalog'
-import { SHOP_BACKGROUND_PRESETS } from '@/lib/shopBackgrounds'
+import { SHOP_BACKGROUND_PRESETS, resolveShopBackground } from '@/lib/shopBackgrounds'
+import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
 import SkillTreeCanvas, { type SkillTreeNode } from '@/components/games/skills/SkillTreeCanvas'
 import { peekRequestedTab, consumeRequestedTab, subscribeGamesTab } from '@/lib/gamesNavState'
 import { SHOP_CATALOG_STATIC, type ShopCatalogItem } from '@/lib/shopCatalog'
@@ -294,6 +295,16 @@ function ShopPanel() {
   const unlockedPerks = useMemo(() => new Set(profile?.unlockedPerks ?? []),                   [profile])
   const activeThemeId = profile?.activeTheme      ?? 'zenith_default'
   const activeBgId    = profile?.activeBackground ?? null
+
+  /* Compute accent + bg hex for inline background swatches */
+  const accentHex = useMemo(() => {
+    const def = THEME_DEFINITIONS[activeThemeId]
+    return def?.swatch ?? '#68d9a0'
+  }, [activeThemeId])
+  const bgHex = useMemo(() => {
+    const def = THEME_DEFINITIONS[activeThemeId]
+    return (def?.vars as Record<string, string> | undefined)?.['--bg-main'] ?? '#0b0d13'
+  }, [activeThemeId])
   const streakSavers  = profile?.streakSaverCount ?? 0
 
   const filtered = catFilter === 'all'
@@ -410,6 +421,9 @@ function ShopPanel() {
           const canAfford = cosmeticPoints >= item.cost
           const isProcessing = purchasing === item.id || activating === item.id || equipping === item.id
 
+          /* Inline pattern swatch for background items */
+          const bgSpec = isBg ? resolveShopBackground(item.id, accentHex, bgHex) : null
+
           return (
             <div
               key={item.id}
@@ -423,7 +437,18 @@ function ShopPanel() {
                 <span className={styles.shopTag}>{item.tag}</span>
               )}
 
-              <div className={styles.shopCardIcon}>{item.icon}</div>
+              {bgSpec ? (
+                <div
+                  className={styles.shopBgSwatch}
+                  style={{
+                    backgroundImage:  bgSpec.image,
+                    backgroundSize:   bgSpec.size,
+                    backgroundRepeat: bgSpec.repeat,
+                  }}
+                />
+              ) : (
+                <div className={styles.shopCardIcon}>{item.icon}</div>
+              )}
               <p className={styles.shopCardName}>{item.name}</p>
               <p className={styles.shopCardTagline}>{item.tagline}</p>
 

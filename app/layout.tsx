@@ -72,30 +72,32 @@ import TestBridge        from '@/components/TestBridge'
 import { Analytics }     from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
-/* ── Plus Jakarta Sans — body / utility text ──────────────────── */
-/* Variable font: single .woff2 encodes the full 300–800 weight axis. */
+/* ── DM Sans — body / utility text ───────────────────────────── */
+/* Variable font: single .woff2 encodes the full 100–900 weight axis.
+ * Soft, humanistic geometric sans — warm and inviting at all sizes.
+ * Replaces Plus Jakarta Sans for a friendlier, less sharp feel.    */
 const plusJakartaSans = localFont({
   src: [
-    { path: '../public/fonts/plus-jakarta-sans/PlusJakartaSans-Variable.woff2', weight: '300 800', style: 'normal' },
+    { path: '../public/fonts/dm-sans/DMSans-Variable.woff2', weight: '100 900', style: 'normal' },
   ],
   variable:             '--font-jakarta',
   display:              'swap',
-  adjustFontFallback:   'Arial',   // Next.js auto-computes size-adjust / ascent-override / descent-override
-  fallback:             ['ui-sans-serif', 'system-ui', 'sans-serif'],
+  adjustFontFallback:   'Arial',
+  fallback:             ['DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 })
 
-/* ── Space Grotesk — display / heading text ───────────────────── */
-/* Variable font: single .woff2 encodes the full 300–700 weight axis. */
+/* ── DM Sans — display / heading text ────────────────────────── */
+/* Same family as body for a cohesive, inviting typographic voice.
+ * Heavy weights (700–900) provide strong display presence without
+ * the sharp edges of geometric grotesks like Space Grotesk.       */
 const spaceGrotesk = localFont({
   src: [
-    { path: '../public/fonts/space-grotesk/SpaceGrotesk-Variable.woff2', weight: '300 700', style: 'normal' },
+    { path: '../public/fonts/dm-sans/DMSans-Variable.woff2', weight: '100 900', style: 'normal' },
   ],
-  variable:             '--font-cabinet',   /* --font-cabinet so globals.css @theme resolves
-                                               transparently; swap to Cabinet Grotesk by
-                                               updating the src path above                   */
+  variable:             '--font-cabinet',
   display:              'swap',
   adjustFontFallback:   'Arial',
-  fallback:             ['ui-sans-serif', 'sans-serif'],
+  fallback:             ['DM Sans', 'ui-sans-serif', 'sans-serif'],
 })
 
 /* ── App metadata ─────────────────────────────────────────────── */

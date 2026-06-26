@@ -48,7 +48,7 @@
   width:         5px;
   height:        5px;
   border-radius: 50%;
-  background:    #52cca3;
+  background:    var(--accent-green);
   flex-shrink:   0;
   will-change:   opacity, transform;
   animation:     dotPulse 2.6s var(--ease-smooth) infinite;
@@ -60,7 +60,7 @@
   font-weight:    700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color:          #52cca3;
+  color:          var(--accent-green);
   user-select:    none;
 }
 
@@ -95,7 +95,7 @@
 
 .biomeBtnActive {
   background: rgba(82, 204, 163, 0.15);
-  color:      #52cca3;
+  color:      var(--accent-green);
 }
 
 /* ── Scene container ──────────────────────────────────────────────── */
