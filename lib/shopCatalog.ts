@@ -14,6 +14,9 @@ export interface ShopCatalogItem {
 }
 
 export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
+  /* ── Theme Forge — premium custom theme creator (pinned first) ── */
+  { id: 'theme_forge', name: 'Theme Forge', tagline: 'Craft unlimited custom themes — any colour or hex code, 7 ambient backdrops, re-editable anytime. Built-in readability guard.', category: 'pack', cost: 2000, icon: '✦', tag: 'CREATOR' },
+
   /* ── Light Themes (pinned first) ────────────────────────────── */
   { id: 'light_clean', name: 'Morning Studio',  tagline: 'Clean white canvas with sage accents. The light default.',  category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },
   { id: 'light_warm',  name: 'Parchment Studio', tagline: 'Warm cream surface with amber warmth.',                    category: 'theme', cost:   0, icon: '◈', tag: 'LIGHT' },

@@ -36,6 +36,9 @@ import { RESOURCE_IDS, RESOURCE_META, type ResourceId, gamesDb, purchaseTheme, s
 import SkillTreeCanvas, { type SkillTreeNode } from '@/components/games/skills/SkillTreeCanvas'
 import { consumeRequestedTab }       from '@/lib/gamesNavState'
 import { SHOP_CATALOG_STATIC, type ShopCatalogItem } from '@/lib/shopCatalog'
+import { CUSTOM_THEME_ID }           from '@/lib/customTheme'
+import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { useNav }                    from '@/lib/NavContext'
 import styles from './GamesTabShell.module.css'
 
 /* ── Module-level constants ─────────────────────────────────────── */
@@ -266,10 +269,18 @@ function ShopPanel() {
     () => gamesDb.user_profile_config.get('active_user'),
     [],
   )
+  const { navigate } = useNav()
   const [catFilter, setCatFilter]   = useState<'all' | 'theme' | 'pack'>('all')
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [activating, setActivating] = useState<string | null>(null)
   const [shopMsg, setShopMsg]       = useState<{ text: string; ok: boolean } | null>(null)
+  const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+
+  useEffect(() => subscribePreview(setPreviewing), [])
+  // Never let a preview outlive the shop view.
+  useEffect(() => () => clearPreview(), [])
+
+  const togglePreview = (id: string) => setPreviewId(previewing === id ? null : id)
 
   const ownedSet    = useMemo(() => new Set(profile?.purchasedThemes ?? ['zenith_default']), [profile])
   const activeThemeId = profile?.activeTheme ?? 'zenith_default'
@@ -359,6 +370,13 @@ function ShopPanel() {
               <div className={styles.shopCardFooter}>
                 {equipped ? (
                   <span className={styles.shopEquippedLabel}>✓ Equipped</span>
+                ) : owned && item.id === CUSTOM_THEME_ID ? (
+                  <button
+                    className={styles.shopEquipBtn}
+                    onClick={() => navigate('settings', null)}
+                  >
+                    Customize →
+                  </button>
                 ) : owned ? (
                   <button
                     className={styles.shopEquipBtn}
@@ -382,6 +400,13 @@ function ShopPanel() {
                     )}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className={`${styles.shopPreviewBtn} ${previewing === item.id ? styles.shopPreviewBtnOn : ''}`}
+                  onClick={() => togglePreview(item.id)}
+                >
+                  {previewing === item.id ? '■ Stop' : '◉ Preview'}
+                </button>
               </div>
             </div>
           )

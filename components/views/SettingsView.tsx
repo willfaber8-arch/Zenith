@@ -25,6 +25,13 @@ import {
   getPresets, savePreset, deletePreset, applyPreset,
   type DashboardPreset,
 } from '@/lib/dashboardPresets'
+import {
+  CUSTOM_THEME_ID, loadCustomTheme, saveCustomTheme,
+  DEFAULT_CUSTOM_THEME, type CustomThemeConfig,
+} from '@/lib/customTheme'
+import { BACKDROP_PRESETS, type BackdropId } from '@/lib/backdrops'
+import { normalizeHex } from '@/lib/themeColor'
+import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -40,6 +47,123 @@ function Section({ id, title, children }: { id?: string; title: string; children
       <h2 className={styles.sectionTitle}>{title}</h2>
       {children}
     </section>
+  )
+}
+
+/* ── Color field (wheel + hex input) ──────────────────────────── */
+function ColorField({
+  label, value, onChange,
+}: { label: string; value: string; onChange: (hex: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+
+  const commit = (raw: string) => {
+    const norm = normalizeHex(raw)
+    if (norm) onChange(norm)
+    else setDraft(value)   // revert invalid input
+  }
+
+  return (
+    <div className={styles.colorField}>
+      <span className={styles.colorFieldLabel}>{label}</span>
+      <div className={styles.colorFieldRow}>
+        <label className={styles.colorWell} style={{ background: value }}>
+          <input
+            type="color"
+            className={styles.colorWellInput}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            aria-label={`${label} colour wheel`}
+          />
+        </label>
+        <input
+          type="text"
+          className={styles.colorHexInput}
+          value={draft}
+          spellCheck={false}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
+          aria-label={`${label} hex code`}
+        />
+      </div>
+    </div>
+  )
+}
+
+/* ── Theme Forge — live custom theme creator ───────────────────── */
+function ThemeForgePanel({
+  isActive, onApply,
+}: { isActive: boolean; onApply: () => void }) {
+  const [config, setConfig] = useState<CustomThemeConfig>(() => loadCustomTheme())
+  const [live, setLive]     = useState(false)
+
+  // Persist + broadcast on every edit (ThemeApplicator re-applies live).
+  const update = useCallback((patch: Partial<CustomThemeConfig>) => {
+    setConfig(prev => {
+      const next = { ...prev, ...patch }
+      saveCustomTheme(next)
+      return next
+    })
+  }, [])
+
+  // Drive the app-wide preview while Live Preview is on.
+  useEffect(() => {
+    if (live) setPreviewId(CUSTOM_THEME_ID)
+    return () => { if (live) clearPreview() }
+  }, [live])
+
+  const reset = () => { setConfig({ ...DEFAULT_CUSTOM_THEME }); saveCustomTheme({ ...DEFAULT_CUSTOM_THEME }) }
+
+  return (
+    <div className={styles.forgePanel}>
+      <div className={styles.forgeHeader}>
+        <span className={styles.forgeTitle}>✦ Theme Forge</span>
+        <span className={styles.forgeSub}>Pick any colour — readability is auto-guarded.</span>
+      </div>
+
+      <div className={styles.forgeColors}>
+        <ColorField label="Accent"     value={config.accent}  onChange={h => update({ accent: h })} />
+        <ColorField label="Background" value={config.bgMain}  onChange={h => update({ bgMain: h })} />
+        <ColorField label="Surface"    value={config.surface} onChange={h => update({ surface: h })} />
+      </div>
+
+      <div className={styles.forgeField}>
+        <span className={styles.colorFieldLabel}>Backdrop</span>
+        <div className={styles.forgeBackdrops}>
+          {BACKDROP_PRESETS.map(b => (
+            <button
+              key={b.id}
+              type="button"
+              className={`${styles.forgeBackdropBtn} ${config.backdrop === b.id ? styles.forgeBackdropBtnActive : ''}`}
+              onClick={() => update({ backdrop: b.id as BackdropId })}
+              title={b.hint}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.forgeActions}>
+        <button
+          type="button"
+          className={`${styles.themeBtn} ${live ? styles.forgeLiveOn : ''}`}
+          onClick={() => setLive(v => !v)}
+        >
+          {live ? '◉ Live Preview On' : '◎ Live Preview'}
+        </button>
+        <button
+          type="button"
+          className={`${styles.themeBtn} ${styles.themeBtnBuy}`}
+          onClick={() => { setLive(false); clearPreview(); onApply() }}
+          disabled={isActive}
+        >
+          {isActive ? '✓ Active' : 'Apply Theme'}
+        </button>
+        <button type="button" className={styles.forgeResetBtn} onClick={reset}>Reset</button>
+      </div>
+    </div>
   )
 }
 
@@ -197,6 +321,16 @@ export default function SettingsView() {
   const cpBalance    = gamesProfile?.cosmeticPointsBalance ?? 0
   const [buyingId,   setBuyingId]   = useState<string | null>(null)
   const [activatingId, setActivatingId] = useState<string | null>(null)
+
+  /* ── Theme preview ──────────────────────────────────────────── */
+  const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+  useEffect(() => subscribePreview(setPreviewing), [])
+  // End any preview when leaving Settings so it never "sticks".
+  useEffect(() => () => clearPreview(), [])
+
+  const handlePreview = useCallback((id: string) => {
+    setPreviewId(previewing === id ? null : id)
+  }, [previewing])
 
   const handleBuyTheme = useCallback(async (id: string, cost: number) => {
     setBuyingId(id)
@@ -455,11 +589,31 @@ export default function SettingsView() {
                         {buyingId === item.id ? '···' : item.cost === 0 ? 'Free' : `✦ ${item.cost}`}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className={`${styles.previewBtn} ${previewing === item.id ? styles.previewBtnOn : ''}`}
+                      onClick={() => handlePreview(item.id)}
+                    >
+                      {previewing === item.id ? '■ Stop' : '◉ Preview'}
+                    </button>
                   </div>
                 </div>
               )
             })}
           </div>
+
+          {/* ── Theme Forge (custom theme creator) ─────────────── */}
+          {ownedThemes.includes(CUSTOM_THEME_ID) ? (
+            <ThemeForgePanel
+              isActive={activeTheme === CUSTOM_THEME_ID}
+              onApply={() => void handleActivateTheme(CUSTOM_THEME_ID)}
+            />
+          ) : (
+            <p className={styles.forgeLockedHint}>
+              Unlock <strong>Theme Forge</strong> above to design your own colours, hex codes,
+              and ambient backdrop — fully re-editable anytime.
+            </p>
+          )}
 
           {/* ── Ambient Backdrop ──────────────────────────────── */}
           <div className={styles.backdropSection}>
@@ -532,6 +686,13 @@ export default function SettingsView() {
                         {applyingUniId === brand.id ? '···' : 'Apply'}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className={`${styles.previewBtn} ${previewing === themeId ? styles.previewBtnOn : ''}`}
+                      onClick={() => handlePreview(themeId)}
+                    >
+                      {previewing === themeId ? '■ Stop' : '◉ Preview'}
+                    </button>
                   </div>
                 </div>
               )
@@ -946,6 +1107,40 @@ export default function SettingsView() {
     {showWrapped && (
       <EcosystemWrapped onClose={() => setShowWrapped(false)} />
     )}
+
+    {/* ── Live theme preview bar ──────────────────────────────── */}
+    {previewing && (() => {
+      const shopItem = SHOP_CATALOG_STATIC.find(i => i.id === previewing)
+      const isUni    = previewing.startsWith('uni_')
+      const ownedP   = ownedThemes.includes(previewing)
+      const name     = previewing === CUSTOM_THEME_ID
+        ? 'Theme Forge'
+        : shopItem?.name ?? UNIVERSITY_THEME_DEFINITIONS[previewing]?.label ?? previewing
+      const applyPreview = () => {
+        if (shopItem && !ownedP && previewing !== CUSTOM_THEME_ID) {
+          void handleBuyTheme(previewing, shopItem.cost)
+          return
+        }
+        if (isUni) void handleApplySchoolColors(previewing.replace(/^uni_/, ''))
+        else       void handleActivateTheme(previewing)
+        clearPreview()
+      }
+      const buyMode = !!shopItem && !ownedP && previewing !== CUSTOM_THEME_ID
+      return (
+        <div className={styles.previewBar} role="status">
+          <span className={styles.previewBarDot} aria-hidden="true" />
+          <span className={styles.previewBarLabel}>
+            Previewing <strong>{name}</strong>
+          </span>
+          <button type="button" className={styles.previewBarApply} onClick={applyPreview}>
+            {buyMode ? `Buy ✦ ${shopItem!.cost.toLocaleString()}` : 'Apply'}
+          </button>
+          <button type="button" className={styles.previewBarStop} onClick={() => clearPreview()}>
+            Stop preview
+          </button>
+        </div>
+      )
+    })()}
     </>
   )
 }

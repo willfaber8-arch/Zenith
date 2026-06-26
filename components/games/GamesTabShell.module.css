@@ -1188,6 +1188,31 @@
   margin-top: var(--sp-3);
   display: flex;
   align-items: center;
+  gap: var(--sp-2);
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.shopPreviewBtn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.shopPreviewBtn:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--cat-accent) 40%, transparent);
+}
+.shopPreviewBtnOn {
+  color: var(--cat-accent);
+  border-color: color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 12%, transparent);
 }
 
 .shopEquippedLabel {

@@ -320,8 +320,12 @@ html {
 body {
   min-height: 100%;
   background-color: var(--bg-main);
-  background-image: var(--body-bg-image, radial-gradient(circle, rgba(124, 149, 255, 0.055) 1px, transparent 1px));
-  background-size: 30px 30px;
+  /* Neutral accent-agnostic default texture so no theme's background dots
+     clash with its accent. Themes (and the Theme Forge) override these vars. */
+  background-image: var(--body-bg-image, radial-gradient(circle, rgba(150, 160, 190, 0.045) 1px, transparent 1px));
+  background-size: var(--body-bg-size, 30px 30px);
+  background-repeat: var(--body-bg-repeat, repeat);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 1rem;

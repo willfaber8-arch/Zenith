@@ -14,6 +14,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { gamesDb, seedGamesDatabase } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS, ALL_THEMEABLE_VARS } from '@/lib/themeDefinitions'
 import { UNIVERSITY_THEME_DEFINITIONS } from '@/lib/universityThemes'
+import {
+  CUSTOM_THEME_ID, CUSTOM_THEME_EVENT,
+  loadCustomTheme, buildCustomThemeDefinition,
+} from '@/lib/customTheme'
+import { subscribePreview, getPreviewId } from '@/lib/themePreview'
 
 /* Light-mode inline overrides — mirrors html[data-color-scheme='light'] in globals.css.
    Applied as inline styles so they beat any dark cosmetic theme's bg/text vars. */
@@ -37,9 +42,27 @@ const LIGHT_BASE_VARS: Readonly<Record<string, string>> = {
 
 export default function ThemeApplicator() {
   const [isLight, setIsLight] = useState(false)
+  const [previewId, setPreview] = useState<string | null>(getPreviewId())
+  /* Bumped whenever the stored custom theme changes so live colour-wheel
+     edits re-apply instantly while the Forge theme is active or previewed. */
+  const [customVersion, setCustomVersion] = useState(0)
 
   useEffect(() => {
     seedGamesDatabase().catch(() => {})
+  }, [])
+
+  /* Subscribe to the app-wide preview channel */
+  useEffect(() => subscribePreview(setPreview), [])
+
+  /* Re-apply when the custom theme config is edited */
+  useEffect(() => {
+    const onChange = () => setCustomVersion(v => v + 1)
+    window.addEventListener(CUSTOM_THEME_EVENT, onChange)
+    window.addEventListener('storage', onChange)
+    return () => {
+      window.removeEventListener(CUSTOM_THEME_EVENT, onChange)
+      window.removeEventListener('storage', onChange)
+    }
   }, [])
 
   /* Watch data-color-scheme attribute so theme re-applies on scheme toggle */
@@ -58,8 +81,12 @@ export default function ThemeApplicator() {
   )
 
   useEffect(() => {
-    const themeId = profile?.activeTheme ?? 'zenith_default'
-    const def = THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
+    /* Preview (if any) wins over the persisted active theme. */
+    const themeId = previewId ?? profile?.activeTheme ?? 'zenith_default'
+    const def =
+      themeId === CUSTOM_THEME_ID
+        ? buildCustomThemeDefinition(loadCustomTheme())
+        : THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
 
     /* Step 1: Clear all previously applied overrides so no stale vars bleed through */
     ALL_THEMEABLE_VARS.forEach(v =>
@@ -89,7 +116,7 @@ export default function ThemeApplicator() {
     } else {
       document.documentElement.removeAttribute('data-light-mode')
     }
-  }, [profile?.activeTheme, isLight])
+  }, [profile?.activeTheme, isLight, previewId, customVersion])
 
   return null
 }
