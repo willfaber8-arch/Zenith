@@ -60,16 +60,21 @@
 }
 
 /* ── Week header ──────────────────────────────────────────── */
+/* Mirrors .habitRow box model exactly (gap, padding, transparent border +
+   border-left) so the day letters sit dead-centre over the week dots. */
 .weekHeader {
   display: flex;
   align-items: center;
+  gap: var(--sp-4);
   margin-bottom: var(--sp-1);
-  padding: 0 var(--sp-3);
+  padding: 0 var(--sp-4);
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
 }
 
 .weekHeaderLeft {
   flex: 1;
-  min-width: 220px;
+  min-width: 0;
 }
 
 .weekDayLabels {
@@ -77,6 +82,7 @@
   gap: var(--sp-2);
   width: 196px;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .weekDayLabel {
@@ -95,6 +101,7 @@
 
 .weekHeaderRight {
   width: 120px;
+  flex-shrink: 0;
 }
 
 /* ── Habit list ───────────────────────────────────────────── */

@@ -12,6 +12,7 @@
 
 import type { Habit, HabitCompletion } from '@/lib/db'
 import type { GritDataPoint } from '@/utils/gritScore'
+import { isHabitScheduledOn } from '@/utils/habitSchedule'
 
 /* ── Date helpers (local ISO YYYY-MM-DD) ──────────────────────── */
 
@@ -20,15 +21,6 @@ function isoForOffset(offset: number): string {
   d.setHours(0, 0, 0, 0)
   d.setDate(d.getDate() + offset)
   return d.toISOString().slice(0, 10)
-}
-
-function dayOfWeek(iso: string): number {
-  return new Date(iso + 'T12:00:00').getDay()
-}
-
-function isScheduledOn(habit: Habit, iso: string): boolean {
-  if (!habit.activeDays || habit.activeDays.length === 0) return true
-  return habit.activeDays.includes(dayOfWeek(iso))
 }
 
 function daysSince(iso: string | null): number {
@@ -77,7 +69,7 @@ export function computeCompletionSeries(
     for (const h of habits) {
       // Only count habits that existed on (or before) this day.
       if (h.createdAt && h.createdAt > date.getTime() + 86_400_000) continue
-      if (!isScheduledOn(h, iso)) continue
+      if (!isHabitScheduledOn(h, iso)) continue
       scheduledCount++
 
       const count    = countMap.get(`${h.id}|${iso}`) ?? 0

@@ -28,6 +28,7 @@
 
 import { db, type Habit } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
+import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
@@ -70,21 +71,6 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function isoDayBefore(iso: string): string {
-  const d = new Date(iso + 'T12:00:00')
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
-
-function dayOfWeek(iso: string): number {
-  return new Date(iso + 'T12:00:00').getDay()
-}
-
-function isScheduledOn(habit: Habit, iso: string): boolean {
-  if (!habit.activeDays || habit.activeDays.length === 0) return true
-  return habit.activeDays.includes(dayOfWeek(iso))
-}
-
 /* ── Core progress primitive ──────────────────────────────────── */
 
 export interface ProgressResult {
@@ -110,7 +96,7 @@ export async function addHabitProgress(
 
   const habit = await db.habits.get(habitId)
   if (!habit) return null
-  if (!isScheduledOn(habit, dateISO)) return null
+  if (!isHabitScheduledOn(habit, dateISO)) return null
 
   const existing = await db.habitCompletions
     .where('[habitId+date]').equals([habitId, dateISO])
@@ -134,9 +120,11 @@ export async function addHabitProgress(
     : newCount >= target && prevCount < target                 // first press reaching minimum
 
   if (completedNow) {
-    const yesterday  = isoDayBefore(dateISO)
+    // "Consecutive" = the previous scheduled occurrence was completed —
+    // works for daily, specific-day, biweekly, and monthly cadences alike.
+    const prevScheduled = previousScheduledDate(habit, dateISO)
     const consecutive =
-      habit.lastCompletedDate === yesterday || habit.lastCompletedDate === dateISO
+      habit.lastCompletedDate === prevScheduled || habit.lastCompletedDate === dateISO
     const newStreak  = consecutive ? habit.streakCount + 1 : 1
     const newAllTime = Math.max(newStreak, habit.allTimeHighStreak ?? 0)
     await db.habits.update(habitId, {
@@ -149,9 +137,9 @@ export async function addHabitProgress(
   // Over-goal streak tracking — only for at_least habits.
   // Fires once per day: when the count first crosses above the target.
   if (goalType === 'at_least' && newCount > target && prevCount <= target) {
-    const yesterday       = isoDayBefore(dateISO)
+    const prevScheduled   = previousScheduledDate(habit, dateISO)
     const lastExc         = habit.lastExceededDate
-    const overConsecutive = lastExc === yesterday || lastExc === dateISO
+    const overConsecutive = lastExc === prevScheduled || lastExc === dateISO
     const newOverStreak   = overConsecutive ? (habit.overGoalStreak ?? 0) + 1 : 1
     await db.habits.update(habitId, {
       overGoalStreak:   newOverStreak,

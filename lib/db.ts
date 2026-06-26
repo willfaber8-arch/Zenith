@@ -126,6 +126,8 @@ export interface Habit {
   goalType?:          'at_least' | 'at_most'  // default at_least; at_most = stay under target
   overGoalStreak?:    number            //   consecutive days exceeding target (at_least only)
   lastExceededDate?:  string            //   last ISO date when count > target (at_least only)
+  startDate?:         string            //   ISO anchor date for biweekly/monthly cadence
+  monthlyMode?:       'date' | 'weekday'//   monthly recurrence: same day-of-month vs same weekday slot
   notes?:             string
   createdAt:          number
   supabaseId?:        string
@@ -139,7 +141,7 @@ export interface HabitCompletion {
   count:     number   //   how many times completed this day
 }
 
-export type HabitFrequency = 'daily' | 'specific_days'
+export type HabitFrequency = 'daily' | 'specific_days' | 'biweekly' | 'monthly'
 
 /**
  * Workout — single exercise log entry.

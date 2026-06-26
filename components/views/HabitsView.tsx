@@ -4,12 +4,13 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   useHabits,
   isoForDayOffset,
+  isHabitScheduledOn,
   type HabitWithCompletion,
   type DayStatus,
   type NewHabitInput,
 } from '@/lib/hooks/useHabits'
 import { useLiveQuery }         from 'dexie-react-hooks'
-import { db, type Habit }       from '@/lib/db'
+import { db, type Habit, type HabitFrequency } from '@/lib/db'
 import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
 import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET } from '@/lib/habitPresets'
 import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
@@ -21,6 +22,27 @@ import styles from './HabitsView.module.css'
 /* ── Day labels ───────────────────────────────────────────── */
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_SHORT  = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+/* ── Frequency helpers ────────────────────────────────────── */
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+/** Short cadence label shown on each habit row. */
+function freqLabel(habit: Habit): string {
+  if (habit.frequency === 'biweekly') return 'Every 2 weeks'
+  if (habit.frequency === 'monthly') {
+    if (!habit.startDate) return 'Monthly'
+    const d = new Date(habit.startDate + 'T12:00:00')
+    return habit.monthlyMode === 'weekday'
+      ? `${ordinal(Math.ceil(d.getDate() / 7))} ${DAY_LABELS[d.getDay()]} monthly`
+      : `Monthly · ${ordinal(d.getDate())}`
+  }
+  if (!habit.activeDays || habit.activeDays.length === 0) return 'Daily'
+  return habit.activeDays.map(d => DAY_SHORT[d]).join(' ')
+}
 
 /* ── Preset categories ────────────────────────────────────── */
 const PRESET_CATEGORIES = ['General', 'Life', 'Scholastic', 'Health', 'Fitness', 'Mindfulness']
@@ -202,9 +224,7 @@ function HabitRow({
             {isAtMost ? '≤' : ''}{habit.todayCount}/{habit.targetCompletions}
             {habit.stepLabel ? ` ${habit.stepLabel}` : ''}
             {' · '}
-            {habit.activeDays.length === 0
-              ? 'Daily'
-              : habit.activeDays.map(d => DAY_SHORT[d]).join(' ')}
+            {freqLabel(habit)}
           </span>
         </div>
       </div>
@@ -324,7 +344,13 @@ function HabitModal({
   )
   const [color,      setColor]      = useState(initial?.color ?? '#7c95ff')
   const [days,       setDays]       = useState<number[]>(initial?.activeDays ?? [])
-  const [daily,      setDaily]      = useState((initial?.activeDays ?? []).length === 0)
+  const initFreq: HabitFrequency =
+    initial?.frequency === 'biweekly' || initial?.frequency === 'monthly'
+      ? initial.frequency
+      : (initial?.activeDays ?? []).length === 0 ? 'daily' : 'specific_days'
+  const [freqMode,   setFreqMode]   = useState<HabitFrequency>(initFreq)
+  const [startDate,  setStartDate]  = useState<string>(initial?.startDate ?? isoForDayOffset(0))
+  const [monthlyMode, setMonthlyMode] = useState<'date' | 'weekday'>(initial?.monthlyMode ?? 'date')
   const [useCustom,  setUseCustom]  = useState(
     !!(initial?.category && !PRESET_CATEGORIES.includes(initial.category))
   )
@@ -342,21 +368,26 @@ function HabitModal({
   }
 
   const resolvedCategory = useCustom ? (customCat || 'General') : category
-  const canSubmit = name.trim().length > 0 && goal > 0
+  const validSchedule = freqMode !== 'specific_days' || days.length > 0
+  const canSubmit = name.trim().length > 0 && goal > 0 && validSchedule
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
+    const usesAnchor = freqMode === 'biweekly' || freqMode === 'monthly'
     onSave({
       name:              name.trim(),
       category:          resolvedCategory,
       color,
-      activeDays:        daily ? [] : days,
+      activeDays:        freqMode === 'specific_days' ? days : [],
       targetCompletions: goal,
       stepAmount:        stepAmount > 0 ? stepAmount : 1,
       stepLabel:         stepUnit.trim() || undefined,
       autoSource:        autoSource || undefined,
       goalType,
+      frequency:         freqMode,
+      startDate:         usesAnchor ? startDate : undefined,
+      monthlyMode:       freqMode === 'monthly' ? monthlyMode : undefined,
     })
     onClose()
   }
@@ -368,6 +399,20 @@ function HabitModal({
   }, [onClose])
 
   const clicksNeeded = goal > 0 && stepAmount > 0 ? Math.ceil(goal / stepAmount) : 0
+
+  const anchor = new Date(startDate + 'T12:00:00')
+  const freqDescription =
+    freqMode === 'daily'
+      ? 'Appears every day.'
+      : freqMode === 'specific_days'
+        ? (days.length
+            ? `Appears on ${days.map(d => DAY_NAMES[d]).join(', ')}.`
+            : 'Pick at least one weekday.')
+        : freqMode === 'biweekly'
+          ? `Repeats every 2 weeks, starting ${anchor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
+          : monthlyMode === 'weekday'
+            ? `Repeats on the ${ordinal(Math.ceil(anchor.getDate() / 7))} ${DAY_NAMES[anchor.getDay()]} of each month.`
+            : `Repeats on the ${ordinal(anchor.getDate())} of each month (clamped to the last day in shorter months).`
 
   return (
     <>
@@ -461,20 +506,76 @@ function HabitModal({
 
           {/* Frequency */}
           <div className={styles.field}>
-            <span className={styles.label}>Occurs on</span>
+            <span className={styles.label}>Frequency</span>
             <div className={styles.dayToggleRow}>
-              <button type="button" className={`${styles.dayChip} ${daily ? styles.dayChipOn : ''}`} onClick={() => setDaily(true)}>Daily</button>
-              {DAY_NAMES.map((d, i) => (
+              {([
+                ['daily',         'Daily'],
+                ['specific_days', 'Specific days'],
+                ['biweekly',      'Every 2 weeks'],
+                ['monthly',       'Monthly'],
+              ] as [HabitFrequency, string][]).map(([mode, label]) => (
                 <button
-                  key={d}
+                  key={mode}
                   type="button"
-                  className={`${styles.dayChip} ${!daily && days.includes(i) ? styles.dayChipOn : ''}`}
-                  onClick={() => { setDaily(false); toggleDay(i) }}
+                  className={`${styles.dayChip} ${freqMode === mode ? styles.dayChipOn : ''}`}
+                  onClick={() => setFreqMode(mode)}
                 >
-                  {d}
+                  {label}
                 </button>
               ))}
             </div>
+
+            {/* Specific weekdays */}
+            {freqMode === 'specific_days' && (
+              <div className={styles.dayToggleRow} style={{ marginTop: 'var(--sp-2)' }}>
+                {DAY_NAMES.map((d, i) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`${styles.dayChip} ${days.includes(i) ? styles.dayChipOn : ''}`}
+                    onClick={() => toggleDay(i)}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Anchor date for biweekly / monthly */}
+            {(freqMode === 'biweekly' || freqMode === 'monthly') && (
+              <div className={styles.field} style={{ marginTop: 'var(--sp-2)' }}>
+                <label className={styles.labelSub} htmlFor="habit-start">Start day</label>
+                <input
+                  id="habit-start"
+                  type="date"
+                  className={`${styles.input} ${styles.inputSmall}`}
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value || isoForDayOffset(0))}
+                />
+              </div>
+            )}
+
+            {/* Monthly recurrence style */}
+            {freqMode === 'monthly' && (
+              <div className={styles.dayToggleRow} style={{ marginTop: 'var(--sp-2)' }}>
+                <button
+                  type="button"
+                  className={`${styles.dayChip} ${monthlyMode === 'date' ? styles.dayChipOn : ''}`}
+                  onClick={() => setMonthlyMode('date')}
+                >
+                  Same date
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.dayChip} ${monthlyMode === 'weekday' ? styles.dayChipOn : ''}`}
+                  onClick={() => setMonthlyMode('weekday')}
+                >
+                  Same weekday
+                </button>
+              </div>
+            )}
+
+            <p className={styles.stepHint}>{freqDescription}</p>
           </div>
 
           {/* Goal direction */}
@@ -698,17 +799,22 @@ export default function HabitsView() {
 
   const handleSaveEdit = useCallback(async (input: NewHabitInput) => {
     if (!editTarget) return
+    const frequency = input.frequency
+      ?? (input.activeDays.length === 0 ? 'daily' : 'specific_days')
+    const usesAnchor = frequency === 'biweekly' || frequency === 'monthly'
     await updateHabit(editTarget.id, {
       name:              input.name.trim(),
       category:          input.category,
       color:             input.color ?? '#7c95ff',
-      frequency:         input.activeDays.length === 0 ? 'daily' : 'specific_days',
+      frequency,
       activeDays:        input.activeDays,
       targetCompletions: input.targetCompletions,
       stepAmount:        input.stepAmount ?? 1,
       stepLabel:         input.stepLabel,
       autoSource:        input.autoSource || undefined,
       goalType:          input.goalType ?? 'at_least',
+      startDate:         usesAnchor ? (input.startDate || undefined) : undefined,
+      monthlyMode:       frequency === 'monthly' ? (input.monthlyMode ?? 'date') : undefined,
     })
     toast(`"${input.name}" updated.`, 'success')
     setEditTarget(null)
@@ -723,8 +829,14 @@ export default function HabitsView() {
     })
   }, [])
 
+  /* In the day's list, show only habits scheduled today. Edit mode reveals
+     all habits (incl. off-day ones) so they can be managed any day. */
+  const visibleHabits = editMode
+    ? habits
+    : (habits ?? []).filter(h => isHabitScheduledOn(h, today))
+
   /* Group habits by category */
-  const grouped = (habits ?? []).reduce<Record<string, HabitWithCompletion[]>>((acc, h) => {
+  const grouped = visibleHabits.reduce<Record<string, HabitWithCompletion[]>>((acc, h) => {
     const cat = h.category || 'General'
     if (!acc[cat]) acc[cat] = []
     acc[cat].push(h)
@@ -819,6 +931,15 @@ export default function HabitsView() {
                   + New Habit
                 </button>
               </div>
+            </div>
+          ) : visibleHabits.length === 0 ? (
+            <div className={`${styles.emptyState} anim-fade-in`}>
+              <p className={styles.emptyIcon} aria-hidden="true">✓</p>
+              <p className={styles.emptyTitle}>Nothing scheduled today</p>
+              <p className={styles.emptyBody}>
+                None of your habits recur today — enjoy the rest day. Tap
+                ✎ Edit Habits to see or adjust every habit.
+              </p>
             </div>
           ) : categories.length === 1 ? (
             <div className={styles.habitList}>

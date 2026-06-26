@@ -2,8 +2,9 @@
 
 import { useCallback }    from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
-import { db, type Habit, type HabitCompletion } from '@/lib/db'
+import { db, type Habit, type HabitCompletion, type HabitFrequency } from '@/lib/db'
 import { addHabitProgress } from '@/lib/habitSync'
+import { isHabitScheduledOn as scheduledOn } from '@/utils/habitSchedule'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -29,9 +30,7 @@ export function dayOfWeekForISO(iso: string): number {
 }
 
 export function isHabitScheduledOn(habit: Habit, iso: string): boolean {
-  if (habit.activeDays.length === 0) return true
-  const dow = dayOfWeekForISO(iso)
-  return habit.activeDays.includes(dow)
+  return scheduledOn(habit, iso)
 }
 
 /* ── Types ────────────────────────────────────────────────── */
@@ -61,6 +60,9 @@ export interface NewHabitInput {
   goalDescription?:  string    // optional text descriptor
   autoSource?:       string    // HabitAutoSource id — auto-fills from another tab
   goalType?:         'at_least' | 'at_most'  // default at_least
+  frequency?:        HabitFrequency          // daily | specific_days | biweekly | monthly
+  startDate?:        string                  // ISO anchor for biweekly/monthly cadence
+  monthlyMode?:      'date' | 'weekday'       // monthly recurrence style
 }
 
 /* ── Week dates helper ────────────────────────────────────── */
@@ -100,13 +102,19 @@ export function useHabits() {
       ? todayCount > 0 && todayCount <= habit.targetCompletions
       : todayCount >= habit.targetCompletions
 
-    const weekData: DayStatus[] = weekDates.map(iso => ({
-      iso,
-      scheduled: isHabitScheduledOn(habit, iso),
-      count:     completionMap.get(iso) ?? 0,
-      target:    habit.targetCompletions,
-      done:      (completionMap.get(iso) ?? 0) >= habit.targetCompletions,
-    }))
+    const weekData: DayStatus[] = weekDates.map(iso => {
+      const count = completionMap.get(iso) ?? 0
+      const done  = habit.goalType === 'at_most'
+        ? count > 0 && count <= habit.targetCompletions
+        : count >= habit.targetCompletions
+      return {
+        iso,
+        scheduled: isHabitScheduledOn(habit, iso),
+        count,
+        target:    habit.targetCompletions,
+        done,
+      }
+    })
 
     return { ...habit, todayCount, todayDone, weekData }
   })
@@ -130,9 +138,12 @@ export function useHabits() {
 
   const createHabit = useCallback(async (input: NewHabitInput) => {
     if (!db) return
+    const frequency: HabitFrequency =
+      input.frequency ?? (input.activeDays.length === 0 ? 'daily' : 'specific_days')
+    const needsAnchor = frequency === 'biweekly' || frequency === 'monthly'
     await db.habits.add({
       name:              input.name.trim(),
-      frequency:         input.activeDays.length === 0 ? 'daily' : 'specific_days',
+      frequency,
       activeDays:        input.activeDays,
       targetCompletions: input.targetCompletions,
       stepAmount:        input.stepAmount ?? 1,
@@ -140,6 +151,8 @@ export function useHabits() {
       goalDescription:   input.goalDescription?.trim() || undefined,
       autoSource:        input.autoSource || undefined,
       goalType:          input.goalType ?? 'at_least',
+      startDate:         needsAnchor ? (input.startDate || today) : undefined,
+      monthlyMode:       frequency === 'monthly' ? (input.monthlyMode ?? 'date') : undefined,
       streakCount:       0,
       lastCompletedDate: null,
       streakSaveUsed:    false,
@@ -147,7 +160,7 @@ export function useHabits() {
       color:             input.color || '#7c95ff',
       createdAt:         Date.now(),
     })
-  }, [])
+  }, [today])
 
   const deleteHabit = useCallback(async (habitId: number) => {
     if (!db) return
