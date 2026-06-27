@@ -36,6 +36,37 @@ export interface PeerLeaderboardSnapshot {
   snapshotTimestamp:   number  // Unix ms — when snapshot was compiled
 }
 
+/* ── Shared calendar (P2P) ────────────────────────────────── */
+
+/**
+ * A single calendar event shared with a friend over the P2P DataChannel.
+ * Deliberately minimal — only what's needed to render on a friend's grid.
+ */
+export interface SharedCalendarEvent {
+  uid:     string   // stable id within the sender's calendar
+  title:   string
+  startMs: number
+  endMs:   number
+  allDay:  0 | 1
+}
+
+/**
+ * IDB row: peer_calendar_events — one row per (peer, event).
+ * `id` is a composite `${peerIdString}::${uid}` string PK so re-syncs
+ * upsert cleanly and a friend's whole calendar can be cleared by prefix.
+ */
+export interface PeerCalendarEvent {
+  id:           string   // `${peerIdString}::${uid}` — explicit string PK
+  peerIdString: string   // owner peer ID (secondary index)
+  ownerName:    string   // friend's display name (for the event label)
+  uid:          string
+  title:        string
+  startMs:      number   // * indexed
+  endMs:        number
+  allDay:       0 | 1
+  receivedAt:   number
+}
+
 /* ── Enumerated controls ──────────────────────────────────── */
 
 export type TimeHorizon   = 'WEEKLY' | 'MONTHLY' | 'ALL_TIME'
@@ -55,6 +86,8 @@ export interface PrivacySettings {
   shareCardioMiles:    boolean
   shareBooksCompleted: boolean
   shareCosmeticPoints: boolean
+  /** Share upcoming calendar events with connected friends (P2P only). */
+  shareCalendar:       boolean
 }
 
 /* ── WebRTC DataChannel payload protocol ─────────────────── */
@@ -81,6 +114,8 @@ export interface SyncPayload {
   locationLat?:  number
   /** @private Sender's longitude — INTERNAL CALCULATION USE ONLY, never render */
   locationLon?:  number
+  /** Upcoming calendar events shared with friends (optional, P2P only). */
+  calendarEvents?: SharedCalendarEvent[]
 }
 
 /* ── Display-oriented constants ───────────────────────────── */

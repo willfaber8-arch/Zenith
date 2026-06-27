@@ -98,6 +98,44 @@
   color:      var(--accent-purple);
 }
 
+/* ── Friends' shared calendar toggle ──────────────────────── */
+
+.friendsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.3rem 0.7rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.friendsToggleDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a78bfa;
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity var(--dur-fast);
+}
+
+.friendsToggleOn {
+  color: #a78bfa;
+  border-color: color-mix(in srgb, #a78bfa 45%, transparent);
+  background: color-mix(in srgb, #a78bfa 10%, var(--surface-card));
+}
+
+.friendsToggleOn .friendsToggleDot { opacity: 1; }
+
 /* ── Feed manager toggle button ───────────────────────────── */
 
 .feedToggleBtn {

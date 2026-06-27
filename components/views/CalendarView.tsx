@@ -45,6 +45,16 @@ const EVENT_COLORS = [
 ]
 
 const PERSONAL_FEED_ID = -1
+const FRIEND_FEED_ID   = -2
+
+/* Stable per-friend colour from their display name (so each friend's shared
+   events read as a distinct hue, separate from your own periwinkle events). */
+const FRIEND_PALETTE = ['#a78bfa', '#f472b6', '#38bdf8', '#fb923c', '#34d399', '#facc15']
+function friendColor(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return FRIEND_PALETTE[h % FRIEND_PALETTE.length]
+}
 
 /* ══════════════════════════════════════════════════════════════
    SECTION 1 — Date utilities
@@ -1138,9 +1148,42 @@ export default function CalendarView() {
     } as CalendarEvent & { _color?: string })),
   [personalEventsRaw])
 
+  /* Friends' shared calendar events (P2P) */
+  const peerCalEvents = useLiveQuery(
+    () => db?.peer_calendar_events.toArray() ?? Promise.resolve([]),
+    [],
+  ) ?? []
+  const hasFriendEvents = peerCalEvents.length > 0
+  const [showFriends, setShowFriends] = useState(true)
+
+  /* Map each friend's events into the CalendarEvent shape, colour-coded per
+     friend so they read as distinct from your own events. */
+  const friendAsCalEvents: CalendarEvent[] = useMemo(() =>
+    peerCalEvents.map((pe, i) => ({
+      id:          -(2_000_000 + i),   // far-negative ids avoid colliding with feed/personal
+      feedId:      FRIEND_FEED_ID,
+      uid:         pe.id,
+      title:       `${pe.title} · ${pe.ownerName}`,
+      startMs:     pe.startMs,
+      endMs:       pe.endMs,
+      allDay:      pe.allDay,
+      is1159:      0,
+      category:    'general',
+      _color:      friendColor(pe.ownerName),
+    } as CalendarEvent & { _color?: string })),
+  [peerCalEvents])
+
+  const friendFeed: CalendarFeed = useMemo(() => ({
+    id: FRIEND_FEED_ID, label: 'Friends', url: '',
+    color: '#a78bfa', isActive: 1, lastFetchedAt: 0, createdAt: 0,
+  }), [])
+
   /* All events & feeds for the week grid */
-  const allEvents = useMemo(() => [...events, ...personalAsCalEvents], [events, personalAsCalEvents])
-  const allFeeds  = useMemo(() => [personalFeed, ...feeds], [personalFeed, feeds])
+  const allEvents = useMemo(
+    () => [...events, ...personalAsCalEvents, ...(showFriends ? friendAsCalEvents : [])],
+    [events, personalAsCalEvents, showFriends, friendAsCalEvents],
+  )
+  const allFeeds  = useMemo(() => [personalFeed, friendFeed, ...feeds], [personalFeed, friendFeed, feeds])
 
   /* Personal event CRUD */
   const handleAddEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
@@ -1218,6 +1261,20 @@ export default function CalendarView() {
               </button>
             ))}
           </div>
+
+          {/* Friends' shared calendars toggle — only when any exist */}
+          {hasFriendEvents && (
+            <button
+              type="button"
+              className={`${styles.friendsToggle} ${showFriends ? styles.friendsToggleOn : ''}`}
+              onClick={() => setShowFriends(s => !s)}
+              aria-pressed={showFriends}
+              title="Show or hide calendars shared by your Zenith friends"
+            >
+              <span className={styles.friendsToggleDot} aria-hidden="true" />
+              {showFriends ? 'Friends shown' : 'Friends hidden'}
+            </button>
+          )}
         </div>
       </header>
 

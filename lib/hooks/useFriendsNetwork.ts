@@ -11,6 +11,7 @@ import type {
   PeerLeaderboardSnapshot,
   SyncPayload,
   PrivacySettings,
+  SharedCalendarEvent,
 } from '@/types/friendsNetwork'
 
 /* ── Constants ────────────────────────────────────────────── */
@@ -24,6 +25,50 @@ const DEFAULT_PRIVACY: PrivacySettings = {
   shareCardioMiles:    true,
   shareBooksCompleted: true,
   shareCosmeticPoints: false,
+  shareCalendar:       true,
+}
+
+/* Window of calendar events shared with friends: last 7 days → next 120 days. */
+const CAL_SHARE_PAST_MS   = 7   * 86_400_000
+const CAL_SHARE_FUTURE_MS = 120 * 86_400_000
+
+/**
+ * Collects the local user's upcoming calendar + personal events within the
+ * share window into the minimal SharedCalendarEvent shape sent over P2P.
+ */
+export async function compileLocalCalendar(): Promise<SharedCalendarEvent[]> {
+  const now  = Date.now()
+  const from = now - CAL_SHARE_PAST_MS
+  const to   = now + CAL_SHARE_FUTURE_MS
+  const out: SharedCalendarEvent[] = []
+
+  try {
+    const events = await db.calendarEvents.where('startMs').between(from, to).toArray()
+    for (const e of events) {
+      out.push({
+        uid:     `cal-${e.id}`,
+        title:   e.title,
+        startMs: e.startMs,
+        endMs:   e.endMs ?? e.startMs,
+        allDay:  e.allDay ? 1 : 0,
+      })
+    }
+  } catch { /* table may be empty */ }
+
+  try {
+    const personal = await db.personalEvents.where('startMs').between(from, to).toArray()
+    for (const e of personal) {
+      out.push({
+        uid:     `personal-${e.id}`,
+        title:   e.title,
+        startMs: e.startMs,
+        endMs:   e.endMs ?? e.startMs,
+        allDay:  e.allDay ? 1 : 0,
+      })
+    }
+  } catch { /* table may be empty */ }
+
+  return out
 }
 
 /* ── localStorage privacy helpers ────────────────────────── */
@@ -194,12 +239,16 @@ export function useFriendsNetwork(): FriendsNetworkState {
       const selfId  = myPeerIdRef.current ?? SELF_ID
       const snap    = await compileLocalSnapshot(selfId, privacyRef.current)
       const profile = await db.userProfile.get(1).catch(() => null)
+      const calendarEvents = privacyRef.current.shareCalendar
+        ? await compileLocalCalendar().catch(() => [])
+        : []
       const payload: SyncPayload = {
         type:          'ZENITH_FRIEND_SYNC',
         senderId:      selfId,
         displayName:   profile?.userName ?? 'Unknown',
         avatarAssetId: '',
         snapshot:      snap,
+        calendarEvents,
       }
       conn.send(JSON.stringify(payload))
     })
@@ -243,6 +292,34 @@ export function useFriendsNetwork(): FriendsNetworkState {
         ...evaluated,
         peerIdString: payload.senderId,
       })
+
+      /* Shared calendar — replace this peer's events with the fresh set.
+         An omitted field means the peer didn't share their calendar; an
+         explicit empty array means they cleared it. Both are honoured. */
+      if (Array.isArray(payload.calendarEvents)) {
+        try {
+          const existing = await db.peer_calendar_events
+            .where('peerIdString').equals(payload.senderId)
+            .primaryKeys()
+          if (existing.length) await db.peer_calendar_events.bulkDelete(existing)
+          if (payload.calendarEvents.length) {
+            const now = Date.now()
+            await db.peer_calendar_events.bulkPut(
+              payload.calendarEvents.map(ev => ({
+                id:           `${payload.senderId}::${ev.uid}`,
+                peerIdString: payload.senderId,
+                ownerName:    payload.displayName,
+                uid:          ev.uid,
+                title:        ev.title,
+                startMs:      ev.startMs,
+                endMs:        ev.endMs,
+                allDay:       ev.allDay,
+                receivedAt:   now,
+              })),
+            )
+          }
+        } catch { /* calendar table unavailable */ }
+      }
 
       if (!cancelledRef.current) {
         setLastSyncMsg(`Synced with ${payload.displayName}`)
@@ -369,9 +446,14 @@ export function useFriendsNetwork(): FriendsNetworkState {
   const removeFriend = useCallback(async (id: string) => {
     const friend = await db.peer_friends.get(id).catch(() => null)
     if (!friend) return
+    const calKeys = await db.peer_calendar_events
+      .where('peerIdString').equals(friend.peerIdString)
+      .primaryKeys()
+      .catch(() => [] as string[])
     await Promise.all([
       db.peer_friends.delete(id),
       db.peer_leaderboard_snapshots.delete(friend.peerIdString),
+      calKeys.length ? db.peer_calendar_events.bulkDelete(calKeys) : Promise.resolve(),
     ])
   }, [])
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
+import { createPortal }   from 'react-dom'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db }             from '@/lib/db'
 import { useToast }       from '@/lib/ToastContext'
@@ -21,8 +22,7 @@ import {
 import {
   generateWeekPlan, DEFAULT_GEN_CONFIG,
   CALORIE_GOAL_LABELS, CALORIE_GOAL_SUB,
-  BUDGET_LEVEL_LABELS, BUDGET_LEVEL_SUB,
-  type GenConfig, type CalorieGoal, type BudgetLevel,
+  type GenConfig, type CalorieGoal,
 } from '@/utils/mealGenerator'
 import styles from './MealPlanningView.module.css'
 
@@ -34,6 +34,21 @@ const LS_PREFS    = 'zenith_food_prefs_v1'
 const LS_GEN_CFG  = 'zenith_meal_gen_config_v1'
 const LS_HIDDEN   = 'zenith_hidden_recipes_v1'
 const LS_RATINGS  = 'zenith_recipe_ratings_v1'
+
+/**
+ * Renders children into document.body via a portal. Required for modals:
+ * ViewRouter wraps every view in an element with `transform: scale(...)`,
+ * which makes `position: fixed` resolve against that wrapper instead of the
+ * viewport — causing modals to mis-centre and clip above the topbar. The
+ * portal escapes the transformed ancestor so fixed positioning is true to the
+ * viewport again.
+ */
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(children, document.body)
+}
 
 function loadHiddenIds(): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -51,7 +66,14 @@ function loadGenConfig(): GenConfig {
   if (typeof window === 'undefined') return DEFAULT_GEN_CONFIG
   try {
     const raw = localStorage.getItem(LS_GEN_CFG)
-    return raw ? { ...DEFAULT_GEN_CONFIG, ...JSON.parse(raw) } : DEFAULT_GEN_CONFIG
+    if (!raw) return DEFAULT_GEN_CONFIG
+    const parsed = JSON.parse(raw)
+    const merged = { ...DEFAULT_GEN_CONFIG, ...parsed }
+    // Normalise: older saved configs used budgetLevel (low/medium/high); the
+    // model is now budgetMode (auto/unlimited). Drop the stale key.
+    delete (merged as Record<string, unknown>).budgetLevel
+    merged.budgetMode = parsed.budgetMode === 'unlimited' ? 'unlimited' : 'auto'
+    return merged
   } catch { return DEFAULT_GEN_CONFIG }
 }
 
@@ -226,6 +248,7 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
   )
 
   return (
+    <ModalPortal>
     <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`${styles.modal} anim-scale-in`}>
 
@@ -461,6 +484,7 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
 
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -485,9 +509,10 @@ function GenerateConfigModal({
   }, [onClose])
 
   const calorieGoals: CalorieGoal[] = ['cut', 'maintain', 'bulk']
-  const budgetLevels: BudgetLevel[] = ['low', 'medium', 'high']
+  const unlimited = cfg.budgetMode === 'unlimited'
 
   return (
+    <ModalPortal>
     <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`${styles.modal} anim-scale-in`}>
         <div className={styles.modalHead}>
@@ -522,25 +547,29 @@ function GenerateConfigModal({
             </div>
           </div>
 
-          {/* Budget level */}
+          {/* Budget */}
           <div className={styles.genSection}>
-            <p className={styles.genSectionLabel}>
-              Budget level
-              {weekBudget > 0 && <span className={styles.genBudgetNote}>weekly budget ${weekBudget.toFixed(0)}</span>}
+            <p className={styles.genSectionLabel}>Budget</p>
+            <p className={styles.genSectionSub}>
+              {unlimited
+                ? 'Cost is ignored — meals are chosen purely on fit, not price.'
+                : weekBudget > 0
+                  ? `Synced to your weekly budget of $${weekBudget.toFixed(0)} (set in the Budget tab). Cheaper picks are favoured to stay within it.`
+                  : 'No weekly budget set yet — meals are balanced on cost. Set one in the Budget tab, or go unlimited below.'}
             </p>
-            <div className={styles.genOptionRow}>
-              {budgetLevels.map(b => (
-                <button
-                  key={b}
-                  type="button"
-                  className={`${styles.genOption} ${cfg.budgetLevel === b ? styles.genOptionOn : ''}`}
-                  onClick={() => setCfg(c => ({ ...c, budgetLevel: b }))}
-                >
-                  <span className={styles.genOptionName}>{BUDGET_LEVEL_LABELS[b]}</span>
-                  <span className={styles.genOptionSub}>{BUDGET_LEVEL_SUB[b]}</span>
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              className={`${styles.genToggleRow} ${unlimited ? styles.genToggleRowOn : ''}`}
+              onClick={() => setCfg(c => ({ ...c, budgetMode: c.budgetMode === 'unlimited' ? 'auto' : 'unlimited' }))}
+            >
+              <div>
+                <span className={styles.genToggleName}>♾️ Unlimited budget</span>
+                <span className={styles.genToggleSub}>Pick the best meals regardless of cost</span>
+              </div>
+              <span className={`${styles.genSwitch} ${unlimited ? styles.genSwitchOn : ''}`}>
+                <span className={styles.genSwitchThumb} />
+              </span>
+            </button>
           </div>
 
           {/* Toggles */}
@@ -613,6 +642,7 @@ function GenerateConfigModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

@@ -36,8 +36,8 @@ import type { Houseplant } from '@/types/botany'
 export type { Houseplant } from '@/types/botany'
 import type { DeliveryItem, SubscriptionItem } from '@/types/finance'
 export type { DeliveryItem, SubscriptionItem } from '@/types/finance'
-import type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
-export type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
+import type { PeerFriend, PeerLeaderboardSnapshot, PeerCalendarEvent } from '@/types/friendsNetwork'
+export type { PeerFriend, PeerLeaderboardSnapshot, PeerCalendarEvent } from '@/types/friendsNetwork'
 import type { RelationshipNote } from '@/types/relationshipNotes'
 export type { RelationshipNote } from '@/types/relationshipNotes'
 import type { PeerLocation } from '@/types/distanceTracker'
@@ -464,6 +464,7 @@ class ZenithDatabase extends Dexie {
   subscription_items!:          EntityTable<SubscriptionItem,         'id'>
   peer_friends!:                EntityTable<PeerFriend,               'id'>
   peer_leaderboard_snapshots!:  EntityTable<PeerLeaderboardSnapshot,  'peerIdString'>
+  peer_calendar_events!:        EntityTable<PeerCalendarEvent,        'id'>
   peer_messages!:               EntityTable<PeerMessage,              'id'>
   relationship_notes!:          EntityTable<RelationshipNote,         'id'>
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
@@ -956,6 +957,20 @@ class ZenithDatabase extends Dexie {
     this.version(28).stores({
       assignments: '++id, title, dueDate, courseId, status, priority, supabaseId, category',
       vocab_cards: 'id, deckId, nextReviewTimestamp, easeFactor',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 29 — P2P Shared Calendars
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   peer_calendar_events — calendar events received from friends over
+     *     the WebRTC DataChannel.
+     *     id            string PK — `${peerIdString}::${uid}`
+     *     peerIdString  indexed — owner peer (clear-by-friend, removal cascade)
+     *     startMs       indexed — range queries for the visible week/month
+     */
+    this.version(29).stores({
+      peer_calendar_events: 'id, peerIdString, startMs',
     })
   }
 }

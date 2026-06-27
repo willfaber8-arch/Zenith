@@ -182,7 +182,9 @@
 
 .notesInput {
   width:         100%;
-  resize:        none;
+  resize:        vertical;
+  min-height:    96px;
+  line-height:   1.55;
   background:    var(--v-inner);
   border:        1px solid var(--v-border);
   border-radius: var(--r-md);
@@ -199,6 +201,14 @@
 }
 
 .notesInput::placeholder { color: var(--text-dark); }
+
+.notesCount {
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+}
 
 /* ── Log button ────────────────────────────────────────────── */
 .logBtn {
@@ -334,6 +344,10 @@
   font-style:  italic;
   line-height: 1.5;
   margin:      0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height:  120px;
+  overflow-y:  auto;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -530,6 +544,10 @@
   font-style:  italic;
   line-height: 1.6;
   margin:      0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height:  200px;
+  overflow-y:  auto;
 }
 
 .calDetailEmpty {

@@ -22,12 +22,14 @@ import { RECIPES_BY_MEAL, type LibraryRecipe } from './recipeLibrary'
 /* ── Preference types ────────────────────────────────────────── */
 
 export type CalorieGoal = 'cut' | 'maintain' | 'bulk'
-export type BudgetLevel = 'low' | 'medium' | 'high'
+/** 'auto' respects the weekly budget set in the Budget tab (favours cheaper
+ *  picks to stay within it). 'unlimited' ignores cost entirely. */
+export type BudgetMode = 'auto' | 'unlimited'
 
 export interface GenConfig {
   calorieGoal:      CalorieGoal
   emphasizeProtein: boolean
-  budgetLevel:      BudgetLevel
+  budgetMode:       BudgetMode
   noRepeat:         boolean
   skipMeals:        MealTypeKey[]
 }
@@ -35,7 +37,7 @@ export interface GenConfig {
 export const DEFAULT_GEN_CONFIG: GenConfig = {
   calorieGoal:      'maintain',
   emphasizeProtein: false,
-  budgetLevel:      'medium',
+  budgetMode:       'auto',
   noRepeat:         true,
   skipMeals:        [],
 }
@@ -52,13 +54,6 @@ export const CALORIE_GOAL_SUB: Record<CalorieGoal, string> = {
   cut: '~1,600 kcal/day', maintain: '~2,000 kcal/day', bulk: '~2,700 kcal/day',
 }
 
-export const BUDGET_LEVEL_LABELS: Record<BudgetLevel, string> = {
-  low: 'Low', medium: 'Medium', high: 'High',
-}
-
-export const BUDGET_LEVEL_SUB: Record<BudgetLevel, string> = {
-  low: 'Cheapest options', medium: 'Balanced', high: 'Premium picks',
-}
 
 /* Share of the daily calorie target allocated to each meal. */
 const MEAL_SHARE: Record<MealTypeKey, number> = { breakfast: 0.25, lunch: 0.35, dinner: 0.40 }
@@ -216,6 +211,7 @@ function scoreCandidate(
   config: GenConfig,
   used: Set<string>,
   ratings: Record<string, number>,
+  weekBudget: number,
 ): number {
   // Calorie closeness (1 = perfect, 0 = far off)
   const calScore = 1 - Math.min(1, Math.abs(cand.calories - slotCalTarget) / slotCalTarget)
@@ -226,9 +222,16 @@ function scoreCandidate(
   // Budget bias
   const costNorm = Math.min(1, cand.cost / 4)   // $4/serving ≈ "expensive"
   let budgetScore: number
-  if (config.budgetLevel === 'low')       budgetScore = 1 - costNorm
-  else if (config.budgetLevel === 'high') budgetScore = 0.35 + costNorm * 0.5
-  else                                    budgetScore = 0.35
+  if (config.budgetMode === 'unlimited') {
+    // Cost is irrelevant — neutral so it never sways selection.
+    budgetScore = 0.35
+  } else if (weekBudget > 0) {
+    // Auto mode with a budget set → favour cheaper picks to stay within it.
+    budgetScore = 1 - costNorm
+  } else {
+    // Auto mode, no budget set → balanced.
+    budgetScore = 0.35
+  }
 
   // Rating boost: unrated recipes get 5 stars (max); lower ratings reduce score
   const starRating = ratings[cand.name] ?? 5
@@ -252,7 +255,7 @@ function scoreCandidate(
  * Pure and deterministic except for a small random tie-breaker.
  */
 export function generateWeekPlan(input: GeneratorInput): GeneratorResult {
-  const { config, weekStart, existingKeys, ratings } = input
+  const { config, weekStart, existingKeys, ratings, weekBudget } = input
   const pools = buildPools(input)
 
   const dailyTarget = DAILY_CALORIE_TARGETS[config.calorieGoal]
@@ -279,7 +282,7 @@ export function generateWeekPlan(input: GeneratorInput): GeneratorResult {
       let best: GenCandidate | null = null
       let bestScore = -Infinity
       for (const cand of pool) {
-        const s = scoreCandidate(cand, slotCalTarget, config, used, ratings)
+        const s = scoreCandidate(cand, slotCalTarget, config, used, ratings, weekBudget)
         if (s > bestScore) { bestScore = s; best = cand }
       }
       if (!best) continue
