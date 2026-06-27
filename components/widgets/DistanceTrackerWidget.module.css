@@ -74,8 +74,7 @@
 .headerLabel {
   font-family:    var(--font-mono);
   font-size:      0.58rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.42);
 }
 
@@ -87,8 +86,7 @@
   gap:            4px;
   font-family:    var(--font-mono);
   font-size:      0.5rem;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          rgba(245, 158, 11, 0.80);
   background:     rgba(245, 158, 11, 0.08);
   border:         1px solid rgba(245, 158, 11, 0.18);
@@ -176,8 +174,7 @@
   gap:            5px;
   font-family:    var(--font-mono);
   font-size:      0.52rem;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.55);
   background:     transparent;
   border:         1px solid rgba(82, 204, 163, 0.14);
@@ -323,8 +320,7 @@
 .syncingLabel {
   font-family:    var(--font-mono);
   font-size:      0.56rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.45);
 }
 

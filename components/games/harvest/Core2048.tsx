@@ -583,9 +583,9 @@ export default function Core2048({
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ 2048 REACHED ]</p>
+            <p className={styles.resultHeading}>2048 reached</p>
             <p className={styles.resultSubtitle}>
-              The matrix has been defragmented.
+              Nicely done.
             </p>
 
             <div className={styles.resultActions}>
@@ -621,7 +621,7 @@ export default function Core2048({
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ NO VALID MOVES ]</p>
+            <p className={styles.resultHeading}>No valid moves</p>
 
             <div className={styles.resultGrid}>
               <div className={styles.resultRow}>

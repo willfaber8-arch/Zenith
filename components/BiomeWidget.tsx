@@ -75,7 +75,7 @@ export default function BiomeWidget() {
         <div className={styles.header}>
           <div className={styles.streamChip}>
             <span className={styles.streamDot} aria-hidden="true" />
-            <span className={styles.streamLabel}>[ COZY BIOME // STREAM ACTIVE ]</span>
+            <span className={styles.streamLabel}>Cozy Biome</span>
           </div>
           <div className={styles.biomeSwitcher} role="group" aria-label="Switch biome view">
             <button
@@ -111,7 +111,7 @@ export default function BiomeWidget() {
             /* ── Empty state ──────────────────────────────────── */
             <div className={styles.emptyState}>
               <p className={styles.emptyLabel}>
-                [ ECOSYSTEM CALM // ACQUIRE COSMETIC ASSETS IN ARCADE TO POPULATE BIOME ]
+                Acquire cosmetic assets in the Arcade to populate your biome.
               </p>
             </div>
 

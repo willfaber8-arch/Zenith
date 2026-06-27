@@ -587,7 +587,7 @@ export default function BioSynthesizer({ onSessionComplete }: BioSynthesizerProp
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ SYNTHESIS COMPLETE ]</p>
+            <p className={styles.resultHeading}>Synthesis complete</p>
 
             <div className={styles.resultGrid}>
               <div className={styles.resultRow}>

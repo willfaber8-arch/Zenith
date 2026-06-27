@@ -77,7 +77,7 @@ class WidgetErrorBoundary extends Component<
           fontSize: '0.65rem',
           lineHeight: 1.5,
         }}>
-          [ WIDGET ERROR // {this.props.name} ]<br />
+          Widget error · {this.props.name}<br />
           This widget encountered a runtime error and has been isolated.
         </div>
       )

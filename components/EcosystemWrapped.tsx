@@ -43,13 +43,13 @@ const MAX_PIPS = 30
 function SlideOperational({ m, dir }: { m: EcosystemMetrics; dir: string }) {
   return (
     <div className={`${styles.slide} ${dir}`}>
-      <p className={styles.slideEyebrow}>[ SYSTEM EXECUTION // ANNUAL REVIEW ]</p>
+      <p className={styles.slideEyebrow}>Annual Review</p>
       <h2 className={styles.slideTitle}>
         Total Completed<br />Tasks
       </h2>
 
       <span className={styles.heroMetric}>{m.totalCompletedTasks.toLocaleString()}</span>
-      <p className={styles.heroLabel}>[ TASKS ARCHIVED ACROSS ALL ACTIVE CHANNELS ]</p>
+      <p className={styles.heroLabel}>Tasks archived across all channels</p>
 
       {/* Academic / Life split */}
       <div className={styles.statRow}>
@@ -98,7 +98,7 @@ function SlideMemory({ m, dir }: { m: EcosystemMetrics; dir: string }) {
 
   return (
     <div className={`${styles.slide} ${dir}`}>
-      <p className={styles.slideEyebrow}>[ COGNITIVE ARCHIVE // MEMORY VAULT ]</p>
+      <p className={styles.slideEyebrow}>Memory Vault</p>
       <h2 className={styles.slideTitle}>Long-Term<br />Memory Locks</h2>
 
       <div className={styles.vaultGrid}>
@@ -141,11 +141,11 @@ function SlideHabits({ m, dir }: { m: EcosystemMetrics; dir: string }) {
 
   return (
     <div className={`${styles.slide} ${dir}`}>
-      <p className={styles.slideEyebrow}>[ DISCIPLINE MATRIX // CONSISTENCY RECORD ]</p>
+      <p className={styles.slideEyebrow}>Consistency Record</p>
       <h2 className={styles.slideTitle}>Peak Daily<br />Habit Streak</h2>
 
       <span className={styles.heroMetric}>{m.peakHabitStreak}</span>
-      <p className={styles.heroLabel}>[ CONSECUTIVE DAYS AT FULL HABIT COMPLETION ]</p>
+      <p className={styles.heroLabel}>Consecutive days at full habit completion</p>
 
       {pipCount > 0 && (
         <div className={styles.pipRow} role="img" aria-label={`${pipCount} streak pips`}>
@@ -184,13 +184,13 @@ function SlidePersona({ m, dir }: { m: EcosystemMetrics; dir: string }) {
 
   return (
     <div className={`${styles.slide} ${dir}`}>
-      <p className={styles.slideEyebrow}>[ SYSTEM PERSONA // ARCHETYPE ASSIGNMENT ]</p>
+      <p className={styles.slideEyebrow}>Your Persona</p>
 
       <div className={styles.personaGlyph} aria-hidden="true">
         {m.personaGlyph}
       </div>
 
-      <p className={styles.personaBracket}>[ PRIMARY DESIGNATION ]</p>
+      <p className={styles.personaBracket}>Your archetype</p>
       <h2 className={styles.personaTitle}>{m.personaTitle}</h2>
       <p className={styles.personaTagline}>{m.personaTagline}</p>
 
@@ -203,7 +203,7 @@ function SlidePersona({ m, dir }: { m: EcosystemMetrics; dir: string }) {
       </div>
 
       <p className={styles.generatedAt}>
-        Ecosystem compiled {dateStr} · All data local · Zero network transmission
+        Compiled {dateStr} · All data stays on your device
       </p>
     </div>
   )
@@ -323,13 +323,13 @@ export default function EcosystemWrapped({ onClose }: EcosystemWrappedProps) {
         <div className={styles.slideViewport}>
           {loadError ? (
             <p className={styles.errorMsg}>
-              [ COMPILATION FAULT ]<br />{loadError}
+              Could not compile<br />{loadError}
             </p>
           ) : !metrics ? (
             <div className={styles.loading}>
               <span className={styles.loadingGlyph} aria-hidden="true">◈</span>
               <span className={styles.loadingLabel}>
-                [ COMPILING ECOSYSTEM DATA... ]
+                Compiling…
               </span>
             </div>
           ) : (

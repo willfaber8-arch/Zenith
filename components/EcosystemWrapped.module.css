@@ -110,8 +110,7 @@
 .slideEyebrow {
   font-family:    var(--font-mono);
   font-size:      0.52rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          rgba(194, 169, 128, 0.45);
   margin:         0 0 var(--sp-3);
 }
@@ -147,8 +146,7 @@
 .heroLabel {
   font-family:    var(--font-mono);
   font-size:      0.58rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color:          rgba(194, 169, 128, 0.50);
   margin:         0 0 var(--sp-6);
 }
@@ -293,8 +291,7 @@
 .vaultMeta {
   font-family:    var(--font-mono);
   font-size:      0.52rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color:          rgba(194, 169, 128, 0.45);
 }
 
@@ -370,8 +367,7 @@
 .personaBracket {
   font-family:    var(--font-mono);
   font-size:      0.50rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color:          rgba(194, 169, 128, 0.30);
   margin:         0 0 var(--sp-2);
 }
@@ -494,8 +490,7 @@
 .loadingLabel {
   font-family:    var(--font-mono);
   font-size:      0.60rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color:          rgba(194, 169, 128, 0.40);
   animation:      textBreathe 1.6s ease-in-out infinite;
 }

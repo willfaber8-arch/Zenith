@@ -437,7 +437,7 @@ export default function SportsView() {
       {/* ── My Teams Dashboard ───────────────────────────────────── */}
       {teams.length > 0 && (
         <section className={styles.dashSection}>
-          <p className={styles.sectionLabel}>[ MY TEAMS ]</p>
+          <p className={styles.sectionLabel}>My Teams</p>
           <div className={styles.dashGrid}>
             {teams.map(team => (
               <DashboardCard
@@ -454,7 +454,7 @@ export default function SportsView() {
 
       {/* ── League Browser ───────────────────────────────────────── */}
       <section className={styles.browserSection}>
-        <p className={styles.sectionLabel}>[ LEAGUE BROWSER ]</p>
+        <p className={styles.sectionLabel}>League Browser</p>
 
         {/* Sport category tabs */}
         <div className={styles.sportTabs} role="tablist" aria-label="Sport category">
@@ -495,7 +495,7 @@ export default function SportsView() {
           {/* Standings */}
           <section className={styles.standingsCol}>
             <p className={styles.sectionLabel} style={{ '--league-accent': league.accent } as React.CSSProperties}>
-              [ {league.shortLabel} STANDINGS ]
+              {league.shortLabel} Standings
             </p>
             <StandingsTable
               league={league}
@@ -508,7 +508,7 @@ export default function SportsView() {
 
           {/* Search to follow */}
           <aside className={styles.teamsCol}>
-            <p className={styles.sectionLabel}>[ FOLLOW TEAMS ]</p>
+            <p className={styles.sectionLabel}>Follow Teams</p>
 
             <div className={styles.searchWrap}>
               <span className={styles.searchGlyph}>

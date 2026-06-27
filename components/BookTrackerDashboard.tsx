@@ -286,7 +286,7 @@ function BookDetailModal({
             rows={3}
           />
           {isDirty && (
-            <button className={styles.saveReviewBtn} onClick={onSaveReview}>[ Save Note ]</button>
+            <button className={styles.saveReviewBtn} onClick={onSaveReview}>Save Note</button>
           )}
         </div>
 
@@ -346,7 +346,7 @@ function BookCard({
           {STATUS_GLYPHS[book.readingStatus]}&nbsp;{STATUS_LABELS[book.readingStatus]}
         </span>
         {book.totalPages ? (
-          <span className={styles.metaPill}>[ {book.totalPages.toLocaleString()} pp ]</span>
+          <span className={styles.metaPill}>{book.totalPages.toLocaleString()} pp</span>
         ) : null}
       </div>
 
@@ -385,7 +385,7 @@ function BookCard({
           placeholder="Add personal notes or a review…"
           rows={3}
         />
-        {isDirty && <button className={styles.saveReviewBtn} onClick={onSaveReview}>[ Save Note ]</button>}
+        {isDirty && <button className={styles.saveReviewBtn} onClick={onSaveReview}>Save Note</button>}
       </div>
 
       <div className={styles.cardActions}>
@@ -581,9 +581,9 @@ export default function BookTrackerDashboard() {
 
       {/* Metrics bar */}
       <div className={styles.metricsBar}>
-        <span className={`${styles.metricChip} ${styles.metricGreen}`}>[ LIBRARY: {counts.completed} ]</span>
-        <span className={styles.metricChip}>[ TBR: {counts.toRead} ]</span>
-        <span className={`${styles.metricChip} ${styles.metricPurple}`}>[ READING: {counts.reading} ]</span>
+        <span className={`${styles.metricChip} ${styles.metricGreen}`}>Library · {counts.completed}</span>
+        <span className={styles.metricChip}>To read · {counts.toRead}</span>
+        <span className={`${styles.metricChip} ${styles.metricPurple}`}>Reading · {counts.reading}</span>
 
         <div className={styles.metricsActions}>
           <button
@@ -591,9 +591,9 @@ export default function BookTrackerDashboard() {
             onClick={() => importPhase !== 'loading' && fileInputRef.current?.click()}
             disabled={importPhase === 'loading'}
           >
-            {importPhase === 'loading' ? '[ ◎ Importing... ]' : '[ ↑ Import Goodreads CSV ]'}
+            {importPhase === 'loading' ? 'Importing…' : 'Import Goodreads CSV'}
           </button>
-          <button className={styles.addBtn} onClick={() => setShowAddModal(true)}>[ + Add Book ]</button>
+          <button className={styles.addBtn} onClick={() => setShowAddModal(true)}>+ Add Book</button>
         </div>
       </div>
 

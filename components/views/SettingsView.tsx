@@ -1213,7 +1213,7 @@ export default function SettingsView() {
 
         {/* ── Developer Console ────────────────────────────────── */}
         {/* TODO: remove before launch */}
-        <Section id="s-dev-console" title="Developer Console [ REMOVE BEFORE LAUNCH ]">
+        <Section id="s-dev-console" title="Developer Console">
           <p className={styles.sectionSubtitle}>
             Internal command interface for testing game economy and data states.
             Type <strong>/help</strong> to list all commands.
@@ -1221,7 +1221,7 @@ export default function SettingsView() {
           <div className={styles.devConsoleWrap}>
             <div className={styles.devConsoleOutput}>
               {devOutput.length === 0
-                ? <span className={styles.devConsolePlaceholder}>[ CONSOLE READY // TYPE /help ]</span>
+                ? <span className={styles.devConsolePlaceholder}>Type /help to begin</span>
                 : devOutput.map((line, i) => (
                     <p key={i} className={styles.devConsoleLine}>{line}</p>
                   ))

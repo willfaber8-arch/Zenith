@@ -110,7 +110,7 @@ export default function BackupRestoreManager() {
         <>
           <span className={`${styles.dot} ${styles.dotWorking}`} />
           <span className={styles.statusWorking}>
-            [ RESTORING LOCAL CHANNELS... ]
+            Restoring…
           </span>
         </>
       )
@@ -120,7 +120,7 @@ export default function BackupRestoreManager() {
         <>
           <span className={`${styles.dot} ${styles.dotSuccess}`} />
           <span className={styles.statusSuccess}>
-            [ ARCHIVE RESTORED — {importResult.restoredTables.length} TABLE{importResult.restoredTables.length !== 1 ? 'S' : ''} · {importResult.totalRowsWritten.toLocaleString()} ROWS ]
+            Archive restored — {importResult.restoredTables.length} table{importResult.restoredTables.length !== 1 ? 's' : ''} · {importResult.totalRowsWritten.toLocaleString()} rows
           </span>
         </>
       )
@@ -130,7 +130,7 @@ export default function BackupRestoreManager() {
         <>
           <span className={`${styles.dot} ${styles.dotError}`} />
           <span className={styles.statusError}>
-            [ RESTORE FAULT ] {importError}
+            Restore failed — {importError}
           </span>
         </>
       )
@@ -140,7 +140,7 @@ export default function BackupRestoreManager() {
         <>
           <span className={`${styles.dot} ${styles.dotWorking}`} />
           <span className={styles.statusWorking}>
-            [ EJECTING CHANNELS... ]
+            Exporting…
           </span>
         </>
       )
@@ -150,7 +150,7 @@ export default function BackupRestoreManager() {
         <>
           <span className={`${styles.dot} ${styles.dotSuccess}`} />
           <span className={styles.statusSuccess}>
-            [ EJECTED → {exportNote} ]
+            Backup saved → {exportNote}
           </span>
         </>
       )
@@ -159,7 +159,7 @@ export default function BackupRestoreManager() {
       <>
         <span className={`${styles.dot} ${styles.dotIdle}`} />
         <span className={styles.statusIdle}>
-          [ CHANNELS NOMINAL — NO OPERATION PENDING ]
+          Ready
         </span>
       </>
     )
@@ -173,11 +173,10 @@ export default function BackupRestoreManager() {
 
         {/* ── Export ─────────────────────────────────────────── */}
         <div className={styles.cell}>
-          <p className={styles.cellLabel}>Eject Backup</p>
+          <p className={styles.cellLabel}>Export</p>
           <p className={styles.cellDesc}>
-            Serialise every local database table into a portable JSON archive
-            and download it to your device. The file contains all habits, notes,
-            calendar events, assignments, arcade data, and settings.
+            Download all your data — habits, notes, calendar, assignments, and
+            settings — as a single JSON file.
           </p>
           <button
             className={styles.ejectBtn}
@@ -185,17 +184,16 @@ export default function BackupRestoreManager() {
             disabled={exportStatus === 'working' || importStatus === 'working'}
             aria-busy={exportStatus === 'working'}
           >
-            {exportStatus === 'working' ? '[ EJECTING... ]' : '[ EJECT LOCAL BACKUP DATA ]'}
+            {exportStatus === 'working' ? 'Exporting…' : 'Export Backup'}
           </button>
         </div>
 
         {/* ── Import ─────────────────────────────────────────── */}
         <div className={styles.cell}>
-          <p className={styles.cellLabel}>Restore Archive</p>
+          <p className={styles.cellLabel}>Restore</p>
           <p className={styles.cellDesc}>
-            Load a previous Zenith OS backup file. Every local table will be
-            cleared and repopulated from the archive — this is a full replace,
-            not a merge. No page reload required.
+            Load a previous backup file. This fully replaces your current data,
+            not a merge.
           </p>
           <button
             className={styles.restoreBtn}
@@ -204,8 +202,8 @@ export default function BackupRestoreManager() {
             aria-busy={importStatus === 'working'}
           >
             {importStatus === 'working'
-              ? '[ RESTORING... ]'
-              : '[ RESTORE ARCHIVE FROM FILE ]'}
+              ? 'Restoring…'
+              : 'Restore from File'}
           </button>
           <input
             ref={fileInputRef}

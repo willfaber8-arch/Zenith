@@ -107,7 +107,7 @@ export default function HelpView() {
       <div className={styles.grid}>
         {/* ── Feedback form ─── */}
         <div className={styles.card}>
-          <p className={styles.cardLabel}>[ REPORT AN ISSUE ]</p>
+          <p className={styles.cardLabel}>Report an Issue</p>
 
           {submitState === 'sent' ? (
             <div className={styles.successState}>
@@ -202,7 +202,7 @@ export default function HelpView() {
                   className={styles.submitBtn}
                   disabled={submitState === 'sending'}
                 >
-                  {submitState === 'sending' ? '[ SENDING… ]' : '[ SEND REPORT ]'}
+                  {submitState === 'sending' ? 'Sending…' : 'Send Report'}
                 </button>
 
                 <a
@@ -225,7 +225,7 @@ export default function HelpView() {
         {/* ── Info panel ─── */}
         <div className={styles.infoCol}>
           <div className={styles.card}>
-            <p className={styles.cardLabel}>[ BETA PROGRAM ]</p>
+            <p className={styles.cardLabel}>Beta Program</p>
             <p className={styles.infoText}>
               Zenith is in active beta. Features are evolving fast and data should be considered experimental.
             </p>
@@ -235,7 +235,7 @@ export default function HelpView() {
           </div>
 
           <div className={styles.card}>
-            <p className={styles.cardLabel}>[ QUICK LINKS ]</p>
+            <p className={styles.cardLabel}>Quick Links</p>
             <ul className={styles.linkList}>
               <li>
                 <a

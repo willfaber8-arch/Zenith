@@ -195,10 +195,10 @@ function MarkdownBlock({ text }: { text: string }) {
    ══════════════════════════════════════════════════════════════ */
 
 const STATUS_LABEL: Record<ContextStatus, string> = {
-  idle:      '[ INITIALIZING ]',
-  compiling: '[ COMPILING CONTEXT… ]',
-  ready:     '[ CO-PILOT CONNECTED · CONTEXT SYNCED ]',
-  error:     '[ LOCAL MODE · NO CONTEXT ]',
+  idle:      'Initializing…',
+  compiling: 'Compiling…',
+  ready:     'Connected',
+  error:     'Local mode',
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -246,10 +246,10 @@ function MessageBubble({ msg, onConfirm, onCancel }: MessageBubbleProps) {
         {!msg.isStreaming && actions.length > 0 && (
           <div className={styles.actionCard}>
             <span className={styles.actionHead}>
-              {state === 'done'      ? '✓ COMPLETE'
-                : state === 'cancelled' ? '✕ CANCELLED'
-                : state === 'running'   ? '◌ SAVING…'
-                : `⚡ CONFIRM ${actions.length} ACTION${actions.length > 1 ? 'S' : ''}`}
+              {state === 'done'      ? '✓ Done'
+                : state === 'cancelled' ? '✕ Cancelled'
+                : state === 'running'   ? '◌ Saving…'
+                : `Confirm ${actions.length} action${actions.length > 1 ? 's' : ''}`}
             </span>
 
             <ul className={styles.actionList}>
@@ -703,7 +703,7 @@ export default function AiCopilotSidebar() {
           <div className={styles.headerLeft}>
             <span className={styles.panelTitle}>
               <span className={styles.titleDot} aria-hidden="true" />
-              CO-PILOT
+              Co-Pilot
             </span>
 
             <span

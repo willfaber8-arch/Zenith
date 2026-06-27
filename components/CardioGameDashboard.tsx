@@ -195,7 +195,7 @@ function TrailPanel() {
           <span className={styles.panelTitle}>Active Trail</span>
           <span className={styles.activeRunLabel}>
             <span className={styles.activeDot} />
-            RUNNING
+            Running
           </span>
         </div>
 
@@ -205,7 +205,7 @@ function TrailPanel() {
 
           {/* Destination label */}
           <div className={styles.runDestLabel}>
-            [ Destination: {activeRun.trailName} — {activeRun.targetDistanceMiles.toFixed(1)} mi ]
+            Destination: {activeRun.trailName} — {activeRun.targetDistanceMiles.toFixed(1)} mi
           </div>
 
           {/* Trail progress map */}
@@ -279,7 +279,7 @@ function TrailPanel() {
               onClick={() => void handleLogMiles()}
               disabled={!milesInput || parseFloat(milesInput) <= 0 || logging}
             >
-              {logging ? '...' : 'Log Miles'}
+              {logging ? '…' : 'Log Miles'}
             </button>
           </div>
 
@@ -359,8 +359,8 @@ function TrailPanel() {
           disabled={!selectedTrail}
         >
           {selectedTrail
-            ? `[ Begin: ${selectedTrail.name} ]`
-            : '[ Select a trail to begin ]'}
+            ? `Begin: ${selectedTrail.name}`
+            : 'Select a trail to begin'}
         </button>
 
         {/* Recent completions */}
@@ -466,7 +466,7 @@ function BasePanel() {
         {isFullyMaxed ? (
           <div className={styles.upgradeSection}>
             <div className={styles.upgradeMaxed}>
-              ✦ YOUR BASE IS FULLY UPGRADED ✦
+              ✦ Your base is fully upgraded ✦
             </div>
           </div>
         ) : (
@@ -506,8 +506,8 @@ function BasePanel() {
                   disabled={!canAffordUpgrade}
                 >
                   {canAffordUpgrade
-                    ? `[ Build — ${nextUpgrade.label} ]`
-                    : '[ Gather more resources ]'}
+                    ? `Build — ${nextUpgrade.label}`
+                    : 'Gather more resources'}
                 </button>
               </>
             )}

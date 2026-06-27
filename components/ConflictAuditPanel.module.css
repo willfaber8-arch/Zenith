@@ -73,8 +73,7 @@
   font-family:    var(--font-mono);
   font-size:      0.58rem;
   color:          var(--gold-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.02em;
   flex-shrink:    0;
 }
 
@@ -99,8 +98,7 @@
   font-family:    var(--font-mono);
   font-size:      0.52rem;
   color:          var(--gold-ghost);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   flex-shrink:    0;
 }
 
@@ -130,8 +128,7 @@
   font-family:    var(--font-mono);
   font-size:      0.52rem;
   color:          var(--gold-ghost);
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.02em;
   line-height:    1;
 }
 

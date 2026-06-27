@@ -130,12 +130,12 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
       {/* ── Panel header ────────────────────────────────────────── */}
       <div className={styles.panelHeader}>
         <div className={styles.headerMeta}>
-          <p className={styles.eyebrow}>Academic Calendar · Auto-Scheduler</p>
-          <h2 className={styles.title}>Course Schedule Replicator</h2>
+          <p className={styles.eyebrow}>Academic Calendar</p>
+          <h2 className={styles.title}>Course Schedule</h2>
         </div>
         <p className={styles.subtitle}>
-          Enter your class details and generate a full semester of recurring
-          events — campus holidays and break weeks are excluded automatically.
+          Generate a full semester of recurring class events. Campus holidays
+          and break weeks are skipped automatically.
         </p>
       </div>
 
@@ -160,9 +160,9 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
             </p>
             <p className={styles.successHint}>
               Events appear in the Week and Month views instantly.
-              To remove them, delete the feed&nbsp;
+              To remove them, delete the&nbsp;
               <em>&ldquo;{courseName.trim()} — {uniCal.label}&rdquo;</em>&nbsp;
-              from the iCal Feeds tab.
+              calendar from the New Calendar manager.
             </p>
             <div className={styles.successActions}>
               <button
@@ -332,10 +332,10 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
             {running ? (
               <span className={styles.runningContent}>
                 <span className={styles.runningDot} aria-hidden="true" />
-                [ CALIBRATING CAMPUS TIMELINES... ]
+                Generating schedule…
               </span>
             ) : (
-              '[ Replicate Academic Schedule ]'
+              'Generate Schedule'
             )}
           </button>
 

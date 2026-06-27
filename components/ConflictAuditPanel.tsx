@@ -219,7 +219,7 @@ function buildLogEntries(
 
   /* 1 — Collision header */
   entries.push(mk('collision',
-    `${def.tableName.toUpperCase()} ROW — CONCURRENT MUTATION STORM DETECTED ACROSS 2 DEVICES`,
+    `${def.tableName} row — concurrent mutation detected across 2 devices`,
   ))
 
   /* 2 — Local record snapshot */
@@ -249,7 +249,7 @@ function buildLogEntries(
 
   /* 5 — Certified */
   entries.push(mk('certified',
-    `DATABASE STATE PROTECTED // versionCounter → ${result.winnerRecord.syncMeta.versionCounter} — ZERO DRIFT CERTIFIED ✓`,
+    `Database state protected · versionCounter → ${result.winnerRecord.syncMeta.versionCounter} — zero drift certified ✓`,
   ))
 
   return entries
@@ -351,8 +351,8 @@ export default function ConflictAuditPanel() {
   const activeDeployments = resolvedCount > 0 ? 2 : 0
 
   const simBtnLabel = isSimulating
-    ? '[ RESOLVING CONCURRENT MUTATIONS... ]'
-    : '[ Simulate Concurrent Mutation Crash ]'
+    ? 'Resolving…'
+    : 'Simulate Concurrent Mutation Crash'
 
   const simBtnClass = [
     styles.simBtn,
@@ -372,10 +372,10 @@ export default function ConflictAuditPanel() {
           ══════════════════════════════════════════════════════ */}
       <div className={styles.identityStrip}>
         <span className={styles.identityDot} aria-hidden />
-        <span className={styles.identityLabel}>THIS DEVICE</span>
+        <span className={styles.identityLabel}>This Device</span>
         <span className={styles.identityUuid}>{displayUuid}</span>
         <span className={styles.identitySeparator} aria-hidden />
-        <span className={styles.identityNodeLabel}>NODE IDENTITY</span>
+        <span className={styles.identityNodeLabel}>Node Identity</span>
       </div>
 
       {/* ══════════════════════════════════════════════════════
@@ -401,7 +401,7 @@ export default function ConflictAuditPanel() {
           >
             {activeDeployments}
             <span className={styles.metricBadgeSuffix}>
-              DEVICES
+              devices
             </span>
           </span>
         </div>
@@ -439,7 +439,7 @@ export default function ConflictAuditPanel() {
               disabled={isSimulating}
               aria-label="Clear audit log"
             >
-              [ CLEAR ]
+              Clear
             </button>
           </div>
 

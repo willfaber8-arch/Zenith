@@ -89,9 +89,9 @@ function GameCard({ game, index, isExpanded, onToggle }: GameCardProps) {
 
         <div className={styles.cardMeta}>
           <span className={styles.playerCount}>
-            {'[ '}{game.minPlayers}
+            {game.minPlayers}
             {game.minPlayers !== game.maxPlayers ? ` — ${game.maxPlayers}` : ''}
-            {' PLAYER'}{game.maxPlayers !== 1 ? 'S' : ''}{' ]'}
+            {' player'}{game.maxPlayers !== 1 ? 's' : ''}
           </span>
           <span
             className={styles.expandChevron}
@@ -171,7 +171,7 @@ export default function GameFinderDashboard() {
 
         {/* Panel header */}
         <div className={styles.filterPanelHeader}>
-          <span className={styles.filterPanelTitle}>Filter Matrix</span>
+          <span className={styles.filterPanelTitle}>Filters</span>
           {activeFilterCount > 0 && (
             <span className={styles.filterCountBadge}>{activeFilterCount}</span>
           )}
@@ -231,7 +231,7 @@ export default function GameFinderDashboard() {
           disabled={!hasActiveFilters}
           className={styles.resetBtn}
         >
-          [ Reset All Filter Parameters ]
+          Reset All
         </button>
 
         {/* Entry count */}
@@ -252,11 +252,11 @@ export default function GameFinderDashboard() {
 
         {/* Search bar */}
         <div className={styles.searchBar}>
-          <span className={styles.searchGlyph} aria-hidden>⊕</span>
+          <span className={styles.searchGlyph} aria-hidden>⌕</span>
           <input
             type="text"
             className={styles.searchInput}
-            placeholder="Search cooperative entries..."
+            placeholder="Search games…"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             aria-label="Search games by title or description"

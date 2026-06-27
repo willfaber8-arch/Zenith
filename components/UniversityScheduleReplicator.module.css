@@ -39,8 +39,7 @@
   font-family:    var(--font-mono);
   font-size:      0.45rem;
   font-weight:    700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color:          var(--accent-purple);
   opacity:        0.8;
   user-select:    none;
@@ -307,8 +306,7 @@
   font-family:    var(--font-mono);
   font-size:      0.60rem;
   font-weight:    700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   cursor:         pointer;
   transition:
     background   var(--dur-base) var(--ease-smooth),

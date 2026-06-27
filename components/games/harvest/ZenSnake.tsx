@@ -664,7 +664,7 @@ export default function ZenSnake({ onSessionComplete }: ZenSnakeProps) {
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ COLLISION DETECTED ]</p>
+            <p className={styles.resultHeading}>Collision</p>
 
             <div className={styles.resultGrid}>
               <div className={styles.resultRow}>

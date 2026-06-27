@@ -88,7 +88,7 @@ export default function DistanceTrackerWidget() {
         <span className={styles.headerLabel}>Distance Tracker</span>
         {isOwnLocationStale && ownLastSyncAt != null && (
           <span className={styles.staleBadge} role="status" aria-label="Stale location data">
-            STALE
+            Stale
           </span>
         )}
       </div>
@@ -137,7 +137,7 @@ export default function DistanceTrackerWidget() {
         <div className={styles.emptyState} aria-live="polite">
           <span className={styles.emptyGlyph} aria-hidden="true">⊙</span>
           <p className={styles.emptyText}>
-            {`[ LOCATION ACCESS NEEDED ]\n// TAP BELOW TO ENABLE`}
+            Location access needed to show distance.
           </p>
           <button
             type="button"
@@ -155,7 +155,7 @@ export default function DistanceTrackerWidget() {
         <div className={styles.emptyState} aria-live="polite">
           <span className={styles.emptyGlyph} aria-hidden="true">⊙</span>
           <p className={styles.emptyText}>
-            {`[ LOCATION SYNCED ]\n// AWAITING PEER COORDINATES`}
+            Location synced. Waiting for your partner.
           </p>
         </div>
       )}
@@ -169,14 +169,12 @@ export default function DistanceTrackerWidget() {
           aria-atomic="true"
           aria-label={`Distance to ${partnerName ?? 'partner'}: ${nearestPeer.distanceMiles} miles`}
         >
-          {/* Bracketed readout line — the ONLY distance value exposed */}
+          {/* Readout line — the ONLY distance value exposed */}
           <p className={styles.distanceLine}>
-            <span className={styles.distanceBracket} aria-hidden="true">[ </span>
-            DISTANCE TO {partnerName?.toUpperCase() ?? 'PARTNER'}:{' '}
+            Distance to {partnerName ?? 'partner'} ·{' '}
             <span className={styles.distanceValue}>{nearestPeer.distanceLabel}</span>
             {' '}
-            <span className={styles.distanceUnit}>MILES</span>
-            <span className={styles.distanceBracket} aria-hidden="true"> ]</span>
+            <span className={styles.distanceUnit}>miles</span>
           </p>
 
           {/* Bearing hint — direction without coordinates */}
@@ -222,7 +220,7 @@ export default function DistanceTrackerWidget() {
             >
               ⟳
             </span>
-            {isSyncing ? 'Syncing…' : 'Sync Location On-Demand'}
+            {isSyncing ? 'Syncing…' : 'Sync location'}
           </button>
         </div>
       )}

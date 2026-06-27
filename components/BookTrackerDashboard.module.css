@@ -4,8 +4,11 @@
   --lb-parchment-dim:    rgba(194, 169, 128, 0.12);
   --lb-parchment-border: rgba(194, 169, 128, 0.24);
   --lb-gold:             #d4a853;
-  --lb-card:             #0d0f11;
+  --lb-card:             #15110b;
   --lb-card-hover:       rgba(194, 169, 128, 0.04);
+  /* Warm serif for book titles — gives the page a printed-page, library feel
+     instead of the app's geometric sans. Web-safe stack, no font to load. */
+  --lb-serif:            'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
 
   padding: var(--sp-8);
   max-width: 1400px;
@@ -21,7 +24,7 @@
 }
 
 .metricChip {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -48,7 +51,7 @@
 }
 
 .importBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   color: var(--lb-parchment);
@@ -72,7 +75,7 @@
 }
 
 .addBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -101,10 +104,9 @@
 }
 
 .tab {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.07em;
-  text-transform: uppercase;
   padding: 8px 18px;
   color: var(--text-dark);
   border: none;
@@ -157,7 +159,7 @@
 
 .searchInput {
   width: 360px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.72rem;
   padding: 8px 14px;
   background: var(--surface-card);
@@ -178,7 +180,7 @@
 }
 
 .resultCount {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.58rem;
   color: var(--text-dark);
   letter-spacing: 0.06em;
@@ -224,10 +226,9 @@
 
 /* Status badges */
 .statusBadge {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.54rem;
   letter-spacing: 0.09em;
-  text-transform: uppercase;
   padding: 2px 9px;
   border-radius: var(--r-sm);
   border: 1px solid;
@@ -255,7 +256,7 @@
 
 /* Title / Author */
 .bookTitle {
-  font-family: var(--font-display);
+  font-family: var(--lb-serif);
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -279,7 +280,7 @@
 }
 
 .metaPill {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.55rem;
   letter-spacing: 0.05em;
   color: var(--text-dark);
@@ -290,7 +291,7 @@
 }
 
 .datePill {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.54rem;
   letter-spacing: 0.04em;
   color: rgba(82, 204, 163, 0.75);
@@ -334,7 +335,7 @@
 }
 
 .globalRating {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.58rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
@@ -348,11 +349,10 @@
 }
 
 .reviewLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.53rem;
   letter-spacing: 0.09em;
   color: var(--text-dark);
-  text-transform: uppercase;
 }
 
 .reviewTextarea {
@@ -383,7 +383,7 @@
 }
 
 .saveReviewBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.55rem;
   letter-spacing: 0.07em;
   color: var(--lb-parchment);
@@ -411,7 +411,7 @@
 }
 
 .actionBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.55rem;
   letter-spacing: 0.06em;
   padding: 4px 10px;
@@ -459,10 +459,9 @@
 }
 
 .emptyLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.68rem;
   letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--text-dark);
 }
 
@@ -509,7 +508,7 @@
 }
 
 .modalTitle {
-  font-family: var(--font-display);
+  font-family: var(--lb-serif);
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -538,10 +537,9 @@
 }
 
 .formLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.58rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-dark);
   margin-bottom: -8px;
 }
@@ -584,7 +582,7 @@
 }
 
 .modalCancelBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.06em;
   padding: 7px 16px;
@@ -602,7 +600,7 @@
 }
 
 .modalSubmitBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   letter-spacing: 0.06em;
   padding: 7px 18px;
@@ -643,7 +641,7 @@
 }
 
 .viewToggleBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.58rem;
   letter-spacing: 0.06em;
   padding: 6px 14px;
@@ -744,7 +742,7 @@
 .spineTitle {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  font-family: var(--font-display);
+  font-family: var(--lb-serif);
   font-size: 0.70rem;
   font-weight: 600;
   letter-spacing: 0.015em;
@@ -781,10 +779,9 @@
 }
 
 .ctxTable thead th {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.55rem;
   letter-spacing: 0.10em;
-  text-transform: uppercase;
   color: var(--lb-parchment);
   text-align: left;
   padding: 12px 16px;
@@ -810,7 +807,7 @@
 
 .ctxNum {
   width: 44px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   color: var(--text-dark);
   text-align: right;
@@ -825,14 +822,14 @@
 .ctxAuthor { color: var(--text-muted); }
 
 .ctxDate {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.68rem;
   color: rgba(82, 204, 163, 0.78);
   white-space: nowrap;
 }
 
 .ctxRating { width: 92px; }
-.ctxPages  { width: 70px; font-family: var(--font-mono); font-size: 0.70rem; color: var(--text-dark); }
+.ctxPages  { width: 70px; font-family: var(--font-body); font-size: 0.70rem; color: var(--text-dark); }
 
 .ctxStars { color: var(--lb-gold); letter-spacing: 1px; }
 .ctxMuted { color: var(--text-dark); font-size: 0.68rem; font-style: italic; }
@@ -885,7 +882,7 @@
 .detailSpineTitle {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  font-family: var(--font-display);
+  font-family: var(--lb-serif);
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.15;
@@ -905,7 +902,7 @@
 }
 
 .detailTitle {
-  font-family: var(--font-display);
+  font-family: var(--lb-serif);
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -934,10 +931,9 @@
 }
 
 .fieldLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.56rem;
   letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--text-dark);
 }
 
@@ -1026,7 +1022,7 @@
 }
 
 .pagerBtn {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.60rem;
   letter-spacing: 0.06em;
   padding: 6px 14px;
@@ -1069,7 +1065,7 @@
 }
 
 .pagerLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.58rem;
   letter-spacing: 0.05em;
   color: var(--text-dark);

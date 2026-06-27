@@ -523,7 +523,7 @@ export default function VocabStudySession({
      ════════════════════════════════════════════════════════════════ */
 
   if (phase === 'loading') {
-    return <div className={styles.loading}>[ LOADING SESSION… ]</div>
+    return <div className={styles.loading}>Loading…</div>
   }
 
   if (phase === 'empty') {
@@ -550,7 +550,7 @@ export default function VocabStudySession({
     return (
       <div className={styles.completeCard}>
         <span className={styles.completeGlyph}>◇</span>
-        <p className={styles.completeTitle}>[ SESSION COMPLETE ]</p>
+        <p className={styles.completeTitle}>Session complete</p>
         <p className={styles.completeSubtitle}>
           {perfectCount} / {totalCount} cards mastered this round
         </p>

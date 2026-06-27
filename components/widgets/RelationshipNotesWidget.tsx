@@ -116,7 +116,7 @@ export default function RelationshipNotesWidget() {
             aria-label="Unread message"
           >
             <span className={styles.newDot} aria-hidden="true" />
-            NEW
+            New
           </span>
         )}
       </div>
@@ -132,7 +132,7 @@ export default function RelationshipNotesWidget() {
         >
           <span className={styles.emptyGlyph} aria-hidden="true">◈</span>
           <p className={styles.emptyText}>
-            {`[ THE LETTERBOX IS CALM\n// SEND A NOTE TO CONNECT CHANNELS ]`}
+            The letterbox is calm. Send a note to connect.
           </p>
         </div>
       ) : (

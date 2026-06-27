@@ -146,9 +146,8 @@
 .headerSub {
   font-family:    var(--font-mono);
   font-size:      0.5rem;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.03em;
   color:          var(--text-dark);
-  text-transform: uppercase;
   margin-left:    auto;
 }
 
@@ -260,7 +259,7 @@
   font-family:    var(--font-mono);
   font-size:      0.6875rem;
   font-weight:    600;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.03em;
   color:          var(--accent-warm);
   background:     transparent;
   border:         1px solid rgba(229, 193, 124, 0.20);
