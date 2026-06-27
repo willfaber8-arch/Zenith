@@ -72,16 +72,15 @@
    * display-swap-optimised version with system fallbacks if either
    * isn't loaded yet.
    *
-   * --font-display → Space Grotesk  (soft geometric display; clean,
-   *   warm letterforms that sit well on the mineral-dark canvas.
-   *   Upgrade path: Cabinet Grotesk or Clash Display — see layout.tsx)
-   * --font-sans    → Plus Jakarta Sans  (warm, humanistic geometric sans;
-   *   approachable at small sizes, expressive at display scale)
+   * --font-display → DM Sans  (soft, humanistic geometric sans;
+   *   warm and inviting at display scale; excellent at heavy weights)
+   * --font-sans    → DM Sans  (same family — cohesive typographic voice;
+   *   clean and approachable at small body-copy sizes)
    * --font-mono    → Cascadia Code  (ligature-enabled; readable warmth
    *   in data-dense panes and terminal-inspired sections)
    */
-  --font-display: var(--font-cabinet), 'Space Grotesk', 'DM Sans',      ui-sans-serif, sans-serif;
-  --font-sans:    var(--font-jakarta), 'Plus Jakarta Sans', 'DM Sans',  ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cabinet), 'DM Sans', ui-sans-serif, sans-serif;
+  --font-sans:    var(--font-jakarta), 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'Cascadia Code', 'JetBrains Mono', 'SF Mono',          ui-monospace,  monospace;
 
   /* ── Border radii (override Tailwind defaults) ────────────────── */
@@ -320,12 +319,19 @@ html {
 body {
   min-height: 100%;
   background-color: var(--bg-main);
-  background-image: var(--body-bg-image, radial-gradient(circle, rgba(124, 149, 255, 0.055) 1px, transparent 1px));
-  background-size: 30px 30px;
+  /* Neutral accent-agnostic default texture so no theme's background dots
+     clash with its accent. Themes (and the Theme Forge) override these vars. */
+  background-image: var(--body-bg-image, radial-gradient(circle, rgba(150, 160, 190, 0.045) 1px, transparent 1px));
+  background-size: var(--body-bg-size, 30px 30px);
+  background-repeat: var(--body-bg-repeat, repeat);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.6;
+  /* Gentle positive tracking improves legibility with DM Sans, whose default
+     letter-spacing is tighter than the previous display stack. */
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

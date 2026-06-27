@@ -33,11 +33,13 @@ interface CardOutcome {
 }
 
 interface Props {
-  deckId:      string
-  languageName: string
-  dailyGoal:   number
-  mode:        'study' | 'review'
-  sessionKey?: number
+  deckId:           string
+  languageName:     string
+  dailyGoal:        number
+  mode:             'study' | 'review'
+  sessionKey?:      number
+  filterCardIds?:   string[]    // if set, study only these cards (MC distractors still use full deck)
+  sessionNamespace?: string     // suffix for localStorage key — prevents cross-category collision
   onComplete?: () => void
   onRestart?:  () => void
 }
@@ -50,8 +52,9 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function getDailySetKey(deckId: string, mode: 'study' | 'review'): string {
-  return `zenith_daily_${mode}_v2_${deckId.slice(0, 8)}`
+function getDailySetKey(deckId: string, mode: 'study' | 'review', namespace?: string): string {
+  const ns = namespace ? `_${namespace}` : ''
+  return `zenith_daily_${mode}_v2_${deckId.slice(0, 8)}${ns}`
 }
 
 function loadDailySet(key: string): DailySet | null {
@@ -115,6 +118,8 @@ export default function VocabStudySession({
   languageName,
   dailyGoal,
   mode,
+  filterCardIds,
+  sessionNamespace,
   onComplete,
   onRestart,
 }: Props) {
@@ -167,15 +172,23 @@ export default function VocabStudySession({
 
       if (allDeckCards.length === 0) { setPhase('empty'); return }
 
-      const key = getDailySetKey(deckId, mode)
+      /* Filter to the requested category subset (MC distractors still use full deck via allCardsRef) */
+      const filterSet = filterCardIds ? new Set(filterCardIds) : null
+      const sessionCards = filterSet
+        ? allDeckCards.filter(c => filterSet.has(c.id!))
+        : allDeckCards
+
+      if (sessionCards.length === 0) { setPhase('empty'); return }
+
+      const key = getDailySetKey(deckId, mode, sessionNamespace)
       let savedSet = loadDailySet(key)
 
-      /* Validate that saved card IDs still exist */
+      /* Validate that saved card IDs still exist within the session subset */
       if (savedSet) {
-        const existingIds = new Set(allDeckCards.map(c => c.id!))
+        const sessionIds = new Set(sessionCards.map(c => c.id!))
         savedSet = {
           ...savedSet,
-          cardIds: savedSet.cardIds.filter(id => existingIds.has(id)),
+          cardIds: savedSet.cardIds.filter(id => sessionIds.has(id)),
         }
         if (savedSet.cardIds.length === 0) savedSet = null
       }
@@ -188,14 +201,14 @@ export default function VocabStudySession({
         /* Build today's fresh set */
         if (mode === 'review') {
           /* Review: mastered cards only, random shuffle, cap at REVIEW_SET_SIZE */
-          const mastered = allDeckCards.filter(c => c.consecutiveSuccesses >= MASTERED_THRESHOLD)
+          const mastered = sessionCards.filter(c => c.consecutiveSuccesses >= MASTERED_THRESHOLD)
           if (mastered.length === 0) {
             setPhase('empty'); return
           }
           cardIds = shuffle(mastered).slice(0, REVIEW_SET_SIZE).map(c => c.id!)
         } else {
           /* Study: non-mastered cards sorted weakest-first */
-          const nonMastered = allDeckCards
+          const nonMastered = sessionCards
             .filter(c => c.consecutiveSuccesses < MASTERED_THRESHOLD)
             .sort((a, b) => {
               const scoreA = a.easeFactor * 10 + a.consecutiveSuccesses
@@ -231,7 +244,7 @@ export default function VocabStudySession({
 
     void run()
     return () => { cancelled = true }
-  }, [deckId, mode, dailyGoal])
+  }, [deckId, mode, dailyGoal, filterCardIds, sessionNamespace])
 
   /* ─────────────────────────────────────────────────────────────
      Rebuild MC options whenever card or phase changes to 'mc'

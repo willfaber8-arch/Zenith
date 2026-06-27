@@ -343,7 +343,7 @@
 
 .costFree {
   background: rgba(82, 204, 163, 0.12);
-  color: #52cca3;
+  color: var(--accent-green);
   border: 1px solid rgba(82, 204, 163, 0.22);
 }
 
@@ -355,7 +355,7 @@
 
 .costPremium {
   background: rgba(124, 149, 255, 0.12);
-  color: #7c95ff;
+  color: var(--accent-purple);
   border: 1px solid rgba(124, 149, 255, 0.22);
 }
 
@@ -405,7 +405,7 @@
 
 .platSteam {
   background: rgba(124, 149, 255, 0.10);
-  color: #7c95ff;
+  color: var(--accent-purple);
   border: 1px solid rgba(124, 149, 255, 0.20);
 }
 
@@ -417,7 +417,7 @@
 
 .platConsole {
   background: rgba(82, 204, 163, 0.10);
-  color: #52cca3;
+  color: var(--accent-green);
   border: 1px solid rgba(82, 204, 163, 0.20);
 }
 

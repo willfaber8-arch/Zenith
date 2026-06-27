@@ -14,6 +14,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { gamesDb, seedGamesDatabase } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS, ALL_THEMEABLE_VARS } from '@/lib/themeDefinitions'
 import { UNIVERSITY_THEME_DEFINITIONS } from '@/lib/universityThemes'
+import {
+  CUSTOM_THEME_ID, CUSTOM_THEME_EVENT,
+  loadCustomTheme, buildCustomThemeDefinition,
+} from '@/lib/customTheme'
+import { subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
+import { resolveShopBackground, isShopBackgroundId } from '@/lib/shopBackgrounds'
 
 /* Light-mode inline overrides — mirrors html[data-color-scheme='light'] in globals.css.
    Applied as inline styles so they beat any dark cosmetic theme's bg/text vars. */
@@ -37,9 +44,29 @@ const LIGHT_BASE_VARS: Readonly<Record<string, string>> = {
 
 export default function ThemeApplicator() {
   const [isLight, setIsLight] = useState(false)
+  const [previewId, setPreview] = useState<string | null>(getPreviewId())
+  const [bgPreview, setBgPreview] = useState<string | null>(getBgPreviewId())
+  /* Bumped whenever the stored custom theme changes so live colour-wheel
+     edits re-apply instantly while the Forge theme is active or previewed. */
+  const [customVersion, setCustomVersion] = useState(0)
 
   useEffect(() => {
     seedGamesDatabase().catch(() => {})
+  }, [])
+
+  /* Subscribe to the app-wide preview channels */
+  useEffect(() => subscribePreview(setPreview), [])
+  useEffect(() => subscribeBgPreview(setBgPreview), [])
+
+  /* Re-apply when the custom theme config is edited */
+  useEffect(() => {
+    const onChange = () => setCustomVersion(v => v + 1)
+    window.addEventListener(CUSTOM_THEME_EVENT, onChange)
+    window.addEventListener('storage', onChange)
+    return () => {
+      window.removeEventListener(CUSTOM_THEME_EVENT, onChange)
+      window.removeEventListener('storage', onChange)
+    }
   }, [])
 
   /* Watch data-color-scheme attribute so theme re-applies on scheme toggle */
@@ -58,8 +85,12 @@ export default function ThemeApplicator() {
   )
 
   useEffect(() => {
-    const themeId = profile?.activeTheme ?? 'zenith_default'
-    const def = THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
+    /* Preview (if any) wins over the persisted active theme. */
+    const themeId = previewId ?? profile?.activeTheme ?? 'zenith_default'
+    const def =
+      themeId === CUSTOM_THEME_ID
+        ? buildCustomThemeDefinition(loadCustomTheme())
+        : THEME_DEFINITIONS[themeId] ?? UNIVERSITY_THEME_DEFINITIONS[themeId]
 
     /* Step 1: Clear all previously applied overrides so no stale vars bleed through */
     ALL_THEMEABLE_VARS.forEach(v =>
@@ -73,7 +104,36 @@ export default function ThemeApplicator() {
       })
     }
 
-    /* Step 3: If light mode is active and the theme is not itself a light theme,
+    /* Step 3: Apply background pattern.
+       A live preview (from the shop / settings) always wins — even over Theme
+       Forge's own backdrop — so a shopper sees the pattern on the whole UI.
+       Otherwise the equipped background applies (skipped while Theme Forge is
+       active, since the Forge owns its backdrop via Step 2's vars). */
+    const previewBg  = bgPreview && isShopBackgroundId(bgPreview) ? bgPreview : null
+    const equippedBg = themeId !== CUSTOM_THEME_ID
+      && profile?.activeBackground && isShopBackgroundId(profile.activeBackground)
+      ? profile.activeBackground
+      : null
+    const effectiveBg = previewBg ?? equippedBg
+
+    if (effectiveBg) {
+      const accentHex = def?.swatch ?? '#7c95ff'
+      const bgHex     = (def?.vars as Record<string, string>)?.['--bg-main'] ?? '#0b0d13'
+      const spec      = resolveShopBackground(effectiveBg, accentHex, bgHex)
+      if (spec) {
+        document.documentElement.style.setProperty('--body-bg-image',  spec.image)
+        document.documentElement.style.setProperty('--body-bg-size',   spec.size)
+        document.documentElement.style.setProperty('--body-bg-repeat', spec.repeat)
+      }
+    } else if (themeId !== CUSTOM_THEME_ID) {
+      // No background equipped or previewed — clear overrides so the baseline
+      // shows. Never strip the Theme Forge backdrop (its vars come from Step 2).
+      document.documentElement.style.removeProperty('--body-bg-image')
+      document.documentElement.style.removeProperty('--body-bg-size')
+      document.documentElement.style.removeProperty('--body-bg-repeat')
+    }
+
+    /* Step 4: If light mode is active and the theme is not itself a light theme,
        overlay the light-mode base vars so dark bg/text values are overridden */
     if (isLight && !def?.isLightTheme) {
       Object.entries(LIGHT_BASE_VARS).forEach(([key, value]) => {
@@ -81,7 +141,7 @@ export default function ThemeApplicator() {
       })
     }
 
-    /* Step 4: Set data-light-mode attribute so CSS rules can target both the
+    /* Step 5: Set data-light-mode attribute so CSS rules can target both the
        color-scheme toggle AND cosmetic light themes with a single selector */
     const isLightMode = isLight || !!def?.isLightTheme
     if (isLightMode) {
@@ -89,7 +149,7 @@ export default function ThemeApplicator() {
     } else {
       document.documentElement.removeAttribute('data-light-mode')
     }
-  }, [profile?.activeTheme, isLight])
+  }, [profile?.activeTheme, profile?.activeBackground, isLight, previewId, bgPreview, customVersion])
 
   return null
 }

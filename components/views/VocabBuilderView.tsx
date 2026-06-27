@@ -1242,6 +1242,49 @@ const ADVANCED_ENGLISH_WORDS: Array<{ word: string; definition: string }> = [
   { word: 'Rotunda',        definition: 'A round building or room, especially one with a dome' },
 ]
 
+/* ── English category sets ──────────────────────────────────── */
+/* CORE_END: first 181 entries are "GRE Core" (Abstruse → Zenith).
+   Thematic sections begin at "Epistemology" (Philosophy & epistemology onwards).
+   Everything in between is the alphabetical expanded sections. */
+const ENGLISH_CAT_SETS = (() => {
+  const greCore     = new Set<string>()
+  const catAC       = new Set<string>()
+  const catDF       = new Set<string>()
+  const catGM       = new Set<string>()
+  const catNP       = new Set<string>()
+  const catQZ       = new Set<string>()
+  const catThematic = new Set<string>()
+  const CORE_END      = 181
+  const thematicStart = ADVANCED_ENGLISH_WORDS.findIndex(w => w.word === 'Epistemology')
+  ADVANCED_ENGLISH_WORDS.forEach((w, i) => {
+    if (i < CORE_END) {
+      greCore.add(w.word)
+    } else if (thematicStart !== -1 && i >= thematicStart) {
+      catThematic.add(w.word)
+    } else {
+      const ch = w.word[0].toUpperCase()
+      if ('ABC'.includes(ch))           catAC.add(w.word)
+      else if ('DEF'.includes(ch))      catDF.add(w.word)
+      else if ('GHIJKLM'.includes(ch))  catGM.add(w.word)
+      else if ('NOP'.includes(ch))      catNP.add(w.word)
+      else                              catQZ.add(w.word)
+    }
+  })
+  return { greCore, catAC, catDF, catGM, catNP, catQZ, catThematic }
+})()
+
+interface CategoryOption { label: string; wordSet: Set<string> | null; namespace: string }
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  { label: 'All Words', wordSet: null,                             namespace: 'all'      },
+  { label: 'GRE Core',  wordSet: ENGLISH_CAT_SETS.greCore,        namespace: 'gre'      },
+  { label: 'A – C',     wordSet: ENGLISH_CAT_SETS.catAC,          namespace: 'ac'       },
+  { label: 'D – F',     wordSet: ENGLISH_CAT_SETS.catDF,          namespace: 'df'       },
+  { label: 'G – M',     wordSet: ENGLISH_CAT_SETS.catGM,          namespace: 'gm'       },
+  { label: 'N – P',     wordSet: ENGLISH_CAT_SETS.catNP,          namespace: 'np'       },
+  { label: 'Q – Z',     wordSet: ENGLISH_CAT_SETS.catQZ,          namespace: 'qz'       },
+  { label: 'Thematic',  wordSet: ENGLISH_CAT_SETS.catThematic,    namespace: 'thematic' },
+]
+
 /* ── English vocab streak helpers ──────────────────────────── */
 interface EngStreak { lastStudiedDate: string; streak: number }
 
@@ -1322,11 +1365,12 @@ async function seedEnglishDeck(): Promise<string> {
    ════════════════════════════════════════════════════════════════ */
 
 function EnglishVocabTab() {
-  const [deckId,     setDeckId]     = useState<string | null>(null)
-  const [sessionKey, setSessionKey] = useState(0)
-  const [streak,     setStreak]     = useState(0)
-  const [tab,        setTab]        = useState<'study' | 'review' | 'words'>('study')
-  const [dailyGoal,  setDailyGoal]  = useState<number>(DEFAULT_DAILY_GOAL)
+  const [deckId,           setDeckId]           = useState<string | null>(null)
+  const [sessionKey,       setSessionKey]       = useState(0)
+  const [streak,           setStreak]           = useState(0)
+  const [tab,              setTab]              = useState<'study' | 'review' | 'words'>('study')
+  const [dailyGoal,        setDailyGoal]        = useState<number>(DEFAULT_DAILY_GOAL)
+  const [selectedCatIdx,   setSelectedCatIdx]   = useState(0)   // index into CATEGORY_OPTIONS
 
   /* Bootstrap — seed deck + load persisted goal */
   useEffect(() => {
@@ -1428,6 +1472,22 @@ function EnglishVocabTab() {
         <span className={styles.goalSuffix}>cards</span>
       </div>
 
+      {/* ── Category pills ──────────────────────────────────── */}
+      <div className={styles.catPillRow}>
+        {CATEGORY_OPTIONS.map((opt, i) => (
+          <button
+            key={opt.namespace}
+            className={`${styles.catPill} ${selectedCatIdx === i ? styles.catPillActive : ''}`}
+            onClick={() => {
+              setSelectedCatIdx(i)
+              setSessionKey(k => k + 1)
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Tab bar ─────────────────────────────────────────── */}
       <div className={styles.engTabBar}>
         {(['study', 'review', 'words'] as const).map(t => (
@@ -1444,35 +1504,51 @@ function EnglishVocabTab() {
       </div>
 
       {/* ── Study session ────────────────────────────────────── */}
-      {tab === 'study' && (
-        <div className={styles.engStudyWrap}>
-          <VocabStudySession
-            key={`eng-study-${sessionKey}`}
-            deckId={deckId}
-            languageName="Advanced English"
-            dailyGoal={dailyGoal}
-            mode="study"
-            onRestart={() => {
-              setSessionKey(k => k + 1)
-              setStreak(bumpEngStreak())
-            }}
-          />
-        </div>
-      )}
+      {tab === 'study' && (() => {
+        const cat = CATEGORY_OPTIONS[selectedCatIdx]
+        const filterCardIds = cat.wordSet
+          ? cards.filter(c => cat.wordSet!.has(c.foreignWord)).map(c => c.id!)
+          : undefined
+        return (
+          <div className={styles.engStudyWrap}>
+            <VocabStudySession
+              key={`eng-study-${sessionKey}-${cat.namespace}`}
+              deckId={deckId}
+              languageName="Advanced English"
+              dailyGoal={dailyGoal}
+              mode="study"
+              filterCardIds={filterCardIds}
+              sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
+              onRestart={() => {
+                setSessionKey(k => k + 1)
+                setStreak(bumpEngStreak())
+              }}
+            />
+          </div>
+        )
+      })()}
 
       {/* ── Review session (mastered cards) ─────────────────── */}
-      {tab === 'review' && (
-        <div className={styles.engStudyWrap}>
-          <VocabStudySession
-            key={`eng-review-${sessionKey}`}
-            deckId={deckId}
-            languageName="Advanced English"
-            dailyGoal={dailyGoal}
-            mode="review"
-            onRestart={() => setSessionKey(k => k + 1)}
-          />
-        </div>
-      )}
+      {tab === 'review' && (() => {
+        const cat = CATEGORY_OPTIONS[selectedCatIdx]
+        const filterCardIds = cat.wordSet
+          ? cards.filter(c => cat.wordSet!.has(c.foreignWord)).map(c => c.id!)
+          : undefined
+        return (
+          <div className={styles.engStudyWrap}>
+            <VocabStudySession
+              key={`eng-review-${sessionKey}-${cat.namespace}`}
+              deckId={deckId}
+              languageName="Advanced English"
+              dailyGoal={dailyGoal}
+              mode="review"
+              filterCardIds={filterCardIds}
+              sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
+              onRestart={() => setSessionKey(k => k + 1)}
+            />
+          </div>
+        )
+      })()}
 
       {/* ── Word list ────────────────────────────────────────── */}
       {tab === 'words' && (
@@ -1956,6 +2032,23 @@ Generate ${countStr} flashcard objects covering this topic.`
                 </button>
               ))}
             </div>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              placeholder="Custom amount…"
+              className={styles.customCountInput}
+              value={
+                typeof cardCount === 'number' && !(AI_COUNT_OPTIONS as (number | string)[]).includes(cardCount)
+                  ? String(cardCount)
+                  : ''
+              }
+              onChange={e => {
+                const n = parseInt(e.target.value, 10)
+                if (!isNaN(n) && n >= 1) setCardCount(n)
+                else if (e.target.value === '') setCardCount(20)
+              }}
+            />
           </div>
         </div>
         <div className={styles.modalFooter}>
@@ -2383,7 +2476,7 @@ function LanguageBuilderTab() {
                 </p>
               </div>
             ) : (
-              decks.map(deck => {
+              decks.filter(deck => deck.languageName !== ENGLISH_DECK_NAME).map(deck => {
                 const s   = deckStatsMap.get(deck.id) ?? { total: 0, due: 0 }
                 const isActive = deck.id === selectedId
 
@@ -2404,7 +2497,7 @@ function LanguageBuilderTab() {
                         <span className={styles.deckStatChip}>{s.total} cards</span>
                         {s.due > 0 && (
                           <span className={`${styles.deckStatChip} ${styles.deckStatChipDue}`}>
-                            {s.due} due
+                            {Math.min(s.due, dailyGoal)} due
                           </span>
                         )}
                       </div>

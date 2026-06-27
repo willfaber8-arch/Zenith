@@ -175,7 +175,7 @@
   font-family: var(--font-display);
   font-size: 0.4375rem;
   font-weight: 800;
-  color: #0b0d13;
+  color: var(--bg-main);
   flex-shrink: 0;
   letter-spacing: 0.05em;
 }

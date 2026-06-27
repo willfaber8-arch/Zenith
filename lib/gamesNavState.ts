@@ -1,20 +1,29 @@
 /**
  * Ephemeral module-level state that lets one navigation context (e.g.
- * CosmeticPointsIndicator) request a specific initial tab when
- * GamesTabShell mounts after a navigate() call.
+ * CosmeticPointsIndicator or SettingsView's "Browse Shop" link) request a
+ * specific tab for GamesTabShell.
  *
- * Pattern:
- *   1. Caller writes the target tab via requestGamesTab().
- *   2. navigate('games', 'creator') fires.
- *   3. GamesTabShell reads consumeRequestedTab() in its useState initialiser.
- *   4. consumeRequestedTab() clears the stored value so the next mount uses 'arcade'.
+ * Two delivery paths so the request lands whether the shell is freshly
+ * mounting or already on screen:
+ *   1. Fresh mount  — GamesTabShell reads peekRequestedTab() in its useState
+ *      initialiser (pure, non-clearing — StrictMode-safe), then consumes it
+ *      in a mount effect.
+ *   2. Already mounted — GamesTabShell subscribes via subscribeGamesTab() and
+ *      switches tabs immediately when a request fires.
  */
 
 let _requestedTab: string | null = null
+const listeners = new Set<(tab: string) => void>()
 
-/** Set the tab GamesTabShell should open to on its next mount. */
+/** Set the tab GamesTabShell should open to, and notify any live shell. */
 export function requestGamesTab(tab: string): void {
   _requestedTab = tab
+  listeners.forEach(fn => fn(tab))
+}
+
+/** Non-clearing read — safe to call from a useState initialiser. */
+export function peekRequestedTab(): string | null {
+  return _requestedTab
 }
 
 /**
@@ -25,4 +34,10 @@ export function consumeRequestedTab(): string | null {
   const t = _requestedTab
   _requestedTab = null
   return t
+}
+
+/** Subscribe a live GamesTabShell so deep-links work without a remount. */
+export function subscribeGamesTab(fn: (tab: string) => void): () => void {
+  listeners.add(fn)
+  return () => { listeners.delete(fn) }
 }

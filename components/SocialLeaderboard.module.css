@@ -113,7 +113,7 @@
 .copyBtnCopied {
   background: rgba(82, 204, 163, 0.12);
   border-color: rgba(82, 204, 163, 0.30);
-  color: #52cca3;
+  color: var(--accent-green);
 }
 
 .copyBtn:disabled {
@@ -142,7 +142,7 @@
 }
 
 .statusDotReady {
-  background: #52cca3;
+  background: var(--accent-green);
 }
 
 .statusDotError {
@@ -227,7 +227,7 @@
 .syncMsg {
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  color: #52cca3;
+  color: var(--accent-green);
   letter-spacing: 0.04em;
   margin: 0;
 }
@@ -265,7 +265,7 @@
   width: 6px;
   height: 6px;
   border-radius: 99px;
-  background: #52cca3;
+  background: var(--accent-green);
   flex-shrink: 0;
 }
 

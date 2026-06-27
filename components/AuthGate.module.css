@@ -66,7 +66,7 @@
   font-family: var(--font-display);
   font-size: 1.375rem;
   font-weight: 800;
-  color: #0b0d13;
+  color: var(--bg-main);
   /* Subtle pulse glow */
   box-shadow: 0 0 28px rgba(124, 149, 255, 0.22);
 }
@@ -81,7 +81,7 @@
   font-family: var(--font-display);
   font-size: 1.375rem;
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   line-height: 1;
 }
@@ -245,7 +245,7 @@
     var(--accent-purple) 0%,
     color-mix(in srgb, var(--accent-purple) 72%, var(--accent-green)) 100%
   );
-  color: #0b0d13;
+  color: var(--bg-main);
   border: none;
   border-radius: var(--r-md);
   font-family: var(--font-body);

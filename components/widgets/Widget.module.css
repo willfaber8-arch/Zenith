@@ -490,7 +490,7 @@
   font-size:      clamp(2rem, 5vw, 3rem);
   font-weight:    700;
   color:          var(--text-primary);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.015em;
   line-height:    1;
 }
 

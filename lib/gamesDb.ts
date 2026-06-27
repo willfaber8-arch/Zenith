@@ -95,6 +95,14 @@ export interface UserProfileConfig {
    * via transactional writes in `purchaseTheme()`.
    */
   cosmeticPointsBalance: number
+  /** Currently equipped background pattern ID (from ShopBackgroundId), or undefined for default. */
+  activeBackground?: string
+  /** All background IDs the player has purchased. */
+  purchasedBackgrounds?: string[]
+  /** Permanently unlocked perk IDs (e.g. 'perk_extra_stats'). */
+  unlockedPerks?: string[]
+  /** How many streak saver uses the player has remaining. */
+  streakSaverCount?: number
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -774,4 +782,153 @@ export async function applyFreeTheme(themeId: string): Promise<void> {
     ? profile.purchasedThemes
     : [...profile.purchasedThemes, themeId]
   await db.user_profile_config.update(ACTIVE_USER_ID, { activeTheme: themeId, purchasedThemes })
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §10  BACKGROUND HELPERS
+   ════════════════════════════════════════════════════════════════ */
+
+/**
+ * Purchases a background pattern. Same mechanics as purchaseTheme — deducts
+ * CP and records the background in purchasedBackgrounds. When a pack grants
+ * a background for free, call grantBackground() instead.
+ */
+export async function purchaseBackground(
+  backgroundId: string,
+  cost: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!Number.isFinite(cost) || cost < 0) {
+    throw new RangeError(`purchaseBackground: cost must be non-negative, received ${cost}`)
+  }
+
+  const db = getGamesDb()
+
+  return db.transaction('rw', [db.resource_inventory, db.user_profile_config], async () => {
+    const [profile, cosmeticNode] = await Promise.all([
+      db.user_profile_config.get(ACTIVE_USER_ID),
+      db.resource_inventory.get('cosmetic_points'),
+    ])
+
+    if (!profile || !cosmeticNode) {
+      return { ok: false, reason: 'Database not seeded. Call seedGamesDatabase() first.' }
+    }
+    if ((profile.purchasedBackgrounds ?? []).includes(backgroundId)) {
+      return { ok: false, reason: 'Background already owned.' }
+    }
+    if (cosmeticNode.balance < cost) {
+      return { ok: false, reason: `Insufficient ✦ (have ${cosmeticNode.balance}, need ${cost}).` }
+    }
+
+    const newBalance = cosmeticNode.balance - cost
+
+    await Promise.all([
+      db.resource_inventory.update('cosmetic_points', { balance: newBalance }),
+      db.user_profile_config.update(ACTIVE_USER_ID, {
+        purchasedBackgrounds: [...(profile.purchasedBackgrounds ?? []), backgroundId],
+        cosmeticPointsBalance: newBalance,
+      }),
+    ])
+
+    return { ok: true }
+  })
+}
+
+/**
+ * Grants a background for free (e.g. included in a pack purchase).
+ * Safe to call even if the background is already owned.
+ */
+export async function grantBackground(backgroundId: string): Promise<void> {
+  const db      = getGamesDb()
+  const profile = await db.user_profile_config.get(ACTIVE_USER_ID)
+  if (!profile) return
+  const owned = profile.purchasedBackgrounds ?? []
+  if (owned.includes(backgroundId)) return
+  await db.user_profile_config.update(ACTIVE_USER_ID, {
+    purchasedBackgrounds: [...owned, backgroundId],
+  })
+}
+
+/**
+ * Equips a purchased background. Returns false if not owned.
+ * Pass null to clear the active background (reverts to default).
+ */
+export async function equipBackground(backgroundId: string | null): Promise<boolean> {
+  const db      = getGamesDb()
+  const profile = await db.user_profile_config.get(ACTIVE_USER_ID)
+  if (!profile) return false
+  if (backgroundId !== null && !(profile.purchasedBackgrounds ?? []).includes(backgroundId)) return false
+  await db.user_profile_config.update(ACTIVE_USER_ID, {
+    activeBackground: backgroundId ?? undefined,
+  })
+  return true
+}
+
+/* ════════════════════════════════════════════════════════════════
+   §11  PERK HELPERS
+   ════════════════════════════════════════════════════════════════ */
+
+/**
+ * Purchases a perk item. Handles two cases:
+ *  - Streak Saver packs: deducts CP, adds `grantCount` to streakSaverCount.
+ *  - Permanent perks: deducts CP, records ID in unlockedPerks (one-time).
+ */
+export async function purchasePerk(
+  perkId: string,
+  cost: number,
+  grantCount: number,        // > 0 for consumable savers; 0 for permanent unlock
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!Number.isFinite(cost) || cost < 0) {
+    throw new RangeError(`purchasePerk: cost must be non-negative, received ${cost}`)
+  }
+
+  const db = getGamesDb()
+
+  return db.transaction('rw', [db.resource_inventory, db.user_profile_config], async () => {
+    const [profile, cosmeticNode] = await Promise.all([
+      db.user_profile_config.get(ACTIVE_USER_ID),
+      db.resource_inventory.get('cosmetic_points'),
+    ])
+
+    if (!profile || !cosmeticNode) {
+      return { ok: false, reason: 'Database not seeded.' }
+    }
+
+    // Permanent perks: only purchasable once
+    if (grantCount === 0 && (profile.unlockedPerks ?? []).includes(perkId)) {
+      return { ok: false, reason: 'Already unlocked.' }
+    }
+
+    if (cosmeticNode.balance < cost) {
+      return { ok: false, reason: `Insufficient ✦ (have ${cosmeticNode.balance}, need ${cost}).` }
+    }
+
+    const newBalance  = cosmeticNode.balance - cost
+    const profilePatch: Partial<UserProfileConfig> = { cosmeticPointsBalance: newBalance }
+
+    if (grantCount > 0) {
+      profilePatch.streakSaverCount = (profile.streakSaverCount ?? 0) + grantCount
+    } else {
+      profilePatch.unlockedPerks = [...(profile.unlockedPerks ?? []), perkId]
+    }
+
+    await Promise.all([
+      db.resource_inventory.update('cosmetic_points', { balance: newBalance }),
+      db.user_profile_config.update(ACTIVE_USER_ID, profilePatch as Parameters<typeof db.user_profile_config.update>[1]),
+    ])
+
+    return { ok: true }
+  })
+}
+
+/**
+ * Consumes one streak saver. Returns false if none available.
+ */
+export async function consumeStreakSaver(): Promise<boolean> {
+  const db      = getGamesDb()
+  const profile = await db.user_profile_config.get(ACTIVE_USER_ID)
+  if (!profile || (profile.streakSaverCount ?? 0) < 1) return false
+  await db.user_profile_config.update(ACTIVE_USER_ID, {
+    streakSaverCount: (profile.streakSaverCount ?? 0) - 1,
+  })
+  return true
 }

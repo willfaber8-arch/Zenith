@@ -9,10 +9,14 @@ import { useAiConfig }      from '@/lib/hooks/useAiConfig'
 import { db }               from '@/lib/db'
 import {
   gamesDb, purchaseTheme, setActiveTheme, applyFreeTheme,
+  equipBackground,
   addToInventory, seedGamesDatabase,
 } from '@/lib/gamesDb'
 import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
 import { SHOP_CATALOG_STATIC } from '@/lib/shopCatalog'
+import { SHOP_BACKGROUND_PRESETS } from '@/lib/shopBackgrounds'
+import { useNav } from '@/lib/NavContext'
+import { requestGamesTab } from '@/lib/gamesNavState'
 import {
   UNIVERSITY_BRANDS, UNIVERSITY_THEME_DEFINITIONS, uniThemeId,
 } from '@/lib/universityThemes'
@@ -25,6 +29,14 @@ import {
   getPresets, savePreset, deletePreset, applyPreset,
   type DashboardPreset,
 } from '@/lib/dashboardPresets'
+import {
+  CUSTOM_THEME_ID, loadCustomTheme, saveCustomTheme,
+  DEFAULT_CUSTOM_THEME, type CustomThemeConfig,
+} from '@/lib/customTheme'
+import { BACKDROP_PRESETS, type BackdropId } from '@/lib/backdrops'
+import { normalizeHex } from '@/lib/themeColor'
+import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -40,6 +52,123 @@ function Section({ id, title, children }: { id?: string; title: string; children
       <h2 className={styles.sectionTitle}>{title}</h2>
       {children}
     </section>
+  )
+}
+
+/* ── Color field (wheel + hex input) ──────────────────────────── */
+function ColorField({
+  label, value, onChange,
+}: { label: string; value: string; onChange: (hex: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+
+  const commit = (raw: string) => {
+    const norm = normalizeHex(raw)
+    if (norm) onChange(norm)
+    else setDraft(value)   // revert invalid input
+  }
+
+  return (
+    <div className={styles.colorField}>
+      <span className={styles.colorFieldLabel}>{label}</span>
+      <div className={styles.colorFieldRow}>
+        <label className={styles.colorWell} style={{ background: value }}>
+          <input
+            type="color"
+            className={styles.colorWellInput}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            aria-label={`${label} colour wheel`}
+          />
+        </label>
+        <input
+          type="text"
+          className={styles.colorHexInput}
+          value={draft}
+          spellCheck={false}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
+          aria-label={`${label} hex code`}
+        />
+      </div>
+    </div>
+  )
+}
+
+/* ── Theme Forge — live custom theme creator ───────────────────── */
+function ThemeForgePanel({
+  isActive, onApply,
+}: { isActive: boolean; onApply: () => void }) {
+  const [config, setConfig] = useState<CustomThemeConfig>(() => loadCustomTheme())
+  const [live, setLive]     = useState(false)
+
+  // Persist + broadcast on every edit (ThemeApplicator re-applies live).
+  const update = useCallback((patch: Partial<CustomThemeConfig>) => {
+    setConfig(prev => {
+      const next = { ...prev, ...patch }
+      saveCustomTheme(next)
+      return next
+    })
+  }, [])
+
+  // Drive the app-wide preview while Live Preview is on.
+  useEffect(() => {
+    if (live) setPreviewId(CUSTOM_THEME_ID)
+    return () => { if (live) clearPreview() }
+  }, [live])
+
+  const reset = () => { setConfig({ ...DEFAULT_CUSTOM_THEME }); saveCustomTheme({ ...DEFAULT_CUSTOM_THEME }) }
+
+  return (
+    <div className={styles.forgePanel}>
+      <div className={styles.forgeHeader}>
+        <span className={styles.forgeTitle}>✦ Theme Forge</span>
+        <span className={styles.forgeSub}>Pick any colour — readability is auto-guarded.</span>
+      </div>
+
+      <div className={styles.forgeColors}>
+        <ColorField label="Accent"     value={config.accent}  onChange={h => update({ accent: h })} />
+        <ColorField label="Background" value={config.bgMain}  onChange={h => update({ bgMain: h })} />
+        <ColorField label="Surface"    value={config.surface} onChange={h => update({ surface: h })} />
+      </div>
+
+      <div className={styles.forgeField}>
+        <span className={styles.colorFieldLabel}>Backdrop</span>
+        <div className={styles.forgeBackdrops}>
+          {BACKDROP_PRESETS.map(b => (
+            <button
+              key={b.id}
+              type="button"
+              className={`${styles.forgeBackdropBtn} ${config.backdrop === b.id ? styles.forgeBackdropBtnActive : ''}`}
+              onClick={() => update({ backdrop: b.id as BackdropId })}
+              title={b.hint}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.forgeActions}>
+        <button
+          type="button"
+          className={`${styles.themeBtn} ${live ? styles.forgeLiveOn : ''}`}
+          onClick={() => setLive(v => !v)}
+        >
+          {live ? '◉ Live Preview On' : '◎ Live Preview'}
+        </button>
+        <button
+          type="button"
+          className={`${styles.themeBtn} ${styles.themeBtnBuy}`}
+          onClick={() => { setLive(false); clearPreview(); onApply() }}
+          disabled={isActive}
+        >
+          {isActive ? '✓ Active' : 'Apply Theme'}
+        </button>
+        <button type="button" className={styles.forgeResetBtn} onClick={reset}>Reset</button>
+      </div>
+    </div>
   )
 }
 
@@ -95,6 +224,7 @@ export default function SettingsView() {
   const { session }            = useAuth()
   const { toast }              = useToast()
   const { config, toggleWidget } = useSandboxConfig()
+  const { navigate }           = useNav()
 
   /* ── Ecosystem Wrapped ──────────────────────────────────────── */
   const [showWrapped, setShowWrapped] = useState(false)
@@ -192,11 +322,32 @@ export default function SettingsView() {
     () => gamesDb?.user_profile_config.get('active_user'),
     [],
   )
-  const ownedThemes  = gamesProfile?.purchasedThemes ?? ['zenith_default']
-  const activeTheme  = gamesProfile?.activeTheme     ?? 'zenith_default'
+  const ownedThemes  = gamesProfile?.purchasedThemes  ?? ['zenith_default']
+  const activeTheme  = gamesProfile?.activeTheme      ?? 'zenith_default'
   const cpBalance    = gamesProfile?.cosmeticPointsBalance ?? 0
+  const ownedBgs     = gamesProfile?.purchasedBackgrounds ?? []
+  const activeBg     = gamesProfile?.activeBackground ?? null
+  const unlockedPerks = gamesProfile?.unlockedPerks   ?? []
+  const streakSavers = gamesProfile?.streakSaverCount ?? 0
   const [buyingId,   setBuyingId]   = useState<string | null>(null)
   const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [equippingBgId, setEquippingBgId] = useState<string | null>(null)
+
+  /* ── Theme preview ──────────────────────────────────────────── */
+  const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+  const [bgPreviewing, setBgPreviewing] = useState<string | null>(getBgPreviewId())
+  useEffect(() => subscribePreview(setPreviewing), [])
+  useEffect(() => subscribeBgPreview(setBgPreviewing), [])
+  // End any preview when leaving Settings so it never "sticks".
+  useEffect(() => () => { clearPreview(); clearBgPreview() }, [])
+
+  const handlePreview = useCallback((id: string) => {
+    setPreviewId(previewing === id ? null : id)
+  }, [previewing])
+
+  const handleBgPreview = useCallback((id: string) => {
+    setBgPreviewId(bgPreviewing === id ? null : id)
+  }, [bgPreviewing])
 
   const handleBuyTheme = useCallback(async (id: string, cost: number) => {
     setBuyingId(id)
@@ -215,6 +366,18 @@ export default function SettingsView() {
     setActivatingId(null)
     toast('Theme applied.', 'success')
   }, [toast])
+
+  const handleEquipBackground = useCallback(async (bgId: string | null) => {
+    if (bgId) setEquippingBgId(bgId)
+    await equipBackground(bgId)
+    setEquippingBgId(null)
+    toast(bgId ? 'Background equipped.' : 'Background removed.', 'success')
+  }, [toast])
+
+  const goToShop = useCallback(() => {
+    requestGamesTab('shop')
+    navigate('games', 'creator')
+  }, [navigate])
 
   /* ── School colors state ───────────────────────────────────── */
   const [applyingUniId, setApplyingUniId] = useState<string | null>(null)
@@ -417,48 +580,212 @@ export default function SettingsView() {
 
         {/* ── Appearance ──────────────────────────────────────── */}
         <Section id="s-appearance" title="Appearance & Themes">
-          <p className={styles.sectionSubtitle}>
-            ✦ Balance: <strong>{cpBalance.toLocaleString()}</strong>
-          </p>
-          <div className={styles.themeGrid}>
-            {SHOP_CATALOG_STATIC.map(item => {
-              const owned    = ownedThemes.includes(item.id)
-              const equipped = activeTheme === item.id
-              const afford   = cpBalance >= item.cost
+          <div className={styles.appearanceHeader}>
+            <p className={styles.sectionSubtitle} style={{ margin: 0 }}>
+              ✦ Balance: <strong>{cpBalance.toLocaleString()}</strong>
+            </p>
+            <button
+              type="button"
+              className={styles.buyMoreBtn}
+              onClick={goToShop}
+            >
+              Browse Shop →
+            </button>
+          </div>
+
+          {/* ── Theme Forge — featured at top when owned ─────── */}
+          {ownedThemes.includes(CUSTOM_THEME_ID) ? (
+            <ThemeForgePanel
+              isActive={activeTheme === CUSTOM_THEME_ID}
+              onApply={() => void handleActivateTheme(CUSTOM_THEME_ID)}
+            />
+          ) : (
+            <div className={styles.forgeCta}>
+              <div className={styles.forgeCtaLeft}>
+                <span className={styles.forgeCtaIcon}>✦</span>
+                <div>
+                  <p className={styles.forgeCtaTitle}>Theme Forge</p>
+                  <p className={styles.forgeCtaDesc}>
+                    Design unlimited custom themes — any colour, any backdrop. Re-editable anytime.
+                  </p>
+                </div>
+              </div>
+              <button type="button" className={styles.forgeCtaBtn} onClick={goToShop}>
+                Unlock in Shop (✦ 2000) →
+              </button>
+            </div>
+          )}
+
+          {/* ── Owned themes grid ────────────────────────────── */}
+          <p className={styles.ownedLabel}>Your Themes</p>
+          {ownedThemes.filter(id => id !== CUSTOM_THEME_ID).length === 0 ? (
+            <p className={styles.ownedEmpty}>
+              You only have the default theme. <button type="button" className={styles.textLink} onClick={goToShop}>Browse the shop →</button>
+            </p>
+          ) : (
+            <div className={styles.themeGrid}>
+              {SHOP_CATALOG_STATIC
+                .filter(item => (item.category === 'theme' || item.category === 'pack') && ownedThemes.includes(item.id) && item.id !== CUSTOM_THEME_ID)
+                .map(item => {
+                  const equipped = activeTheme === item.id
+                  return (
+                    <div
+                      key={item.id}
+                      className={`${styles.themeCard} ${equipped ? styles.themeCardActive : ''} ${styles.themeCardOwned}`}
+                    >
+                      {item.tag && <span className={styles.themeTag}>{item.tag}</span>}
+                      <div className={styles.themeCardIcon}>{item.icon}</div>
+                      <p className={styles.themeCardName}>{item.name}</p>
+                      <p className={styles.themeCardTagline}>{item.tagline}</p>
+                      <div className={styles.themeCardFooter}>
+                        {equipped ? (
+                          <span className={styles.themeEquipped}>✓ Active</span>
+                        ) : (
+                          <button
+                            className={styles.themeBtn}
+                            onClick={() => void handleActivateTheme(item.id)}
+                            disabled={activatingId === item.id}
+                          >
+                            {activatingId === item.id ? '···' : 'Apply'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className={`${styles.previewBtn} ${previewing === item.id ? styles.previewBtnOn : ''}`}
+                          onClick={() => handlePreview(item.id)}
+                        >
+                          {previewing === item.id ? '■ Stop' : '◉ Preview'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              }
+            </div>
+          )}
+
+          {/* ── Owned Backgrounds ────────────────────────────── */}
+          <div className={styles.appearanceHeader}>
+            <p className={styles.ownedLabel} style={{ margin: 0 }}>Your Backgrounds</p>
+            <button type="button" className={styles.buyMoreBtn} onClick={goToShop}>
+              Browse Shop →
+            </button>
+          </div>
+          <div className={styles.bgGrid}>
+            {/* Default "Classic Dots" — always owned; equipping clears the override */}
+            {(() => {
+              const isActive = !activeBg
               return (
-                <div
-                  key={item.id}
-                  className={`${styles.themeCard} ${equipped ? styles.themeCardActive : ''} ${owned ? styles.themeCardOwned : ''}`}
-                >
-                  {item.tag && <span className={styles.themeTag}>{item.tag}</span>}
-                  <div className={styles.themeCardIcon}>{item.icon}</div>
-                  <p className={styles.themeCardName}>{item.name}</p>
-                  <p className={styles.themeCardTagline}>{item.tagline}</p>
-                  <div className={styles.themeCardFooter}>
-                    {equipped ? (
-                      <span className={styles.themeEquipped}>✓ Active</span>
-                    ) : owned ? (
-                      <button
-                        className={styles.themeBtn}
-                        onClick={() => void handleActivateTheme(item.id)}
-                        disabled={activatingId === item.id}
-                      >
-                        {activatingId === item.id ? '···' : 'Apply'}
-                      </button>
+                <div className={`${styles.bgCard} ${isActive ? styles.bgCardActive : ''}`}>
+                  <span className={styles.bgCardTag}>DEFAULT</span>
+                  <p className={styles.bgCardLabel}>Classic Dots</p>
+                  <p className={styles.bgCardHint}>The original faint dot grid — the Zenith baseline.</p>
+                  <div className={styles.bgCardFooter}>
+                    {isActive ? (
+                      <span className={styles.bgActiveLabel}>✓ Active</span>
                     ) : (
                       <button
-                        className={`${styles.themeBtn} ${styles.themeBtnBuy} ${!afford ? styles.themeBtnLocked : ''}`}
-                        onClick={() => void handleBuyTheme(item.id, item.cost)}
-                        disabled={!afford || buyingId === item.id}
-                        title={!afford ? `Need ${(item.cost - cpBalance).toLocaleString()} more ✦` : undefined}
+                        type="button"
+                        className={styles.bgEquipBtn}
+                        onClick={() => void handleEquipBackground(null)}
+                        disabled={equippingBgId !== null}
                       >
-                        {buyingId === item.id ? '···' : item.cost === 0 ? 'Free' : `✦ ${item.cost}`}
+                        Equip
                       </button>
                     )}
                   </div>
                 </div>
               )
-            })}
+            })()}
+
+            {SHOP_BACKGROUND_PRESETS
+              .filter(bg => ownedBgs.includes(bg.id))
+              .map(bg => {
+                const isActive = activeBg === bg.id
+                return (
+                  <div
+                    key={bg.id}
+                    className={`${styles.bgCard} ${isActive ? styles.bgCardActive : ''}`}
+                  >
+                    <p className={styles.bgCardLabel}>{bg.label}</p>
+                    <p className={styles.bgCardHint}>{bg.hint}</p>
+                    <div className={styles.bgCardFooter}>
+                      {isActive ? (
+                        <span className={styles.bgActiveLabel}>✓ Active</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.bgEquipBtn}
+                          onClick={() => void handleEquipBackground(bg.id)}
+                          disabled={equippingBgId === bg.id}
+                        >
+                          {equippingBgId === bg.id ? '···' : 'Equip'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={`${styles.previewBtn} ${bgPreviewing === bg.id ? styles.previewBtnOn : ''}`}
+                        onClick={() => handleBgPreview(bg.id)}
+                      >
+                        {bgPreviewing === bg.id ? '■ Stop' : '◉ Preview'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            }
+          </div>
+
+          {/* ── Perks (purchased in the Shop; shown here) ─────── */}
+          <div className={styles.perksSection}>
+            <div className={styles.appearanceHeader}>
+              <p className={styles.ownedLabel} style={{ margin: 0 }}>Perks</p>
+              <button type="button" className={styles.buyMoreBtn} onClick={goToShop}>
+                Buy Perks in Shop →
+              </button>
+            </div>
+            <div className={styles.perkList}>
+              {/* Streak Savers balance */}
+              <div className={styles.perkCard}>
+                <div className={styles.perkCardLeft}>
+                  <span className={styles.perkIcon}>🔥</span>
+                  <div>
+                    <p className={styles.perkCardName}>Streak Savers</p>
+                    <p className={styles.perkCardDesc}>Restore a broken habit streak. Each use restores the streak for one habit.</p>
+                    <p className={styles.saverBalance}>
+                      Available: <strong>{streakSavers}</strong>
+                    </p>
+                  </div>
+                </div>
+                {streakSavers > 0 ? (
+                  <span className={styles.perkOwnedBadge}>{streakSavers} ready</span>
+                ) : (
+                  <button type="button" className={styles.textLink} onClick={goToShop}>
+                    Buy in Shop →
+                  </button>
+                )}
+              </div>
+
+              {/* Analytics Vault */}
+              <div className={`${styles.perkCard} ${unlockedPerks.includes('perk_extra_stats') ? styles.perkCardOwned : ''}`}>
+                <div className={styles.perkCardLeft}>
+                  <span className={styles.perkIcon}>◎</span>
+                  <div>
+                    <p className={styles.perkCardName}>Analytics Vault</p>
+                    <p className={styles.perkCardDesc}>
+                      Unlock extended habit analytics — weekday breakdowns, streaks per-period, and all-time totals.
+                    </p>
+                  </div>
+                </div>
+                {unlockedPerks.includes('perk_extra_stats') ? (
+                  <span className={styles.perkOwnedBadge}>✓ Unlocked</span>
+                ) : (
+                  <button type="button" className={styles.textLink} onClick={goToShop}>
+                    Unlock in Shop →
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* ── Ambient Backdrop ──────────────────────────────── */}
@@ -532,6 +859,13 @@ export default function SettingsView() {
                         {applyingUniId === brand.id ? '···' : 'Apply'}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className={`${styles.previewBtn} ${previewing === themeId ? styles.previewBtnOn : ''}`}
+                      onClick={() => handlePreview(themeId)}
+                    >
+                      {previewing === themeId ? '■ Stop' : '◉ Preview'}
+                    </button>
                   </div>
                 </div>
               )
@@ -946,6 +1280,70 @@ export default function SettingsView() {
     {showWrapped && (
       <EcosystemWrapped onClose={() => setShowWrapped(false)} />
     )}
+
+    {/* ── Live theme preview bar ──────────────────────────────── */}
+    {previewing && (() => {
+      const shopItem = SHOP_CATALOG_STATIC.find(i => i.id === previewing)
+      const isUni    = previewing.startsWith('uni_')
+      const ownedP   = ownedThemes.includes(previewing)
+      const name     = previewing === CUSTOM_THEME_ID
+        ? 'Theme Forge'
+        : shopItem?.name ?? UNIVERSITY_THEME_DEFINITIONS[previewing]?.label ?? previewing
+      const applyPreview = () => {
+        if (shopItem && !ownedP && previewing !== CUSTOM_THEME_ID) {
+          void handleBuyTheme(previewing, shopItem.cost)
+          return
+        }
+        if (isUni) void handleApplySchoolColors(previewing.replace(/^uni_/, ''))
+        else       void handleActivateTheme(previewing)
+        clearPreview()
+      }
+      const buyMode = !!shopItem && !ownedP && previewing !== CUSTOM_THEME_ID
+      return (
+        <div className={styles.previewBar} role="status">
+          <span className={styles.previewBarDot} aria-hidden="true" />
+          <span className={styles.previewBarLabel}>
+            Previewing <strong>{name}</strong>
+          </span>
+          <button type="button" className={styles.previewBarApply} onClick={applyPreview}>
+            {buyMode ? `Buy ✦ ${shopItem!.cost.toLocaleString()}` : 'Apply'}
+          </button>
+          <button type="button" className={styles.previewBarStop} onClick={() => clearPreview()}>
+            Stop preview
+          </button>
+        </div>
+      )
+    })()}
+
+    {/* ── Live background preview bar ──────────────────────────── */}
+    {bgPreviewing && (() => {
+      const bg     = SHOP_BACKGROUND_PRESETS.find(b => b.id === bgPreviewing)
+      const ownedB = ownedBgs.includes(bgPreviewing)
+      return (
+        <div className={`${styles.previewBar} ${styles.previewBarBg}`} role="status">
+          <span className={styles.previewBarDot} aria-hidden="true" />
+          <span className={styles.previewBarLabel}>
+            Previewing <strong>{bg?.label ?? bgPreviewing}</strong> background
+          </span>
+          {ownedB ? (
+            <button
+              type="button"
+              className={styles.previewBarApply}
+              onClick={() => { void handleEquipBackground(bgPreviewing); clearBgPreview() }}
+            >
+              Equip
+            </button>
+          ) : (
+            <button type="button" className={styles.previewBarApply} onClick={goToShop}>
+              Get in Shop →
+            </button>
+          )}
+          <button type="button" className={styles.previewBarStop} onClick={() => clearBgPreview()}>
+            Stop preview
+          </button>
+        </div>
+      )
+    })()}
     </>
   )
 }

@@ -1111,6 +1111,16 @@
   background: rgba(248, 113, 113, 0.06);
 }
 
+/* Shop root — when a background is previewed, the pattern is set here as an
+   inline background-image so the whole shop panel shows the backdrop in
+   context. Padding + radius give a visible pattern frame around the grid. */
+.shopRoot {
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  margin: calc(-1 * var(--sp-3));
+  transition: background-color 220ms var(--ease-smooth);
+}
+
 .shopGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -1168,6 +1178,17 @@
   margin-bottom: var(--sp-1);
 }
 
+/* Inline pattern swatch for background shop items — replaces the emoji icon */
+.shopBgSwatch {
+  width: 100%;
+  height: 52px;
+  border-radius: var(--r-md);
+  background-color: #0b0d13;
+  margin-bottom: var(--sp-2);
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
 .shopCardName {
   font-family: var(--font-display);
   font-size: 0.8125rem;
@@ -1188,6 +1209,31 @@
   margin-top: var(--sp-3);
   display: flex;
   align-items: center;
+  gap: var(--sp-2);
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.shopPreviewBtn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.shopPreviewBtn:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--cat-accent) 40%, transparent);
+}
+.shopPreviewBtnOn {
+  color: var(--cat-accent);
+  border-color: color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 12%, transparent);
 }
 
 .shopEquippedLabel {
@@ -1245,6 +1291,13 @@
 .shopBuyBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .shopBuyBtnLocked { opacity: 0.40; }
+
+.shopPerkBalance {
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-2) 0;
+}
 
 .shopBuyIcon {
   font-size: 0.55rem;

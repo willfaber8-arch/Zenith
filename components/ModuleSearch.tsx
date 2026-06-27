@@ -120,7 +120,7 @@ export default function ModuleSearch() {
               ✕
             </button>
           )
-          : <kbd className={styles.kbd} aria-hidden="true">⌘K</kbd>}
+          : null}
       </div>
 
       {showDropdown && (

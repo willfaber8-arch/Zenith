@@ -636,4 +636,6 @@ export const ALL_THEMEABLE_VARS: readonly string[] = [
   '--tint-creator',
   '--tint-vault',
   '--body-bg-image',
+  '--body-bg-size',
+  '--body-bg-repeat',
 ] as const

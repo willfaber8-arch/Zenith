@@ -32,10 +32,17 @@ import { useZenithStorageUpgrades, type UpgradeMatrixNode } from '@/hooks/useZen
 import { useSkillTreeActions }       from '@/hooks/useSkillTreeActions'
 import { CRUCIBLE_RECIPES }          from '@/lib/engines/CosmicCrucibleEngine'
 import { SKILL_TREE_MAP }            from '@/lib/engines/SkillTreeFirewall'
-import { RESOURCE_IDS, RESOURCE_META, type ResourceId, gamesDb, purchaseTheme, setActiveTheme } from '@/lib/gamesDb'
+import { RESOURCE_IDS, RESOURCE_META, type ResourceId, gamesDb, purchaseTheme, setActiveTheme, purchaseBackground, grantBackground, equipBackground, purchasePerk } from '@/lib/gamesDb'
+import { PACK_BACKGROUND_GRANTS } from '@/lib/shopCatalog'
+import { SHOP_BACKGROUND_PRESETS, resolveShopBackground } from '@/lib/shopBackgrounds'
+import { THEME_DEFINITIONS } from '@/lib/themeDefinitions'
 import SkillTreeCanvas, { type SkillTreeNode } from '@/components/games/skills/SkillTreeCanvas'
-import { consumeRequestedTab }       from '@/lib/gamesNavState'
+import { peekRequestedTab, consumeRequestedTab, subscribeGamesTab } from '@/lib/gamesNavState'
 import { SHOP_CATALOG_STATIC, type ShopCatalogItem } from '@/lib/shopCatalog'
+import { CUSTOM_THEME_ID }           from '@/lib/customTheme'
+import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
+import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
+import { useNav }                    from '@/lib/NavContext'
 import styles from './GamesTabShell.module.css'
 
 /* ── Module-level constants ─────────────────────────────────────── */
@@ -266,28 +273,85 @@ function ShopPanel() {
     () => gamesDb.user_profile_config.get('active_user'),
     [],
   )
-  const [catFilter, setCatFilter]   = useState<'all' | 'theme' | 'pack'>('all')
+  const { navigate } = useNav()
+  const [catFilter, setCatFilter]   = useState<'all' | 'theme' | 'pack' | 'background' | 'perk'>('all')
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [activating, setActivating] = useState<string | null>(null)
+  const [equipping,  setEquipping]  = useState<string | null>(null)
   const [shopMsg, setShopMsg]       = useState<{ text: string; ok: boolean } | null>(null)
+  const [previewing, setPreviewing] = useState<string | null>(getPreviewId())
+  const [bgPreviewing, setBgPreviewing] = useState<string | null>(getBgPreviewId())
 
-  const ownedSet    = useMemo(() => new Set(profile?.purchasedThemes ?? ['zenith_default']), [profile])
-  const activeThemeId = profile?.activeTheme ?? 'zenith_default'
+  useEffect(() => subscribePreview(setPreviewing), [])
+  useEffect(() => subscribeBgPreview(setBgPreviewing), [])
+  // Never let a preview outlive the shop view.
+  useEffect(() => () => { clearPreview(); clearBgPreview() }, [])
+
+  const togglePreview   = (id: string) => setPreviewId(previewing === id ? null : id)
+  const toggleBgPreview = (id: string) => setBgPreviewId(bgPreviewing === id ? null : id)
+
+  const ownedThemes  = useMemo(() => new Set(profile?.purchasedThemes  ?? ['zenith_default']), [profile])
+  const ownedBgs     = useMemo(() => new Set(profile?.purchasedBackgrounds ?? []),              [profile])
+  const unlockedPerks = useMemo(() => new Set(profile?.unlockedPerks ?? []),                   [profile])
+  const activeThemeId = profile?.activeTheme      ?? 'zenith_default'
+  const activeBgId    = profile?.activeBackground ?? null
+
+  /* Compute accent + bg hex for inline background swatches */
+  const accentHex = useMemo(() => {
+    const def = THEME_DEFINITIONS[activeThemeId]
+    return def?.swatch ?? '#68d9a0'
+  }, [activeThemeId])
+  const bgHex = useMemo(() => {
+    const def = THEME_DEFINITIONS[activeThemeId]
+    return (def?.vars as Record<string, string> | undefined)?.['--bg-main'] ?? '#0b0d13'
+  }, [activeThemeId])
+  const streakSavers  = profile?.streakSaverCount ?? 0
 
   const filtered = catFilter === 'all'
-    ? SHOP_CATALOG
-    : SHOP_CATALOG.filter(i => i.category === catFilter)
+    ? SHOP_CATALOG_STATIC
+    : SHOP_CATALOG_STATIC.filter(i => i.category === catFilter)
 
-  const handlePurchase = async (item: ShopItem) => {
+  const handlePurchaseTheme = async (item: ShopCatalogItem) => {
     setPurchasing(item.id)
     const result = await purchaseTheme(item.id, item.cost)
     setPurchasing(null)
     if (!result.ok) {
       setShopMsg({ text: result.reason ?? 'Purchase failed.', ok: false })
     } else {
+      // If it's a pack, also grant its bundled background
+      const bgGrant = PACK_BACKGROUND_GRANTS[item.id]
+      if (bgGrant) await grantBackground(bgGrant)
       setShopMsg({ text: `${item.name} unlocked!`, ok: true })
     }
-    setTimeout(() => setShopMsg(null), 3_000)
+    setTimeout(() => setShopMsg(null), 3_500)
+  }
+
+  const handlePurchaseBackground = async (item: ShopCatalogItem) => {
+    setPurchasing(item.id)
+    const result = await purchaseBackground(item.id, item.cost)
+    setPurchasing(null)
+    if (!result.ok) {
+      setShopMsg({ text: result.reason ?? 'Purchase failed.', ok: false })
+    } else {
+      setShopMsg({ text: `${item.name} unlocked!`, ok: true })
+    }
+    setTimeout(() => setShopMsg(null), 3_500)
+  }
+
+  const handlePurchasePerk = async (item: ShopCatalogItem) => {
+    // Streak savers grant 5 or 15; analytics vault grants 0 (permanent unlock)
+    const grantCount = item.id === 'perk_streak_saver_5' ? 5 : item.id === 'perk_streak_saver_15' ? 15 : 0
+    setPurchasing(item.id)
+    const result = await purchasePerk(item.id, item.cost, grantCount)
+    setPurchasing(null)
+    if (!result.ok) {
+      setShopMsg({ text: result.reason ?? 'Purchase failed.', ok: false })
+    } else if (grantCount > 0) {
+      setShopMsg({ text: `+${grantCount} Streak Savers added! Total: ${streakSavers + grantCount}`, ok: true })
+    } else {
+      setShopMsg({ text: `${item.name} unlocked!`, ok: true })
+    }
+    setTimeout(() => setShopMsg(null), 3_500)
   }
 
   const handleActivate = async (themeId: string) => {
@@ -296,14 +360,38 @@ function ShopPanel() {
     setActivating(null)
   }
 
+  const handleEquipBackground = async (bgId: string | null) => {
+    if (bgId) setEquipping(bgId)
+    await equipBackground(bgId)
+    setEquipping(null)
+  }
+
+  const CAT_LABELS: Record<string, string> = {
+    all: 'All Items', theme: 'Themes', pack: 'Packs', background: 'Backgrounds', perk: 'Perks',
+  }
+
+  /* When a background is being previewed, flood the shop panel's own background
+     with that pattern so the user sees it in context (the per-card swatch shows
+     a thumbnail; this shows it full-bleed behind the grid). */
+  const shopPreviewSpec = bgPreviewing
+    ? resolveShopBackground(bgPreviewing, accentHex, bgHex)
+    : null
+
   return (
-    <div>
+    <div
+      className={styles.shopRoot}
+      style={shopPreviewSpec ? {
+        backgroundImage:  shopPreviewSpec.image,
+        backgroundSize:   shopPreviewSpec.size,
+        backgroundRepeat: shopPreviewSpec.repeat,
+      } : undefined}
+    >
       {/* ── Balance header ─────────────────────────────── */}
       <div className={styles.shopHeader}>
         <div>
           <p className={styles.sectionHeading}>Cosmetic Shop</p>
           <p className={styles.shopSubtitle}>
-            Spend ✦ Credits on themes and interface packs.
+            Spend ✦ Credits on themes, backgrounds, packs, and perks.
           </p>
         </div>
         <div className={styles.shopBalanceChip}>
@@ -314,13 +402,13 @@ function ShopPanel() {
 
       {/* ── Category filter ────────────────────────────── */}
       <div className={styles.shopCatBar}>
-        {(['all', 'theme', 'pack'] as const).map(cat => (
+        {(['all', 'theme', 'pack', 'background', 'perk'] as const).map(cat => (
           <button
             key={cat}
             className={`${styles.shopCatBtn} ${catFilter === cat ? styles.shopCatBtnActive : ''}`}
             onClick={() => setCatFilter(cat)}
           >
-            {cat === 'all' ? 'All Items' : cat === 'theme' ? 'Themes' : 'Packs'}
+            {CAT_LABELS[cat]}
           </button>
         ))}
       </div>
@@ -334,10 +422,29 @@ function ShopPanel() {
       {/* ── Item grid ──────────────────────────────────── */}
       <div className={styles.shopGrid}>
         {filtered.map(item => {
-          const owned    = ownedSet.has(item.id)
-          const equipped = activeThemeId === item.id
+          const isThemeOrPack = item.category === 'theme' || item.category === 'pack'
+          const isBg   = item.category === 'background'
+          const isPerk = item.category === 'perk'
+
+          // bg_default is the baseline texture: always owned, equipped when
+          // no shop background is active, and "equipping" it clears the override.
+          const isDefaultBg = item.id === 'bg_default'
+
+          /* Ownership / equipped state per category */
+          const owned    = isThemeOrPack ? ownedThemes.has(item.id)
+                         : isBg          ? (isDefaultBg || ownedBgs.has(item.id))
+                         :                  unlockedPerks.has(item.id)
+          const equipped = isThemeOrPack ? activeThemeId === item.id
+                         : isBg          ? (isDefaultBg ? !activeBgId : activeBgId === item.id)
+                         :                  false
+          // Streak savers are always re-purchasable
+          const isRepurchasable = item.id === 'perk_streak_saver_5' || item.id === 'perk_streak_saver_15'
+          const canBuy   = !owned || isRepurchasable
           const canAfford = cosmeticPoints >= item.cost
-          const isProcessing = purchasing === item.id || activating === item.id
+          const isProcessing = purchasing === item.id || activating === item.id || equipping === item.id
+
+          /* Inline pattern swatch for background items */
+          const bgSpec = isBg ? resolveShopBackground(item.id, accentHex, bgHex) : null
 
           return (
             <div
@@ -352,34 +459,125 @@ function ShopPanel() {
                 <span className={styles.shopTag}>{item.tag}</span>
               )}
 
-              <div className={styles.shopCardIcon}>{item.icon}</div>
+              {bgSpec ? (
+                <div
+                  className={styles.shopBgSwatch}
+                  style={{
+                    backgroundImage:  bgSpec.image,
+                    backgroundSize:   bgSpec.size,
+                    backgroundRepeat: bgSpec.repeat,
+                  }}
+                />
+              ) : (
+                <div className={styles.shopCardIcon}>{item.icon}</div>
+              )}
               <p className={styles.shopCardName}>{item.name}</p>
               <p className={styles.shopCardTagline}>{item.tagline}</p>
 
+              {/* Streak saver count chip */}
+              {item.id === 'perk_streak_saver_5' && streakSavers > 0 && (
+                <p className={styles.shopPerkBalance}>🔥 {streakSavers} saved</p>
+              )}
+
               <div className={styles.shopCardFooter}>
-                {equipped ? (
-                  <span className={styles.shopEquippedLabel}>✓ Equipped</span>
-                ) : owned ? (
+                {/* Theme / pack actions */}
+                {isThemeOrPack && (
+                  equipped ? (
+                    <span className={styles.shopEquippedLabel}>✓ Equipped</span>
+                  ) : owned && item.id === CUSTOM_THEME_ID ? (
+                    <button
+                      className={styles.shopEquipBtn}
+                      onClick={() => navigate('settings', null)}
+                    >
+                      Customize →
+                    </button>
+                  ) : owned ? (
+                    <button
+                      className={styles.shopEquipBtn}
+                      onClick={() => void handleActivate(item.id)}
+                      disabled={isProcessing}
+                    >
+                      {activating === item.id ? '···' : 'Equip'}
+                    </button>
+                  ) : (
+                    <button
+                      className={`${styles.shopBuyBtn} ${!canAfford ? styles.shopBuyBtnLocked : ''}`}
+                      onClick={() => void handlePurchaseTheme(item)}
+                      disabled={!canAfford || isProcessing}
+                      title={!canAfford ? `Need ${item.cost - cosmeticPoints} more ✦` : undefined}
+                    >
+                      {purchasing === item.id ? '···' : (
+                        <><span className={styles.shopBuyIcon}>✦</span>{item.cost === 0 ? 'Free' : item.cost.toLocaleString()}</>
+                      )}
+                    </button>
+                  )
+                )}
+
+                {/* Background actions */}
+                {isBg && (
+                  owned ? (
+                    equipped ? (
+                      <span className={styles.shopEquippedLabel}>✓ Equipped</span>
+                    ) : (
+                      <button
+                        className={styles.shopEquipBtn}
+                        onClick={() => void handleEquipBackground(isDefaultBg ? null : item.id)}
+                        disabled={isProcessing}
+                      >
+                        {equipping === item.id ? '···' : 'Equip'}
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      className={`${styles.shopBuyBtn} ${!canAfford ? styles.shopBuyBtnLocked : ''}`}
+                      onClick={() => void handlePurchaseBackground(item)}
+                      disabled={!canAfford || isProcessing}
+                      title={!canAfford ? `Need ${item.cost - cosmeticPoints} more ✦` : undefined}
+                    >
+                      {purchasing === item.id ? '···' : (
+                        <><span className={styles.shopBuyIcon}>✦</span>{item.cost.toLocaleString()}</>
+                      )}
+                    </button>
+                  )
+                )}
+
+                {/* Perk actions */}
+                {isPerk && (
+                  owned && !isRepurchasable ? (
+                    <span className={styles.shopEquippedLabel}>✓ Unlocked</span>
+                  ) : (
+                    <button
+                      className={`${styles.shopBuyBtn} ${!canAfford ? styles.shopBuyBtnLocked : ''}`}
+                      onClick={() => void handlePurchasePerk(item)}
+                      disabled={!canAfford || isProcessing}
+                      title={!canAfford ? `Need ${item.cost - cosmeticPoints} more ✦` : undefined}
+                    >
+                      {purchasing === item.id ? '···' : (
+                        <><span className={styles.shopBuyIcon}>✦</span>{item.cost.toLocaleString()}</>
+                      )}
+                    </button>
+                  )
+                )}
+
+                {/* Theme / pack preview */}
+                {isThemeOrPack && (
                   <button
-                    className={styles.shopEquipBtn}
-                    onClick={() => void handleActivate(item.id)}
-                    disabled={isProcessing}
+                    type="button"
+                    className={`${styles.shopPreviewBtn} ${previewing === item.id ? styles.shopPreviewBtnOn : ''}`}
+                    onClick={() => togglePreview(item.id)}
                   >
-                    {activating === item.id ? '···' : 'Equip'}
+                    {previewing === item.id ? '■ Stop' : '◉ Preview'}
                   </button>
-                ) : (
+                )}
+
+                {/* Background preview (not for the baseline default) */}
+                {isBg && !isDefaultBg && (
                   <button
-                    className={`${styles.shopBuyBtn} ${!canAfford ? styles.shopBuyBtnLocked : ''}`}
-                    onClick={() => void handlePurchase(item)}
-                    disabled={!canAfford || isProcessing}
-                    title={!canAfford ? `Need ${item.cost - cosmeticPoints} more ✦` : undefined}
+                    type="button"
+                    className={`${styles.shopPreviewBtn} ${bgPreviewing === item.id ? styles.shopPreviewBtnOn : ''}`}
+                    onClick={() => toggleBgPreview(item.id)}
                   >
-                    {purchasing === item.id ? '···' : (
-                      <>
-                        <span className={styles.shopBuyIcon}>✦</span>
-                        {item.cost === 0 ? 'Free' : item.cost.toLocaleString()}
-                      </>
-                    )}
+                    {bgPreviewing === item.id ? '■ Stop' : '◉ Preview'}
                   </button>
                 )}
               </div>
@@ -891,11 +1089,20 @@ export default function GamesTabShell({
 }: GamesTabShellSlots = {}) {
 
   /* ── Internal navigation state ────────────────────────────── */
+  // peek (pure) for the initial value; the mount effect below consumes it.
   const [rightTab, setRightTab] = useState<GamesRightTab>(
-    () => (consumeRequestedTab() as GamesRightTab) ?? 'arcade',
+    () => (peekRequestedTab() as GamesRightTab) ?? 'arcade',
   )
   const [activeStation,   setActiveStation]   = useState<BiosphereStation>('terminal')
   const [bioPaneOpenMob,  setBioPaneOpenMob]  = useState(false)
+
+  /* Consume any pending deep-link on mount, and keep listening so a request
+     fired while the shell is already on screen still switches the tab. */
+  useEffect(() => {
+    const pending = consumeRequestedTab()
+    if (pending) setRightTab(pending as GamesRightTab)
+    return subscribeGamesTab(tab => setRightTab(tab as GamesRightTab))
+  }, [])
 
   /* ── Active crucible job count for tab badge ─────────────── */
   const { activeJobs } = useCosmicCrucible()

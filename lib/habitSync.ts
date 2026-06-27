@@ -27,6 +27,8 @@
  */
 
 import { db, type Habit } from '@/lib/db'
+import { pushNotification } from '@/lib/notificationCenter'
+import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
@@ -69,21 +71,6 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function isoDayBefore(iso: string): string {
-  const d = new Date(iso + 'T12:00:00')
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
-
-function dayOfWeek(iso: string): number {
-  return new Date(iso + 'T12:00:00').getDay()
-}
-
-function isScheduledOn(habit: Habit, iso: string): boolean {
-  if (!habit.activeDays || habit.activeDays.length === 0) return true
-  return habit.activeDays.includes(dayOfWeek(iso))
-}
-
 /* ── Core progress primitive ──────────────────────────────────── */
 
 export interface ProgressResult {
@@ -109,16 +96,14 @@ export async function addHabitProgress(
 
   const habit = await db.habits.get(habitId)
   if (!habit) return null
-  if (!isScheduledOn(habit, dateISO)) return null
+  if (!isHabitScheduledOn(habit, dateISO)) return null
 
   const existing = await db.habitCompletions
     .where('[habitId+date]').equals([habitId, dateISO])
     .first()
 
   const prevCount = existing?.count ?? 0
-  if (prevCount >= habit.targetCompletions) return null
-
-  const newCount = Math.min(prevCount + amount, habit.targetCompletions)
+  const newCount  = prevCount + amount   // no cap — user can tap past goal
 
   if (existing?.id != null) {
     await db.habitCompletions.update(existing.id, { count: newCount })
@@ -126,13 +111,20 @@ export async function addHabitProgress(
     await db.habitCompletions.add({ habitId, date: dateISO, count: newCount })
   }
 
-  const completedNow =
-    newCount >= habit.targetCompletions && prevCount < habit.targetCompletions
+  const goalType = habit.goalType ?? 'at_least'
+  const target   = habit.targetCompletions
+
+  // completedNow: first press that crosses the "done" threshold for this goal type.
+  const completedNow = goalType === 'at_most'
+    ? newCount > 0 && prevCount === 0 && newCount <= target   // first tracked tap while under limit
+    : newCount >= target && prevCount < target                 // first press reaching minimum
 
   if (completedNow) {
-    const yesterday = isoDayBefore(dateISO)
+    // "Consecutive" = the previous scheduled occurrence was completed —
+    // works for daily, specific-day, biweekly, and monthly cadences alike.
+    const prevScheduled = previousScheduledDate(habit, dateISO)
     const consecutive =
-      habit.lastCompletedDate === yesterday || habit.lastCompletedDate === dateISO
+      habit.lastCompletedDate === prevScheduled || habit.lastCompletedDate === dateISO
     const newStreak  = consecutive ? habit.streakCount + 1 : 1
     const newAllTime = Math.max(newStreak, habit.allTimeHighStreak ?? 0)
     await db.habits.update(habitId, {
@@ -140,6 +132,30 @@ export async function addHabitProgress(
       lastCompletedDate: dateISO,
       allTimeHighStreak: newAllTime,
     })
+  }
+
+  // Over-goal streak tracking — only for at_least habits.
+  // Fires once per day: when the count first crosses above the target.
+  if (goalType === 'at_least' && newCount > target && prevCount <= target) {
+    const prevScheduled   = previousScheduledDate(habit, dateISO)
+    const lastExc         = habit.lastExceededDate
+    const overConsecutive = lastExc === prevScheduled || lastExc === dateISO
+    const newOverStreak   = overConsecutive ? (habit.overGoalStreak ?? 0) + 1 : 1
+    await db.habits.update(habitId, {
+      overGoalStreak:   newOverStreak,
+      lastExceededDate: dateISO,
+    })
+    // Suggest raising the goal after every 5-day consecutive over-goal run.
+    if (newOverStreak >= 5 && newOverStreak % 5 === 0) {
+      pushNotification({
+        id:    `habit-goal-raise-${habitId}-${newOverStreak}`,
+        type:  'habit-milestone',
+        icon:  '📈',
+        title: `${habit.name} — time to raise your goal?`,
+        body:  `You've exceeded your target ${newOverStreak} days in a row. Consider increasing it.`,
+        view:  'habits',
+      })
+    }
   }
 
   return { completedNow, newCount }
