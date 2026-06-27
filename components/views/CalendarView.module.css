@@ -1811,3 +1811,118 @@
   flex: 1;
   min-width: 220px;
 }
+
+/* ── Calendar Manager (local + imported) ──────────────────────── */
+.calManagerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.newCalBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 9%, transparent);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.newCalBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 60%, transparent);
+}
+.newCalBtnActive {
+  background: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+}
+
+.newCalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.newCalModeRow {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 3px;
+  align-self: flex-start;
+}
+.newCalModeBtn {
+  padding: 0.3rem 0.8rem;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--r-md) - 3px);
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.newCalModeBtnOn {
+  background: rgba(124, 149, 255, 0.14);
+  color: var(--accent-purple);
+}
+
+.localCalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.colorSwatchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--dur-fast), border-color var(--dur-fast);
+}
+.colorSwatch:hover { transform: scale(1.12); }
+.colorSwatchOn {
+  border-color: var(--text-primary);
+  transform: scale(1.12);
+}
+
+.feedChipBadge {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.feedChipHidden { opacity: 0.5; }
+.feedChipHidden .feedChipLabel { text-decoration: line-through; }

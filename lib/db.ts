@@ -381,6 +381,20 @@ export interface PersonalEvent {
   category:     string    // * indexed — 'personal'|'scholastic'|'exam'|'life'|'general'
   description?: string
   createdAt:    number    //   Unix ms
+  calendarId?:  number    //   FK → LocalCalendar.id (which local calendar it belongs to)
+}
+
+/**
+ * LocalCalendar — a user-created local calendar (e.g. "General", "Side").
+ * Personal events reference one via PersonalEvent.calendarId. Distinct from
+ * imported iCal feeds (calendarFeeds); both render together in the grid.
+ */
+export interface LocalCalendar {
+  id:         number    // * PK — auto-increment
+  name:       string    // * indexed — display name
+  color:      string    //   hex accent for this calendar's events
+  isVisible:  number    //   0 | 1 — show/hide toggle
+  createdAt:  number    // * indexed — Unix ms
 }
 
 /**
@@ -471,6 +485,7 @@ class ZenithDatabase extends Dexie {
   library_books!:               EntityTable<LibraryBook,              'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
+  localCalendars!:              EntityTable<LocalCalendar,            'id'>
 
   constructor() {
     super('ZenithOS')
@@ -972,6 +987,20 @@ class ZenithDatabase extends Dexie {
     this.version(29).stores({
       peer_calendar_events: 'id, peerIdString, startMs',
     })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 30 — Local Calendars
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   localCalendars — user-created local calendars (General / Side / …).
+     *     id         auto PK
+     *     name       indexed
+     *     createdAt  indexed — stable display order
+     * PersonalEvent.calendarId (non-indexed field) references these rows.
+     */
+    this.version(30).stores({
+      localCalendars: '++id, name, createdAt',
+    })
   }
 }
 
@@ -1214,6 +1243,24 @@ export async function storePeerLocation(
     latitude,
     longitude,
     lastUpdatedTimestamp: Date.now(),
+  })
+}
+
+/**
+ * Idempotently ensures a default "General" local calendar exists.
+ * The count check + insert run inside a single rw transaction so concurrent
+ * callers (e.g. a view remounting before the first insert commits) can never
+ * create duplicate defaults — the second transaction observes count === 1.
+ */
+export async function ensureDefaultLocalCalendar(): Promise<void> {
+  const d = getDb()
+  await d.transaction('rw', d.localCalendars, async () => {
+    const count = await d.localCalendars.count()
+    if (count === 0) {
+      await d.localCalendars.add({
+        name: 'General', color: '#7c95ff', isVisible: 1, createdAt: Date.now(),
+      } as LocalCalendar)
+    }
   })
 }
 

@@ -31,9 +31,9 @@ import {
   type ChangeEvent, type KeyboardEvent,
 } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useCalendarData } from '@/lib/hooks/useCalendarData'
+import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
-import { db, type CalendarFeed, type CalendarEvent, type PersonalEvent, type TodoCategory, type TodoItem } from '@/lib/db'
+import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type TodoItem } from '@/lib/db'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import styles from './CalendarView.module.css'
@@ -162,32 +162,59 @@ function formatMonthRange(d: Date): string {
    SECTION 3 — Sub-components
    ══════════════════════════════════════════════════════════════ */
 
-/* ── FeedPanel ─────────────────────────────────────────────── */
+/* ── CalendarManager ───────────────────────────────────────────
+   Unified manager for local calendars (created in-app) and imported
+   iCal/Google feeds. The create/import form is always collapsed behind
+   a "+ New Calendar" button to keep the workspace decluttered.        */
 
-interface FeedPanelProps {
-  feeds:       CalendarFeed[]
-  isFetching:  boolean
-  onAdd:       (url: string, label: string) => void
-  onDelete:    (id: number) => void
-  onRefresh:   (feed: CalendarFeed) => void
+interface CalendarManagerProps {
+  feeds:                CalendarFeed[]
+  localCalendars:       LocalCalendar[]
+  isFetching:           boolean
+  onAddFeed:            (url: string, label: string) => void
+  onDeleteFeed:         (id: number) => void
+  onRefreshFeed:        (feed: CalendarFeed) => void
+  onToggleFeed:         (feed: CalendarFeed) => void
+  onCreateLocal:        (name: string, color: string) => void
+  onDeleteLocal:        (id: number) => void
+  onToggleLocal:        (cal: LocalCalendar) => void
 }
 
-function FeedPanel({
-  feeds, isFetching, onAdd, onDelete, onRefresh,
-}: FeedPanelProps) {
-  const [url,   setUrl]   = useState('')
-  const [label, setLabel] = useState('')
+function CalendarManager({
+  feeds, localCalendars, isFetching,
+  onAddFeed, onDeleteFeed, onRefreshFeed, onToggleFeed,
+  onCreateLocal, onDeleteLocal, onToggleLocal,
+}: CalendarManagerProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [mode,     setMode]     = useState<'local' | 'import'>('local')
+
+  /* Local-calendar form */
+  const [calName,  setCalName]  = useState('')
+  const [calColor, setCalColor] = useState<string>(FEED_COLORS[0])
+
+  /* Import form */
+  const [url,     setUrl]     = useState('')
+  const [label,   setLabel]   = useState('')
   const [gcalUrl, setGcalUrl] = useState('')
 
+  const handleCreateLocal = () => {
+    if (!calName.trim()) return
+    onCreateLocal(calName.trim(), calColor)
+    setCalName('')
+    setCalColor(FEED_COLORS[0])
+    setExpanded(false)
+  }
+
   const handleAdd = () => {
-    onAdd(url, label)
+    if (!url.trim()) return
+    onAddFeed(url, label)
     setUrl('')
     setLabel('')
   }
 
   const handleConnectGcal = () => {
     if (!gcalUrl.trim()) return
-    onAdd(gcalUrl, label.trim() || 'Google Calendar')
+    onAddFeed(gcalUrl, label.trim() || 'Google Calendar')
     setGcalUrl('')
   }
 
@@ -196,133 +223,245 @@ function FeedPanel({
   }
 
   return (
-    <div className={styles.feedPanel} role="region" aria-label="Calendar feed manager">
-      <p className={styles.feedPanelLabel}>Calendar Feeds</p>
-
-      {/* ── Google Calendar connect helper ─────────────────────── */}
-      <details className={styles.gcalSection}>
-        <summary className={styles.gcalSummary}>
-          <span className={styles.gcalDot} aria-hidden="true" />
-          Sync Google Calendar
-        </summary>
-        <div className={styles.gcalBody}>
-          <p className={styles.gcalHint}>
-            Zenith imports your Google Calendar through its private iCal link — your events
-            stay read-only and sync automatically. No Google sign-in needed.
-          </p>
-          <ol className={styles.gcalSteps}>
-            <li>
-              Open{' '}
-              <a
-                className={styles.gcalLink}
-                href="https://calendar.google.com/calendar/u/0/r/settings"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Google Calendar settings ↗
-              </a>
-            </li>
-            <li>Pick your calendar in the left list → <strong>Integrate calendar</strong></li>
-            <li>Copy the <strong>Secret address in iCal format</strong> (ends in <code>.ics</code>)</li>
-            <li>Paste it below and connect</li>
-          </ol>
-          <div className={styles.gcalInputRow}>
-            <input
-              type="url"
-              className={styles.feedInput}
-              placeholder="Paste your Google Calendar secret iCal address (…/basic.ics)"
-              value={gcalUrl}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setGcalUrl(e.target.value)}
-              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleConnectGcal() }}
-              aria-label="Google Calendar iCal URL"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button
-              type="button"
-              className={styles.addFeedBtn}
-              onClick={handleConnectGcal}
-              disabled={isFetching || !gcalUrl.trim()}
-              aria-busy={isFetching}
-            >
-              {isFetching ? 'Connecting…' : 'Connect'}
-            </button>
-          </div>
-        </div>
-      </details>
-
-      <div className={styles.addFeedRow}>
-        <input
-          type="url"
-          className={styles.feedInput}
-          placeholder="Paste iCal / Canvas subscription URL  (webcal:// or https://)"
-          value={url}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
-          onKeyDown={handleKey}
-          aria-label="Feed URL"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <input
-          type="text"
-          className={styles.feedInput}
-          placeholder="Label  (optional)"
-          value={label}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)}
-          onKeyDown={handleKey}
-          aria-label="Feed label"
-          maxLength={40}
-        />
+    <div className={styles.feedPanel} role="region" aria-label="Calendar manager">
+      <div className={styles.calManagerHead}>
+        <p className={styles.feedPanelLabel}>Your Calendars</p>
         <button
           type="button"
-          className={styles.addFeedBtn}
-          onClick={handleAdd}
-          disabled={isFetching || !url.trim()}
-          aria-busy={isFetching}
+          className={`${styles.newCalBtn} ${expanded ? styles.newCalBtnActive : ''}`}
+          onClick={() => setExpanded(x => !x)}
+          aria-expanded={expanded}
         >
-          {isFetching ? 'Importing…' : '+ Add Feed'}
+          {expanded ? '✕ Close' : '+ New Calendar'}
         </button>
       </div>
 
-      {feeds.length > 0 ? (
-        <ul className={styles.feedList} role="list">
-          {feeds.map(feed => (
-            <li key={feed.id} className={styles.feedChip}>
-              <span
-                className={styles.feedChipDot}
-                style={{ background: feed.color }}
-                aria-hidden="true"
+      {/* ── Collapsible create/import form ─────────────────────── */}
+      {expanded && (
+        <div className={`${styles.newCalForm} anim-slide-in`}>
+          <div className={styles.newCalModeRow} role="group" aria-label="Calendar type">
+            <button
+              type="button"
+              className={`${styles.newCalModeBtn} ${mode === 'local' ? styles.newCalModeBtnOn : ''}`}
+              onClick={() => setMode('local')}
+            >
+              Create local
+            </button>
+            <button
+              type="button"
+              className={`${styles.newCalModeBtn} ${mode === 'import' ? styles.newCalModeBtnOn : ''}`}
+              onClick={() => setMode('import')}
+            >
+              Import link
+            </button>
+          </div>
+
+          {mode === 'local' ? (
+            <div className={styles.localCalForm}>
+              <input
+                type="text"
+                className={styles.feedInput}
+                placeholder="Calendar name  (e.g. General, Side, Fitness)"
+                value={calName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setCalName(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleCreateLocal() }}
+                aria-label="Local calendar name"
+                maxLength={40}
               />
-              <span className={styles.feedChipLabel} title={feed.url}>
-                {feed.label}
-              </span>
-              <span className={styles.feedChipActions}>
+              <div className={styles.colorSwatchRow} role="group" aria-label="Calendar colour">
+                {FEED_COLORS.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`${styles.colorSwatch} ${calColor === c ? styles.colorSwatchOn : ''}`}
+                    style={{ background: c }}
+                    onClick={() => setCalColor(c)}
+                    aria-label={`Colour ${c}`}
+                    aria-pressed={calColor === c}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className={styles.addFeedBtn}
+                onClick={handleCreateLocal}
+                disabled={!calName.trim()}
+              >
+                + Create Calendar
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Google Calendar connect helper */}
+              <details className={styles.gcalSection}>
+                <summary className={styles.gcalSummary}>
+                  <span className={styles.gcalDot} aria-hidden="true" />
+                  Sync Google Calendar
+                </summary>
+                <div className={styles.gcalBody}>
+                  <p className={styles.gcalHint}>
+                    Zenith imports your Google Calendar through its private iCal link — your events
+                    stay read-only and sync automatically. No Google sign-in needed.
+                  </p>
+                  <ol className={styles.gcalSteps}>
+                    <li>
+                      Open{' '}
+                      <a
+                        className={styles.gcalLink}
+                        href="https://calendar.google.com/calendar/u/0/r/settings"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Google Calendar settings ↗
+                      </a>
+                    </li>
+                    <li>Pick your calendar in the left list → <strong>Integrate calendar</strong></li>
+                    <li>Copy the <strong>Secret address in iCal format</strong> (ends in <code>.ics</code>)</li>
+                    <li>Paste it below and connect</li>
+                  </ol>
+                  <div className={styles.gcalInputRow}>
+                    <input
+                      type="url"
+                      className={styles.feedInput}
+                      placeholder="Paste your Google Calendar secret iCal address (…/basic.ics)"
+                      value={gcalUrl}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setGcalUrl(e.target.value)}
+                      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleConnectGcal() }}
+                      aria-label="Google Calendar iCal URL"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      className={styles.addFeedBtn}
+                      onClick={handleConnectGcal}
+                      disabled={isFetching || !gcalUrl.trim()}
+                      aria-busy={isFetching}
+                    >
+                      {isFetching ? 'Connecting…' : 'Connect'}
+                    </button>
+                  </div>
+                </div>
+              </details>
+
+              <div className={styles.addFeedRow}>
+                <input
+                  type="url"
+                  className={styles.feedInput}
+                  placeholder="Paste iCal / Canvas subscription URL  (webcal:// or https://)"
+                  value={url}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+                  onKeyDown={handleKey}
+                  aria-label="Feed URL"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <input
+                  type="text"
+                  className={styles.feedInput}
+                  placeholder="Label  (optional)"
+                  value={label}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)}
+                  onKeyDown={handleKey}
+                  aria-label="Feed label"
+                  maxLength={40}
+                />
                 <button
                   type="button"
-                  className={styles.feedChipBtn}
-                  onClick={() => onRefresh(feed)}
-                  disabled={isFetching}
-                  aria-label={`Refresh ${feed.label}`}
-                  title="Refresh"
+                  className={styles.addFeedBtn}
+                  onClick={handleAdd}
+                  disabled={isFetching || !url.trim()}
+                  aria-busy={isFetching}
                 >
-                  ↺
+                  {isFetching ? 'Importing…' : '+ Add Feed'}
                 </button>
-                <button
-                  type="button"
-                  className={`${styles.feedChipBtn} ${styles.feedChipBtnDelete}`}
-                  onClick={() => onDelete(feed.id)}
-                  aria-label={`Remove ${feed.label}`}
-                  title="Remove feed"
-                >
-                  ✕
-                </button>
-              </span>
-            </li>
-          ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Unified calendar list ──────────────────────────────── */}
+      {(localCalendars.length > 0 || feeds.length > 0) ? (
+        <ul className={styles.feedList} role="list">
+          {localCalendars.map(cal => {
+            const hidden = cal.isVisible === 0
+            return (
+              <li key={`local-${cal.id}`} className={`${styles.feedChip} ${hidden ? styles.feedChipHidden : ''}`}>
+                <span className={styles.feedChipDot} style={{ background: cal.color }} aria-hidden="true" />
+                <span className={styles.feedChipLabel}>{cal.name}</span>
+                <span className={styles.feedChipBadge}>Local</span>
+                <span className={styles.feedChipActions}>
+                  <button
+                    type="button"
+                    className={styles.feedChipBtn}
+                    onClick={() => onToggleLocal(cal)}
+                    aria-label={hidden ? `Show ${cal.name}` : `Hide ${cal.name}`}
+                    title={hidden ? 'Show' : 'Hide'}
+                  >
+                    {hidden ? '◌' : '◉'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.feedChipBtn} ${styles.feedChipBtnDelete}`}
+                    onClick={() => onDeleteLocal(cal.id)}
+                    aria-label={`Delete ${cal.name}`}
+                    title="Delete calendar"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+
+          {feeds.map(feed => {
+            const hidden = feed.isActive === 0
+            return (
+              <li key={`feed-${feed.id}`} className={`${styles.feedChip} ${hidden ? styles.feedChipHidden : ''}`}>
+                <span className={styles.feedChipDot} style={{ background: feed.color }} aria-hidden="true" />
+                <span className={styles.feedChipLabel} title={feed.url}>{feed.label}</span>
+                <span className={styles.feedChipBadge}>iCal</span>
+                <span className={styles.feedChipActions}>
+                  <button
+                    type="button"
+                    className={styles.feedChipBtn}
+                    onClick={() => onToggleFeed(feed)}
+                    aria-label={hidden ? `Show ${feed.label}` : `Hide ${feed.label}`}
+                    title={hidden ? 'Show' : 'Hide'}
+                  >
+                    {hidden ? '◌' : '◉'}
+                  </button>
+                  {feed.url && (
+                    <button
+                      type="button"
+                      className={styles.feedChipBtn}
+                      onClick={() => onRefreshFeed(feed)}
+                      disabled={isFetching}
+                      aria-label={`Refresh ${feed.label}`}
+                      title="Refresh"
+                    >
+                      ↺
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`${styles.feedChipBtn} ${styles.feedChipBtnDelete}`}
+                    onClick={() => onDeleteFeed(feed.id)}
+                    aria-label={`Remove ${feed.label}`}
+                    title="Remove feed"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <p className={styles.feedEmptyHint}>
-          No feeds yet — paste an iCal URL above to import your schedule.
+          No calendars yet — click <strong>+ New Calendar</strong> to create a local
+          calendar or import an iCal / Google link.
         </p>
       )}
     </div>
@@ -1125,28 +1264,56 @@ export default function CalendarView() {
     [],
   )
 
+  /* Local calendars (user-created groups for personal events) */
+  const localCalendarsRaw = useLiveQuery(
+    () => db?.localCalendars.orderBy('createdAt').toArray() ?? Promise.resolve([]),
+    [],
+  )
+  const localCalendars = useMemo(() => localCalendarsRaw ?? [], [localCalendarsRaw])
+
+  /* Seed a default "General" calendar once on first use. The helper guards
+     against duplicates atomically (transaction count-check), so even a rapid
+     unmount/remount before the insert commits cannot create two defaults. */
+  const seededCalRef = useRef(false)
+  useEffect(() => {
+    if (!db || localCalendarsRaw === undefined) return   // wait for first resolve
+    if (localCalendarsRaw.length === 0 && !seededCalRef.current) {
+      seededCalRef.current = true
+      void ensureDefaultLocalCalendar()
+    }
+  }, [localCalendarsRaw])
+
   /* Synthetic feed entry for personal events */
   const personalFeed: CalendarFeed = useMemo(() => ({
     id: PERSONAL_FEED_ID, label: 'Personal', url: '',
     color: '#7c95ff', isActive: 1, lastFetchedAt: 0, createdAt: 0,
   }), [])
 
-  /* Convert personal events to CalendarEvent-compatible shape */
-  const personalAsCalEvents: CalendarEvent[] = useMemo(() =>
-    (personalEventsRaw ?? []).map(pe => ({
-      id:          pe.id * -1,   // negative id to avoid collision with feed events
-      feedId:      PERSONAL_FEED_ID,
-      uid:         `personal-${pe.id}`,
-      title:       pe.title,
-      startMs:     pe.startMs,
-      endMs:       pe.endMs,
-      allDay:      pe.allDay,
-      is1159:      0,
-      category:    pe.category,
-      description: pe.description,
-      _color:      pe.color,     // extra field read by EventPillEl
-    } as CalendarEvent & { _color?: string })),
-  [personalEventsRaw])
+  /* Convert personal events to CalendarEvent-compatible shape, coloured by
+     their local calendar and hidden when that calendar is toggled off. */
+  const personalAsCalEvents: CalendarEvent[] = useMemo(() => {
+    const calMap     = new Map(localCalendars.map(c => [c.id, c]))
+    const defaultCal = localCalendars[0]
+    return (personalEventsRaw ?? [])
+      .map(pe => {
+        const cal = (pe.calendarId != null ? calMap.get(pe.calendarId) : undefined) ?? defaultCal
+        return { pe, cal }
+      })
+      .filter(({ cal }) => !cal || cal.isVisible !== 0)
+      .map(({ pe, cal }) => ({
+        id:          pe.id * -1,   // negative id to avoid collision with feed events
+        feedId:      PERSONAL_FEED_ID,
+        uid:         `personal-${pe.id}`,
+        title:       pe.title,
+        startMs:     pe.startMs,
+        endMs:       pe.endMs,
+        allDay:      pe.allDay,
+        is1159:      0,
+        category:    pe.category,
+        description: pe.description,
+        _color:      pe.color ?? cal?.color,   // event colour (defaults to its calendar's)
+      } as CalendarEvent & { _color?: string }))
+  }, [personalEventsRaw, localCalendars])
 
   /* Friends' shared calendar events (P2P) */
   const peerCalEvents = useLiveQuery(
@@ -1178,12 +1345,47 @@ export default function CalendarView() {
     color: '#a78bfa', isActive: 1, lastFetchedAt: 0, createdAt: 0,
   }), [])
 
+  /* Imported feed events, filtered to feeds that are toggled visible */
+  const visibleFeedIds = useMemo(
+    () => new Set(feeds.filter(f => f.isActive !== 0).map(f => f.id)),
+    [feeds],
+  )
+  const visibleImportedEvents = useMemo(
+    () => events.filter(e => visibleFeedIds.has(e.feedId)),
+    [events, visibleFeedIds],
+  )
+
   /* All events & feeds for the week grid */
   const allEvents = useMemo(
-    () => [...events, ...personalAsCalEvents, ...(showFriends ? friendAsCalEvents : [])],
-    [events, personalAsCalEvents, showFriends, friendAsCalEvents],
+    () => [...visibleImportedEvents, ...personalAsCalEvents, ...(showFriends ? friendAsCalEvents : [])],
+    [visibleImportedEvents, personalAsCalEvents, showFriends, friendAsCalEvents],
   )
   const allFeeds  = useMemo(() => [personalFeed, friendFeed, ...feeds], [personalFeed, friendFeed, feeds])
+
+  /* ── Local calendar + feed management callbacks ──────────── */
+  const createLocalCalendar = useCallback(async (name: string, color: string) => {
+    if (!db) return
+    await db.localCalendars.add({
+      name, color, isVisible: 1, createdAt: Date.now(),
+    } as LocalCalendar)
+  }, [])
+
+  const deleteLocalCalendar = useCallback(async (id: number) => {
+    if (!db) return
+    // Events keep their calendarId but fall back to the default calendar's
+    // colour/visibility once this row is gone — they are never lost.
+    await db.localCalendars.delete(id)
+  }, [])
+
+  const toggleLocalCalendar = useCallback(async (cal: LocalCalendar) => {
+    if (!db) return
+    await db.localCalendars.update(cal.id, { isVisible: cal.isVisible === 0 ? 1 : 0 })
+  }, [])
+
+  const toggleFeedVisibility = useCallback(async (feed: CalendarFeed) => {
+    if (!db) return
+    await db.calendarFeeds.update(feed.id, { isActive: feed.isActive === 0 ? 1 : 0 })
+  }, [])
 
   /* Personal event CRUD */
   const handleAddEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
@@ -1294,8 +1496,10 @@ export default function CalendarView() {
           onClick={() => setCalTab('feeds')}
         >
           <span className={styles.calTabDot} style={{ background: '#52cca3' }} aria-hidden="true" />
-          iCal Feeds
-          {feeds.length > 0 && <span className={styles.calTabCount}>{feeds.length}</span>}
+          Calendars
+          {(feeds.length + localCalendars.length) > 0 && (
+            <span className={styles.calTabCount}>{feeds.length + localCalendars.length}</span>
+          )}
         </button>
         <button
           type="button"
@@ -1325,15 +1529,20 @@ export default function CalendarView() {
         )}
       </div>
 
-      {/* ── Feed manager panel ────────────────────────── */}
+      {/* ── Calendar manager panel ─────────────────────── */}
       {calTab === 'feeds' && (
         <div id="feed-panel">
-          <FeedPanel
+          <CalendarManager
             feeds={feeds}
+            localCalendars={localCalendars}
             isFetching={isFetching}
-            onAdd={addFeed}
-            onDelete={deleteFeed}
-            onRefresh={refreshFeed}
+            onAddFeed={addFeed}
+            onDeleteFeed={deleteFeed}
+            onRefreshFeed={refreshFeed}
+            onToggleFeed={toggleFeedVisibility}
+            onCreateLocal={createLocalCalendar}
+            onDeleteLocal={deleteLocalCalendar}
+            onToggleLocal={toggleLocalCalendar}
           />
         </div>
       )}
@@ -1412,10 +1621,10 @@ export default function CalendarView() {
 
       {/* ── Modals ────────────────────────────────────── */}
       {showNewEvent && (
-        <NewEventModal onClose={() => setShowNewEvent(false)} onSave={handleAddEvent} />
+        <NewEventModal onClose={() => setShowNewEvent(false)} onSave={handleAddEvent} localCalendars={localCalendars} />
       )}
       {editEvent && (
-        <NewEventModal onClose={() => setEditEvent(null)} onSave={handleEditEvent} initial={editEvent} />
+        <NewEventModal onClose={() => setEditEvent(null)} onSave={handleEditEvent} initial={editEvent} localCalendars={localCalendars} />
       )}
 
     </div>
@@ -1425,11 +1634,12 @@ export default function CalendarView() {
 /* ── NewEventModal ─────────────────────────────────────────── */
 
 function NewEventModal({
-  onClose, onSave, initial,
+  onClose, onSave, initial, localCalendars,
 }: {
   onClose:  () => void
   onSave:   (e: Omit<PersonalEvent, 'id'>) => void
   initial?: PersonalEvent
+  localCalendars: LocalCalendar[]
 }) {
   const todayStr = new Date().toISOString().slice(0, 10)
   const initDate = initial ? new Date(initial.startMs).toISOString().slice(0, 10) : todayStr
@@ -1448,6 +1658,17 @@ function NewEventModal({
   const [color,   setColor]   = useState(initial?.color ?? '#7c95ff')
   const [cat,     setCat]     = useState(initial?.category ?? 'personal')
   const [desc,    setDesc]    = useState(initial?.description ?? '')
+  const [calendarId, setCalendarId] = useState<number | undefined>(
+    initial?.calendarId ?? localCalendars[0]?.id,
+  )
+
+  /* When the chosen calendar changes, adopt its colour by default (the swatch
+     picker below still lets the user override it per-event). */
+  const handleCalendarChange = (id: number) => {
+    setCalendarId(id)
+    const cal = localCalendars.find(c => c.id === id)
+    if (cal) setColor(cal.color)
+  }
 
   const canSave = title.trim().length > 0 && date.length > 0
 
@@ -1467,6 +1688,7 @@ function NewEventModal({
       category: cat,
       description: desc.trim() || undefined,
       createdAt:   Date.now(),
+      calendarId,
     })
     onClose()
   }
@@ -1523,6 +1745,21 @@ function NewEventModal({
           )}
 
           <div className={styles.evRow}>
+            {localCalendars.length > 0 && (
+              <div className={styles.evField}>
+                <label className={styles.evLabel} htmlFor="ev-calendar">Calendar</label>
+                <select
+                  id="ev-calendar"
+                  className={styles.evInput}
+                  value={calendarId ?? ''}
+                  onChange={e => handleCalendarChange(Number(e.target.value))}
+                >
+                  {localCalendars.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className={styles.evField}>
               <label className={styles.evLabel} htmlFor="ev-cat">Category</label>
               <select id="ev-cat" className={styles.evInput} value={cat} onChange={e => setCat(e.target.value)}>
