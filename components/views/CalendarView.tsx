@@ -30,6 +30,7 @@ import {
   useState, useEffect, useRef, useMemo, useCallback,
   type ChangeEvent, type KeyboardEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
@@ -185,7 +186,6 @@ function CalendarManager({
   onAddFeed, onDeleteFeed, onRefreshFeed, onToggleFeed,
   onCreateLocal, onDeleteLocal, onToggleLocal,
 }: CalendarManagerProps) {
-  const [expanded, setExpanded] = useState(false)
   const [mode,     setMode]     = useState<'local' | 'import'>('local')
 
   /* Local-calendar form */
@@ -202,7 +202,6 @@ function CalendarManager({
     onCreateLocal(calName.trim(), calColor)
     setCalName('')
     setCalColor(FEED_COLORS[0])
-    setExpanded(false)
   }
 
   const handleAdd = () => {
@@ -223,22 +222,9 @@ function CalendarManager({
   }
 
   return (
-    <div className={styles.feedPanel} role="region" aria-label="Calendar manager">
-      <div className={styles.calManagerHead}>
-        <p className={styles.feedPanelLabel}>Your Calendars</p>
-        <button
-          type="button"
-          className={`${styles.newCalBtn} ${expanded ? styles.newCalBtnActive : ''}`}
-          onClick={() => setExpanded(x => !x)}
-          aria-expanded={expanded}
-        >
-          {expanded ? '✕ Close' : '+ New Calendar'}
-        </button>
-      </div>
-
-      {/* ── Collapsible create/import form ─────────────────────── */}
-      {expanded && (
-        <div className={`${styles.newCalForm} anim-slide-in`}>
+    <div className={styles.calMgrBody}>
+      {/* ── Create / import form (always open inside the modal) ── */}
+      <div className={styles.newCalForm}>
           <div className={styles.newCalModeRow} role="group" aria-label="Calendar type">
             <button
               type="button"
@@ -378,11 +364,12 @@ function CalendarManager({
               </div>
             </>
           )}
-        </div>
-      )}
+      </div>
 
       {/* ── Unified calendar list ──────────────────────────────── */}
-      {(localCalendars.length > 0 || feeds.length > 0) ? (
+      {(localCalendars.length > 0 || feeds.length > 0) && (
+        <>
+        <p className={styles.calMgrListLabel}>Your calendars</p>
         <ul className={styles.feedList} role="list">
           {localCalendars.map(cal => {
             const hidden = cal.isVisible === 0
@@ -458,14 +445,70 @@ function CalendarManager({
             )
           })}
         </ul>
-      ) : (
-        <p className={styles.feedEmptyHint}>
-          No calendars yet — click <strong>+ New Calendar</strong> to create a local
-          calendar or import an iCal / Google link.
-        </p>
+        </>
       )}
     </div>
   )
+}
+
+/* ── CalendarSwitcher ──────────────────────────────────────────
+   Compact chip row above the grid for quickly switching (showing /
+   hiding) each calendar — local calendars and imported feeds alike. */
+
+function CalendarSwitcher({
+  localCalendars, feeds, onToggleLocal, onToggleFeed,
+}: {
+  localCalendars: LocalCalendar[]
+  feeds:          CalendarFeed[]
+  onToggleLocal:  (cal: LocalCalendar) => void
+  onToggleFeed:   (feed: CalendarFeed) => void
+}) {
+  if (localCalendars.length === 0 && feeds.length === 0) return null
+  return (
+    <div className={styles.calSwitcher} role="group" aria-label="Toggle calendar visibility">
+      {localCalendars.map(cal => {
+        const hidden = cal.isVisible === 0
+        return (
+          <button
+            key={`l-${cal.id}`}
+            type="button"
+            className={`${styles.calSwitchChip} ${hidden ? styles.calSwitchChipOff : ''}`}
+            onClick={() => onToggleLocal(cal)}
+            aria-pressed={!hidden}
+            title={hidden ? `Show ${cal.name}` : `Hide ${cal.name}`}
+          >
+            <span className={styles.calSwitchDot} style={{ background: cal.color }} aria-hidden="true" />
+            {cal.name}
+          </button>
+        )
+      })}
+      {feeds.map(feed => {
+        const hidden = feed.isActive === 0
+        return (
+          <button
+            key={`f-${feed.id}`}
+            type="button"
+            className={`${styles.calSwitchChip} ${hidden ? styles.calSwitchChipOff : ''}`}
+            onClick={() => onToggleFeed(feed)}
+            aria-pressed={!hidden}
+            title={hidden ? `Show ${feed.label}` : `Hide ${feed.label}`}
+          >
+            <span className={styles.calSwitchDot} style={{ background: feed.color }} aria-hidden="true" />
+            {feed.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── ModalPortal — escapes ViewRouter's transformed wrapper ───── */
+
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(children, document.body)
 }
 
 /* ── DeadlineBanners ───────────────────────────────────────── */
@@ -1220,9 +1263,9 @@ export default function CalendarView() {
 
   const [view,          setView]          = useState<ViewMode>('week')
   const [weekStart,     setWeekStart]     = useState(() => getWeekStart(new Date()))
-  const [feedPanelOpen, setFeedPanelOpen] = useState(false)
+  const [showCalMgr,    setShowCalMgr]    = useState(false)
   const [gridKey,       setGridKey]       = useState(0)
-  const [calTab,        setCalTab]        = useState<'personal' | 'feeds' | 'schedule' | 'tasks'>('personal')
+  const [calTab,        setCalTab]        = useState<'personal' | 'schedule' | 'tasks'>('personal')
   const [showNewEvent,  setShowNewEvent]  = useState(false)
   const [editEvent,     setEditEvent]     = useState<PersonalEvent | null>(null)
 
@@ -1477,6 +1520,16 @@ export default function CalendarView() {
               {showFriends ? 'Friends shown' : 'Friends hidden'}
             </button>
           )}
+
+          {/* New / manage calendars — opens a compact modal */}
+          <button
+            type="button"
+            className={styles.newCalHeaderBtn}
+            onClick={() => setShowCalMgr(true)}
+            title="Create a local calendar or import an iCal / Google link"
+          >
+            + New Calendar
+          </button>
         </div>
       </header>
 
@@ -1485,26 +1538,15 @@ export default function CalendarView() {
         <button
           type="button"
           className={`${styles.calTab} ${calTab === 'personal' ? styles.calTabActive : ''}`}
-          onClick={() => { setCalTab('personal'); setFeedPanelOpen(false) }}
+          onClick={() => setCalTab('personal')}
         >
           <span className={styles.calTabDot} style={{ background: '#7c95ff' }} aria-hidden="true" />
           Personal
         </button>
         <button
           type="button"
-          className={`${styles.calTab} ${calTab === 'feeds' ? styles.calTabActive : ''}`}
-          onClick={() => setCalTab('feeds')}
-        >
-          <span className={styles.calTabDot} style={{ background: '#52cca3' }} aria-hidden="true" />
-          Calendars
-          {(feeds.length + localCalendars.length) > 0 && (
-            <span className={styles.calTabCount}>{feeds.length + localCalendars.length}</span>
-          )}
-        </button>
-        <button
-          type="button"
           className={`${styles.calTab} ${calTab === 'schedule' ? styles.calTabActive : ''}`}
-          onClick={() => { setCalTab('schedule'); setFeedPanelOpen(false) }}
+          onClick={() => setCalTab('schedule')}
         >
           <span className={styles.calTabDot} style={{ background: '#f59e0b' }} aria-hidden="true" />
           Course Schedule
@@ -1512,7 +1554,7 @@ export default function CalendarView() {
         <button
           type="button"
           className={`${styles.calTab} ${calTab === 'tasks' ? styles.calTabActive : ''}`}
-          onClick={() => { setCalTab('tasks'); setFeedPanelOpen(false) }}
+          onClick={() => setCalTab('tasks')}
         >
           <span className={styles.calTabDot} style={{ background: '#a78bfa' }} aria-hidden="true" />
           Tasks
@@ -1529,22 +1571,14 @@ export default function CalendarView() {
         )}
       </div>
 
-      {/* ── Calendar manager panel ─────────────────────── */}
-      {calTab === 'feeds' && (
-        <div id="feed-panel">
-          <CalendarManager
-            feeds={feeds}
-            localCalendars={localCalendars}
-            isFetching={isFetching}
-            onAddFeed={addFeed}
-            onDeleteFeed={deleteFeed}
-            onRefreshFeed={refreshFeed}
-            onToggleFeed={toggleFeedVisibility}
-            onCreateLocal={createLocalCalendar}
-            onDeleteLocal={deleteLocalCalendar}
-            onToggleLocal={toggleLocalCalendar}
-          />
-        </div>
+      {/* ── Calendar switcher chips (quick show/hide) ──── */}
+      {calTab === 'personal' && (
+        <CalendarSwitcher
+          localCalendars={localCalendars}
+          feeds={feeds}
+          onToggleLocal={toggleLocalCalendar}
+          onToggleFeed={toggleFeedVisibility}
+        />
       )}
 
       {calTab === 'schedule' && (
@@ -1603,7 +1637,7 @@ export default function CalendarView() {
         allEvents.length === 0 ? (
           calTab === 'personal'
             ? <EmptyPersonal onAdd={() => setShowNewEvent(true)} />
-            : <EmptyCalendar onOpenFeedPanel={() => setCalTab('feeds')} />
+            : <EmptyCalendar onOpenFeedPanel={() => setShowCalMgr(true)} />
         ) : (
           <WeekGrid key={gridKey} weekDays={weekDays} events={allEvents} feeds={allFeeds} />
         )
@@ -1625,6 +1659,38 @@ export default function CalendarView() {
       )}
       {editEvent && (
         <NewEventModal onClose={() => setEditEvent(null)} onSave={handleEditEvent} initial={editEvent} localCalendars={localCalendars} />
+      )}
+
+      {/* ── Calendar manager modal (create local / import + manage) ── */}
+      {showCalMgr && (
+        <ModalPortal>
+          <div className={styles.eventModalBackdrop} onClick={() => setShowCalMgr(false)} aria-hidden="true" />
+          <div className={styles.calMgrModal} role="dialog" aria-modal="true" aria-label="Manage calendars">
+            <div className={styles.calMgrModalHead}>
+              <p className={styles.eventModalTitle}>Manage Calendars</p>
+              <button
+                type="button"
+                className={styles.calMgrModalClose}
+                onClick={() => setShowCalMgr(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <CalendarManager
+              feeds={feeds}
+              localCalendars={localCalendars}
+              isFetching={isFetching}
+              onAddFeed={addFeed}
+              onDeleteFeed={deleteFeed}
+              onRefreshFeed={refreshFeed}
+              onToggleFeed={toggleFeedVisibility}
+              onCreateLocal={createLocalCalendar}
+              onDeleteLocal={deleteLocalCalendar}
+              onToggleLocal={toggleLocalCalendar}
+            />
+          </div>
+        </ModalPortal>
       )}
 
     </div>
