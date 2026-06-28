@@ -30,6 +30,7 @@ import {
   type ZenithNotification,
   type ChecklistItemDef,
 } from '@/lib/notificationCenter'
+import { wateringInfo } from '@/utils/botanyStats'
 
 /* ── Local date helpers ────────────────────────────────────────── */
 
@@ -48,7 +49,7 @@ export interface DueTodayItem {
   id:    string
   title: string
   when:  string   // "All day" | "2:30 PM" | "due"
-  kind:  'assignment' | 'event'
+  kind:  'assignment' | 'event' | 'plant'
 }
 
 export interface ChecklistLiveItem extends ChecklistItemDef {
@@ -118,6 +119,10 @@ export function useNotificationCenter(): NotificationCenterApi {
     () => db?.cardioSessions.where('logDate').equals(iso).toArray() ?? Promise.resolve([]),
     [iso], [],
   )
+  const houseplants = useLiveQuery(
+    () => db?.houseplants.toArray() ?? Promise.resolve([]),
+    [], [],
+  )
 
   /* ── Due today (assignments + events) ──────────────────────── */
 
@@ -136,6 +141,17 @@ export function useNotificationCenter(): NotificationCenterApi {
   }
   for (const e of calendarEvents ?? []) {
     dueToday.push({ id: `ce-${e.id}`, title: e.title, when: fmtTime(e.startMs, e.allDay), kind: 'event' })
+  }
+  for (const p of houseplants ?? []) {
+    const info = wateringInfo(p)
+    if (info.isDue) {
+      dueToday.push({
+        id:    `plant-${p.id}`,
+        title: `Water ${p.plantName}`,
+        when:  info.isOverdue ? `${info.daysOverdue}d overdue` : 'due today',
+        kind:  'plant',
+      })
+    }
   }
 
   /* ── Checklist completion detection ─────────────────────────── */
@@ -192,6 +208,37 @@ export function useNotificationCenter(): NotificationCenterApi {
       }
     }
   }, [assignments])
+
+  /* Plant care scanner: watering due/overdue + low health (deduped per day). */
+  useEffect(() => {
+    if (!houseplants) return
+    for (const p of houseplants) {
+      const info = wateringInfo(p)
+      if (info.isOverdue) {
+        pushNotification({
+          id: `plant-water-${p.id}-${iso}`,
+          type: 'info', icon: '🪴', view: 'botanist',
+          title: `${p.plantName} needs water`,
+          body: `${info.daysOverdue} day${info.daysOverdue === 1 ? '' : 's'} overdue`,
+        })
+      } else if (info.isDue) {
+        pushNotification({
+          id: `plant-water-${p.id}-${iso}`,
+          type: 'info', icon: '🪴', view: 'botanist',
+          title: `${p.plantName} is due for watering`,
+          body: 'Water it today',
+        })
+      }
+      if (typeof p.healthRating === 'number' && p.healthRating <= 2) {
+        pushNotification({
+          id: `plant-health-${p.id}-${iso}`,
+          type: 'info', icon: '🥀', view: 'botanist',
+          title: `${p.plantName} health is low`,
+          body: 'Check on this plant — its last health rating was low',
+        })
+      }
+    }
+  }, [houseplants, iso])
 
   /* Once-per-day summary ping (deduped by date). */
   useEffect(() => {

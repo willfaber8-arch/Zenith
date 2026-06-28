@@ -9,6 +9,8 @@ import {
   todayISO as getTodayISO,
   type HabitWithCompletion,
 } from '@/lib/hooks/useHabits'
+import { wateringInfo, computeGardenStats } from '@/utils/botanyStats'
+import type { PlantLogEntry } from '@/types/botany'
 import styles                 from './OutlookView.module.css'
 
 /* ── Unified event shape passed to both panels ───────────── */
@@ -99,6 +101,15 @@ interface PanelProps {
 function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
   const today     = new Date()
   const todayStr  = toISO(today)
+
+  const plants = useLiveQuery(() => db?.houseplants.toArray() ?? Promise.resolve([]), []) ?? []
+  const plantsDue = useMemo(
+    () => plants
+      .map(p => ({ p, info: wateringInfo(p) }))
+      .filter(x => x.info.isDue)
+      .sort((a, b) => b.info.daysOverdue - a.info.daysOverdue),
+    [plants],
+  )
 
   // Filter the pre-fetched 7-day events window to today only
   const allEvts = useMemo(
@@ -254,6 +265,30 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
         )}
       </section>
 
+      {/* ── Plant care ──────────────────────────────────────── */}
+      {plants.length > 0 && (
+        <section className={`${styles.section} ${styles.sectionCard}`}>
+          <h2 className={styles.sectionLabel}>
+            <span className={styles.sectionGlyph}>🪴</span>
+            Plant Care
+            {plantsDue.length > 0 && <span className={styles.count}>{plantsDue.length}</span>}
+          </h2>
+          {plantsDue.length === 0 ? (
+            <p className={styles.empty}>All plants are watered — nothing due today.</p>
+          ) : (
+            <ul className={styles.list}>
+              {plantsDue.map(({ p, info }) => (
+                <li key={p.id} className={styles.eventRow}>
+                  <span className={styles.eventDot} style={{ background: 'var(--accent-green)' }} />
+                  <span className={styles.eventTime}>{info.isOverdue ? `${info.daysOverdue}d late` : 'today'}</span>
+                  <span className={styles.eventTitle}>Water {p.plantName}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
     </div>
   )
 }
@@ -308,8 +343,35 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
     await db?.assignments.update(id, { status: 'completed' })
   }
 
+  // Weekly plant-care roll-up
+  const plants = useLiveQuery(() => db?.houseplants.toArray() ?? Promise.resolve([]), []) ?? []
+  const plantLogs = useLiveQuery(() => db?.plant_log_entries.toArray() ?? Promise.resolve([]), []) ?? []
+  const gardenStats = useMemo(() => {
+    const byPlant = new Map<number, PlantLogEntry[]>()
+    for (const e of plantLogs) {
+      const list = byPlant.get(e.plantId)
+      if (list) list.push(e); else byPlant.set(e.plantId, [e])
+    }
+    return computeGardenStats(plants, byPlant)
+  }, [plants, plantLogs])
+
   return (
     <div className={styles.panel}>
+
+      {/* ── Weekly plant-care summary ────────────────────────── */}
+      {plants.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionLabel}>
+            <span className={styles.sectionGlyph}>🪴</span>
+            Plant Care This Week
+          </h2>
+          <p className={styles.plantWeekSummary}>
+            <strong>{gardenStats.dueThisWeek}</strong> watering{gardenStats.dueThisWeek === 1 ? '' : 's'} due this week
+            {gardenStats.avgHealth != null && <> · avg health <strong>{gardenStats.avgHealth.toFixed(1)}</strong>/5</>}
+            {gardenStats.declining > 0 && <> · <span className={styles.plantWeekAlert}>{gardenStats.declining} declining</span></>}
+          </p>
+        </section>
+      )}
 
       {/* ── Habit strip for today ────────────────────────────── */}
       {scheduledToday.length > 0 && (

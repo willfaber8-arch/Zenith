@@ -586,3 +586,12 @@
   }
   .statCard .statLabel { margin-left: auto; }
 }
+
+/* ── Weekly plant-care summary ────────────────────────────────── */
+.plantWeekSummary {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.plantWeekSummary strong { color: var(--text-primary); font-weight: 600; }
+.plantWeekAlert { color: #f6a96b; font-weight: 600; }

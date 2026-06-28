@@ -32,8 +32,8 @@ import type { CourseIntensityProfile } from '@/types/academics'
 export type { CourseIntensityProfile } from '@/types/academics'
 import type { WaterLog } from '@/utils/waterChemistry'
 export type { WaterLog } from '@/utils/waterChemistry'
-import type { Houseplant } from '@/types/botany'
-export type { Houseplant } from '@/types/botany'
+import type { Houseplant, PlantLogEntry } from '@/types/botany'
+export type { Houseplant, PlantLogEntry } from '@/types/botany'
 import type { DeliveryItem, SubscriptionItem } from '@/types/finance'
 export type { DeliveryItem, SubscriptionItem } from '@/types/finance'
 import type { PeerFriend, PeerLeaderboardSnapshot, PeerCalendarEvent } from '@/types/friendsNetwork'
@@ -462,6 +462,7 @@ class ZenithDatabase extends Dexie {
   courseIntensityProfiles!: EntityTable<CourseIntensityProfile, 'id'>
   waterLogs!:              EntityTable<WaterLog,              'id'>
   houseplants!:            EntityTable<Houseplant,            'id'>
+  plant_log_entries!:      EntityTable<PlantLogEntry,         'id'>
   deliveries!:             EntityTable<DeliveryItem,          'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
   outboxMutations!:        EntityTable<OutboxMutation,        'id'>
@@ -1000,6 +1001,21 @@ class ZenithDatabase extends Dexie {
      */
     this.version(30).stores({
       localCalendars: '++id, name, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 31 — Plant journal / health log
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   plant_log_entries — dated journal entries per houseplant (note +
+     *     optional health rating + optional photo). Drives the per-plant
+     *     journal, the health-trend chart, and the photo timeline.
+     *     id        auto PK
+     *     plantId   indexed — per-plant query + cascade delete
+     *     createdAt indexed — chronological ordering
+     */
+    this.version(31).stores({
+      plant_log_entries: '++id, plantId, createdAt',
     })
   }
 }
