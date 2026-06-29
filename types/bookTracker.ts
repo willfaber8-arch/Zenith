@@ -2,6 +2,8 @@ export type ReadingStatus = 'TO_READ' | 'CURRENTLY_READING' | 'COMPLETED'
 
 export type StatusFilter = ReadingStatus | 'ALL'
 
+export type BookFormat = 'hardcover' | 'paperback' | 'ebook' | 'audiobook'
+
 export interface LibraryBook {
   id: string                    // UUID PK — explicit, not auto-increment
   title: string
@@ -17,6 +19,79 @@ export interface LibraryBook {
   customReviewText?: string
   spineColor?: string           // hex spine colour for the bookshelf visual
   addedAt: number               // UTC ms
+  // ── Advanced (Goodreads-style) fields — all optional, non-indexed ──
+  genre?: string                // primary genre (preset or custom)
+  publicationYear?: number      // year published, e.g. 2019
+  series?: string               // series name + number, e.g. "Mistborn #1"
+  format?: BookFormat
+  readingMinutes?: number       // cumulative minutes logged by the reading timer
+  lastReadAt?: number           // UTC ms of the last reading session
+}
+
+/** Common genres for the add-book dropdown (plus a free-text custom option). */
+export const BOOK_GENRES: string[] = [
+  'Fiction', 'Nonfiction', 'Fantasy', 'Science Fiction', 'Mystery', 'Thriller',
+  'Romance', 'Historical Fiction', 'Horror', 'Biography', 'Memoir', 'History',
+  'Self-Help', 'Business', 'Philosophy', 'Poetry', 'Young Adult', 'Classics',
+  'Graphic Novel', 'Science', 'Other',
+]
+
+export const BOOK_FORMATS: { value: BookFormat; label: string }[] = [
+  { value: 'hardcover', label: 'Hardcover' },
+  { value: 'paperback', label: 'Paperback' },
+  { value: 'ebook',     label: 'eBook'     },
+  { value: 'audiobook', label: 'Audiobook' },
+]
+
+/* ── Sorting ─────────────────────────────────────────────── */
+
+export type SortKey =
+  | 'recent' | 'title-az' | 'title-za' | 'author'
+  | 'genre'  | 'published' | 'pages'    | 'color'
+
+export const SORT_LABELS: Record<SortKey, string> = {
+  'recent':   'Recently added',
+  'title-az': 'Title A–Z',
+  'title-za': 'Title Z–A',
+  'author':   'Author',
+  'genre':    'Genre',
+  'published':'Date published',
+  'pages':    'Total pages',
+  'color':    'Color',
+}
+
+/** Hue (0–360) of a hex colour — used by the "Color" sort to group the shelf
+ *  into a rainbow. Falls back to 0 for unparseable input. */
+function hexHue(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return 0
+  const n = parseInt(m[1], 16)
+  const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min
+  if (d === 0) return 0
+  let h = 0
+  if (max === r)      h = ((g - b) / d) % 6
+  else if (max === g) h = (b - r) / d + 2
+  else                h = (r - g) / d + 4
+  h *= 60
+  return h < 0 ? h + 360 : h
+}
+
+/** Pure comparator-driven sort for the bookshelf. Stable, never mutates input. */
+export function sortBooks(books: LibraryBook[], key: SortKey): LibraryBook[] {
+  const arr = [...books]
+  const byTitle = (b: LibraryBook) => b.title.toLowerCase()
+  switch (key) {
+    case 'title-az': return arr.sort((a, b) => byTitle(a).localeCompare(byTitle(b)))
+    case 'title-za': return arr.sort((a, b) => byTitle(b).localeCompare(byTitle(a)))
+    case 'author':   return arr.sort((a, b) => (a.author || '~').toLowerCase().localeCompare((b.author || '~').toLowerCase()))
+    case 'genre':    return arr.sort((a, b) => (a.genre || '~').localeCompare(b.genre || '~') || byTitle(a).localeCompare(byTitle(b)))
+    case 'published':return arr.sort((a, b) => (b.publicationYear ?? -Infinity) - (a.publicationYear ?? -Infinity))
+    case 'pages':    return arr.sort((a, b) => (b.totalPages ?? 0) - (a.totalPages ?? 0))
+    case 'color':    return arr.sort((a, b) => hexHue(spineColorFor(a)) - hexHue(spineColorFor(b)))
+    case 'recent':
+    default:         return arr.sort((a, b) => b.addedAt - a.addedAt)
+  }
 }
 
 export interface GoodreadsImportResult {

@@ -102,7 +102,7 @@ export const NAV_CONFIG: NavCategory[] = [
           { id: 'calendar',      label: 'Universal Calendar', category: 'essentials', color: '#60a5fa' },
           { id: 'meal-planning', label: 'Meal Planning',      category: 'essentials', color: '#86efac' },
           { id: 'wellness',      label: 'Mental Wellness',    category: 'essentials', color: '#f9a8d4' },
-          { id: 'book-tracker',  label: 'Reading Tracker',    category: 'essentials', color: '#f97316' },
+          { id: 'book-tracker',  label: 'Library',    category: 'essentials', color: '#f97316' },
         ],
       },
     ],

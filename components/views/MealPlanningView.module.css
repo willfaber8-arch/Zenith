@@ -863,18 +863,22 @@
 }
 
 .addRecipeBtn {
-  padding:       8px 16px;
-  border-radius: var(--r-md);
-  background:    rgba(124,149,255,0.10);
-  border:        1px solid rgba(124,149,255,0.22);
-  font-family:   var(--font-body);
-  font-size:     13px;
-  font-weight:   600;
-  color:         var(--text-primary);
-  cursor:        pointer;
-  transition:    background 140ms ease;
-  white-space:   nowrap;
-  flex-shrink:   0;
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         8px 16px;
+  border-radius:   var(--r-md);
+  background:      rgba(124,149,255,0.10);
+  border:          1px solid rgba(124,149,255,0.22);
+  font-family:     var(--font-body);
+  font-size:       13px;
+  font-weight:     600;
+  line-height:     1;
+  color:           var(--text-primary);
+  cursor:          pointer;
+  transition:      background 140ms ease;
+  white-space:     nowrap;
+  flex-shrink:     0;
 }
 .addRecipeBtn:hover { background: rgba(124,149,255,0.18); }
 
@@ -917,14 +921,16 @@
 }
 
 .recipeCardCategory {
-  display:       inline-block;
-  font-family:   var(--font-body);
-  font-size:     10px;
-  font-weight:   600;
+  display:        inline-flex;
+  align-items:    center;
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
+  line-height:    1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color:         var(--accent-purple);
-  margin-bottom: 4px;
+  color:          var(--accent-purple);
+  margin-bottom:  4px;
 }
 
 .recipeCardTitle {
@@ -960,12 +966,20 @@
 .recipeDeleteBtn:hover { background: rgba(248,113,113,0.10); color: #f87171; }
 
 .recipeCardMeta {
-  display:   flex;
-  gap:       var(--sp-3);
-  flex-wrap: wrap;
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+  flex-wrap:   wrap;
   font-family: var(--font-body);
   font-size:   11px;
+  line-height: 1;
   color:       var(--text-dark);
+}
+.recipeCardMeta span {
+  display:     inline-flex;
+  align-items: center;
+  gap:         3px;
+  line-height: 1;
 }
 
 .recipeCardNotes {
@@ -1639,15 +1653,17 @@
 }
 
 .recipeMacroChip {
-  display:        inline-flex;
-  align-items:    center;
-  padding:        2px 7px;
-  border-radius:  var(--r-sm);
-  font-family:    var(--font-mono);
-  font-size:      0.4375rem;
-  font-weight:    600;
-  letter-spacing: 0.08em;
-  border:         1px solid transparent;
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         3px 7px;
+  border-radius:   var(--r-sm);
+  font-family:     var(--font-mono);
+  font-size:       0.4375rem;
+  font-weight:     600;
+  line-height:     1;
+  letter-spacing:  0.08em;
+  border:          1px solid transparent;
 }
 
 .macroCalChip {
@@ -2074,11 +2090,19 @@
 
 .libraryMeta {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--sp-3);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
+  line-height: 1;
   color: var(--text-dark);
+}
+.libraryMeta span {
+  display:     inline-flex;
+  align-items: center;
+  gap:         3px;
+  line-height: 1;
 }
 
 .libraryTags {

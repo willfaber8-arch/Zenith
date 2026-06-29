@@ -66,7 +66,7 @@ export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
   distanceTracker: 'Distance Tracker',
   timerWidget:     'Timer',
   stopwatch:       'Stopwatch',
-  readingTracker:  'Reading Tracker',
+  readingTracker:  'Library',
   customLinks:     'Quick Links',
   vocabTracker:    'Polyglot Vault',
   gpaWidget:       'GPA',

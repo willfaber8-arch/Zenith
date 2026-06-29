@@ -68,7 +68,7 @@ export const MODULE_INDEX: ModuleEntry[] = [
   { id: 'game-finder', label: 'Game Hub', category: 'essentials',
     hint: 'Find multiplayer games to play with friends',
     keywords: ['multiplayer', 'party games', 'find games', 'play', 'co-op', 'board games', 'video games'] },
-  { id: 'book-tracker', label: 'Reading Tracker', category: 'essentials',
+  { id: 'book-tracker', label: 'Library', category: 'essentials',
     hint: 'Track your reading list & finished books',
     keywords: ['reading', 'books', 'library', 'goodreads', 'literature', 'novel', 'bookshelf', 'to read'] },
   { id: 'subscriptions', label: 'Subscriptions', category: 'essentials',

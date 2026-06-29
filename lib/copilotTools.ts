@@ -150,7 +150,7 @@ export const COPILOT_TOOLS: ToolDef[] = [
   },
   {
     name:        'add_book',
-    description: 'Add a book to the Reading Tracker library.',
+    description: 'Add a book to the Library.',
     required:    ['title'],
     params: {
       title:      { type: 'string', description: 'Book title' },
