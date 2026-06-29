@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useRef, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import {
@@ -25,6 +26,19 @@ import { useToast } from '@/lib/ToastContext'
 import styles from './BookTrackerDashboard.module.css'
 
 /* ── Helpers ─────────────────────────────────────────────── */
+
+/**
+ * Renders children into document.body via a portal. ViewRouter wraps each view
+ * in a `transform: scale(...)` element, which makes `position: fixed` resolve
+ * against that wrapper instead of the viewport — pushing modals partly under
+ * the tab bar. The portal escapes the transformed ancestor.
+ */
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(children, document.body)
+}
 
 function fmtDate(ms: number | undefined): string {
   if (!ms) return ''
@@ -220,7 +234,7 @@ function BookDetailModal({
   const isDirty = reviewDraft !== undefined && reviewDraft !== (book.customReviewText ?? '')
 
   return (
-    <>
+    <ModalPortal>
       <div className={styles.modalBackdrop} onClick={onClose} />
       <div className={styles.detailModal} role="dialog" aria-modal="true" aria-label={book.title}>
         <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
@@ -340,7 +354,7 @@ function BookDetailModal({
           )}
         </div>
       </div>
-    </>
+    </ModalPortal>
   )
 }
 
@@ -858,7 +872,7 @@ export default function BookTrackerDashboard() {
 
       {/* Add Book Modal */}
       {showAddModal && (
-        <>
+        <ModalPortal>
           <div className={styles.modalBackdrop} onClick={closeAddModal} />
           <div className={styles.modal} role="dialog" aria-modal={true} aria-label={editingId ? 'Edit book' : 'Add book'}>
             <div className={styles.modalHeader}>
@@ -982,7 +996,7 @@ export default function BookTrackerDashboard() {
               </button>
             </div>
           </div>
-        </>
+        </ModalPortal>
       )}
 
       {/* Reading timer (full-screen) */}
@@ -990,12 +1004,14 @@ export default function BookTrackerDashboard() {
         const tb = allBooks.find(b => b.id === timerBookId)
         if (!tb) return null
         return (
-          <ReadingTimer
-            bookTitle={tb.title}
-            bookAuthor={tb.author}
-            onFinish={mins => handleLogReading(timerBookId, mins)}
-            onClose={() => setTimerBookId(null)}
-          />
+          <ModalPortal>
+            <ReadingTimer
+              bookTitle={tb.title}
+              bookAuthor={tb.author}
+              onFinish={mins => handleLogReading(timerBookId, mins)}
+              onClose={() => setTimerBookId(null)}
+            />
+          </ModalPortal>
         )
       })()}
     </div>
