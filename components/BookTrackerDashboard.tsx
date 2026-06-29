@@ -18,6 +18,8 @@ import {
   SORT_LABELS,
   sortBooks,
   spineColorFor,
+  computeBookStats,
+  type ReadingSession,
 } from '@/types/bookTracker'
 import ReadingTimer from '@/components/ReadingTimer'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
@@ -233,6 +235,13 @@ function BookDetailModal({
   const currentText = reviewDraft !== undefined ? reviewDraft : (book.customReviewText ?? '')
   const isDirty = reviewDraft !== undefined && reviewDraft !== (book.customReviewText ?? '')
 
+  const sessions = useLiveQuery(
+    () => db.reading_sessions.where('bookId').equals(book.id).toArray(),
+    [book.id],
+  ) ?? []
+  const sortedSessions = [...sessions].sort((a, b) => b.createdAt - a.createdAt)
+  const stats = computeBookStats(sessions)
+
   return (
     <ModalPortal>
       <div className={styles.modalBackdrop} onClick={onClose} />
@@ -322,6 +331,35 @@ function BookDetailModal({
         </div>
 
         {/* Shelf-move actions */}
+        {/* Reading log + stats */}
+        <div className={styles.logSection}>
+          <div className={styles.logHead}>
+            <span className={styles.fieldLabel}>Reading Log</span>
+            {stats.sessions > 0 && (
+              <div className={styles.logStats}>
+                <span>⏱ {stats.totalMinutes} min</span>
+                {stats.totalPages > 0 && <span>· {stats.totalPages} pp</span>}
+                {stats.pagesPerMin != null && <span>· {stats.pagesPerMin} ppm</span>}
+              </div>
+            )}
+          </div>
+          {sortedSessions.length === 0 ? (
+            <p className={styles.logEmpty}>No sessions yet — hit ⏱ Read to start a timed reading session.</p>
+          ) : (
+            <ul className={styles.logList}>
+              {sortedSessions.slice(0, 8).map(s => (
+                <li key={s.id} className={styles.logRow}>
+                  <span className={styles.logDate}>{fmtDate(s.createdAt)}</span>
+                  <span className={styles.logMeta}>
+                    {s.minutes} min{s.pagesRead ? ` · ${s.pagesRead} pp` : ''}
+                    {s.pagesRead && s.minutes > 0 ? ` · ${Math.round((s.pagesRead / s.minutes) * 10) / 10} ppm` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className={styles.detailActions}>
           {book.readingStatus !== 'COMPLETED' && (
             <button
@@ -585,7 +623,12 @@ export default function BookTrackerDashboard() {
   }
 
   const handleDelete = async (bookId: string) => {
-    await db.library_books.delete(bookId)
+    // Cascade: remove the book's logged reading sessions too.
+    const keys = await db.reading_sessions.where('bookId').equals(bookId).primaryKeys().catch(() => [] as number[])
+    await Promise.all([
+      db.library_books.delete(bookId),
+      keys.length ? db.reading_sessions.bulkDelete(keys) : Promise.resolve(),
+    ])
     if (selectedId === bookId) setSelectedId(null)
   }
 
@@ -647,16 +690,29 @@ export default function BookTrackerDashboard() {
     toast(`"${book.title}" added to your ${addStatus === 'TO_READ' ? 'TBR list' : 'library'}.`, 'success')
   }
 
-  /** Log a finished reading session's minutes against a book. */
-  const handleLogReading = async (bookId: string, minutes: number) => {
-    if (minutes <= 0) { setTimerBookId(null); return }
+  /** Log a finished reading session (time + optional pages) against a book,
+   *  and advance the reading habit. */
+  const handleLogReading = async (bookId: string, minutes: number, pagesRead?: number) => {
+    if (minutes <= 0 && !pagesRead) { setTimerBookId(null); return }
     const b = allBooks.find(x => x.id === bookId)
     if (b) {
+      const now = Date.now()
+      await db.reading_sessions.add({
+        bookId,
+        date: new Date().toISOString().slice(0, 10),
+        minutes,
+        pagesRead,
+        createdAt: now,
+      })
       await db.library_books.update(bookId, {
         readingMinutes: (b.readingMinutes ?? 0) + minutes,
-        lastReadAt: Date.now(),
+        lastReadAt: now,
       })
-      toast(`Logged ${minutes} min reading "${b.title}".`, 'success')
+      // Auto-sync: a logged reading session advances any habit on the
+      // 'reading' source (same bridge used when starting/finishing a book).
+      void syncHabitSource('reading', 1)
+      const pp = pagesRead ? ` · ${pagesRead} pages` : ''
+      toast(`Logged ${minutes} min${pp} reading "${b.title}".`, 'success')
     }
     setTimerBookId(null)
   }
@@ -1008,7 +1064,7 @@ export default function BookTrackerDashboard() {
             <ReadingTimer
               bookTitle={tb.title}
               bookAuthor={tb.author}
-              onFinish={mins => handleLogReading(timerBookId, mins)}
+              onFinish={(mins, pagesRead) => handleLogReading(timerBookId, mins, pagesRead)}
               onClose={() => setTimerBookId(null)}
             />
           </ModalPortal>

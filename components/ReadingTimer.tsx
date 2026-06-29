@@ -18,7 +18,7 @@ import styles from './ReadingTimer.module.css'
 interface Props {
   bookTitle:  string
   bookAuthor?: string
-  onFinish:   (minutes: number) => void
+  onFinish:   (minutes: number, pagesRead?: number) => void
   onClose:    () => void
 }
 
@@ -33,6 +33,7 @@ function fmt(totalSec: number): string {
 export default function ReadingTimer({ bookTitle, bookAuthor, onFinish, onClose }: Props) {
   const [elapsed, setElapsed] = useState(0)   // seconds
   const [running, setRunning] = useState(true)
+  const [pages,   setPages]   = useState('')  // pages read this session (optional)
 
   const accumRef  = useRef(0)          // seconds banked before the current run
   const anchorRef = useRef(Date.now()) // epoch ms when the current run started
@@ -56,8 +57,9 @@ export default function ReadingTimer({ bookTitle, bookAuthor, onFinish, onClose 
     const live = running
       ? accumRef.current + (Date.now() - anchorRef.current) / 1000
       : accumRef.current
-    onFinish(Math.round(live / 60))
-  }, [running, onFinish])
+    const pagesRead = parseInt(pages, 10)
+    onFinish(Math.round(live / 60), Number.isFinite(pagesRead) && pagesRead > 0 ? pagesRead : undefined)
+  }, [running, onFinish, pages])
 
   /* Escape closes (discards). */
   useEffect(() => {
@@ -78,6 +80,19 @@ export default function ReadingTimer({ bookTitle, bookAuthor, onFinish, onClose 
         <div className={`${styles.ring} ${running ? styles.ringRunning : ''}`}>
           <span className={styles.clock}>{fmt(elapsed)}</span>
         </div>
+
+        <label className={styles.pagesField}>
+          <span className={styles.pagesLabel}>Pages read this session</span>
+          <input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            className={styles.pagesInput}
+            value={pages}
+            onChange={e => setPages(e.target.value)}
+            placeholder="optional"
+          />
+        </label>
 
         <div className={styles.controls}>
           <button className={styles.ctrlBtn} onClick={() => setRunning(r => !r)}>

@@ -94,6 +94,41 @@ export function sortBooks(books: LibraryBook[], key: SortKey): LibraryBook[] {
   }
 }
 
+/**
+ * ReadingSession — one logged reading sitting from the reading timer.
+ * Stores duration and (optionally) pages read, so per-book stats like
+ * total time, total pages, and pages-per-minute can be derived locally.
+ */
+export interface ReadingSession {
+  id?:        number
+  bookId:     string    // FK → LibraryBook.id (indexed)
+  date:       string    // 'YYYY-MM-DD' (local)
+  minutes:    number
+  pagesRead?: number
+  createdAt:  number    // UTC ms (indexed)
+}
+
+/** Aggregate reading stats for one book, derived from its sessions. */
+export interface BookReadingStats {
+  totalMinutes: number
+  totalPages:   number
+  sessions:     number
+  pagesPerMin:  number | null   // null until there's time + pages logged
+}
+
+export function computeBookStats(sessions: ReadingSession[]): BookReadingStats {
+  const totalMinutes = sessions.reduce((s, x) => s + (x.minutes || 0), 0)
+  const totalPages   = sessions.reduce((s, x) => s + (x.pagesRead || 0), 0)
+  return {
+    totalMinutes,
+    totalPages,
+    sessions:    sessions.length,
+    pagesPerMin: totalMinutes > 0 && totalPages > 0
+      ? Math.round((totalPages / totalMinutes) * 10) / 10
+      : null,
+  }
+}
+
 export interface GoodreadsImportResult {
   imported: number
   skipped: number

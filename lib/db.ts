@@ -52,8 +52,8 @@ import type { VocabDeck, VocabCard } from '@/types/vocabulary'
 export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
-import type { LibraryBook } from '@/types/bookTracker'
-export type { LibraryBook } from '@/types/bookTracker'
+import type { LibraryBook, ReadingSession } from '@/types/bookTracker'
+export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -484,6 +484,7 @@ class ZenithDatabase extends Dexie {
   relationship_notes!:          EntityTable<RelationshipNote,         'id'>
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
   library_books!:               EntityTable<LibraryBook,              'id'>
+  reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
@@ -1016,6 +1017,19 @@ class ZenithDatabase extends Dexie {
      */
     this.version(31).stores({
       plant_log_entries: '++id, plantId, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 32 — Reading sessions (Library timer log)
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   reading_sessions — one row per logged reading sitting.
+     *     id        auto PK
+     *     bookId    indexed — per-book log + stats + cascade delete
+     *     createdAt indexed — chronological ordering
+     */
+    this.version(32).stores({
+      reading_sessions: '++id, bookId, createdAt',
     })
   }
 }
