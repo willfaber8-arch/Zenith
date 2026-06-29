@@ -1406,7 +1406,7 @@ function EnglishVocabTab() {
     return (
       <div className={styles.engLoading}>
         <span className={styles.engLoadingGlyph}>◈</span>
-        <p className={styles.engLoadingText}>[ INITIALISING LEXICON... ]</p>
+        <p className={styles.engLoadingText}>Loading…</p>
       </div>
     )
   }
@@ -2516,8 +2516,8 @@ function LanguageBuilderTab() {
               <span className={styles.selectPromptGlyph}>◇</span>
               <p className={styles.selectPromptText}>
                 {decks.length === 0
-                  ? '[ CREATE A DECK TO BEGIN ]'
-                  : '[ SELECT A DECK TO STUDY ]'}
+                  ? 'Create a deck to begin'
+                  : 'Select a deck to study'}
               </p>
             </div>
           ) : (

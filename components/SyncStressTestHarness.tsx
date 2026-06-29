@@ -152,8 +152,8 @@ export default function SyncStressTestHarness() {
 
   /* ── Derived button label ────────────────────────────────── */
   const runBtnLabel  = phase === 'running'
-    ? '[ ✕  ABORT STRESS TEST ]'
-    : '[ INJECT FLAKY NETWORK STRESS TEST ]'
+    ? '✕  Abort Stress Test'
+    : 'Inject Flaky Network Stress Test'
 
   const runBtnClass = [
     styles.runBtn,
@@ -242,7 +242,7 @@ export default function SyncStressTestHarness() {
           </button>
           {forceDisconnect && (
             <span className={styles.toggleWarning}>
-              ⚠ ALL FETCH CALLS WILL BE HARD-REJECTED
+              ⚠ All fetch calls will be hard-rejected
             </span>
           )}
         </div>
@@ -267,7 +267,7 @@ export default function SyncStressTestHarness() {
             className={styles.resetBtn}
             onClick={handleReset}
           >
-            [ RESET HARNESS ]
+            Reset Harness
           </button>
         )}
       </div>
@@ -363,8 +363,8 @@ export default function SyncStressTestHarness() {
         >
           <p className={styles.resultHeader}>
             {report.integrityPassed
-              ? '✓  INTEGRITY CERTIFIED — ALL TRANSACTION NODES PRESERVED'
-              : '✗  INTEGRITY ANOMALY — REVIEW LOG FOR DETAILS'}
+              ? '✓  Integrity certified — all transaction nodes preserved'
+              : '✗  Integrity anomaly — review log for details'}
           </p>
 
           <div className={styles.resultGrid}>

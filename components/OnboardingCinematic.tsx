@@ -38,11 +38,11 @@ import styles                                        from './OnboardingCinematic
 const STORAGE_KEY = 'zenith_onboarding_completed_v1'
 
 const BOOT_LINES = [
-  '[ LOG 0.1 ] WAKING LOCAL MEMORY ENGINES...',
-  '[ LOG 0.2 ] WEAVING COZY DESIGN PARAMETERS...',
-  '[ LOG 0.3 ] SEEDING ARCHIVAL CHANNELS...',
-  '[ LOG 0.4 ] ARCHITECTING PERSONAL WORKSPACE CORRIDORS...',
-  '[ LOG 0.5 ] ZENITH OS BOOT CYCLE COMPLETING // ECOSYSTEM RESTORED.',
+  'Waking local memory…',
+  'Loading your design…',
+  'Preparing your data…',
+  'Setting up your workspace…',
+  'Almost ready.',
 ] as const
 
 type BootLine = typeof BOOT_LINES[number]
@@ -71,19 +71,19 @@ interface AuditLogLine {
 function buildAuditResultLine(report: MasterAuditReport): AuditLogLine {
   if (report.fatalTables.length > 0) {
     return {
-      text: '[ AUDIT STATUS: PARTIAL // SOME TABLES SKIPPED GRACEFULLY ]',
+      text: 'Some data was skipped — your workspace is still ready.',
       sage: false,
     }
   }
   if (report.hadRepairs) {
     const n = report.totalRepairs
     return {
-      text: `[ REPAIR COMPLETED // ENFORCED SCHEMA RULES ] +${n} CORRECTION${n !== 1 ? 'S' : ''} APPLIED`,
+      text: `Tidied up ${n} item${n !== 1 ? 's' : ''}.`,
       sage: true,
     }
   }
   return {
-    text: `[ CHECKING RECORD INTEGRITY... ] -> ${report.totalRowsScanned} CELLS SCANNED // DATA LAYERS HARDENED`,
+    text: `Checked ${report.totalRowsScanned} records — everything looks good.`,
     sage: false,
   }
 }
@@ -144,7 +144,7 @@ export default function OnboardingCinematic() {
 
             // Show the "running" indicator immediately
             setAuditLines([{
-              text: '[ AUDITING LOCAL DATA CONTEXT... ] -> RUNNING',
+              text: 'Checking your data…',
               sage: false,
             }])
 
@@ -160,7 +160,7 @@ export default function OnboardingCinematic() {
 
                 // Replace running line with completion line + result
                 setAuditLines([
-                  { text: '[ AUDITING LOCAL DATA CONTEXT... ] -> COMPLETE', sage: false },
+                  { text: 'Checking your data… done', sage: false },
                   resultLine,
                 ])
 
@@ -293,7 +293,7 @@ export default function OnboardingCinematic() {
               autoFocus
               aria-label="Enter Zenith OS workspace"
             >
-              [ WAKE ZENITH OS WORKSPACE ]
+              Enter Workspace
             </button>
           </div>
         )}

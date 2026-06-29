@@ -32,12 +32,12 @@ import type { CourseIntensityProfile } from '@/types/academics'
 export type { CourseIntensityProfile } from '@/types/academics'
 import type { WaterLog } from '@/utils/waterChemistry'
 export type { WaterLog } from '@/utils/waterChemistry'
-import type { Houseplant } from '@/types/botany'
-export type { Houseplant } from '@/types/botany'
+import type { Houseplant, PlantLogEntry } from '@/types/botany'
+export type { Houseplant, PlantLogEntry } from '@/types/botany'
 import type { DeliveryItem, SubscriptionItem } from '@/types/finance'
 export type { DeliveryItem, SubscriptionItem } from '@/types/finance'
-import type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
-export type { PeerFriend, PeerLeaderboardSnapshot } from '@/types/friendsNetwork'
+import type { PeerFriend, PeerLeaderboardSnapshot, PeerCalendarEvent } from '@/types/friendsNetwork'
+export type { PeerFriend, PeerLeaderboardSnapshot, PeerCalendarEvent } from '@/types/friendsNetwork'
 import type { RelationshipNote } from '@/types/relationshipNotes'
 export type { RelationshipNote } from '@/types/relationshipNotes'
 import type { PeerLocation } from '@/types/distanceTracker'
@@ -381,6 +381,20 @@ export interface PersonalEvent {
   category:     string    // * indexed — 'personal'|'scholastic'|'exam'|'life'|'general'
   description?: string
   createdAt:    number    //   Unix ms
+  calendarId?:  number    //   FK → LocalCalendar.id (which local calendar it belongs to)
+}
+
+/**
+ * LocalCalendar — a user-created local calendar (e.g. "General", "Side").
+ * Personal events reference one via PersonalEvent.calendarId. Distinct from
+ * imported iCal feeds (calendarFeeds); both render together in the grid.
+ */
+export interface LocalCalendar {
+  id:         number    // * PK — auto-increment
+  name:       string    // * indexed — display name
+  color:      string    //   hex accent for this calendar's events
+  isVisible:  number    //   0 | 1 — show/hide toggle
+  createdAt:  number    // * indexed — Unix ms
 }
 
 /**
@@ -448,6 +462,7 @@ class ZenithDatabase extends Dexie {
   courseIntensityProfiles!: EntityTable<CourseIntensityProfile, 'id'>
   waterLogs!:              EntityTable<WaterLog,              'id'>
   houseplants!:            EntityTable<Houseplant,            'id'>
+  plant_log_entries!:      EntityTable<PlantLogEntry,         'id'>
   deliveries!:             EntityTable<DeliveryItem,          'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
   outboxMutations!:        EntityTable<OutboxMutation,        'id'>
@@ -464,12 +479,14 @@ class ZenithDatabase extends Dexie {
   subscription_items!:          EntityTable<SubscriptionItem,         'id'>
   peer_friends!:                EntityTable<PeerFriend,               'id'>
   peer_leaderboard_snapshots!:  EntityTable<PeerLeaderboardSnapshot,  'peerIdString'>
+  peer_calendar_events!:        EntityTable<PeerCalendarEvent,        'id'>
   peer_messages!:               EntityTable<PeerMessage,              'id'>
   relationship_notes!:          EntityTable<RelationshipNote,         'id'>
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
   library_books!:               EntityTable<LibraryBook,              'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
+  localCalendars!:              EntityTable<LocalCalendar,            'id'>
 
   constructor() {
     super('ZenithOS')
@@ -957,6 +974,49 @@ class ZenithDatabase extends Dexie {
       assignments: '++id, title, dueDate, courseId, status, priority, supabaseId, category',
       vocab_cards: 'id, deckId, nextReviewTimestamp, easeFactor',
     })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 29 — P2P Shared Calendars
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   peer_calendar_events — calendar events received from friends over
+     *     the WebRTC DataChannel.
+     *     id            string PK — `${peerIdString}::${uid}`
+     *     peerIdString  indexed — owner peer (clear-by-friend, removal cascade)
+     *     startMs       indexed — range queries for the visible week/month
+     */
+    this.version(29).stores({
+      peer_calendar_events: 'id, peerIdString, startMs',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 30 — Local Calendars
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   localCalendars — user-created local calendars (General / Side / …).
+     *     id         auto PK
+     *     name       indexed
+     *     createdAt  indexed — stable display order
+     * PersonalEvent.calendarId (non-indexed field) references these rows.
+     */
+    this.version(30).stores({
+      localCalendars: '++id, name, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 31 — Plant journal / health log
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   plant_log_entries — dated journal entries per houseplant (note +
+     *     optional health rating + optional photo). Drives the per-plant
+     *     journal, the health-trend chart, and the photo timeline.
+     *     id        auto PK
+     *     plantId   indexed — per-plant query + cascade delete
+     *     createdAt indexed — chronological ordering
+     */
+    this.version(31).stores({
+      plant_log_entries: '++id, plantId, createdAt',
+    })
   }
 }
 
@@ -1199,6 +1259,24 @@ export async function storePeerLocation(
     latitude,
     longitude,
     lastUpdatedTimestamp: Date.now(),
+  })
+}
+
+/**
+ * Idempotently ensures a default "General" local calendar exists.
+ * The count check + insert run inside a single rw transaction so concurrent
+ * callers (e.g. a view remounting before the first insert commits) can never
+ * create duplicate defaults — the second transaction observes count === 1.
+ */
+export async function ensureDefaultLocalCalendar(): Promise<void> {
+  const d = getDb()
+  await d.transaction('rw', d.localCalendars, async () => {
+    const count = await d.localCalendars.count()
+    if (count === 0) {
+      await d.localCalendars.add({
+        name: 'General', color: '#7c95ff', isVisible: 1, createdAt: Date.now(),
+      } as LocalCalendar)
+    }
   })
 }
 

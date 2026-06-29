@@ -35,10 +35,8 @@
 .cardLabel {
   font-family: var(--font-mono);
   font-size: 0.55rem;
-  letter-spacing: 0.12em;
   color: var(--cat-accent, var(--accent-purple));
   margin: 0 0 var(--sp-4);
-  text-transform: uppercase;
 }
 
 /* ── Form ── */

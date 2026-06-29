@@ -29,6 +29,13 @@ const DEFAULT_DAYS: SelectedDays = {
   mon: false, tue: false, wed: false, thu: false, fri: false,
 }
 
+/** Format an ISO "YYYY-MM-DD" date as a short readable label, e.g. "Aug 25". */
+function fmtBreakDate(iso: string): string {
+  const d = new Date(iso + 'T12:00:00')
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 /* ── Props ──────────────────────────────────────────────────────── */
 
 interface Props {
@@ -123,12 +130,12 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
       {/* ── Panel header ────────────────────────────────────────── */}
       <div className={styles.panelHeader}>
         <div className={styles.headerMeta}>
-          <p className={styles.eyebrow}>Academic Calendar · Auto-Scheduler</p>
-          <h2 className={styles.title}>Course Schedule Replicator</h2>
+          <p className={styles.eyebrow}>Academic Calendar</p>
+          <h2 className={styles.title}>Course Schedule</h2>
         </div>
         <p className={styles.subtitle}>
-          Enter your class details and generate a full semester of recurring
-          events — campus holidays and break weeks are excluded automatically.
+          Generate a full semester of recurring class events. Campus holidays
+          and break weeks are skipped automatically.
         </p>
       </div>
 
@@ -153,9 +160,9 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
             </p>
             <p className={styles.successHint}>
               Events appear in the Week and Month views instantly.
-              To remove them, delete the feed&nbsp;
+              To remove them, delete the&nbsp;
               <em>&ldquo;{courseName.trim()} — {uniCal.label}&rdquo;</em>&nbsp;
-              from the iCal Feeds tab.
+              calendar from the New Calendar manager.
             </p>
             <div className={styles.successActions}>
               <button
@@ -282,28 +289,36 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
 
           {/* Semester window preview */}
           <div className={styles.semesterPreview}>
-            <span
-              className={styles.semesterBound}
-              style={{ color: uniCal.color, borderColor: `${uniCal.color}40` }}
-            >
-              {uniCal.semesterStart}
-            </span>
-            <span className={styles.semesterArrow} aria-hidden="true">→</span>
-            <span
-              className={styles.semesterBound}
-              style={{ color: uniCal.color, borderColor: `${uniCal.color}40` }}
-            >
-              {uniCal.semesterEnd}
-            </span>
-            <span className={styles.breakCount}>
-              {uniCal.breaks.length} break window
-              {uniCal.breaks.length !== 1 ? 's' : ''} excluded
-              {uniCal.breaks.length > 0 && (
-                <span className={styles.breakList}>
-                  {' '}({uniCal.breaks.map(b => b.label).join(', ')})
-                </span>
-              )}
-            </span>
+            <div className={styles.semesterRow}>
+              <span
+                className={styles.semesterBound}
+                style={{ borderColor: `${uniCal.color}66`, background: `${uniCal.color}22` }}
+              >
+                {fmtBreakDate(uniCal.semesterStart)}
+              </span>
+              <span className={styles.semesterArrow} aria-hidden="true">→</span>
+              <span
+                className={styles.semesterBound}
+                style={{ borderColor: `${uniCal.color}66`, background: `${uniCal.color}22` }}
+              >
+                {fmtBreakDate(uniCal.semesterEnd)}
+              </span>
+              <span className={styles.breakCount}>
+                {uniCal.breaks.length} break{uniCal.breaks.length !== 1 ? 's' : ''} excluded
+              </span>
+            </div>
+            {uniCal.breaks.length > 0 && (
+              <div className={styles.breakList}>
+                {uniCal.breaks.map(b => (
+                  <span key={b.label} className={styles.breakChip}>
+                    <span className={styles.breakChipName}>{b.label}</span>
+                    <span className={styles.breakChipDates}>
+                      {fmtBreakDate(b.from)} – {fmtBreakDate(b.to)}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Submit */}
@@ -317,10 +332,10 @@ export default function UniversityScheduleReplicator({ onDone }: Props) {
             {running ? (
               <span className={styles.runningContent}>
                 <span className={styles.runningDot} aria-hidden="true" />
-                [ CALIBRATING CAMPUS TIMELINES... ]
+                Generating schedule…
               </span>
             ) : (
-              '[ Replicate Academic Schedule ]'
+              'Generate Schedule'
             )}
           </button>
 

@@ -465,8 +465,9 @@ export default function CognitiveLoadMap() {
           <div>
             <h2 className={styles.panelTitle}>Course Intensity Matrix</h2>
             <p className={styles.panelHint}>
-              Rate each course across three cognitive dimensions to calibrate the forecast.
-              Course codes are matched against your calendar event titles automatically.
+              Classes you schedule above appear here automatically — just rate each
+              across three cognitive dimensions to calibrate the forecast. You can also
+              add courses manually; codes are matched against your calendar event titles.
             </p>
           </div>
           {!showAdd && (

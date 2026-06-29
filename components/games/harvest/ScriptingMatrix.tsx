@@ -521,7 +521,7 @@ export default function ScriptingMatrix({
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ SESSION COMPLETE ]</p>
+            <p className={styles.resultHeading}>Session complete</p>
 
             <div className={styles.resultGrid}>
               <div className={styles.resultRow}>

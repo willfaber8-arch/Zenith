@@ -141,7 +141,7 @@ export default function RoadmapGeneratorButton() {
       <div className={styles.sectionHeader}>
         <span className={styles.headerGlyph} aria-hidden="true">◈</span>
         <div className={styles.headerMeta}>
-          <span className={styles.headerEyebrow}>AI-Powered · Task Decomposition</span>
+          <span className={styles.headerEyebrow}>AI · Task Decomposition</span>
           <span className={styles.headerTitle}>Roadmap Architect</span>
         </div>
       </div>
@@ -208,8 +208,8 @@ export default function RoadmapGeneratorButton() {
             }
           >
             {phase === 'loading'
-              ? '[ ARCHITECTING STEPS... ]'
-              : '[ Generate AI Roadmap ]'}
+              ? 'Generating…'
+              : 'Generate Roadmap'}
           </button>
         </div>
       </div>
@@ -221,10 +221,10 @@ export default function RoadmapGeneratorButton() {
           <div className={styles.successHeader}>
             <span className={styles.successTitle}>
               <span className={styles.successCheckmark}>✓</span>
-              Roadmap Generated &amp; Injected
+              Roadmap added
             </span>
             <span className={styles.successCount}>
-              {tasks.length} STEP{tasks.length !== 1 ? 'S' : ''} → ASSIGNMENTS
+              {tasks.length} step{tasks.length !== 1 ? 's' : ''} → assignments
             </span>
           </div>
 

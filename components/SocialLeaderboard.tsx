@@ -308,10 +308,13 @@ export default function SocialLeaderboard() {
               <PrivacyToggle id="priv-cardio"  label="Cardio Miles"   checked={privacy.shareCardioMiles}    onChange={v => updatePrivacy({ ...privacy, shareCardioMiles:    v })} />
               <PrivacyToggle id="priv-books"   label="Books"          checked={privacy.shareBooksCompleted} onChange={v => updatePrivacy({ ...privacy, shareBooksCompleted: v })} />
               <PrivacyToggle id="priv-credits" label="✦ Credits"      checked={privacy.shareCosmeticPoints} onChange={v => updatePrivacy({ ...privacy, shareCosmeticPoints: v })} />
+              <PrivacyToggle id="priv-calendar" label="Shared Calendar" checked={privacy.shareCalendar}      onChange={v => updatePrivacy({ ...privacy, shareCalendar:       v })} />
 
               <p className={styles.privacyDisclaimer}>
-                Disabled metrics broadcast as zero. Data travels directly
-                between browsers via WebRTC — no central server.
+                Disabled metrics broadcast as zero. With Shared Calendar on,
+                your upcoming events sync to connected friends and appear on
+                their calendar. Data travels directly between browsers via
+                WebRTC — no central server.
               </p>
             </div>
           </div>

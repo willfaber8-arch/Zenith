@@ -1,10 +1,12 @@
 'use client'
 
-import { useState }     from 'react'
+import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { gamesDb }      from '@/lib/gamesDb'
 import { calcGpa }      from '@/utils/gpaMath'
+import { useNav }       from '@/lib/NavContext'
+import { requestGamesTab } from '@/lib/gamesNavState'
 import EcosystemWrapped from '@/components/EcosystemWrapped'
 import styles from './StatsView.module.css'
 
@@ -38,6 +40,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 export default function StatsView() {
   const [showWrapped, setShowWrapped] = useState(false)
+  const { navigate } = useNav()
 
   /* ── Live IDB data ────────────────────────────────────────── */
   const habits     = useLiveQuery(() => db.habits.toArray(),     []) ?? []
@@ -48,6 +51,12 @@ export default function StatsView() {
   const courses    = useLiveQuery(() => db.gpaCourses.toArray(),    []) ?? []
   const resources  = useLiveQuery(() => gamesDb?.resource_inventory.toArray(), []) ?? []
   const vocabCards = useLiveQuery(() => db.vocab_cards.toArray(),   []) ?? []
+  const gamesProfile = useLiveQuery(() => gamesDb?.user_profile_config.get('active_user'), [])
+
+  /* Analytics Vault perk gate */
+  const hasVault = (gamesProfile?.unlockedPerks ?? []).includes('perk_extra_stats')
+
+  const goToShop = () => { requestGamesTab('shop'); navigate('games', 'creator') }
 
   /* ── Computed habit stats ─────────────────────────────────── */
   const todayISO = new Date().toISOString().slice(0, 10)
@@ -79,6 +88,32 @@ export default function StatsView() {
   /* ── Vocab stats ─────────────────────────────────────────── */
   const vocabMastered = vocabCards.filter(c => c.reviewIntervalDays >= 21).length
   const vocabDue      = vocabCards.filter(c => c.nextReviewTimestamp <= Date.now()).length
+
+  /* ── Extended analytics (Analytics Vault perk) ───────────── */
+  const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const weekdayCounts = useMemo(() => {
+    const arr = [0, 0, 0, 0, 0, 0, 0]
+    for (const c of completions) {
+      const d = new Date(c.date + 'T12:00:00')
+      if (!isNaN(d.getTime())) arr[d.getDay()] += 1
+    }
+    return arr
+  }, [completions])
+  const maxWeekday        = Math.max(1, ...weekdayCounts)
+  const totalCompletions  = completions.length
+  const allTimeFocusMin   = sessions
+    .filter(s => s.sessionType === 'work')
+    .reduce((s, x) => s + (x.durationMinutes ?? 25), 0)
+  const allTimeFocusHours = (allTimeFocusMin / 60).toFixed(1)
+  const bestEverStreak    = habits.reduce(
+    (m, h) => Math.max(m, h.allTimeHighStreak ?? h.streakCount ?? 0), 0,
+  )
+  const twoWeeksAgo       = Date.now() - 14 * 86_400_000
+  const prevWeekMin       = sessions
+    .filter(s => s.sessionType === 'work' && s.completedAt >= twoWeeksAgo && s.completedAt < weekAgo)
+    .reduce((s, x) => s + (x.durationMinutes ?? 25), 0)
+  const wowDeltaMin       = totalFocusMinutes - prevWeekMin
+  const busiestDayIdx     = weekdayCounts.indexOf(Math.max(...weekdayCounts))
 
   /* ── Upcoming events ─────────────────────────────────────── */
   const now     = Date.now()
@@ -218,6 +253,103 @@ export default function StatsView() {
         </SectionCard>
 
       </div>
+
+      {/* ── Extended Analytics (Analytics Vault perk) ─────────── */}
+      {hasVault ? (
+        <div className={styles.vaultSection}>
+          <div className={styles.vaultHeader}>
+            <h2 className={styles.cardTitle}>Extended Analytics</h2>
+            <span className={styles.vaultBadge}>◎ Vault Unlocked</span>
+          </div>
+
+          <div className={styles.grid}>
+            {/* All-time totals */}
+            <SectionCard title="All-Time Totals">
+              <div className={styles.studyStats}>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{totalCompletions.toLocaleString()}</span>
+                  <span className={styles.studyStatLabel}>Habit completions</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{allTimeFocusHours}h</span>
+                  <span className={styles.studyStatLabel}>Focus time (all-time)</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{bestEverStreak}d</span>
+                  <span className={styles.studyStatLabel}>Best streak ever</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{vocabMastered}</span>
+                  <span className={styles.studyStatLabel}>Vocab mastered</span>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Week-over-week focus */}
+            <SectionCard title="Focus Momentum">
+              <div className={styles.studyStats}>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{(totalFocusMinutes / 60).toFixed(1)}h</span>
+                  <span className={styles.studyStatLabel}>This week</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{(prevWeekMin / 60).toFixed(1)}h</span>
+                  <span className={styles.studyStatLabel}>Last week</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span
+                    className={styles.studyStatNum}
+                    style={{ color: wowDeltaMin >= 0 ? 'var(--accent-green)' : '#f87171' }}
+                  >
+                    {wowDeltaMin >= 0 ? '+' : ''}{(wowDeltaMin / 60).toFixed(1)}h
+                  </span>
+                  <span className={styles.studyStatLabel}>Week-over-week</span>
+                </div>
+                <div className={styles.studyStat}>
+                  <span className={styles.studyStatNum}>{totalCompletions > 0 ? DOW_LABELS[busiestDayIdx] : '—'}</span>
+                  <span className={styles.studyStatLabel}>Most active day</span>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Weekday completion breakdown */}
+            <SectionCard title="Completions by Weekday">
+              {totalCompletions === 0 ? (
+                <p className={styles.empty}>No habit completions logged yet.</p>
+              ) : (
+                <div className={styles.weekdayChart}>
+                  {weekdayCounts.map((count, i) => (
+                    <div key={i} className={styles.weekdayCol}>
+                      <div className={styles.weekdayBarTrack}>
+                        <div
+                          className={styles.weekdayBarFill}
+                          style={{ height: `${(count / maxWeekday) * 100}%` }}
+                        />
+                      </div>
+                      <span className={styles.weekdayCount}>{count}</span>
+                      <span className={styles.weekdayLabel}>{DOW_LABELS[i]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.vaultLocked}>
+          <span className={styles.vaultLockGlyph}>◎</span>
+          <div className={styles.vaultLockText}>
+            <p className={styles.vaultLockTitle}>Extended Analytics is locked</p>
+            <p className={styles.vaultLockSub}>
+              Unlock the Analytics Vault to see weekday breakdowns, all-time totals,
+              best-ever streaks, and week-over-week focus momentum.
+            </p>
+          </div>
+          <button type="button" className={styles.vaultUnlockBtn} onClick={goToShop}>
+            Unlock in Shop →
+          </button>
+        </div>
+      )}
 
       {showWrapped && (
         <EcosystemWrapped onClose={() => setShowWrapped(false)} />

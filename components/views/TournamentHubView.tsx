@@ -363,7 +363,7 @@ function WheelOfNames() {
             onClick={() => setUseWeights(v => !v)}
             title="Give some names a higher chance of winning"
           >
-            ⚖ Weights {useWeights ? 'ON' : 'OFF'}
+            ⚖ Weights {useWeights ? 'On' : 'Off'}
           </button>
         </div>
 
@@ -384,7 +384,7 @@ function WheelOfNames() {
 
         <div className={styles.nameList} role="list">
           {n === 0 && (
-            <p className={styles.namesEmpty}>[ NO PARTICIPANTS YET ]</p>
+            <p className={styles.namesEmpty}>No participants yet</p>
           )}
           {participants.map((p, i) => (
             <div key={p.name + i} className={styles.nameRow} role="listitem">
@@ -675,7 +675,7 @@ function BracketBuilder() {
       {/* ── Bracket display ───────────────────────── */}
       {bracket.length === 0 ? (
         <div className={styles.bracketEmpty} aria-label="Bracket not yet generated">
-          <p className={styles.bracketEmptyGlyph}>[ ◈ ]</p>
+          <p className={styles.bracketEmptyGlyph}>◈</p>
           <p className={styles.bracketEmptyText}>
             Enter participants and click Generate Bracket
           </p>

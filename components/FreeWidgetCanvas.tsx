@@ -432,7 +432,7 @@ class WidgetErrorBoundary extends Component<
           fontSize: '0.65rem',
           lineHeight: 1.5,
         }}>
-          [ WIDGET ERROR // {this.props.name} ]<br />
+          Widget error · {this.props.name}<br />
           This widget encountered a runtime error and has been isolated.
         </div>
       )
@@ -881,7 +881,7 @@ export default function FreeWidgetCanvas() {
       {/* ── Manage panel ────────────────────────────────────── */}
       {showPanel && (
         <div className={styles.visPanel}>
-          <p className={styles.visPanelTitle}>VISIBLE ITEMS &amp; COLORS</p>
+          <p className={styles.visPanelTitle}>Visible items &amp; colors</p>
 
           {/* Cap indicator */}
           <div className={styles.visPanelMeta}>
@@ -895,7 +895,7 @@ export default function FreeWidgetCanvas() {
 
           {visibleKeys.length >= MAX_VISIBLE && (
             <p className={styles.visPanelLimit}>
-              [ CANVAS FULL ] Disable a widget to enable another.
+              Canvas full. Disable a widget to enable another.
             </p>
           )}
 

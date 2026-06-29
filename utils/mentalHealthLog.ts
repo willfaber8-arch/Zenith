@@ -46,13 +46,15 @@ export interface MoodVector {
   hue:         number
 }
 
+/* Labels kept clear and distinct. The MoodKey values are unchanged so existing
+   logs keep resolving; only the display label/emoji were refreshed. */
 export const MOOD_VECTORS: MoodVector[] = [
-  { key: 'thriving',  emoji: '🌟', label: 'Thriving',  stressLevel: 2, energyLevel: 9, hue: 158 },
+  { key: 'thriving',  emoji: '🌟', label: 'Great',     stressLevel: 2, energyLevel: 9, hue: 158 },
   { key: 'energized', emoji: '✨', label: 'Energized', stressLevel: 3, energyLevel: 9, hue: 228 },
   { key: 'focused',   emoji: '🎯', label: 'Focused',   stressLevel: 4, energyLevel: 8, hue: 218 },
-  { key: 'coasting',  emoji: '🌊', label: 'Coasting',  stressLevel: 3, energyLevel: 5, hue: 198 },
+  { key: 'coasting',  emoji: '🙂', label: 'Relaxed',   stressLevel: 3, energyLevel: 5, hue: 198 },
   { key: 'neutral',   emoji: '😐', label: 'Neutral',   stressLevel: 5, energyLevel: 5, hue: 210 },
-  { key: 'grinding',  emoji: '⚡', label: 'Grinding',  stressLevel: 8, energyLevel: 7, hue:  42 },
+  { key: 'grinding',  emoji: '⚡', label: 'Busy',      stressLevel: 8, energyLevel: 7, hue:  42 },
   { key: 'stressed',  emoji: '😤', label: 'Stressed',  stressLevel: 9, energyLevel: 4, hue:  22 },
   { key: 'drained',   emoji: '😴', label: 'Drained',   stressLevel: 8, energyLevel: 2, hue:   0 },
 ]

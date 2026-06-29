@@ -176,17 +176,18 @@ export default function WellnessTracker() {
 
           <div className={styles.notesWrap}>
             <label htmlFor="mh-notes" className={styles.notesLabel}>
-              Quick Note (optional)
+              Journal (optional)
             </label>
             <textarea
               id="mh-notes"
               className={styles.notesInput}
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="What's driving today's energy level?"
-              maxLength={280}
-              rows={2}
+              placeholder="Write down whatever's on your mind — clear your head, reflect on the day, or just let it out."
+              maxLength={2000}
+              rows={5}
             />
+            <span className={styles.notesCount}>{notes.length}/2000</span>
           </div>
 
           <button
@@ -318,7 +319,7 @@ export default function WellnessTracker() {
           <div className={styles.calLegend}>
             <div className={styles.calLegendItem}>
               <span className={styles.calLegendDot} style={{ background: 'hsla(120,65%,50%,0.85)' }} />
-              <span className={styles.calLegendLabel}>Thriving</span>
+              <span className={styles.calLegendLabel}>Great</span>
             </div>
             <div className={styles.calLegendItem}>
               <span className={styles.calLegendDot} style={{ background: 'hsla(60,65%,50%,0.85)' }} />

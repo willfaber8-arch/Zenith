@@ -232,8 +232,6 @@
 .selectPromptText {
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--text-dark);
 }
 
@@ -1146,9 +1144,7 @@
 .engLoadingText {
   font-family:     var(--font-mono);
   font-size:       0.62rem;
-  letter-spacing:  0.22em;
   color:           var(--text-dark);
-  text-transform:  uppercase;
 }
 
 /* ── Stat strip ──────────────────────────────────────────────── */

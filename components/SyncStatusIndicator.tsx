@@ -39,25 +39,25 @@ interface PanelConfig {
 const PANEL_CONFIG: Record<SyncStatus, PanelConfig> = {
   CLOUD_SYNCHRONIZED: {
     dot:       'dotGreen',
-    label:     'SYNCHRONIZED',
+    label:     'Synced',
     modifier:  'stateSynced',
     ariaLabel: 'Cloud synchronised — all local changes are mirrored remotely.',
   },
   SYNCING: {
     dot:       'dotPurple',
-    label:     'SYNCING BACKGROUND BATCHES...',
+    label:     'Syncing…',
     modifier:  'stateSyncing',
     ariaLabel: 'Sync in progress — uploading batched mutations to the cloud.',
   },
   SAVED_LOCALLY: {
     dot:       'dotSlate',
-    label:     'PENDING UPLOAD',
+    label:     'Pending upload',
     modifier:  'stateLocal',
     ariaLabel: 'Changes saved locally — cloud sync queued for next network pass.',
   },
   OFFLINE_QUEUED: {
     dot:       'dotSlate',
-    label:     'LOCAL ONLY // OFFLINE',
+    label:     'Offline',
     modifier:  'stateOffline',
     ariaLabel: 'Offline — all mutations are queued locally and will sync on reconnect.',
   },
@@ -93,14 +93,11 @@ export default function SyncStatusIndicator() {
         aria-hidden="true"
       />
 
-      {/* ── Bracketed status label ─────────────────────────────── */}
+      {/* ── Status label ───────────────────────────────────────── */}
       <span className={styles.label}>
-        <span className={styles.bracket} aria-hidden="true">[ </span>
-        <span className={styles.prefix}>SYSTEM STATUS:&nbsp;</span>
         <span className={`${styles.state} ${styles[cfg.modifier + 'Text']}`}>
           {cfg.label}
         </span>
-        <span className={styles.bracket} aria-hidden="true"> ]</span>
       </span>
     </div>
   )

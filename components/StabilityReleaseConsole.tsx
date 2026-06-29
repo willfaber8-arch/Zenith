@@ -128,10 +128,10 @@ function CheckRow({
         <span className={styles.checkLabel}>{PHASE_CHECK_LABELS[phaseId]}</span>
 
         {status === 'passed' && (
-          <span className={styles.checkBadge}>[ ENGINES CERTIFIED ]</span>
+          <span className={styles.checkBadge}>Certified</span>
         )}
         {status === 'failed' && (
-          <span className={styles.checkBadgeFailed}>[ CHECK FAILED ]</span>
+          <span className={styles.checkBadgeFailed}>Failed</span>
         )}
 
         {durationMs != null && (
@@ -428,8 +428,8 @@ export default function StabilityReleaseConsole() {
           aria-busy={isRunning}
         >
           {isRunning
-            ? '[ SCANNING ARCHITECTURE… ]'
-            : '[ RUN SYSTEM DIAGNOSTICS ]'
+            ? 'Scanning…'
+            : 'Run System Diagnostics'
           }
         </button>
       )}
@@ -467,8 +467,8 @@ export default function StabilityReleaseConsole() {
           }
         >
           {allPassed
-            ? '[ EXECUTE FINAL SYSTEM SIGN-OFF & LOCK BUILD ]'
-            : '[ VIEW CERTIFICATION STATUS — CHECKS INCOMPLETE ]'
+            ? 'Execute Final Sign-Off & Lock Build'
+            : 'View Certification Status — Checks Incomplete'
           }
         </button>
       )}
@@ -477,7 +477,7 @@ export default function StabilityReleaseConsole() {
         <div className={styles.sealedBanner} aria-live="polite">
           <span className={styles.sealedGlyph} aria-hidden="true">◈</span>
           <span className={styles.sealedText}>
-            BUILD SEALED · 2026.R13 · PRODUCTION LOCKED
+            Build sealed · 2026.R13 · Production locked
           </span>
         </div>
       )}

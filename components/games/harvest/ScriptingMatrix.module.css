@@ -304,8 +304,7 @@
 .resultHeading {
   font-family: var(--font-mono);
   font-size: 0.58rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--accent-green);
   margin: 0;
 }

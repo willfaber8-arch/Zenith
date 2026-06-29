@@ -169,10 +169,12 @@ export async function generateUniversitySchedule(
     cursor.setDate(cursor.getDate() + 1)
   }
 
-  /* Atomic transaction: create feed row → bulk-insert events */
+  /* Atomic transaction: create feed row → bulk-insert events → ensure a
+     matching Course Intensity Profile exists so the class flows straight into
+     the Cognitive Forecast without being re-entered there. */
   const { feedId, count } = await db.transaction(
     'rw',
-    [db.calendarFeeds, db.calendarEvents],
+    [db.calendarFeeds, db.calendarEvents, db.courseIntensityProfiles],
     async () => {
       const fid = (await db.calendarFeeds.add({
         label:         feedLabel,
@@ -188,6 +190,24 @@ export async function generateUniversitySchedule(
 
       if (finalRows.length > 0) {
         await db.calendarEvents.bulkAdd(finalRows as CalendarEvent[])
+      }
+
+      /* Auto-register the course in the intensity matrix (default 5/5/5).
+         courseCode = the class name so the matcher (which scans event titles)
+         links these generated events to the profile automatically. Skip if a
+         profile for this course already exists (re-runs, edits). */
+      const existingProfile = await db.courseIntensityProfiles
+        .where('courseCode').equals(name).first()
+      if (!existingProfile) {
+        await db.courseIntensityProfiles.add({
+          courseCode:            name,
+          courseName:            uniCal.label,
+          mathIntensity:         5,
+          codingIntensity:       5,
+          memorizationIntensity: 5,
+          createdAt:             now,
+          updatedAt:             now,
+        })
       }
 
       return { feedId: fid, count: finalRows.length }

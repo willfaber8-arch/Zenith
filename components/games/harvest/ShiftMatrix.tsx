@@ -497,7 +497,7 @@ export default function ShiftMatrix({
         >
           <div className={styles.resultCard}>
 
-            <p className={styles.resultHeading}>[ MATRIX DEFRAGMENTED ]</p>
+            <p className={styles.resultHeading}>Solved</p>
 
             <div className={styles.resultGrid}>
               <div className={styles.resultRow}>

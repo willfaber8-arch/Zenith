@@ -39,7 +39,7 @@ export default function GoogleSearchHUD() {
 
       {/* ── Label ─────────────────────────────────────────────── */}
       <p className={styles.label} aria-hidden="true">
-        [ SEARCH WEB // ENTER QUERY ]
+        Search the web
       </p>
 
       {/* ── Input bar ─────────────────────────────────────────── */}

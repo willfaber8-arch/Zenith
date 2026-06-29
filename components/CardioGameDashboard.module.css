@@ -260,7 +260,6 @@
   font-family:    var(--font-mono);
   font-size:      0.6rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
   color:          var(--d-accent);
   display:        flex;
   align-items:    center;
@@ -708,7 +707,6 @@
   font-family:    var(--font-mono);
   font-size:      0.65rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
   color:          var(--parchment);
   text-align:     center;
   padding:        var(--sp-3);
