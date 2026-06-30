@@ -351,9 +351,10 @@ export default function Core2048({
 
   /* ── Game-over payout ────────────────────────────────────────── */
   const handleGameOver = useCallback((finalScore: number) => {
-    const payout = Math.floor(finalScore / 10)
+    // Refined resource → smaller divisor keeps payouts within quantum_fuel caps.
+    const payout = Math.floor(finalScore / 40)
     if (payout > 0) {
-      void addResources('raw_data_shards', payout).catch(() => {})
+      void addResources('quantum_fuel', payout).catch(() => {})
     }
     onSessionComplete?.(finalScore)
     onGameComplete?.({ score: finalScore, status: 'completed' })
@@ -640,9 +641,9 @@ export default function Core2048({
               <div className={styles.resultDivider} aria-hidden="true" />
 
               <div className={styles.resultRow}>
-                <span className={styles.resultLabel}>Shards Awarded</span>
+                <span className={styles.resultLabel}>Quantum Fuel Awarded</span>
                 <span className={`${styles.resultVal} ${styles.resultGreen}`}>
-                  +{Math.floor(score / 10).toLocaleString('en-US')}
+                  +{Math.floor(score / 40).toLocaleString('en-US')}
                 </span>
               </div>
 

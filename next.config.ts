@@ -48,9 +48,10 @@ const ContentSecurityPolicy = [
   /* Fonts — Google Fonts CDN (Plus Jakarta Sans, Space Grotesk) */
   `font-src 'self' https://fonts.gstatic.com`,
 
-  /* Images — data URIs for SVG icons, blobs for canvas export, OSM map
-     tiles, and team badges from TheSportsDB's image CDN (Sports Tracker) */
-  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.thesportsdb.com https://r2.thesportsdb.com`,
+  /* Images — data URIs for SVG icons, blobs for canvas export, map tiles
+     (OpenStreetMap + CartoDB basemaps used by the Trail Hunter map), and team
+     badges from TheSportsDB's image CDN (Sports Tracker) */
+  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.thesportsdb.com https://r2.thesportsdb.com`,
 
   /* Connections — Open-Meteo weather, Nominatim geocoding, Supabase sync,
      PeerJS signalling (*.0.peerjs.com), WebRTC ICE/STUN.

@@ -177,10 +177,13 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     branchId:      'synergy',
     tier:          1,
     prerequisites: [],
+    /* Root gate — a modest amount of all three RAW resources. Each fits the
+       default 200 storage cap, so the Nexus is reachable from a fresh start
+       once every raw resource has a game source (it now does). */
     costs: [
-      { resourceId: 'raw_data_shards', amount: 5_000 },
-      { resourceId: 'organic_spores',  amount: 5_000 },
-      { resourceId: 'cosmic_dust',     amount: 5_000 },
+      { resourceId: 'raw_data_shards', amount: 120 },
+      { resourceId: 'organic_spores',  amount: 120 },
+      { resourceId: 'cosmic_dust',     amount: 120 },
     ],
   },
 
@@ -190,14 +193,14 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     branchId:      'aesthetic',
     tier:          1,
     prerequisites: [NEXUS_NODE_ID],
-    costs: [{ resourceId: 'raw_data_shards', amount: 1_500 }],
+    costs: [{ resourceId: 'raw_data_shards', amount: 150 }],
   },
   {
     id:            'a2_particles',
     branchId:      'aesthetic',
     tier:          2,
     prerequisites: ['a1_preview'],
-    costs: [{ resourceId: 'quantum_fuel', amount: 5_000 }],
+    costs: [{ resourceId: 'quantum_fuel', amount: 120 }],
   },
   {
     id:            'a3_typography',
@@ -205,8 +208,8 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     tier:          3,
     prerequisites: ['a2_particles'],
     costs: [
-      { resourceId: 'quantum_fuel',   amount: 8_000 },
-      { resourceId: 'stardust_glass', amount: 7_000 },
+      { resourceId: 'quantum_fuel',   amount: 150 },
+      { resourceId: 'stardust_glass', amount: 150 },
     ],
   },
 
@@ -216,14 +219,14 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     branchId:      'efficiency',
     tier:          1,
     prerequisites: [NEXUS_NODE_ID],
-    costs: [{ resourceId: 'organic_spores', amount: 1_500 }],
+    costs: [{ resourceId: 'organic_spores', amount: 150 }],
   },
   {
     id:            'b2_shield',
     branchId:      'efficiency',
     tier:          2,
     prerequisites: ['b1_refinery'],
-    costs: [{ resourceId: 'quantum_fuel', amount: 5_000 }],
+    costs: [{ resourceId: 'quantum_fuel', amount: 120 }],
   },
   {
     id:            'b3_harvest',
@@ -231,8 +234,8 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     tier:          3,
     prerequisites: ['b2_shield'],
     costs: [
-      { resourceId: 'quantum_fuel',   amount: 10_000 },
-      { resourceId: 'stardust_glass', amount:  5_000 },
+      { resourceId: 'quantum_fuel',   amount: 150 },
+      { resourceId: 'stardust_glass', amount: 150 },
     ],
   },
 
@@ -242,14 +245,14 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     branchId:      'cultivation',
     tier:          1,
     prerequisites: [NEXUS_NODE_ID],
-    costs: [{ resourceId: 'cosmic_dust', amount: 1_500 }],
+    costs: [{ resourceId: 'cosmic_dust', amount: 150 }],
   },
   {
     id:            'c2_zoo',
     branchId:      'cultivation',
     tier:          2,
     prerequisites: ['c1_aquarium'],
-    costs: [{ resourceId: 'stardust_glass', amount: 5_000 }],
+    costs: [{ resourceId: 'stardust_glass', amount: 120 }],
   },
   {
     id:            'c3_projection',
@@ -257,8 +260,8 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     tier:          3,
     prerequisites: ['c2_zoo'],
     costs: [
-      { resourceId: 'quantum_fuel',   amount:  5_000 },
-      { resourceId: 'stardust_glass', amount: 10_000 },
+      { resourceId: 'quantum_fuel',   amount: 150 },
+      { resourceId: 'stardust_glass', amount: 150 },
     ],
   },
 
@@ -268,14 +271,14 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     branchId:      'synergy',
     tier:          1,
     prerequisites: [NEXUS_NODE_ID],
-    costs: [{ resourceId: 'raw_data_shards', amount: 1_500 }],
+    costs: [{ resourceId: 'raw_data_shards', amount: 150 }],
   },
   {
     id:            'd2_resonance',
     branchId:      'synergy',
     tier:          2,
     prerequisites: ['d1_synthesis'],
-    costs: [{ resourceId: 'stardust_glass', amount: 5_000 }],
+    costs: [{ resourceId: 'stardust_glass', amount: 120 }],
   },
   {
     id:            'd3_convergence',
@@ -283,8 +286,8 @@ export const SKILL_TREE_REGISTRY: readonly NodeDefinition[] = [
     tier:          3,
     prerequisites: ['d2_resonance'],
     costs: [
-      { resourceId: 'quantum_fuel',   amount: 7_500 },
-      { resourceId: 'stardust_glass', amount: 7_500 },
+      { resourceId: 'quantum_fuel',   amount: 150 },
+      { resourceId: 'stardust_glass', amount: 150 },
     ],
   },
 ] as const satisfies NodeDefinition[]
