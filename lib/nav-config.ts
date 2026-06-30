@@ -28,7 +28,6 @@ export type ViewId =
   | 'book-tracker'
   | 'tournament-hub'
   // Creator's Choice
-  | 'aquascaping'
   | 'trail-hunter'
   | 'botanist'
   | 'games'
@@ -112,7 +111,6 @@ export const NAV_CONFIG: NavCategory[] = [
     label: "Creator's Choice",
     bgTint: '#090f0b',            // Deep Obsidian-Green
     links: [
-      { id: 'aquascaping',   label: 'Aquascaping Engine', category: 'creator', color: '#059669' },
       { id: 'trail-hunter',  label: 'Trail Hunter',       category: 'creator', color: '#22c55e' },
       { id: 'botanist',      label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
       { id: 'games',         label: 'Arcade Hub',         category: 'creator', color: '#a3e635' },

@@ -204,8 +204,8 @@ const nextConfig: NextConfig = {
       cacheGroups: {
         ...existingGroups,
 
-        /* Leaflet + react-leaflet — only loaded on AquascapingView
-           and TrailHunterView. Separate chunk keeps the home screen fast. */
+        /* Leaflet + react-leaflet — only loaded on TrailHunterView.
+           Separate chunk keeps the home screen fast. */
         leaflet: {
           test:             /[\\/]node_modules[\\/](leaflet|react-leaflet)[\\/]/,
           name:             'vendor-leaflet',

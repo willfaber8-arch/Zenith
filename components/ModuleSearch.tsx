@@ -4,8 +4,8 @@
  * ModuleSearch — Topbar module finder.
  *
  * A compact search field in the Topbar that lets users jump to any of Zenith's
- * modules by name OR by what they mean ("budget" → Subscriptions, "fish tank"
- * → Aquascaping). Results come from `searchModules()` over a keyword index.
+ * modules by name OR by what they mean ("budget" → Subscriptions, "trail"
+ * → Trail Hunter). Results come from `searchModules()` over a keyword index.
  *
  * Keyboard: ⌘K / Ctrl+K focuses it from anywhere · ↑/↓ move the selection ·
  * Enter navigates · Escape clears & blurs. Click-outside closes the dropdown.

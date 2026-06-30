@@ -30,8 +30,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { CourseIntensityProfile } from '@/types/academics'
 export type { CourseIntensityProfile } from '@/types/academics'
-import type { WaterLog } from '@/utils/waterChemistry'
-export type { WaterLog } from '@/utils/waterChemistry'
 import type { Houseplant, PlantLogEntry } from '@/types/botany'
 export type { Houseplant, PlantLogEntry } from '@/types/botany'
 import type { DeliveryItem, SubscriptionItem } from '@/types/finance'
@@ -46,8 +44,8 @@ import type { MentalHealthLog } from '@/utils/mentalHealthLog'
 export type { MentalHealthLog } from '@/utils/mentalHealthLog'
 import type { OutboxMutation } from '@/types/syncQueue'
 export type { OutboxMutation } from '@/types/syncQueue'
-import type { AquascapeLayout } from '@/types/hardscape'
-export type { AquascapeLayout } from '@/types/hardscape'
+import type { CompletedTrail } from '@/types/trailLog'
+export type { CompletedTrail } from '@/types/trailLog'
 import type { VocabDeck, VocabCard } from '@/types/vocabulary'
 export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
@@ -460,13 +458,12 @@ class ZenithDatabase extends Dexie {
   gpaSemesters!:            EntityTable<GpaSemester,            'id'>
   gpaCourses!:              EntityTable<GpaCourse,              'id'>
   courseIntensityProfiles!: EntityTable<CourseIntensityProfile, 'id'>
-  waterLogs!:              EntityTable<WaterLog,              'id'>
   houseplants!:            EntityTable<Houseplant,            'id'>
   plant_log_entries!:      EntityTable<PlantLogEntry,         'id'>
   deliveries!:             EntityTable<DeliveryItem,          'id'>
   mentalHealthLogs!:       EntityTable<MentalHealthLog,       'id'>
   outboxMutations!:        EntityTable<OutboxMutation,        'id'>
-  aquascapeLayouts!:       EntityTable<AquascapeLayout,       'id'>
+  completed_trails!:       EntityTable<CompletedTrail,        'id'>
   personalEvents!:         EntityTable<PersonalEvent,         'id'>
   mealPlanSlots!:          EntityTable<MealPlanSlot,          'id'>
   savedMealRecipes!:       EntityTable<SavedMealRecipe,       'id'>
@@ -1030,6 +1027,20 @@ class ZenithDatabase extends Dexie {
      */
     this.version(32).stores({
       reading_sessions: '++id, bookId, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 33 — Completed trails (Trail Hunter log)
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   completed_trails — one row per trail the user has marked complete,
+     *     with notes + locally-stored photos.
+     *     id        auto PK
+     *     trailId   indexed — completion lookup per trail (map dot colour)
+     *     createdAt indexed — chronological log ordering
+     */
+    this.version(33).stores({
+      completed_trails: '++id, trailId, createdAt',
     })
   }
 }

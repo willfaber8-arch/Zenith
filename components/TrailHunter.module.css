@@ -556,6 +556,39 @@
   box-shadow: 0 0 16px rgba(82, 204, 163, 0.08);
 }
 
+/* Mark-complete + GPX action row */
+.infoActions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.infoActions .gpxBtn { flex: 1; min-width: 160px; width: auto; }
+
+.completeBtn {
+  flex: 1;
+  min-width: 150px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(245, 184, 65, 0.4);
+  background: rgba(245, 184, 65, 0.12);
+  color: #f5b841;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--dur-base) var(--ease-smooth), border-color var(--dur-base) var(--ease-smooth);
+}
+.completeBtn:hover {
+  background: rgba(245, 184, 65, 0.2);
+  border-color: rgba(245, 184, 65, 0.6);
+}
+.completeBtnDone {
+  background: rgba(245, 184, 65, 0.18);
+  border-color: rgba(245, 184, 65, 0.55);
+}
+
 .infoPlaceholder {
   padding: var(--sp-5);
   text-align: center;

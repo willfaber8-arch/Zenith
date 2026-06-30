@@ -22,7 +22,6 @@
  *   LazyGamesTabShell          Arcade hub shell — imports all canvas games
  *   LazyGamesArcade            All six canvas games in one chunk
  *   LazyTrailHunterView        Leaflet map + 70-trail dataset
- *   LazyAquascapingView        Three-pane: validator / cart / water log
  *   LazyVocabBuilderView       SM-2 spaced-repetition engine
  *   LazyMealPlanningView       4-tab planner + recipe importer
  *   LazySubscriptionPackagesView  Burn-rate analytics
@@ -160,19 +159,6 @@ export const LazyGamesArcade = dynamic(
  */
 export const LazyTrailHunterView = dynamic(
   () => import('@/components/views/TrailHunterView'),
-  {
-    ssr:     false,
-    loading: makeSkeleton('default'),
-  },
-)
-
-/**
- * AquascapingView — three-pane view: Ecosystem Validator, Supplier Cart,
- * Water Parameter Logger. The water log embeds a pure SVG chart; the cart
- * has a 22-item catalog with vendor math. Reasonably heavy.
- */
-export const LazyAquascapingView = dynamic(
-  () => import('@/components/views/AquascapingView'),
   {
     ssr:     false,
     loading: makeSkeleton('default'),

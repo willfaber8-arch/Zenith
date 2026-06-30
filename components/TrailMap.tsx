@@ -46,12 +46,17 @@ interface TrailMapProps {
   trails: Trail[]
   selectedId: string | null
   onSelectTrail: (id: string) => void
+  completedIds?: Set<string>
 }
+
+const COMPLETED_COLOR = '#f5b841'   // gold — completed trails
+const ACTIVE_COLOR    = '#52cca3'   // green — available/selected
 
 export default function TrailMap({
   trails,
   selectedId,
   onSelectTrail,
+  completedIds,
 }: TrailMapProps) {
   const hasSelection = selectedId !== null
 
@@ -71,7 +76,8 @@ export default function TrailMap({
       <MapController trails={trails} selectedId={selectedId} />
 
       {trails.map(trail => {
-        const isSelected = trail.id === selectedId
+        const isSelected  = trail.id === selectedId
+        const isCompleted = completedIds?.has(trail.id) ?? false
         const positions = trail.coordinates.map(
           ([lon, lat]) => [lat, lon] as [number, number],
         )
@@ -81,9 +87,29 @@ export default function TrailMap({
             key={trail.id}
             positions={positions}
             pathOptions={{
-              color: '#52cca3',
+              color: isCompleted ? COMPLETED_COLOR : ACTIVE_COLOR,
               weight: isSelected ? 4.5 : 2.5,
               opacity: hasSelection && !isSelected ? 0.28 : 1,
+            }}
+            eventHandlers={{ click: () => onSelectTrail(trail.id) }}
+          />
+        )
+      })}
+
+      {/* Completion dot at each completed trail's start point */}
+      {trails.map(trail => {
+        if (!completedIds?.has(trail.id) || trail.coordinates.length === 0) return null
+        const [lon, lat] = trail.coordinates[0]
+        return (
+          <CircleMarker
+            key={`done-${trail.id}`}
+            center={[lat, lon]}
+            radius={6}
+            pathOptions={{
+              color: '#0b0f11',
+              fillColor: COMPLETED_COLOR,
+              fillOpacity: 1,
+              weight: 2,
             }}
             eventHandlers={{ click: () => onSelectTrail(trail.id) }}
           />
@@ -101,7 +127,7 @@ export default function TrailMap({
             radius={7}
             pathOptions={{
               color: '#0b0f11',
-              fillColor: '#52cca3',
+              fillColor: completedIds?.has(trail.id) ? COMPLETED_COLOR : ACTIVE_COLOR,
               fillOpacity: 1,
               weight: 2,
             }}

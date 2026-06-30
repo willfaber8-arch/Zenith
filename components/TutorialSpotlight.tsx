@@ -100,7 +100,7 @@ const STEPS: Step[] = [
   {
     icon:  '✦',
     title: 'You\'re All Set',
-    body:  'That\'s the tour! Explore the sidebar to discover more — meal planning, library, aquascaping, trail finder, and the Arcade Hub. You can replay this walkthrough any time from Settings → Help & Tour.',
+    body:  'That\'s the tour! Explore the sidebar to discover more — meal planning, library, trail finder, and the Arcade Hub. You can replay this walkthrough any time from Settings → Help & Tour.',
     hint:  'Settings → Help & Tour → Replay walkthrough',
   },
 ]

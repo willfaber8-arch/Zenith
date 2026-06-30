@@ -42,7 +42,6 @@ import SportsView      from '@/components/views/SportsView'
 import {
   LazyCalendarView             as CalendarView,
   LazyHabitsView               as HabitsView,
-  LazyAquascapingView          as AquascapingView,
   LazyTrailHunterView          as TrailHunterView,
   LazyFriendsNetworkView       as FriendsNetworkView,
   LazyBookTrackerView          as BookTrackerView,
@@ -69,7 +68,6 @@ function resolveView(id: ViewId): JSX.Element {
   if (id === 'uni-hub')         return <UniHubView />
   if (id === 'calendar')        return <CalendarView />
   if (id === 'study-shield')    return <StudyShieldView />
-  if (id === 'aquascaping')     return <AquascapingView />
   if (id === 'trail-hunter')    return <TrailHunterView />
   if (id === 'botanist')        return <BotanistView />
   if (id === 'wellness')        return <WellnessView />

@@ -4,7 +4,7 @@
  * Powers the Topbar module finder. Zenith has grown large, so this index maps
  * each routable view to a friendly label, a one-line hint, and a list of
  * keyword synonyms a new user might type ("budget" → Subscriptions,
- * "fish tank" → Aquascaping). Pure module — no React / Dexie imports.
+ * "trail" → Trail Hunter). Pure module — no React / Dexie imports.
  *
  * `category` is the value passed to `navigate(view, category)` so the
  * background tint morph matches the destination (null = neutral, e.g. Home /
@@ -82,9 +82,6 @@ export const MODULE_INDEX: ModuleEntry[] = [
     keywords: ['tournament', 'bracket', 'wheel of names', 'competition', 'raffle', 'picker', 'random', 'spinner', 'draw'] },
 
   /* ── Creator's Choice ── */
-  { id: 'aquascaping', label: 'Aquascaping Engine', category: 'creator',
-    hint: 'Aquarium compatibility, cart & water chemistry',
-    keywords: ['aquarium', 'fish', 'tank', 'fish tank', 'aquascape', 'water', 'shrimp', 'plants', 'nitrogen cycle'] },
   { id: 'trail-hunter', label: 'Trail Hunter', category: 'creator',
     hint: 'Discover hiking trails across the US',
     keywords: ['hiking', 'trails', 'outdoors', 'hikes', 'maps', 'nature', 'walking', 'mountains'] },

@@ -2,9 +2,13 @@
 
 import { useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { Difficulty, TrailFeature } from '@/types/hiking'
 import { TRAILS } from '@/data/trails'
+import { db } from '@/lib/db'
 import { exportTrailAsGpx } from '@/utils/gpxExporter'
+import { useToast } from '@/lib/ToastContext'
+import CompleteTrailModal from './CompleteTrailModal'
 import styles from './TrailHunter.module.css'
 
 /* ── Leaflet map — client-only dynamic import ─────────────────────── */
@@ -39,6 +43,12 @@ export default function TrailHunter() {
   const [difficulty,     setDifficulty]      = useState<Difficulty | 'all'>('all')
   const [activeFeatures, setActiveFeatures]  = useState<Set<TrailFeature>>(new Set())
   const [selectedId,     setSelectedId]      = useState<string | null>(null)
+  const [logTrailId,     setLogTrailId]      = useState<string | null>(null)  // trail being logged
+  const { toast } = useToast()
+
+  /* Completed trails — drives the gold map dots + "Completed" state */
+  const completed = useLiveQuery(() => db?.completed_trails.toArray() ?? Promise.resolve([]), []) ?? []
+  const completedIds = useMemo(() => new Set(completed.map(c => c.trailId)), [completed])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -213,6 +223,7 @@ export default function TrailHunter() {
               trails={filtered}
               selectedId={selectedId}
               onSelectTrail={handleSelect}
+              completedIds={completedIds}
             />
           </div>
 
@@ -240,14 +251,22 @@ export default function TrailHunter() {
                   <span key={f} className={styles.tag}>{FEATURE_LABELS[f]}</span>
                 ))}
               </div>
-              <button
-                className={styles.gpxBtn}
-                onClick={() =>
-                  exportTrailAsGpx(selectedTrail.name, selectedTrail.coordinates)
-                }
-              >
-                Download Vector Track (.GPX)
-              </button>
+              <div className={styles.infoActions}>
+                <button
+                  className={styles.gpxBtn}
+                  onClick={() =>
+                    exportTrailAsGpx(selectedTrail.name, selectedTrail.coordinates)
+                  }
+                >
+                  Download Vector Track (.GPX)
+                </button>
+                <button
+                  className={`${styles.completeBtn} ${completedIds.has(selectedTrail.id) ? styles.completeBtnDone : ''}`}
+                  onClick={() => setLogTrailId(selectedTrail.id)}
+                >
+                  {completedIds.has(selectedTrail.id) ? '✓ Completed — edit log' : '✓ Mark Complete'}
+                </button>
+              </div>
             </div>
           ) : (
             <div className={styles.infoPlaceholder}>
@@ -257,6 +276,20 @@ export default function TrailHunter() {
         </main>
 
       </div>
+
+      {logTrailId && (() => {
+        const t = TRAILS.find(x => x.id === logTrailId)
+        if (!t) return null
+        return (
+          <CompleteTrailModal
+            trailId={t.id}
+            trailName={t.name}
+            existing={completed.find(c => c.trailId === t.id) ?? null}
+            onClose={() => setLogTrailId(null)}
+            onToast={toast}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -1,0 +1,157 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(7, 9, 13, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 601;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #0c1410;
+  border: 1px solid rgba(82, 204, 163, 0.18);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-card);
+  animation: scaleIn 220ms var(--ease-expo);
+}
+
+.close {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  width: 28px; height: 28px;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 160ms;
+}
+.close:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f5b841;
+}
+.title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 2px 0 var(--sp-4);
+  line-height: 1.2;
+}
+
+.label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin: var(--sp-3) 0 6px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 9px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  outline: none;
+  color-scheme: dark;
+}
+.textarea { resize: vertical; line-height: 1.5; }
+.input:focus, .textarea:focus { border-color: rgba(82, 204, 163, 0.4); }
+
+.photoBtn {
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(82, 204, 163, 0.3);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: color 160ms, border-color 160ms;
+}
+.photoBtn:hover:not(:disabled) { color: var(--accent-green); border-color: rgba(82, 204, 163, 0.5); }
+.photoBtn:disabled { opacity: 0.5; cursor: wait; }
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.photoThumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+.photoThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photoRemove {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.6rem;
+  cursor: pointer;
+}
+.photoRemove:hover { background: rgba(248, 113, 113, 0.85); }
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+.actionsRight { display: flex; gap: var(--sp-2); margin-left: auto; }
+
+.cancelBtn, .saveBtn, .removeBtn {
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  transition: background 160ms, border-color 160ms, color 160ms;
+}
+.cancelBtn { color: var(--text-muted); }
+.cancelBtn:hover { color: var(--text-primary); }
+.saveBtn {
+  border-color: rgba(82, 204, 163, 0.45);
+  background: rgba(82, 204, 163, 0.14);
+  color: var(--accent-green);
+}
+.saveBtn:hover:not(:disabled) { background: rgba(82, 204, 163, 0.22); }
+.saveBtn:disabled { opacity: 0.5; cursor: wait; }
+.removeBtn { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+.removeBtn:hover { background: rgba(248, 113, 113, 0.12); }
