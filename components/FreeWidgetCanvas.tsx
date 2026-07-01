@@ -35,6 +35,8 @@ import WellnessWidget          from './widgets/WellnessWidget'
 import MealWidget              from './widgets/MealWidget'
 import NewsWidget              from './widgets/NewsWidget'
 import ArcadeWidget            from './widgets/ArcadeWidget'
+import CounterWidget           from './widgets/CounterWidget'
+import SportsWidget            from './widgets/SportsWidget'
 import BiomeWidget             from './BiomeWidget'
 import AudioAtmosphereWidget  from './AudioAtmosphereWidget'
 import styles from './FreeWidgetCanvas.module.css'
@@ -182,6 +184,8 @@ const DEFAULT_POSITIONS: Record<FreeKey, Pos> = {
   mealToday:       { x: 984, y: 1360 },
   newsHeadline:    { x: 24,  y: 1620 },
   arcadeEconomy:   { x: 344, y: 1620 },
+  counter:         { x: 664, y: 1620 },
+  sportsTeams:     { x: 984, y: 1620 },
 }
 
 const DEFAULT_VISIBILITY: FreeVisibility = {
@@ -209,6 +213,8 @@ const DEFAULT_VISIBILITY: FreeVisibility = {
   mealToday:       false,
   newsHeadline:    false,
   arcadeEconomy:   false,
+  counter:         false,
+  sportsTeams:     false,
 }
 
 /* ─── Persistence helpers ────────────────────────────────────── */
@@ -472,6 +478,8 @@ function renderWidget(key: FreeKey): ReactNode {
     case 'distanceTracker':  return w(<DistanceTrackerWidget />)
     case 'friends':          return w(<FriendsWidget />)
     case 'leaderboard':      return w(<LeaderboardWidget />)
+    case 'counter':          return w(<CounterWidget />)
+    case 'sportsTeams':      return w(<SportsWidget />)
   }
 }
 

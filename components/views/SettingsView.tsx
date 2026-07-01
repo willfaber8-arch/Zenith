@@ -39,6 +39,7 @@ import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/li
 import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
+import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
 import SyncStressTestHarness      from '@/components/SyncStressTestHarness'
 import ConflictAuditPanel         from '@/components/ConflictAuditPanel'
@@ -228,6 +229,7 @@ export default function SettingsView() {
 
   /* ── Ecosystem Wrapped ──────────────────────────────────────── */
   const [showWrapped, setShowWrapped] = useState(false)
+  const [legalDoc,    setLegalDoc]    = useState<LegalDocId | null>(null)
 
   /* ── Dashboard Presets ──────────────────────────────────────── */
   const [presets,       setPresets]       = useState<DashboardPreset[]>([])
@@ -1134,6 +1136,15 @@ export default function SettingsView() {
             Use the archive system below to back up or restore your entire workspace.
           </p>
           <BackupRestoreManager />
+
+          <div className={styles.legalLinks}>
+            <button className={styles.dataBtn} onClick={() => setLegalDoc('privacy')}>
+              Privacy Policy
+            </button>
+            <button className={styles.dataBtn} onClick={() => setLegalDoc('terms')}>
+              Terms of Service
+            </button>
+          </div>
         </Section>
 
         {/* ── Ecosystem Analytics ──────────────────────────────── */}
@@ -1279,6 +1290,10 @@ export default function SettingsView() {
     {/* Ecosystem Wrapped overlay — rendered at root so it covers the full viewport */}
     {showWrapped && (
       <EcosystemWrapped onClose={() => setShowWrapped(false)} />
+    )}
+
+    {legalDoc && (
+      <LegalModal initial={legalDoc} onClose={() => setLegalDoc(null)} />
     )}
 
     {/* ── Live theme preview bar ──────────────────────────────── */}

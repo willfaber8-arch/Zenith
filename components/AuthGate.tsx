@@ -11,6 +11,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth }               from '@/lib/AuthContext'
 import { useToast }              from '@/lib/ToastContext'
 import { isSupabaseConfigured }  from '@/lib/supabase'
+import { LegalConsent, recordLegalConsent } from '@/components/legal/LegalDocs'
 import styles                    from './AuthGate.module.css'
 
 /* ── Spinner ─────────────────────────────────────────────── */
@@ -52,6 +53,7 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
   const [error,       setError]       = useState('')
   const [checkEmail,  setCheckEmail]  = useState(false)  // post-sign-up awaiting confirmation
   const [offlineName, setOfflineName] = useState('')
+  const [agreed,      setAgreed]      = useState(false)  // legal consent (account creation)
 
   const clearError = () => { if (error) setError('') }
 
@@ -62,7 +64,9 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
 
   const handleOffline = async (e: FormEvent) => {
     e.preventDefault()
+    if (!agreed) { setError('Please agree to the Terms of Service and Privacy Policy.'); return }
     const name = offlineName.trim() || 'Guest'
+    recordLegalConsent()
     await localSignIn(name)
     toast(`Welcome, ${name} — running offline.`, 'success')
   }
@@ -79,10 +83,12 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
 
     if (mode === 'signup') {
       if (trimPass.length < 6) { setError('Password must be at least 6 characters.'); return }
+      if (!agreed) { setError('Please agree to the Terms of Service and Privacy Policy.'); return }
       setLoading(true)
       const { error: err } = await signUp(trimEmail, trimPass, displayName)
       setLoading(false)
       if (err) { setError(err); return }
+      recordLegalConsent()
       setCheckEmail(true)
       return
     }
@@ -137,7 +143,11 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
               />
             </div>
 
-            <button type="submit" className={styles.submitBtn}>
+            <LegalConsent agreed={agreed} onAgreedChange={setAgreed} />
+
+            {error && <p className={styles.inputErr} role="alert">{error}</p>}
+
+            <button type="submit" className={styles.submitBtn} disabled={!agreed}>
               Continue Offline
             </button>
           </form>
@@ -277,6 +287,10 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
             />
           </div>
 
+          {mode === 'signup' && (
+            <LegalConsent agreed={agreed} onAgreedChange={setAgreed} />
+          )}
+
           {error && (
             <p className={styles.inputErr} role="alert">{error}</p>
           )}
@@ -284,7 +298,7 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
           <button
             type="submit"
             className={styles.submitBtn}
-            disabled={loading}
+            disabled={loading || (mode === 'signup' && !agreed)}
             aria-busy={loading}
           >
             {loading
@@ -348,13 +362,16 @@ function LocalAuthForm({ signIn }: LocalAuthFormProps) {
   const [gName,    setGName]    = useState('')
   const [gErr,     setGErr]     = useState('')
   const [gLoading, setGLoading] = useState(false)
+  const [agreed,   setAgreed]   = useState(false)
 
   const handleGoogleContinue = async (e?: FormEvent) => {
     e?.preventDefault()
     const name = gName.trim()
     if (!name) { setGErr('Enter the name on your account.'); return }
+    if (!agreed) { setGErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     setGLoading(true)
     await new Promise<void>(r => setTimeout(r, 700))
+    recordLegalConsent()
     await signIn(name)
     toast(`Signed in — welcome, ${name}.`, 'success')
     setGLoading(false)
@@ -364,6 +381,8 @@ function LocalAuthForm({ signIn }: LocalAuthFormProps) {
     e?.preventDefault()
     const trimmed = handle.trim()
     if (!trimmed) { setInputErr('Please enter a workspace handle.'); return }
+    if (!agreed) { setInputErr('Please agree to the Terms of Service and Privacy Policy.'); return }
+    recordLegalConsent()
     await signIn(trimmed)
     toast(`Workspace initialized — welcome, ${trimmed}.`, 'success')
   }
@@ -433,8 +452,12 @@ function LocalAuthForm({ signIn }: LocalAuthFormProps) {
             maxLength={32}
           />
           {inputErr && <p className={styles.inputErr} role="alert">{inputErr}</p>}
-          <button type="submit" className={styles.submitBtn}>Initialize Workspace</button>
+          <button type="submit" className={styles.submitBtn} disabled={!agreed}>Initialize Workspace</button>
         </form>
+
+        <div style={{ marginTop: 'var(--sp-3)' }}>
+          <LegalConsent agreed={agreed} onAgreedChange={setAgreed} />
+        </div>
 
         <p className={styles.footerNote}>Session stored locally · No data leaves your device</p>
       </div>
