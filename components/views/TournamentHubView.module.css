@@ -768,3 +768,123 @@
   border-color: rgba(201, 106, 106, 0.45);
   background:   rgba(201, 106, 106, 0.08);
 }
+
+/* ── Bracket settings panel ──────────────────────────────────────── */
+.bracketSettings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  margin: var(--sp-2) 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.settingLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.segToggle {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.segBtn {
+  padding: 5px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms var(--ease-smooth);
+}
+.segBtn:hover { color: var(--text-primary); }
+.segBtnActive {
+  background: color-mix(in srgb, var(--cat-accent) 16%, transparent);
+  color: var(--cat-accent);
+}
+.settingCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.settingCheck input { accent-color: var(--cat-accent); width: 15px; height: 15px; cursor: pointer; }
+.settingNumber {
+  width: 56px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.settingNote {
+  font-size: 0.7rem;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+}
+
+/* ── Round-robin layout ──────────────────────────────────────────── */
+.rrLayout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .rrLayout { grid-template-columns: 1fr; }
+}
+.rrStandings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+}
+.rrStandRow {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+.rrRank {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dark);
+}
+.rrStandName { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rrStandWins { color: var(--cat-accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rrStandPlayed { color: var(--text-dark); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.rrMatchList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-3);
+}
+.rrMatch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2);
+}

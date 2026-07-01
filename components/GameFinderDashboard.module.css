@@ -557,3 +557,35 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Filter section header + match-mode (Any/All) toggle ─────────── */
+.filterSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: 6px;
+}
+.modeToggle {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.modeBtn {
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+}
+.modeBtn:hover { color: var(--text-primary); }
+.modeBtnActive {
+  background: color-mix(in srgb, var(--cat-accent) 18%, transparent);
+  color: var(--cat-accent);
+}

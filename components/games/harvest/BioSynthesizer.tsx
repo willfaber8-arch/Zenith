@@ -111,7 +111,7 @@ export interface BioSynthesizerProps {
    ════════════════════════════════════════════════════════════════ */
 
 type GamePhase = 'idle' | 'active' | 'ended'
-type FlashType = 'catch' | null
+type FlashType = 'catch' | 'miss' | null
 
 /* ════════════════════════════════════════════════════════════════
    §4  PURE UTILITIES
@@ -219,7 +219,8 @@ function drawBin(
   target:  BallColor,
   flash:   FlashType,
 ): void {
-  const hex = resolveHex(target)
+  // On a wrong-colour catch the bin flashes red to signal the penalty.
+  const hex = flash === 'miss' ? '#f87171' : resolveHex(target)
 
   // Ambient glow under bin
   ctx.save()
@@ -446,8 +447,12 @@ export default function BioSynthesizer({
                 setTarget(next)
               }
             } else {
-              // BAD catch → game over
-              gameOver = true
+              // BAD catch → small penalty, NOT game over. The only failure
+              // condition is missing a correct-colour ball (below).
+              scoreRef.current = Math.max(0, scoreRef.current - 1)
+              setScore(scoreRef.current)
+              flashRef.current    = 'miss'
+              flashEndRef.current = ts + FLASH_MS
             }
             continue  // ball consumed
           }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { createPortal }  from 'react-dom'
 import { useLiveQuery }  from 'dexie-react-hooks'
 import { db }            from '@/lib/db'
 import type { CustomBookmark } from '@/lib/db'
@@ -62,6 +63,11 @@ function AddModal({ categories, onSave, onClose, initial }: AddModalProps) {
   })
   const [useNewCat, setUseNewCat] = useState(false)
 
+  /* Portal to document.body so the fixed backdrop isn't trapped by the
+     ViewRouter's transform:scale wrapper (which glitched its position). */
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const set = (k: keyof BookmarkForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -79,7 +85,9 @@ function AddModal({ categories, onSave, onClose, initial }: AddModalProps) {
     if (e.key === 'Escape') onClose()
   }
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`${styles.modal} anim-scale-in`} onKeyDown={handleKey}>
 
@@ -163,7 +171,8 @@ function AddModal({ categories, onSave, onClose, initial }: AddModalProps) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

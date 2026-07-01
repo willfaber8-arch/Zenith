@@ -23,7 +23,7 @@
  * ════════════════════════════════════════════════════════════════
  */
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useZenithEconomy }      from '@/hooks/useZenithEconomy'
 import {
   computeRefineOutcome,
@@ -43,6 +43,23 @@ import styles from './MinesweeperCore.module.css'
 const ROWS          = 10
 const COLS          = 10
 const DEFAULT_MINES = 15
+
+/* ── Difficulty levels ─────────────────────────────────────────────
+   More mines on the same 10×10 board = more squares to sweep = harder. */
+type DifficultyId = 'easy' | 'medium' | 'hard' | 'expert'
+const DIFFICULTIES: { id: DifficultyId; label: string; mines: number }[] = [
+  { id: 'easy',   label: 'Easy',   mines: 10 },
+  { id: 'medium', label: 'Medium', mines: 15 },
+  { id: 'hard',   label: 'Hard',   mines: 28 },
+  { id: 'expert', label: 'Expert', mines: 40 },
+]
+const DIFFICULTY_KEY = 'zenith_minesweeper_difficulty_v1'
+
+function readStoredDifficulty(): DifficultyId {
+  if (typeof window === 'undefined') return 'medium'
+  const raw = localStorage.getItem(DIFFICULTY_KEY)
+  return DIFFICULTIES.some(d => d.id === raw) ? (raw as DifficultyId) : 'medium'
+}
 
 /* ════════════════════════════════════════════════════════════════
    §2  PUBLIC TYPES
@@ -265,13 +282,14 @@ function getCellAriaLabel(cell: MinesweeperCell, phase: GamePhase): string {
 
 export default function MinesweeperCore({
   onGameComplete,
-  mineCount = DEFAULT_MINES,
+  mineCount: mineCountProp = DEFAULT_MINES,
 }: MinesweeperCoreProps) {
 
   /* ── Economy (read-only) — for overflow pre-estimate ────────── */
   const { resources } = useZenithEconomy()
 
   /* ── State ───────────────────────────────────────────────────── */
+  const [difficultyId, setDifficultyId] = useState<DifficultyId>(() => readStoredDifficulty())
   const [grid,     setGrid]     = useState<MinesweeperCell[][]>(() => createBlankGrid())
   const [phase,    setPhase]    = useState<GamePhase>('waiting')
   /** Coordinates of the mine the player clicked — rose highlight. */
@@ -331,6 +349,21 @@ export default function MinesweeperCore({
     () => grid.flat().filter(c => c.isFlagged && !c.isRefineLocked).length,
     [grid],
   )
+
+  /* Effective mine count is driven by the selected difficulty (falls back to
+     the prop for any external caller that passes an explicit count). */
+  const mineCount = DIFFICULTIES.find(d => d.id === difficultyId)?.mines ?? mineCountProp
+
+  /** Switch difficulty and reset the board to a fresh waiting state. */
+  const changeDifficulty = useCallback((id: DifficultyId) => {
+    setDifficultyId(id)
+    if (typeof window !== 'undefined') localStorage.setItem(DIFFICULTY_KEY, id)
+    setGrid(createBlankGrid())
+    setPhase('waiting')
+    setExploded(null)
+    setRefineResult(null)
+    sessionStartRef.current = null
+  }, [])
 
   const minesRemaining = mineCount - flagCount
   const canPlaceFlag   = phase === 'active' && flagCount < mineCount
@@ -532,6 +565,24 @@ export default function MinesweeperCore({
   /* ── Render ──────────────────────────────────────────────────── */
   return (
     <div className={styles.gameRoot} data-ctx-suppress="true">
+
+      {/* ── Difficulty selector (before the first click) ──────── */}
+      {phase === 'waiting' && (
+        <div className={styles.difficultyBar} role="group" aria-label="Difficulty">
+          {DIFFICULTIES.map(d => (
+            <button
+              key={d.id}
+              type="button"
+              className={`${styles.difficultyBtn} ${difficultyId === d.id ? styles.difficultyBtnActive : ''}`}
+              aria-pressed={difficultyId === d.id}
+              onClick={() => changeDifficulty(d.id)}
+            >
+              {d.label}
+              <span className={styles.difficultyMines}>{d.mines}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Status bar ────────────────────────────────────────── */}
       <div className={styles.statusBar} role="status" aria-label="Game status">
