@@ -2,35 +2,41 @@
 
 /**
  * ════════════════════════════════════════════════════════════════
- * Core2048 — Games Tab · Step 4.3 · Harvest Station
+ * Core2048 — Games Tab · Harvest Station
  *
- * Classic 2048 sliding-tile game on a 4×4 grid.
+ * Classic 2048 sliding-tile game on a 4×4 grid with REAL tile motion.
  *
- * Movement engine:
- *   • `slideLine` — single reusable primitive that packs, merges, and
- *     pads one row/column to the LEFT. All four directions (L/R/U/D)
- *     reuse it by optionally reversing the extracted line before and
- *     after sliding — no direction-specific duplicate logic.
- *   • `executeMove` — extracts each of 4 rows or columns from the flat
- *     16-element matrix, calls slideLine with correct reversal, writes
- *     back, and accumulates the score delta.
+ * Tile-identity model:
+ *   • Each tile is an object { id, value, row, col }. Ids are stable
+ *     across moves, so React reuses the DOM node and a CSS
+ *     `transition: transform` glides the tile to its new cell.
+ *   • Tiles are `position:absolute` inside a `position:relative` board
+ *     of fixed pixel size. Position = translate(col*STEP, row*STEP).
+ *
+ * Movement engine (pure, tile-aware):
+ *   • `moveTiles(tiles, dir)` — projects the tile set onto lines
+ *     (rows for L/R, columns for U/D), slides + merges each line while
+ *     preserving tile identity, and returns the moved tile set, the
+ *     ids of newly-merged result tiles (for the merge pop), and score.
+ *   • Merged pairs: both source tiles slide onto the same destination
+ *     cell; the surviving tile takes the doubled value and pops; the
+ *     absorbed tile is removed after the slide completes.
  *   • `spawnTile` — inserts value 2 (90%) or 4 (10%) into a random
- *     empty cell after every move that changed the board.
- *   • `isGameOver` — no empty cells AND no horizontally or vertically
- *     adjacent equal pairs.
+ *     empty cell after every move that changed the board; it pops in.
+ *   • `isGameOver` — no empty cells AND no adjacent equal pairs.
  *
  * Win / game-over:
  *   • Reaching 2048 for the first time shows a win overlay.
  *     "Keep Going" dismisses it without ending the game.
- *   • Game-over triggers payout: addResources('raw_data_shards',
- *     Math.floor(currentScore / 10)).
+ *   • Game-over triggers payout: addResources('quantum_fuel',
+ *     Math.floor(finalScore / 40)).
  *
  * Input:
  *   • Arrow keys via stable window keydown listener (useRef pattern).
- *   • Touch swipe via touchstart/touchend (30 px threshold).
+ *   • Pointer swipe on the board (mouse + touch + pen, MIN_SWIPE 24px).
  *
  * Stale-closure prevention:
- *   • matrixRef / scoreRef / phaseRef / hasWonRef mirror React state.
+ *   • tilesRef / scoreRef / phaseRef / hasWonRef mirror React state.
  *   • processMoveRef keeps the stable keyboard listener always current.
  * ════════════════════════════════════════════════════════════════
  */
@@ -50,7 +56,15 @@ import styles from './Core2048.module.css'
    ════════════════════════════════════════════════════════════════ */
 
 const GRID = 4
-const SIZE = GRID * GRID   // 16
+
+/** Fixed cell geometry (must match the CSS values below). */
+const CELL = 74   // px — tile size
+const GAP  = 8    // px — gap between cells
+const STEP = CELL + GAP            // 82 — per-cell translate step
+const BOARD_PX = CELL * GRID + GAP * (GRID - 1)  // 344 — inner board size
+
+/** Duration of the slide transition (keep in sync with CSS). */
+const SLIDE_MS = 120
 
 /** localStorage key for persisting the all-time best score. */
 const BEST_SCORE_KEY = 'zenith_2048_best_v1'
@@ -88,153 +102,170 @@ export interface Core2048Props {
 type Direction = 'left' | 'right' | 'up' | 'down'
 type GamePhase = 'active' | 'gameover'
 
+/** A single tile with a stable identity so React reuses its DOM node. */
+interface Tile {
+  id:    number
+  value: number
+  row:   number
+  col:   number
+  /** True for one render immediately after this tile is spawned. */
+  isNew?:    boolean
+  /** True for one render immediately after this tile absorbs a merge. */
+  isMerged?: boolean
+}
+
 interface MoveResult {
-  matrix:     number[]
+  tiles:      Tile[]
   scoreDelta: number
   changed:    boolean
 }
 
 /* ════════════════════════════════════════════════════════════════
-   §4  PURE MATH & GRID UTILITIES
+   §4  PURE MATH & TILE UTILITIES
    ════════════════════════════════════════════════════════════════ */
 
-/**
- * Slides and merges one line (length 4) towards the LEFT edge.
- *
- *   1. Pack: strip all zeros → compress numbers to the front.
- *   2. Merge: left-to-right pass — any two consecutive equal values
- *      collapse into one doubled value; the vacated slot becomes 0
- *      (preventing a chain-merge on the same pass).
- *   3. Re-pack: strip zeros introduced by merge, pad trailing zeros
- *      back to length 4.
- *
- * Returns the resulting line and the score earned from merges.
- */
-function slideLine(line: number[]): { result: number[]; score: number } {
-  // Step 1 — pack
-  const packed = line.filter(v => v !== 0)
+/** Monotonic id generator for stable tile identities. */
+let TILE_SEQ = 1
+function nextId(): number { return TILE_SEQ++ }
 
-  // Step 2 — merge (single left-to-right pass)
-  let score = 0
-  for (let i = 0; i < packed.length - 1; i++) {
-    if (packed[i] !== 0 && packed[i] === packed[i + 1]) {
-      packed[i]     *= 2
-      score         += packed[i]
-      packed[i + 1]  = 0
+/** Empty [row][col] board indices helper. */
+function emptyCells(tiles: Tile[]): TileCoordinates[] {
+  const occupied = new Set<number>()
+  for (const t of tiles) occupied.add(t.row * GRID + t.col)
+  const out: TileCoordinates[] = []
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      if (!occupied.has(r * GRID + c)) out.push({ x: c, y: r })
     }
   }
-
-  // Step 3 — re-pack and pad
-  const merged = packed.filter(v => v !== 0)
-  while (merged.length < GRID) merged.push(0)
-
-  return { result: merged, score }
-}
-
-// ── Row helpers ──────────────────────────────────────────────
-
-function getRow(m: number[], r: number): number[] {
-  return [m[r*GRID], m[r*GRID+1], m[r*GRID+2], m[r*GRID+3]]
-}
-function setRow(m: number[], r: number, line: number[]): void {
-  m[r*GRID] = line[0]; m[r*GRID+1] = line[1]
-  m[r*GRID+2] = line[2]; m[r*GRID+3] = line[3]
-}
-
-// ── Column helpers ───────────────────────────────────────────
-
-function getColumn(m: number[], c: number): number[] {
-  return [m[c], m[c+GRID], m[c+GRID*2], m[c+GRID*3]]
-}
-function setColumn(m: number[], c: number, line: number[]): void {
-  m[c] = line[0]; m[c+GRID] = line[1]
-  m[c+GRID*2] = line[2]; m[c+GRID*3] = line[3]
+  return out
 }
 
 /**
- * Applies a directional move to the entire matrix.
+ * Applies a directional move to the tile set, preserving tile identity.
  *
- * All four directions reuse `slideLine` (which slides LEFT):
- *   • left  — extract rows as-is, slide, write back.
- *   • right — extract rows, reverse, slide, reverse result, write back.
- *   • up    — extract columns, slide, write back.
- *   • down  — extract columns, reverse, slide, reverse result, write back.
+ * For each line (row for L/R, column for U/D), tiles are ordered along
+ * the travel axis; equal adjacent tiles merge once per move. On a merge
+ * the leading tile keeps its id, doubles its value, and is flagged
+ * `isMerged`; the absorbed tile is dropped from the returned set.
  *
- * Returns the new matrix, score delta, and whether anything changed.
+ * Returns the moved tiles, the score earned, and whether anything moved.
  */
-function executeMove(matrix: number[], direction: Direction): MoveResult {
-  const next     = [...matrix]
-  let scoreDelta = 0
-  let changed    = false
-
+function moveTiles(tiles: Tile[], direction: Direction): MoveResult {
   const useCol  = direction === 'up'    || direction === 'down'
   const reverse = direction === 'right' || direction === 'down'
 
-  for (let i = 0; i < GRID; i++) {
-    const raw     = useCol ? getColumn(next, i) : getRow(next, i)
-    const toSlide = reverse ? [...raw].reverse() : [...raw]
+  const out: Tile[] = []
+  let scoreDelta = 0
+  let changed    = false
 
-    const { result, score } = slideLine(toSlide)
-    scoreDelta += score
+  for (let lineIdx = 0; lineIdx < GRID; lineIdx++) {
+    // Collect tiles on this line, ordered along the travel direction.
+    const lineTiles = tiles
+      .filter(t => (useCol ? t.col : t.row) === lineIdx)
+      .sort((a, b) => {
+        const pa = useCol ? a.row : a.col
+        const pb = useCol ? b.row : b.col
+        return reverse ? pb - pa : pa - pb
+      })
 
-    const final = reverse ? [...result].reverse() : result
+    // Slide + merge along the line, producing target slot positions
+    // measured from the leading edge (0 = closest to the edge we push
+    // towards).
+    let slot = 0
+    let i = 0
+    while (i < lineTiles.length) {
+      const cur = lineTiles[i]
+      const nxt = lineTiles[i + 1]
 
-    if (final.some((v, j) => v !== raw[j])) changed = true
-
-    if (useCol) setColumn(next, i, final)
-    else        setRow(next, i, final)
+      if (nxt && nxt.value === cur.value) {
+        // Merge: surviving tile keeps its id, doubles value, pops.
+        const mergedValue = cur.value * 2
+        const pos = reverse ? GRID - 1 - slot : slot
+        out.push({
+          id:       cur.id,
+          value:    mergedValue,
+          row:      useCol ? pos : lineIdx,
+          col:      useCol ? lineIdx : pos,
+          isMerged: true,
+        })
+        scoreDelta += mergedValue
+        changed = true
+        i += 2   // consume both source tiles
+      } else {
+        const pos = reverse ? GRID - 1 - slot : slot
+        const nr = useCol ? pos : lineIdx
+        const nc = useCol ? lineIdx : pos
+        if (nr !== cur.row || nc !== cur.col) changed = true
+        out.push({ id: cur.id, value: cur.value, row: nr, col: nc })
+        i += 1
+      }
+      slot += 1
+    }
   }
 
-  return { matrix: next, scoreDelta, changed }
+  return { tiles: out, scoreDelta, changed }
 }
 
 /**
  * Inserts a new tile into a random empty cell.
  * Value 2 at 90% probability, 4 at 10%.
- * Returns the new matrix and the index of the spawned tile (-1 if full).
+ * Returns a new tile set (with the spawned tile flagged `isNew`), or the
+ * same set when the board is full.
  */
-function spawnTile(matrix: number[]): { matrix: number[]; spawnedIdx: number } {
-  const empty = matrix.reduce<number[]>(
-    (acc, v, i) => (v === 0 ? [...acc, i] : acc), []
-  )
-  if (empty.length === 0) return { matrix, spawnedIdx: -1 }
+function spawnTile(tiles: Tile[]): Tile[] {
+  const empty = emptyCells(tiles)
+  if (empty.length === 0) return tiles
 
-  const idx  = empty[Math.floor(Math.random() * empty.length)]
-  const next = [...matrix]
-  next[idx]  = Math.random() < 0.9 ? 2 : 4
-  return { matrix: next, spawnedIdx: idx }
+  const cell = empty[Math.floor(Math.random() * empty.length)]
+  const value = Math.random() < 0.9 ? 2 : 4
+  return [
+    ...tiles,
+    { id: nextId(), value, row: cell.y, col: cell.x, isNew: true },
+  ]
 }
 
 /**
  * Returns true when the board is in a terminal state:
  * no empty cells exist AND no orthogonally adjacent cells share a value.
  */
-function isGameOver(matrix: number[]): boolean {
-  if (matrix.includes(0)) return false
+function isGameOver(tiles: Tile[]): boolean {
+  if (tiles.length < GRID * GRID) return false
+
+  // Build a value grid for O(1) neighbour lookups.
+  const grid: number[] = Array<number>(GRID * GRID).fill(0)
+  for (const t of tiles) grid[t.row * GRID + t.col] = t.value
 
   for (let r = 0; r < GRID; r++) {
     for (let c = 0; c < GRID; c++) {
-      const v = matrix[r * GRID + c]
-      if (c < GRID - 1 && v === matrix[r * GRID + c + 1]) return false  // horizontal
-      if (r < GRID - 1 && v === matrix[(r + 1) * GRID + c]) return false  // vertical
+      const v = grid[r * GRID + c]
+      if (c < GRID - 1 && v === grid[r * GRID + c + 1]) return false  // horizontal
+      if (r < GRID - 1 && v === grid[(r + 1) * GRID + c]) return false  // vertical
     }
   }
 
   return true
 }
 
-/** Creates the initial board with exactly 2 randomly placed tiles. */
-function createInitialBoard(): number[] {
-  let m = Array<number>(SIZE).fill(0)
-  ;({ matrix: m } = spawnTile(m))
-  ;({ matrix: m } = spawnTile(m))
+/** Creates the initial tile set with exactly 2 randomly placed tiles. */
+function createInitialTiles(): Tile[] {
+  let tiles: Tile[] = []
+  tiles = spawnTile(tiles)
+  tiles = spawnTile(tiles)
+  return tiles
+}
+
+/** Highest tile value currently on the board. */
+function maxValue(tiles: Tile[]): number {
+  let m = 0
+  for (const t of tiles) if (t.value > m) m = t.value
   return m
 }
 
 /* ════════════════════════════════════════════════════════════════
    §5  TILE STYLE HELPERS
    Dynamic visual tokens mapped from tile value.
-   Colour progression: neutral → green ramp (2–64) →
+   Colour progression: green ramp (2–64) →
    purple ramp (128–512) → bright green glow (1024+).
    All values use CSS custom properties — no hardcoded hex.
    ════════════════════════════════════════════════════════════════ */
@@ -252,12 +283,6 @@ function getTileStyle(value: number): TileStyle {
     value >= 1000 ? '0.88rem'
     : value >= 100  ? '1.0rem'
     :                 '1.25rem'
-
-  if (value === 0) return {
-    background: 'color-mix(in srgb, var(--text-muted) 6%, transparent)',
-    color:      'transparent',
-    fontSize,
-  }
 
   // Green ramp: 2 → 64
   if (value <= 2)   return { background: 'var(--surface-card)',                                                           color: 'var(--text-muted)',   fontSize }
@@ -311,7 +336,7 @@ export default function Core2048({
   const { addResources } = useZenithEconomy()
 
   /* ── Game state ──────────────────────────────────────────────── */
-  const [matrix,     setMatrix]     = useState<number[]>(() => createInitialBoard())
+  const [tiles,      setTiles]      = useState<Tile[]>(() => createInitialTiles())
   const [score,      setScore]      = useState(0)
   const [bestScore,  setBestScore]  = useState<number>(() => {
     if (typeof window === 'undefined') return 0
@@ -320,48 +345,23 @@ export default function Core2048({
   const [phase,      setPhase]      = useState<GamePhase>('active')
   const [hasWon,     setHasWon]     = useState(false)
   const [wonAcked,   setWonAcked]   = useState(false)   // player pressed "Keep Going"
-  const [spawnedIdx, setSpawnedIdx] = useState(-1)       // index of last spawned tile
 
   /* ── Refs: synchronous reads for event handlers ──────────────── */
-  const matrixRef      = useRef(matrix)
-  const scoreRef       = useRef(score)
-  const phaseRef       = useRef<GamePhase>('active')
-  const hasWonRef      = useRef(false)
-  const processMoveRef = useRef<(dir: Direction) => void>(() => {})
+  const tilesRef        = useRef(tiles)
+  const scoreRef        = useRef(score)
+  const phaseRef        = useRef<GamePhase>('active')
+  const hasWonRef       = useRef(false)
+  const lockedRef       = useRef(false)   // input lock during slide animation
+  const processMoveRef  = useRef<(dir: Direction) => void>(() => {})
   const pointerStartRef = useRef<TileCoordinates | null>(null)
-  const boardRef        = useRef<HTMLDivElement | null>(null)
-
-  /* Brief directional lurch so a move reads as a slide, not a teleport.
-     Imperative + reset so it replays on every move regardless of direction. */
-  const nudgeBoard = useCallback((dir: Direction) => {
-    const el = boardRef.current
-    if (!el) return
-    const D = 9
-    const off: Record<Direction, [number, number]> = {
-      left: [-D, 0], right: [D, 0], up: [0, -D], down: [0, D],
-    }
-    const [x, y] = off[dir]
-    el.style.transition = 'transform 70ms ease-out'
-    el.style.transform  = `translate(${x}px, ${y}px)`
-    window.setTimeout(() => {
-      el.style.transition = 'transform 120ms cubic-bezier(0.16,1,0.3,1)'
-      el.style.transform  = 'translate(0, 0)'
-    }, 72)
-  }, [])
 
   // Sync refs every render
-  matrixRef.current  = matrix
-  scoreRef.current   = score
-  phaseRef.current   = phase
-  hasWonRef.current  = hasWon
+  tilesRef.current  = tiles
+  scoreRef.current  = score
+  phaseRef.current  = phase
+  hasWonRef.current = hasWon
 
   /* ── Lifecycle ───────────────────────────────────────────────── */
-  useEffect(() => {
-    // Clear spawnedIdx after the pop-in animation completes
-    if (spawnedIdx === -1) return
-    const t = setTimeout(() => setSpawnedIdx(-1), 260)
-    return () => clearTimeout(t)
-  }, [spawnedIdx])
 
   // Persist best score to localStorage
   useEffect(() => {
@@ -382,42 +382,48 @@ export default function Core2048({
   /* ── Core move processor ─────────────────────────────────────── */
   const processMove = useCallback((dir: Direction) => {
     if (phaseRef.current === 'gameover') return
+    if (lockedRef.current) return   // ignore input mid-slide
 
-    const prev = matrixRef.current
-    const { matrix: moved, scoreDelta, changed } = executeMove(prev, dir)
+    const prev = tilesRef.current
+    const { tiles: moved, scoreDelta, changed } = moveTiles(prev, dir)
 
     if (!changed) return
 
-    nudgeBoard(dir)
-
-    const { matrix: afterSpawn, spawnedIdx: sIdx } = spawnTile(moved)
+    // Phase 1 — render the slide: reuse tile ids so transforms animate.
+    // Clear stale animation flags on non-merged tiles so only the freshly
+    // merged tiles pop this frame.
+    const slid = moved.map(t => ({ ...t, isNew: false }))
+    lockedRef.current = true
+    tilesRef.current  = slid
+    setTiles(slid)
 
     const newScore = scoreRef.current + scoreDelta
-    // Sync refs immediately — protects against rapid successive key events
-    // before React's next render cycle updates the state.
-    matrixRef.current = afterSpawn
-    scoreRef.current  = newScore
-
-    setMatrix(afterSpawn)
+    scoreRef.current = newScore
     setScore(newScore)
-    if (sIdx >= 0) setSpawnedIdx(sIdx)
-    setBestScore(b => {
-      const next = Math.max(b, newScore)
-      return next
-    })
+    setBestScore(b => Math.max(b, newScore))
 
     // Win detection: first time a 2048 tile appears on the board
-    if (!hasWonRef.current && afterSpawn.includes(2048)) {
+    if (!hasWonRef.current && maxValue(slid) >= 2048) {
       hasWonRef.current = true
       setHasWon(true)
     }
 
-    // Game-over detection
-    if (isGameOver(afterSpawn)) {
-      phaseRef.current = 'gameover'
-      setPhase('gameover')
-      handleGameOver(newScore)
-    }
+    // Phase 2 — after the slide finishes, drop absorbed tiles' flags,
+    // spawn a new tile, and evaluate game-over.
+    window.setTimeout(() => {
+      const spawned = spawnTile(
+        tilesRef.current.map(t => ({ ...t, isMerged: false })),
+      )
+      tilesRef.current  = spawned
+      lockedRef.current = false
+      setTiles(spawned)
+
+      if (isGameOver(spawned)) {
+        phaseRef.current = 'gameover'
+        setPhase('gameover')
+        handleGameOver(scoreRef.current)
+      }
+    }, SLIDE_MS)
   }, [handleGameOver])
 
   // Keep ref in sync so stable event listeners always call latest version
@@ -450,9 +456,8 @@ export default function Core2048({
   }, [])
 
   /* ── Swipe via Pointer Events (works for mouse drag AND touch) ──
-     The old touch-only listeners never fired for desktop mouse users, so
-     swiping "did nothing". Pointer events unify mouse / touch / pen and are
-     bound to the board element so they don't hijack the rest of the page. */
+     Pointer events unify mouse / touch / pen and are bound to the board
+     element so they don't hijack the rest of the page. */
   const onBoardPointerDown = useCallback((e: React.PointerEvent) => {
     pointerStartRef.current = { x: e.clientX, y: e.clientY }
   }, [])
@@ -474,18 +479,18 @@ export default function Core2048({
 
   /* ── Reset / new game ────────────────────────────────────────── */
   const handleReset = useCallback(() => {
-    const fresh = createInitialBoard()
-    matrixRef.current  = fresh
-    scoreRef.current   = 0
-    phaseRef.current   = 'active'
-    hasWonRef.current  = false
+    const fresh = createInitialTiles()
+    tilesRef.current  = fresh
+    scoreRef.current  = 0
+    phaseRef.current  = 'active'
+    hasWonRef.current = false
+    lockedRef.current = false
 
-    setMatrix(fresh)
+    setTiles(fresh)
     setScore(0)
     setPhase('active')
     setHasWon(false)
     setWonAcked(false)
-    setSpawnedIdx(-1)
   }, [])
 
   /* ── Derived display values ──────────────────────────────────── */
@@ -531,49 +536,66 @@ export default function Core2048({
       </div>
 
       {/* ════════════════════════════════════════════════════════
-          PUZZLE BOARD — 4×4 CSS grid
-          key={idx} on each cell keeps DOM stable for transition;
-          values changing causes background/color CSS transitions.
-          The spawned cell gets .cellNew for the pop-in animation.
+          PUZZLE BOARD — fixed-size relative frame
+          Background cells form the static grid; tiles are absolutely
+          positioned overlays translated to (col*STEP, row*STEP). Stable
+          keys (tile.id) let React reuse each node so `transition:
+          transform` glides tiles between cells on every move.
           ════════════════════════════════════════════════════════ */}
       <div className={styles.boardWrapper}>
         <div
-          ref={boardRef}
           className={styles.board}
           role="grid"
           aria-label="2048 puzzle grid — use arrow keys or swipe to slide tiles"
           aria-roledescription="sliding tile game"
           onPointerDown={onBoardPointerDown}
           onPointerUp={onBoardPointerUp}
-          style={{ touchAction: 'none' }}
+          style={{
+            width:      `${BOARD_PX}px`,
+            height:     `${BOARD_PX}px`,
+            touchAction: 'none',
+          }}
         >
-          {matrix.map((value, idx) => {
-            const ts    = getTileStyle(value)
-            const isNew = idx === spawnedIdx && value !== 0
+          {/* Static background grid (16 empty cells) */}
+          {Array.from({ length: GRID * GRID }).map((_, i) => (
+            <div
+              key={`bg-${i}`}
+              className={styles.cellBg}
+              aria-hidden="true"
+              style={{
+                transform: `translate3d(${(i % GRID) * STEP}px, ${Math.floor(i / GRID) * STEP}px, 0)`,
+              }}
+            />
+          ))}
+
+          {/* Moving tiles */}
+          {tiles.map(tile => {
+            const ts = getTileStyle(tile.value)
+            const cls =
+              `${styles.tile}` +
+              (tile.isNew    ? ` ${styles.tileNew}`    : '') +
+              (tile.isMerged ? ` ${styles.tileMerged}` : '')
 
             return (
               <div
-                key={idx}
-                className={`${styles.cell} ${isNew ? styles.cellNew : ''}`}
+                key={tile.id}
+                className={cls}
+                role="gridcell"
+                aria-label={String(tile.value)}
                 style={{
+                  transform: `translate3d(${tile.col * STEP}px, ${tile.row * STEP}px, 0)`,
                   background: ts.background,
                   color:      ts.color,
                   border:     ts.border    ?? 'none',
                   boxShadow:  ts.boxShadow ?? 'none',
-                  // background + boxShadow transition gives the merge colour pop
-                  transition: 'background 180ms ease-in-out, box-shadow 180ms ease-in-out',
                 }}
-                role="gridcell"
-                aria-label={value !== 0 ? String(value) : 'empty cell'}
               >
-                {value !== 0 && (
-                  <span
-                    className={styles.cellNum}
-                    style={{ fontSize: ts.fontSize }}
-                  >
-                    {value}
-                  </span>
-                )}
+                <span
+                  className={styles.tileNum}
+                  style={{ fontSize: ts.fontSize }}
+                >
+                  {tile.value}
+                </span>
               </div>
             )
           })}

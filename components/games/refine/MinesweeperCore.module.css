@@ -151,8 +151,10 @@
   justify-content: center;
   border-radius: 3px;
   border: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+  /* Digits use the body sans (clearer 1/2/3 shapes than the mono) and scale
+     with the board so counts are legible instead of blurring together. */
+  font-family: var(--font-body);
+  font-size: clamp(0.9rem, 2vmin, 1.3rem);
   font-weight: 800;
   line-height: 1;
   cursor: pointer;

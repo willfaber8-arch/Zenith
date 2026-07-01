@@ -4,6 +4,7 @@
  * GET /api/sports?action=table&league=4328[&season=2025-2026&seasonFmt=cross-year]
  * GET /api/sports?action=search&q=Arsenal[&sport=soccer]
  * GET /api/sports?action=results&team=133604
+ * GET /api/sports?action=schedule&team=133604
  *
  * Server-side proxy to TheSportsDB (free public API). Keeps the upstream
  * key server-side, dodges browser CORS, and normalises inconsistent field
@@ -13,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import type { StandingRow, TeamResult, TeamSearchHit } from '@/types/sports'
+import type { StandingRow, TeamResult, TeamSearchHit, TeamFixture } from '@/types/sports'
 
 export const revalidate = 600   // 10-minute edge cache
 
@@ -79,6 +80,38 @@ function currentSeason(fmt: string = 'cross-year'): string {
   return month >= 7 ? `${year}-${year + 1}` : `${year - 1}-${year}`
 }
 
+/**
+ * Ordered list of candidate season strings for a given format. The first
+ * entry is the "computed current" season; the rest are adjacent fallbacks
+ * so tables still populate around season boundaries or when the upstream
+ * data is a season behind. getTable tries each in order and returns the
+ * first that yields rows.
+ */
+function seasonCandidates(fmt: string): string[] {
+  const now   = new Date()
+  const year  = now.getFullYear()
+  const month = now.getMonth()   // 0-indexed
+
+  if (fmt === 'single') {
+    const y = month >= 7 ? year : year - 1
+    // current → previous → next (single-year US seasons)
+    return [String(y), String(y - 1), String(y + 1)]
+  }
+  // cross-year
+  const y = month >= 7 ? year : year - 1
+  // current → previous → next (e.g. "2025-2026" → "2024-2025" → "2026-2027")
+  return [`${y}-${y + 1}`, `${y - 1}-${y}`, `${y + 1}-${y + 2}`]
+}
+
+/** Normalise a website value to a fully-qualified https URL, or null. */
+function normaliseWebsite(raw: string | null): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return `https://${trimmed.replace(/^\/+/, '')}`
+}
+
 /* ── strSport filter map ────────────────────────────────────────── */
 
 const SPORT_FILTER: Record<string, string> = {
@@ -134,8 +167,33 @@ async function searchTeams(q: string, sport?: string): Promise<TeamSearchHit[]> 
       league:  str(t, 'strLeague'),
       country: str(t, 'strCountry'),
       sport:   str(t, 'strSport'),
+      website: normaliseWebsite(str(t, 'strWebsite')),
     }))
     .filter(t => t.id)
+}
+
+async function getSchedule(teamId: string): Promise<TeamFixture[]> {
+  const data   = await fetchJson(`${BASE}/eventsnext.php?id=${encodeURIComponent(teamId)}`)
+  const events = data?.events as Array<Record<string, unknown>> | null | undefined
+  if (!Array.isArray(events)) return []
+
+  return events
+    .map((e): TeamFixture => {
+      const homeId = str(e, 'idHomeTeam')
+      const rawTime = str(e, 'strTime', 'strTimeLocal')
+      // TheSportsDB times look like "19:45:00" or "19:45:00+00:00" — take HH:MM.
+      const time = rawTime ? rawTime.slice(0, 5) : null
+      return {
+        eventId:  str(e, 'idEvent') ?? '',
+        date:     str(e, 'dateEvent', 'dateEventLocal') ?? '',
+        time:     time && /^\d{2}:\d{2}$/.test(time) && time !== '00:00' ? time : null,
+        homeTeam: str(e, 'strHomeTeam') ?? '',
+        awayTeam: str(e, 'strAwayTeam') ?? '',
+        league:   str(e, 'strLeague') ?? '',
+        isHome:   homeId === teamId,
+      }
+    })
+    .filter(f => f.eventId && f.date)
 }
 
 async function getResults(teamId: string): Promise<TeamResult[]> {
@@ -179,9 +237,25 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (action === 'table') {
       const league = params.get('league')
       if (!league) return NextResponse.json({ error: 'league required' }, { status: 400 })
-      const fmt    = params.get('seasonFmt') ?? 'cross-year'
-      const season = params.get('season') || currentSeason(fmt)
-      const table  = await getTable(league, season)
+      const fmt = params.get('seasonFmt') ?? 'cross-year'
+
+      // Explicit season override → single attempt.
+      const explicit = params.get('season')
+      if (explicit) {
+        const table = await getTable(league, explicit)
+        return NextResponse.json({ ok: table.length > 0, season: explicit, table })
+      }
+
+      // Otherwise try the computed season, then adjacent seasons, until one
+      // returns rows. Makes NBA/NFL/NCAAB/NCAAF populate regardless of the
+      // exact calendar date.
+      const candidates = seasonCandidates(fmt)
+      let table:  StandingRow[] = []
+      let season: string        = candidates[0]
+      for (const cand of candidates) {
+        const rows = await getTable(league, cand)
+        if (rows.length > 0) { table = rows; season = cand; break }
+      }
       return NextResponse.json({ ok: table.length > 0, season, table })
     }
 
@@ -198,6 +272,13 @@ export async function GET(req: NextRequest): Promise<Response> {
       if (!team) return NextResponse.json({ error: 'team required' }, { status: 400 })
       const results = await getResults(team)
       return NextResponse.json({ ok: results.length > 0, results })
+    }
+
+    if (action === 'schedule') {
+      const team = params.get('team')
+      if (!team) return NextResponse.json({ error: 'team required' }, { status: 400 })
+      const fixtures = await getSchedule(team)
+      return NextResponse.json({ ok: fixtures.length > 0, fixtures })
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

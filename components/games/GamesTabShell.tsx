@@ -120,7 +120,7 @@ interface RightTabMeta {
 
 const RIGHT_TABS: RightTabMeta[] = [
   { id: 'arcade',   label: 'Arcade',   icon: '⬡' },
-  { id: 'crucible', label: 'Crucible', icon: '◈' },
+  { id: 'crucible', label: 'Refinery', icon: '◈' },
   { id: 'upgrades', label: 'Storage',  icon: '↑' },
   { id: 'skills',   label: 'Skills',   icon: '⟡' },
   { id: 'shop',     label: 'Shop',     icon: '✦' },

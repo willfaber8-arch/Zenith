@@ -234,10 +234,20 @@ function countRevealedSafe(grid: MinesweeperCell[][]): number {
    §5  UI HELPERS
    ════════════════════════════════════════════════════════════════ */
 
+/* Distinct, high-contrast colour per adjacency count so 1/2/3… never blur
+   together (classic Minesweeper palette, tuned for the dark surface). */
 function getNumberColour(n: number): string {
-  if (n === 1) return 'var(--accent-purple)'
-  if (n === 2) return 'var(--accent-green)'
-  return 'var(--text-primary)'
+  switch (n) {
+    case 1:  return '#5b9dff'   // blue
+    case 2:  return '#52cca3'   // green
+    case 3:  return '#f87171'   // red
+    case 4:  return '#c084fc'   // violet
+    case 5:  return '#f59e0b'   // amber
+    case 6:  return '#22d3ee'   // cyan
+    case 7:  return '#f472b6'   // pink
+    case 8:  return '#e8eaf6'   // white
+    default: return 'var(--text-primary)'
+  }
 }
 
 function getCellAriaLabel(cell: MinesweeperCell, phase: GamePhase): string {

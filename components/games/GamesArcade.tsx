@@ -26,10 +26,10 @@ type GameId = 'refiner' | 'matrix' | 'shift' | '2048' | 'biosynth' | 'zensnake'
 
 const GAME_LABELS: Record<GameId, string> = {
   refiner:  'Minesweeper',
-  matrix:   'Scripting Matrix',
-  shift:    'Shift Matrix',
+  matrix:   'Speed Typer',
+  shift:    'Sliding Puzzle',
   '2048':   '2048',
-  biosynth: 'Bio-Synthesizer',
+  biosynth: 'Ball Catcher',
   zensnake: 'Zen Snake',
 }
 

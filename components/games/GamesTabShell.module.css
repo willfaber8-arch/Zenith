@@ -1329,13 +1329,20 @@
 
 .skillNodeDetail {
   flex-shrink: 0;
+  /* Stick to the bottom of the scroll viewport so a clicked node's costs are
+     always visible without scrolling, even if the tree is tall. */
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: var(--sp-5);
+  flex-wrap: wrap;
   padding: var(--sp-4) var(--sp-5);
   border-radius: var(--r-md);
   border: 1px solid color-mix(in srgb, var(--accent-purple) 22%, transparent);
-  background: color-mix(in srgb, var(--accent-purple) 4%, var(--surface-card));
+  background: color-mix(in srgb, var(--surface-card) 92%, var(--accent-purple) 8%);
+  box-shadow: 0 -8px 20px -12px rgba(0,0,0,0.6);
   animation: tabFadeIn 180ms var(--ease-spring-snappy) both;
 }
 

@@ -90,7 +90,7 @@ export const MODULE_INDEX: ModuleEntry[] = [
     keywords: ['plants', 'houseplants', 'gardening', 'watering', 'flora', 'greenery', 'plant care'] },
   { id: 'games', label: 'Arcade', category: 'creator',
     hint: 'Mini-games, resource economy & cosmetic shop',
-    keywords: ['arcade', 'arcade hub', 'mini games', 'economy', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake'] },
+    keywords: ['arcade', 'arcade hub', 'mini games', 'economy', 'refinery', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake', 'ball catcher', 'speed typer', 'typing', 'sliding puzzle', 'storage', 'inventory', 'shards'] },
 
   /* ── Personalized Vault ── */
   { id: 'custom-links', label: 'Custom Link Manager', category: 'vault',
