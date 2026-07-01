@@ -1,295 +1,196 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import dynamic from 'next/dynamic'
-import { useLiveQuery } from 'dexie-react-hooks'
-import type { Difficulty, TrailFeature } from '@/types/hiking'
-import { TRAILS } from '@/data/trails'
-import { db } from '@/lib/db'
-import { exportTrailAsGpx } from '@/utils/gpxExporter'
-import { useToast } from '@/lib/ToastContext'
-import CompleteTrailModal from './CompleteTrailModal'
 import styles from './TrailHunter.module.css'
-
-/* ── Leaflet map — client-only dynamic import ─────────────────────── */
-
-const TrailMap = dynamic(() => import('./TrailMap'), {
-  ssr: false,
-  loading: () => <div className={styles.mapLoading}>Initializing map…</div>,
-})
 
 /* ── Constants ────────────────────────────────────────────────────── */
 
-const MAX_DIST = 50
+type DistanceKey = 'any' | 'u3' | '3-6' | '6-10' | '10p'
+type DifficultyKey = 'any' | 'easy' | 'moderate' | 'hard'
 
-const FEATURE_LABELS: Record<TrailFeature, string> = {
-  waterfall:     'Waterfall',
-  gorge_lookout: 'Gorge Lookout',
-  canopy_cover:  'Canopy Cover',
-  swimming_hole: 'Swimming Hole',
-}
+const DISTANCE_OPTIONS: { key: DistanceKey; label: string; words: string }[] = [
+  { key: 'any',  label: 'Any distance', words: '' },
+  { key: 'u3',   label: 'Under 3 mi',   words: 'under 3 miles' },
+  { key: '3-6',  label: '3–6 mi',       words: '3 to 6 miles' },
+  { key: '6-10', label: '6–10 mi',      words: '6 to 10 miles' },
+  { key: '10p',  label: '10+ mi',       words: '10+ miles' },
+]
 
-const DIFF_LABEL: Record<Difficulty, string> = {
-  easy:      'Easy',
-  moderate:  'Moderate',
-  strenuous: 'Strenuous',
-}
+const DIFFICULTY_OPTIONS: { key: DifficultyKey; label: string; words: string }[] = [
+  { key: 'any',      label: 'Any',      words: '' },
+  { key: 'easy',     label: 'Easy',     words: 'easy' },
+  { key: 'moderate', label: 'Moderate', words: 'moderate' },
+  { key: 'hard',     label: 'Hard',     words: 'hard' },
+]
+
+const FEATURE_OPTIONS: { key: string; label: string; words: string }[] = [
+  { key: 'waterfall', label: 'Waterfall',       words: 'waterfall' },
+  { key: 'lake',      label: 'Lake / swimming', words: 'lake swimming' },
+  { key: 'scenic',    label: 'Scenic views',    words: 'scenic views' },
+  { key: 'loop',      label: 'Loop trail',      words: 'loop trail' },
+  { key: 'dog',       label: 'Dog-friendly',    words: 'dog friendly' },
+  { key: 'kid',       label: 'Kid-friendly',    words: 'kid friendly' },
+]
 
 /* ── Component ────────────────────────────────────────────────────── */
 
 export default function TrailHunter() {
-  const [search,         setSearch]         = useState('')
-  const [maxDist,        setMaxDist]         = useState(MAX_DIST)
-  const [difficulty,     setDifficulty]      = useState<Difficulty | 'all'>('all')
-  const [activeFeatures, setActiveFeatures]  = useState<Set<TrailFeature>>(new Set())
-  const [selectedId,     setSelectedId]      = useState<string | null>(null)
-  const [logTrailId,     setLogTrailId]      = useState<string | null>(null)  // trail being logged
-  const { toast } = useToast()
+  const [region,     setRegion]     = useState('')
+  const [distance,   setDistance]   = useState<DistanceKey>('any')
+  const [difficulty, setDifficulty] = useState<DifficultyKey>('any')
+  const [features,   setFeatures]   = useState<Set<string>>(new Set())
 
-  /* Completed trails — drives the gold map dots + "Completed" state */
-  const completed = useLiveQuery(() => db?.completed_trails.toArray() ?? Promise.resolve([]), []) ?? []
-  const completedIds = useMemo(() => new Set(completed.map(c => c.trailId)), [completed])
+  const distWords = DISTANCE_OPTIONS.find(d => d.key === distance)?.words ?? ''
+  const diffWords = DIFFICULTY_OPTIONS.find(d => d.key === difficulty)?.words ?? ''
+  const featWords = useMemo(
+    () => FEATURE_OPTIONS.filter(f => features.has(f.key)).map(f => f.words),
+    [features],
+  )
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    return TRAILS.filter(trail => {
-      if (
-        q &&
-        !trail.name.toLowerCase().includes(q) &&
-        !trail.locationRegion.toLowerCase().includes(q)
-      ) return false
-      if (maxDist < MAX_DIST && trail.distanceMiles > maxDist) return false
-      if (difficulty !== 'all' && trail.difficulty !== difficulty) return false
-      if (
-        activeFeatures.size > 0 &&
-        ![...activeFeatures].every(f => trail.features.includes(f))
-      ) return false
-      return true
-    })
-  }, [search, maxDist, difficulty, activeFeatures])
+  const trimmedRegion = region.trim()
+  const canSearch = trimmedRegion.length > 0
 
-  // If the selected trail was filtered out, treat selection as empty
-  const selectedTrail = filtered.find(t => t.id === selectedId) ?? null
+  /** The raw Google query string. */
+  const query = useMemo(() => {
+    const parts = [
+      'hiking trails near',
+      trimmedRegion,
+      distWords,
+      diffWords,
+      ...featWords,
+    ].filter(Boolean)
+    return parts.join(' ')
+  }, [trimmedRegion, distWords, diffWords, featWords])
 
-  function toggleFeature(f: TrailFeature) {
-    setActiveFeatures(prev => {
+  /** Human-readable preview (segmented with · separators). */
+  const preview = useMemo(() => {
+    const segs = [
+      `hiking trails near ${trimmedRegion || '…'}`,
+      distWords,
+      diffWords,
+      ...featWords,
+    ].filter(Boolean)
+    return segs.join(' · ')
+  }, [trimmedRegion, distWords, diffWords, featWords])
+
+  function toggleFeature(key: string) {
+    setFeatures(prev => {
       const next = new Set(prev)
-      next.has(f) ? next.delete(f) : next.add(f)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
 
-  function handleSelect(id: string) {
-    setSelectedId(prev => (prev === id ? null : id))
+  function runSearch() {
+    if (!canSearch) return
+    const url = 'https://www.google.com/search?q=' + encodeURIComponent(query)
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
-
-  const fillPct  = `${((maxDist / MAX_DIST) * 100).toFixed(1)}%`
-  const distLabel = maxDist >= MAX_DIST ? 'Any distance' : `≤ ${maxDist} mi`
 
   return (
     <div className={styles.trailHunter}>
-      <div className={styles.layout}>
+      <div className={styles.builderCard}>
 
-        {/* ── Left sidebar ─────────────────────────────────────── */}
-        <aside className={styles.sidePanel}>
+        <div className={styles.builderIntro}>
+          <p className={styles.introLabel}>Trail Search Builder</p>
+          <p className={styles.introHint}>
+            Describe the hike you want. We&apos;ll build a Google search and open real,
+            up-to-date trail results in a new tab.
+          </p>
+        </div>
 
-          {/* Search */}
+        {/* Region */}
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="th-region">Region <span className={styles.req}>*</span></label>
           <div className={styles.searchRow}>
             <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
               <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M8.5 8.5L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input
+              id="th-region"
               className={styles.searchInput}
               type="text"
-              placeholder="State, region, or trail name…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              placeholder="City, state, or park — e.g. Ithaca NY"
+              value={region}
+              onChange={e => setRegion(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') runSearch() }}
             />
           </div>
+        </div>
 
-          {/* Distance slider */}
-          <div className={styles.filterSection}>
-            <div className={styles.filterHeader}>
-              <span className={styles.filterLabel}>Max Distance</span>
-              <span className={styles.filterValue}>{distLabel}</span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={MAX_DIST}
-              value={maxDist}
-              onChange={e => setMaxDist(Number(e.target.value))}
-              className={styles.slider}
-              style={{ '--fill-pct': fillPct } as React.CSSProperties}
-            />
-            <div className={styles.sliderScale}>
-              <span>1 mi</span><span>25 mi</span><span>50+ mi</span>
-            </div>
-          </div>
-
-          {/* Difficulty */}
-          <div className={styles.filterSection}>
-            <div className={styles.filterHeader}>
-              <span className={styles.filterLabel}>Difficulty</span>
-            </div>
-            <div className={styles.pillRow}>
-              {(['all', 'easy', 'moderate', 'strenuous'] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDifficulty(d)}
-                  className={[
-                    styles.pill,
-                    difficulty === d ? styles.pillActive : '',
-                    d !== 'all' ? styles[`pill_${d}`] : '',
-                  ].join(' ')}
-                >
-                  {d === 'all' ? 'All' : DIFF_LABEL[d]}
-                </button>
+        {/* Distance + Difficulty selects */}
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="th-distance">Distance</label>
+            <select
+              id="th-distance"
+              className={styles.select}
+              value={distance}
+              onChange={e => setDistance(e.target.value as DistanceKey)}
+            >
+              {DISTANCE_OPTIONS.map(d => (
+                <option key={d.key} value={d.key}>{d.label}</option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {/* Features */}
-          <div className={styles.filterSection}>
-            <div className={styles.filterHeader}>
-              <span className={styles.filterLabel}>Landmark Features</span>
-            </div>
-            <div className={styles.featureGrid}>
-              {(Object.keys(FEATURE_LABELS) as TrailFeature[]).map(f => (
-                <button
-                  key={f}
-                  onClick={() => toggleFeature(f)}
-                  className={[
-                    styles.featureBtn,
-                    activeFeatures.has(f) ? styles.featureBtnActive : '',
-                  ].join(' ')}
-                >
-                  <span className={styles.featureCheck}>
-                    {activeFeatures.has(f) ? '✓' : '+'}
-                  </span>
-                  {FEATURE_LABELS[f]}
-                </button>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="th-difficulty">Difficulty</label>
+            <select
+              id="th-difficulty"
+              className={styles.select}
+              value={difficulty}
+              onChange={e => setDifficulty(e.target.value as DifficultyKey)}
+            >
+              {DIFFICULTY_OPTIONS.map(d => (
+                <option key={d.key} value={d.key}>{d.label}</option>
               ))}
-            </div>
+            </select>
           </div>
+        </div>
 
-          {/* Trail list */}
-          <div className={styles.trailList}>
-            <div className={styles.resultsLabel}>
-              {filtered.length} trail{filtered.length !== 1 ? 's' : ''} found
-            </div>
-            <div className={styles.trailListScroll}>
-              {filtered.length === 0 ? (
-                <div className={styles.emptyState}>
-                  No trails match your filters.
-                </div>
-              ) : (
-                filtered.map(trail => (
-                  <button
-                    key={trail.id}
-                    className={[
-                      styles.trailItem,
-                      selectedId === trail.id ? styles.trailItemActive : '',
-                    ].join(' ')}
-                    onClick={() => handleSelect(trail.id)}
-                  >
-                    <div className={styles.trailItemName}>{trail.name}</div>
-                    <div className={styles.trailItemRegion}>{trail.locationRegion}</div>
-                    <div className={styles.trailItemMeta}>
-                      <span className={styles.trailDist}>{trail.distanceMiles} mi</span>
-                      <span className={`${styles.diffBadge} ${styles[`diff_${trail.difficulty}`]}`}>
-                        {DIFF_LABEL[trail.difficulty]}
-                      </span>
-                    </div>
-                    {trail.features.length > 0 && (
-                      <div className={styles.trailTags}>
-                        {trail.features.map(f => (
-                          <span key={f} className={styles.tag}>{FEATURE_LABELS[f]}</span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
+        {/* Features */}
+        <div className={styles.field}>
+          <label className={styles.fieldLabel}>Features</label>
+          <div className={styles.featureGrid}>
+            {FEATURE_OPTIONS.map(f => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => toggleFeature(f.key)}
+                className={[
+                  styles.featureBtn,
+                  features.has(f.key) ? styles.featureBtnActive : '',
+                ].join(' ')}
+                aria-pressed={features.has(f.key)}
+              >
+                <span className={styles.featureCheck}>
+                  {features.has(f.key) ? '✓' : '+'}
+                </span>
+                {f.label}
+              </button>
+            ))}
           </div>
-        </aside>
+        </div>
 
-        {/* ── Map panel ────────────────────────────────────────── */}
-        <main className={styles.mapPanel}>
-          <div className={styles.mapFrame}>
-            <TrailMap
-              trails={filtered}
-              selectedId={selectedId}
-              onSelectTrail={handleSelect}
-              completedIds={completedIds}
-            />
-          </div>
+        {/* Preview */}
+        <div className={styles.previewBox}>
+          <span className={styles.previewLabel}>Query</span>
+          <span className={styles.previewText}>{preview}</span>
+        </div>
 
-          {selectedTrail ? (
-            <div className={styles.infoPanel} key={selectedTrail.id}>
-              <div className={styles.infoHeader}>
-                <div>
-                  <div className={styles.infoName}>{selectedTrail.name}</div>
-                  <div className={styles.infoRegion}>{selectedTrail.locationRegion}</div>
-                </div>
-                <div className={styles.infoStats}>
-                  <span className={styles.infoStat}>{selectedTrail.distanceMiles} mi</span>
-                  <span className={styles.infoStatSep}>·</span>
-                  <span className={styles.infoStat}>
-                    +{selectedTrail.elevationGainFt.toLocaleString()} ft
-                  </span>
-                  <span className={`${styles.diffBadge} ${styles[`diff_${selectedTrail.difficulty}`]}`}>
-                    {DIFF_LABEL[selectedTrail.difficulty]}
-                  </span>
-                </div>
-              </div>
-              <p className={styles.infoDesc}>{selectedTrail.description}</p>
-              <div className={styles.infoFeatures}>
-                {selectedTrail.features.map(f => (
-                  <span key={f} className={styles.tag}>{FEATURE_LABELS[f]}</span>
-                ))}
-              </div>
-              <div className={styles.infoActions}>
-                <button
-                  className={styles.gpxBtn}
-                  onClick={() =>
-                    exportTrailAsGpx(selectedTrail.name, selectedTrail.coordinates)
-                  }
-                >
-                  Download Vector Track (.GPX)
-                </button>
-                <button
-                  className={`${styles.completeBtn} ${completedIds.has(selectedTrail.id) ? styles.completeBtnDone : ''}`}
-                  onClick={() => setLogTrailId(selectedTrail.id)}
-                >
-                  {completedIds.has(selectedTrail.id) ? '✓ Completed — edit log' : '✓ Mark Complete'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.infoPlaceholder}>
-              Select a trail on the map or from the list to view details and export a GPS track.
-            </div>
-          )}
-        </main>
-
+        {/* Search */}
+        <button
+          type="button"
+          className={styles.searchBtn}
+          onClick={runSearch}
+          disabled={!canSearch}
+        >
+          Search on Google →
+        </button>
       </div>
-
-      {logTrailId && (() => {
-        const t = TRAILS.find(x => x.id === logTrailId)
-        if (!t) return null
-        return (
-          <CompleteTrailModal
-            trailId={t.id}
-            trailName={t.name}
-            existing={completed.find(c => c.trailId === t.id) ?? null}
-            onClose={() => setLogTrailId(null)}
-            onToast={toast}
-          />
-        )
-      })()}
     </div>
   )
 }

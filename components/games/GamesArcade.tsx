@@ -25,10 +25,10 @@ import ZenSnake             from '@/components/games/harvest/ZenSnake'
 type GameId = 'refiner' | 'matrix' | 'shift' | '2048' | 'biosynth' | 'zensnake'
 
 const GAME_LABELS: Record<GameId, string> = {
-  refiner:  'Mine Refiner',
+  refiner:  'Minesweeper',
   matrix:   'Scripting Matrix',
   shift:    'Shift Matrix',
-  '2048':   '2048 Core',
+  '2048':   '2048',
   biosynth: 'Bio-Synthesizer',
   zensnake: 'Zen Snake',
 }
@@ -77,7 +77,7 @@ export default function GamesArcade() {
       <div style={{ display: activeGame === 'refiner' ? 'block' : 'none', flex: 1, minHeight: 0 }}>
         <UniversalGameWrapper
           gameId="mine-refiner"
-          gameTitle="Mine Refiner"
+          gameTitle="Minesweeper"
           targetResourceId="raw_data_shards"
           payoutFormula={score => score}
         >

@@ -9,7 +9,7 @@ import styles from './TrailHunterView.module.css'
 type Tab = 'scout' | 'safety' | 'completed'
 
 const TAB_LABEL: Record<Tab, string> = {
-  scout:     'Trail Scout',
+  scout:     'Trail Search',
   safety:    'Pack & Safety',
   completed: 'Completed',
 }
@@ -31,7 +31,7 @@ export default function TrailHunterView() {
         ))}
       </div>
 
-      {/* Scout + Safety stay mounted (preserve Leaflet map + safety timer);
+      {/* Search + Safety stay mounted (preserve form state + safety timer);
           Completed is light and only mounts when viewed. */}
       <div>
         <div className={activeTab === 'scout' ? styles.tabPaneActive : styles.tabPane}>

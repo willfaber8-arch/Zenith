@@ -113,7 +113,7 @@ export const NAV_CONFIG: NavCategory[] = [
     links: [
       { id: 'trail-hunter',  label: 'Trail Hunter',       category: 'creator', color: '#22c55e' },
       { id: 'botanist',      label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
-      { id: 'games',         label: 'Arcade Hub',         category: 'creator', color: '#a3e635' },
+      { id: 'games',         label: 'Arcade',             category: 'creator', color: '#a3e635' },
       { id: 'sports',        label: 'Sports Tracker',     category: 'creator', color: '#34d399' },
       { id: 'world-events',  label: 'World Events',       category: 'creator', color: '#818cf8' },
       { id: 'personal-brand',label: 'Personal Brand Hub', category: 'creator', color: '#fbbf24' },

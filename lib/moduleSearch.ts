@@ -88,9 +88,9 @@ export const MODULE_INDEX: ModuleEntry[] = [
   { id: 'botanist', label: 'Botanist Guide', category: 'creator',
     hint: 'Houseplant care & watering schedule',
     keywords: ['plants', 'houseplants', 'gardening', 'watering', 'flora', 'greenery', 'plant care'] },
-  { id: 'games', label: 'Arcade Hub', category: 'creator',
+  { id: 'games', label: 'Arcade', category: 'creator',
     hint: 'Mini-games, resource economy & cosmetic shop',
-    keywords: ['arcade', 'mini games', 'economy', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake'] },
+    keywords: ['arcade', 'arcade hub', 'mini games', 'economy', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake'] },
 
   /* ── Personalized Vault ── */
   { id: 'custom-links', label: 'Custom Link Manager', category: 'vault',

@@ -33,7 +33,7 @@ export default function ArcadeWidget() {
       </div>
 
       {resources.length === 0 ? (
-        <div className={wStyles.empty}>Visit the Arcade Hub to start harvesting resources.</div>
+        <div className={wStyles.empty}>Visit the Arcade to start harvesting resources.</div>
       ) : (
         <div className={wStyles.dataStack}>
           {cp && (

@@ -82,6 +82,42 @@
 .textarea { resize: vertical; line-height: 1.5; }
 .input:focus, .textarea:focus { border-color: rgba(82, 204, 163, 0.4); }
 
+.req { color: var(--accent-green); }
+
+/* Distance + Difficulty two-up row */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+/* Star rating */
+.starRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.star {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--text-dark);
+  padding: 0 2px;
+  transition: color 120ms;
+}
+.star:hover { color: #f5b841; }
+.starOn { color: #f5b841; }
+.starClear {
+  margin-left: var(--sp-2);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.starClear:hover { color: var(--text-primary); }
+
 .photoBtn {
   padding: 7px 14px;
   border-radius: var(--r-md);

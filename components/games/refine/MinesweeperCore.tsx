@@ -438,7 +438,9 @@ export default function MinesweeperCore({
     x: number,
     y: number,
   ): void {
-    e.preventDefault()            // swallow OS context menu
+    e.preventDefault()            // swallow the browser's context menu
+    e.stopPropagation()           // and stop it reaching the app's custom
+                                  // right-click menu (document-level listener)
     if (phase !== 'active') return
     if (refineResult !== null) return
 
@@ -519,7 +521,7 @@ export default function MinesweeperCore({
 
   /* ── Render ──────────────────────────────────────────────────── */
   return (
-    <div className={styles.gameRoot}>
+    <div className={styles.gameRoot} data-ctx-suppress="true">
 
       {/* ── Status bar ────────────────────────────────────────── */}
       <div className={styles.statusBar} role="status" aria-label="Game status">
@@ -587,7 +589,7 @@ export default function MinesweeperCore({
               let content: React.ReactNode = null
               if (!cell.isRevealed && cell.isFlagged) {
                 content = (
-                  <span style={{ color: 'var(--accent-purple)' }} aria-hidden="true">◈</span>
+                  <span style={{ color: 'var(--accent-purple)' }} aria-hidden="true">🚩</span>
                 )
               } else if (cell.isRevealed && cell.isMine) {
                 content = (

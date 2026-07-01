@@ -328,7 +328,26 @@ export default function Core2048({
   const phaseRef       = useRef<GamePhase>('active')
   const hasWonRef      = useRef(false)
   const processMoveRef = useRef<(dir: Direction) => void>(() => {})
-  const touchStartRef  = useRef<TileCoordinates | null>(null)
+  const pointerStartRef = useRef<TileCoordinates | null>(null)
+  const boardRef        = useRef<HTMLDivElement | null>(null)
+
+  /* Brief directional lurch so a move reads as a slide, not a teleport.
+     Imperative + reset so it replays on every move regardless of direction. */
+  const nudgeBoard = useCallback((dir: Direction) => {
+    const el = boardRef.current
+    if (!el) return
+    const D = 9
+    const off: Record<Direction, [number, number]> = {
+      left: [-D, 0], right: [D, 0], up: [0, -D], down: [0, D],
+    }
+    const [x, y] = off[dir]
+    el.style.transition = 'transform 70ms ease-out'
+    el.style.transform  = `translate(${x}px, ${y}px)`
+    window.setTimeout(() => {
+      el.style.transition = 'transform 120ms cubic-bezier(0.16,1,0.3,1)'
+      el.style.transform  = 'translate(0, 0)'
+    }, 72)
+  }, [])
 
   // Sync refs every render
   matrixRef.current  = matrix
@@ -368,6 +387,8 @@ export default function Core2048({
     const { matrix: moved, scoreDelta, changed } = executeMove(prev, dir)
 
     if (!changed) return
+
+    nudgeBoard(dir)
 
     const { matrix: afterSpawn, spawnedIdx: sIdx } = spawnTile(moved)
 
@@ -428,34 +449,26 @@ export default function Core2048({
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  /* ── Touch / swipe handler (stable, registered once) ────────── */
-  useEffect(() => {
-    const onTouchStart = (e: TouchEvent) => {
-      const t = e.touches[0]
-      touchStartRef.current = { x: t.clientX, y: t.clientY }
-    }
+  /* ── Swipe via Pointer Events (works for mouse drag AND touch) ──
+     The old touch-only listeners never fired for desktop mouse users, so
+     swiping "did nothing". Pointer events unify mouse / touch / pen and are
+     bound to the board element so they don't hijack the rest of the page. */
+  const onBoardPointerDown = useCallback((e: React.PointerEvent) => {
+    pointerStartRef.current = { x: e.clientX, y: e.clientY }
+  }, [])
 
-    const onTouchEnd = (e: TouchEvent) => {
-      if (!touchStartRef.current) return
-      const dx = e.changedTouches[0].clientX - touchStartRef.current.x
-      const dy = e.changedTouches[0].clientY - touchStartRef.current.y
-      touchStartRef.current = null
-
-      const MIN_SWIPE = 30   // minimum swipe distance in px
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if      (dx >  MIN_SWIPE) processMoveRef.current('right')
-        else if (dx < -MIN_SWIPE) processMoveRef.current('left')
-      } else {
-        if      (dy >  MIN_SWIPE) processMoveRef.current('down')
-        else if (dy < -MIN_SWIPE) processMoveRef.current('up')
-      }
-    }
-
-    window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchend',   onTouchEnd,   { passive: true })
-    return () => {
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchend',   onTouchEnd)
+  const onBoardPointerUp = useCallback((e: React.PointerEvent) => {
+    const start = pointerStartRef.current
+    pointerStartRef.current = null
+    if (!start) return
+    const dx = e.clientX - start.x
+    const dy = e.clientY - start.y
+    const MIN_SWIPE = 24   // px
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < MIN_SWIPE) return
+    if (Math.abs(dx) > Math.abs(dy)) {
+      processMoveRef.current(dx > 0 ? 'right' : 'left')
+    } else {
+      processMoveRef.current(dy > 0 ? 'down' : 'up')
     }
   }, [])
 
@@ -525,10 +538,14 @@ export default function Core2048({
           ════════════════════════════════════════════════════════ */}
       <div className={styles.boardWrapper}>
         <div
+          ref={boardRef}
           className={styles.board}
           role="grid"
           aria-label="2048 puzzle grid — use arrow keys or swipe to slide tiles"
           aria-roledescription="sliding tile game"
+          onPointerDown={onBoardPointerDown}
+          onPointerUp={onBoardPointerUp}
+          style={{ touchAction: 'none' }}
         >
           {matrix.map((value, idx) => {
             const ts    = getTileStyle(value)

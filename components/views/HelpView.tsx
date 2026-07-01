@@ -11,7 +11,7 @@ const BUG_AREAS = [
   'Study Shield / Pomodoro',
   'Sync / Data Storage',
   'Performance / Loading',
-  'Games / Arcade Hub',
+  'Games / Arcade',
   'Settings / Themes',
   'Other',
 ] as const

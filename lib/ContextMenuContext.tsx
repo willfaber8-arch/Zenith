@@ -107,6 +107,14 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
 
       /* Walk composedPath() to find nearest data-ctx-type */
       const path = (e.composedPath?.() ?? []) as EventTarget[]
+
+      /* Suppression opt-out: elements (e.g. arcade games that use
+         right-click as a gameplay input) can carry data-ctx-suppress
+         to swallow the browser menu WITHOUT opening the app menu. */
+      for (const node of path) {
+        if (node instanceof HTMLElement && node.dataset?.ctxSuppress != null) return
+      }
+
       let type:  TargetType  = 'GENERIC'
       let data:  CtxTargetData = {}
 
