@@ -17,10 +17,35 @@ import { createPortal } from 'react-dom'
 import styles from './LegalDocs.module.css'
 
 /** Bump when the substance of either document changes. */
-export const LEGAL_VERSION  = '2026-07-01'
-export const LEGAL_UPDATED  = 'July 1, 2026'
-export const LEGAL_CONTACT  = 'willfaber8@gmail.com'
+export const LEGAL_VERSION  = '2026-07-02'
+export const LEGAL_UPDATED  = 'July 2, 2026'
 export const LEGAL_CONSENT_KEY = 'zenith_legal_agreed_v1'
+
+/**
+ * Contact method for the legal documents. Intentionally NOT a personal email
+ * address — set NEXT_PUBLIC_LEGAL_CONTACT (e.g. a role-based support address
+ * or contact-form URL) to override. When unset, the docs point users to the
+ * project's public issue tracker so no personal information is exposed.
+ */
+export const LEGAL_CONTACT = process.env.NEXT_PUBLIC_LEGAL_CONTACT ?? ''
+
+/** Renders the contact sentence without exposing any personal information. */
+function ContactLine() {
+  if (LEGAL_CONTACT) {
+    const isEmail = LEGAL_CONTACT.includes('@') && !LEGAL_CONTACT.startsWith('http')
+    return (
+      <a href={isEmail ? `mailto:${LEGAL_CONTACT}` : LEGAL_CONTACT} target="_blank" rel="noopener noreferrer">
+        {LEGAL_CONTACT}
+      </a>
+    )
+  }
+  return (
+    <>
+      the issue tracker on the project&rsquo;s public code repository (linked from the
+      Help section inside the app)
+    </>
+  )
+}
 
 export type LegalDocId = 'privacy' | 'terms'
 
@@ -126,8 +151,7 @@ function PrivacyContent() {
 
       <h3>10. Contact</h3>
       <p>
-        Questions about this Policy? Contact us at{' '}
-        <a href={`mailto:${LEGAL_CONTACT}`}>{LEGAL_CONTACT}</a>.
+        Questions about this Policy? You can reach us through <ContactLine />.
       </p>
     </>
   )
@@ -246,12 +270,68 @@ function TermsContent() {
       <h3>12. Governing law</h3>
       <p>
         These Terms are governed by the laws of the United States and the state in
-        which the operator resides, without regard to conflict-of-laws rules. You
-        agree that any dispute will be resolved in the courts located there, to the
-        extent permitted by law.
+        which the operator resides, without regard to conflict-of-laws rules,
+        except that the Federal Arbitration Act governs the interpretation and
+        enforcement of Section 13.
       </p>
 
-      <h3>13. Changes to these Terms</h3>
+      <h3>13. Dispute resolution, arbitration &amp; class-action waiver</h3>
+      <p>
+        <strong>Please read this section carefully — it affects your legal rights.</strong>
+      </p>
+      <p>
+        Most concerns can be resolved informally. Before starting any formal
+        proceeding, you agree to first contact us and attempt to resolve the
+        dispute in good faith for at least 30 days.
+      </p>
+      <p>
+        <strong>Binding arbitration.</strong> To the fullest extent permitted by
+        law, any dispute, claim, or controversy arising out of or relating to the
+        Service or these Terms that is not resolved informally will be settled by
+        final and binding individual arbitration, rather than in court, except that
+        you may bring claims in small-claims court if they qualify. The arbitration
+        will be conducted by a recognized arbitration provider under its applicable
+        rules. Judgment on the award may be entered in any court with jurisdiction.
+      </p>
+      <p>
+        <strong>Class-action waiver.</strong> You and Zenith agree that each may
+        bring claims against the other only in an individual capacity, and not as a
+        plaintiff or class member in any purported class, collective,
+        consolidated, or representative proceeding. The arbitrator may not
+        consolidate more than one person&rsquo;s claims and may not preside over any
+        form of class or representative proceeding.
+      </p>
+      <p>
+        <strong>Opt-out.</strong> You may opt out of this arbitration agreement by
+        notifying us within 30 days of first accepting these Terms; if you opt out,
+        Section 12&rsquo;s governing-law and venue provisions apply instead. If the
+        class-action waiver is found unenforceable as to a particular claim, that
+        claim will proceed in court, but the remainder of this Section still
+        applies. Nothing here prevents either party from seeking injunctive relief
+        for intellectual-property misuse. Some jurisdictions do not permit
+        mandatory arbitration or class-action waivers, in which case this Section
+        may not apply to you.
+      </p>
+
+      <h3>14. Copyright &amp; DMCA policy</h3>
+      <p>
+        We respect intellectual-property rights and expect users to do the same.
+        If you believe content made available through the Service infringes your
+        copyright, send a notice via our contact method (Section 17) including:
+        (a) your physical or electronic signature; (b) identification of the
+        copyrighted work claimed to be infringed; (c) identification of the
+        allegedly infringing material and information reasonably sufficient to
+        locate it; (d) your contact information; (e) a statement that you have a
+        good-faith belief the use is not authorized; and (f) a statement, under
+        penalty of perjury, that the information is accurate and you are authorized
+        to act on the owner&rsquo;s behalf. We will respond to valid notices as
+        required by the U.S. Digital Millennium Copyright Act (DMCA), including by
+        removing infringing material and, where appropriate, terminating repeat
+        infringers. Note that most user content in Zenith is stored locally on your
+        own device and is not hosted by us.
+      </p>
+
+      <h3>15. Changes to these Terms</h3>
       <p>
         We may modify these Terms from time to time. Material changes will be
         reflected by updating the &ldquo;Last updated&rdquo; date. Your continued use of
@@ -259,18 +339,19 @@ function TermsContent() {
         revised Terms.
       </p>
 
-      <h3>14. Miscellaneous</h3>
+      <h3>16. Miscellaneous</h3>
       <p>
         If any provision of these Terms is found unenforceable, the remaining
-        provisions remain in effect. These Terms, together with the Privacy
-        Policy, are the entire agreement between you and Zenith regarding the
-        Service.
+        provisions remain in effect. Our failure to enforce any provision is not a
+        waiver of it. You may not assign these Terms; we may assign them in
+        connection with a transfer of the Service. These Terms, together with the
+        Privacy Policy, are the entire agreement between you and Zenith regarding
+        the Service and supersede any prior agreements.
       </p>
 
-      <h3>15. Contact</h3>
+      <h3>17. Contact</h3>
       <p>
-        Questions about these Terms? Contact us at{' '}
-        <a href={`mailto:${LEGAL_CONTACT}`}>{LEGAL_CONTACT}</a>.
+        Questions about these Terms? You can reach us through <ContactLine />.
       </p>
     </>
   )

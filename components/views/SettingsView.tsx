@@ -41,9 +41,6 @@ import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
-import SyncStressTestHarness      from '@/components/SyncStressTestHarness'
-import ConflictAuditPanel         from '@/components/ConflictAuditPanel'
-import StabilityReleaseConsole    from '@/components/StabilityReleaseConsole'
 import styles from './SettingsView.module.css'
 
 /* ── Section wrapper ──────────────────────────────────────────── */
@@ -178,8 +175,6 @@ function ThemeForgePanel({
 const SETTINGS_SECTIONS = [
   { id: 's-appearance',    label: 'Appearance'    },
   { id: 's-school-colors', label: 'School Colors' },
-  { id: 's-widgets',       label: 'Widgets'       },
-  { id: 's-presets',       label: 'Presets'       },
   { id: 's-ai',            label: 'AI'            },
   { id: 's-help',          label: 'Help'          },
   { id: 's-account',       label: 'Account'       },
@@ -188,8 +183,6 @@ const SETTINGS_SECTIONS = [
   { id: 's-analytics',     label: 'Analytics'     },
   { id: 's-shortcuts',     label: 'Shortcuts'     },
   { id: 's-about',         label: 'About'         },
-  { id: 's-dev',           label: 'Dev'           },
-  { id: 's-dev-console',   label: 'Console'       },
 ]
 
 /* ── Toggle row ───────────────────────────────────────────────── */
@@ -875,111 +868,6 @@ export default function SettingsView() {
           </div>
         </Section>
 
-        {/* ── Dashboard Widgets ───────────────────────────────── */}
-        <Section id="s-widgets" title="Dashboard Widgets">
-          <p className={styles.sectionSubtitle}>
-            Toggle which widgets appear on your home screen.
-          </p>
-          <div className={styles.toggleList}>
-            <ToggleRow
-              label="Habit Summary"
-              hint="Ring chart + streak count"
-              checked={config.habitSummary ?? true}
-              onChange={() => toggleWidget('habitSummary')}
-            />
-            <ToggleRow
-              label="Calendar Today"
-              hint="Today's events preview"
-              checked={config.calendarToday ?? true}
-              onChange={() => toggleWidget('calendarToday')}
-            />
-            <ToggleRow
-              label="Pomodoro Timer"
-              hint="Quick-launch focus timer"
-              checked={config.pomodoroPreview ?? false}
-              onChange={() => toggleWidget('pomodoroPreview')}
-            />
-            <ToggleRow
-              label="Weather"
-              hint="Current conditions + 7-day forecast"
-              checked={config.localWeather ?? true}
-              onChange={() => toggleWidget('localWeather')}
-            />
-            <ToggleRow
-              label="Study Streak"
-              hint="Daily sessions + weekly minutes"
-              checked={config.studyStreak ?? true}
-              onChange={() => toggleWidget('studyStreak')}
-            />
-            <ToggleRow
-              label="University Hub"
-              hint="Quick-link to your university profile"
-              checked={config.uniHub ?? true}
-              onChange={() => toggleWidget('uniHub')}
-            />
-          </div>
-        </Section>
-
-        {/* ── Dashboard Presets ───────────────────────────────── */}
-        <Section id="s-presets" title="Dashboard Presets">
-          <p className={styles.sectionSubtitle}>
-            Save named snapshots of your widget layout. The AI Co-Pilot can also
-            create and apply presets on your behalf.
-          </p>
-
-          {/* Saved presets list */}
-          {presets.length > 0 && (
-            <div className={styles.presetList}>
-              {presets.map(p => (
-                <div key={p.id} className={styles.presetRow}>
-                  <span className={styles.presetName}>{p.name}</span>
-                  <div className={styles.presetActions}>
-                    <button
-                      className={`${styles.presetApplyBtn} ${presetApplyId === p.id ? styles.presetApplyBtnActive : ''}`}
-                      onClick={() => handleApplyPreset(p)}
-                    >
-                      {presetApplyId === p.id ? '✓' : 'Apply'}
-                    </button>
-                    <button
-                      className={styles.presetDeleteBtn}
-                      onClick={() => handleDeletePreset(p.id, p.name)}
-                      aria-label={`Delete preset ${p.name}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {presets.length === 0 && (
-            <p className={styles.presetEmpty}>
-              No presets saved yet. Configure your widgets above and save them as a preset, or ask the AI Co-Pilot to create one for you.
-            </p>
-          )}
-
-          {/* Save current layout */}
-          <div className={styles.presetSaveRow}>
-            <input
-              type="text"
-              className={styles.presetInput}
-              placeholder='Preset name, e.g. "Finals Week"'
-              value={presetName}
-              onChange={e => setPresetName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSavePreset() }}
-              maxLength={40}
-            />
-            <button
-              className={styles.presetSaveBtn}
-              onClick={handleSavePreset}
-              disabled={!presetName.trim() || presetSaving}
-            >
-              Save current layout
-            </button>
-          </div>
-        </Section>
-
         {/* ── AI Provider ─────────────────────────────────────── */}
         <Section id="s-ai" title="AI Provider">
           <p className={styles.sectionSubtitle}>
@@ -1196,92 +1084,6 @@ export default function SettingsView() {
               <span className={styles.aboutValue}>Claude (Anthropic) — server-side</span>
             </div>
           </div>
-        </Section>
-
-        {/* ── Developer Diagnostics ────────────────────────────── */}
-        <Section id="s-dev" title="Developer Diagnostics">
-          <p className={styles.sectionSubtitle}>
-            Inject configurable network chaos to verify that the offline
-            synchronisation stack (IndexedDB write-ahead log + Supabase broker)
-            holds transactions safely and replays them cleanly on recovery.
-            All test records are purged from IndexedDB at the end of each run.
-          </p>
-          <SyncStressTestHarness />
-        </Section>
-
-        {/* ── Conflict Resolution Auditor ───────────────────────── */}
-        <Section title="Conflict Resolution Auditor">
-          <p className={styles.sectionSubtitle}>
-            Simulate concurrent multi-device mutations and observe the deterministic
-            Last-Write-Wins algorithm resolve data collisions in real time. Each run
-            exercises a different resolution path — timestamp delta, stale-sync
-            rejection, or millisecond-exact UUID tie-break — and certifies that
-            every node converges to an identical ground state without any server
-            coordination.
-          </p>
-          <ConflictAuditPanel />
-        </Section>
-
-        {/* ── Developer Console ────────────────────────────────── */}
-        {/* TODO: remove before launch */}
-        <Section id="s-dev-console" title="Developer Console">
-          <p className={styles.sectionSubtitle}>
-            Internal command interface for testing game economy and data states.
-            Type <strong>/help</strong> to list all commands.
-          </p>
-          <div className={styles.devConsoleWrap}>
-            <div className={styles.devConsoleOutput}>
-              {devOutput.length === 0
-                ? <span className={styles.devConsolePlaceholder}>Type /help to begin</span>
-                : devOutput.map((line, i) => (
-                    <p key={i} className={styles.devConsoleLine}>{line}</p>
-                  ))
-              }
-            </div>
-            <div className={styles.devConsoleInput}>
-              <span className={styles.devConsolePrompt}>{'>'}</span>
-              <input
-                type="text"
-                className={styles.devConsoleField}
-                value={devCmd}
-                onChange={e => setDevCmd(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && devCmd.trim()) {
-                    setDevOutput(p => [...p, `> ${devCmd}`])
-                    void runDevCommand(devCmd)
-                    setDevCmd('')
-                  }
-                }}
-                placeholder="/give-credits 500"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <button
-                className={styles.devConsoleRunBtn}
-                onClick={() => {
-                  if (!devCmd.trim()) return
-                  setDevOutput(p => [...p, `> ${devCmd}`])
-                  void runDevCommand(devCmd)
-                  setDevCmd('')
-                }}
-              >
-                Run
-              </button>
-            </div>
-          </div>
-        </Section>
-
-        {/* ── Stability Release Console ─────────────────────────── */}
-        <Section title="Total System Hardening Console">
-          <p className={styles.sectionSubtitle}>
-            Run the complete Phase 8–13 regression suite across every architectural
-            pillar — IndexedDB schema, SM-2 calculator, WebRTC mesh, AES-GCM crypto
-            integrity, schedule date boundaries, CSS token registry, canvas pixel
-            rendering, lazy routing chunks, network simulator teardown, and the LWW
-            conflict engine. Once all checks pass, execute the final system
-            sign-off to seal the build.
-          </p>
-          <StabilityReleaseConsole />
         </Section>
 
       </div>

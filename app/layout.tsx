@@ -55,6 +55,7 @@ import Toast             from '@/components/Toast'
 import HabitSyncToaster  from '@/components/HabitSyncToaster'
 import ErrorBoundary     from '@/components/ErrorBoundary'
 import ThemeApplicator from '@/components/ThemeApplicator'
+import DataResetGate from '@/components/DataResetGate'
 import NumberInputSelect from '@/components/NumberInputSelect'
 import {
   LazyBackgroundCanvasManager as BackgroundCanvasManager,
@@ -134,6 +135,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}
     >
       <body>
+        {/* One-time local data wipe — runs before any provider opens IndexedDB. */}
+        <DataResetGate />
         {/*
          * PROVIDER CHAIN (innermost wins for same context):
          *   NavProvider   — centralised view / category routing state
