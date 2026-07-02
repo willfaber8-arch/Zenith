@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal }   from 'react-dom'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { useAuth }        from '@/lib/AuthContext'
 import { useToast }       from '@/lib/ToastContext'
@@ -410,8 +411,15 @@ function ThemePromptModal({
   onDismiss: () => void
 }) {
   const brand = getUniversityBrand(entry.id)
-  if (!brand) return null
-  return (
+
+  // Portal to document.body so the fixed backdrop escapes the ViewRouter's
+  // transform:scale wrapper (which otherwise traps position:fixed and makes
+  // the modal render behind / through the topbar).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!brand || !mounted) return null
+
+  return createPortal(
     <div className={styles.themeModalBackdrop} onClick={onDismiss}>
       <div
         className={`${styles.themeModal} anim-scale-in`}
@@ -438,6 +446,7 @@ function ThemePromptModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
