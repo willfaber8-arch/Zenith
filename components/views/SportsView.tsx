@@ -944,27 +944,49 @@ export default function SportsView() {
     if (existing) { unfollow(existing.id); return }
 
     setDirPending(t.name)
-    try {
-      const res = await fetch(
-        `/api/sports?action=search&q=${encodeURIComponent(t.name)}&sport=${t.sportId}`,
-      )
+
+    // Fallback so the action is never a silent no-op: track the team by name
+    // even when the API can't resolve it (common for college programs, whose
+    // names are shared across sports or missing from the free-tier search).
+    const fallbackFollow = () => follow({
+      id:          `dir:${t.sportId}:${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      name:        t.name,
+      badge:       null,
+      leagueLabel: t.conference,
+      leagueDbId:  null,
+      sportId:     t.sportId,
+      website:     t.website ?? null,
+    })
+
+    const search = async (withSport: boolean): Promise<TeamSearchHit | undefined> => {
+      const url = `/api/sports?action=search&q=${encodeURIComponent(t.name)}`
+        + (withSport ? `&sport=${t.sportId}` : '')
+      const res  = await fetch(url)
       const data = (await res.json()) as { teams?: TeamSearchHit[] }
       const hits = Array.isArray(data.teams) ? data.teams : []
-      // Prefer an exact name match, else the first hit.
-      const hit =
-        hits.find(h => h.name.toLowerCase() === t.name.toLowerCase()) ?? hits[0]
-      if (!hit) return
-      follow({
-        id:          hit.id,
-        name:        hit.name,
-        badge:       hit.badge,
-        leagueLabel: hit.league ?? t.conference,
-        leagueDbId:  null,
-        sportId:     t.sportId,
-        website:     hit.website ?? t.website ?? null,
-      })
+      return hits.find(h => h.name.toLowerCase() === t.name.toLowerCase()) ?? hits[0]
+    }
+
+    try {
+      // Sport-filtered first; if nothing matches (shared college names get
+      // filtered out by the sport filter), retry unfiltered before giving up.
+      const hit = (await search(true)) ?? (await search(false))
+      if (hit) {
+        follow({
+          id:          hit.id,
+          name:        hit.name,
+          badge:       hit.badge,
+          leagueLabel: hit.league ?? t.conference,
+          leagueDbId:  null,
+          sportId:     t.sportId,
+          website:     hit.website ?? t.website ?? null,
+        })
+      } else {
+        fallbackFollow()
+      }
     } catch {
-      /* resolution failed — leave unfollowed */
+      // Network/API error — still add the team so the user isn't blocked.
+      fallbackFollow()
     } finally {
       setDirPending(null)
     }

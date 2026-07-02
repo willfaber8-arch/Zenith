@@ -819,22 +819,24 @@
 
 .upgradeCapCurrent {
   font-family: var(--font-mono);
-  font-size: 0.60rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .upgradeCapArrow {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   color: var(--text-dark);
 }
 
 .upgradeCapNext {
   font-family: var(--font-mono);
-  font-size: 0.60rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--cat-accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .upgradeLevelBadge {
@@ -855,8 +857,8 @@
 
 .upgradeCostChip {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
-  letter-spacing: 0.03em;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
   color: var(--text-dark);
   white-space: nowrap;
 }
@@ -943,19 +945,20 @@
 
 .codexSummaryLabel {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.64rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dark);
 }
 
 .codexSummaryValue {
   font-family: var(--font-mono);
-  font-size: 1.0rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--accent-purple);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .codexColHeader {
@@ -967,9 +970,9 @@
 
 .codexColHeaderLabel {
   font-family: var(--font-mono);
-  font-size: 0.50rem;
+  font-size: 0.62rem;
   font-weight: 600;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dark);
   text-align: right;
@@ -994,27 +997,29 @@
 
 .codexRowLabel {
   font-family: var(--font-body);
-  font-size: 0.6875rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 .codexRowCurrent {
   font-family: var(--font-mono);
-  font-size: 0.60rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .codexRowLifetime {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
-  color: var(--text-dark);
+  font-size: 0.78rem;
+  color: var(--text-muted);
   text-align: right;
   white-space: nowrap;
-  min-width: 60px;
+  min-width: 64px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ════════════════════════════════════════════════════════════════
