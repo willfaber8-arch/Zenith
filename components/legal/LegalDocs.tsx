@@ -41,8 +41,8 @@ function ContactLine() {
   }
   return (
     <>
-      the issue tracker on the project&rsquo;s public code repository (linked from the
-      Help section inside the app)
+      the feedback form in the app&rsquo;s Help &amp; Tour section (available from
+      Settings after signing in)
     </>
   )
 }
@@ -269,10 +269,12 @@ function TermsContent() {
 
       <h3>12. Governing law</h3>
       <p>
-        These Terms are governed by the laws of the United States and the state in
-        which the operator resides, without regard to conflict-of-laws rules,
-        except that the Federal Arbitration Act governs the interpretation and
-        enforcement of Section 13.
+        These Terms are governed by the laws of the State of Texas and the United
+        States of America, without regard to conflict-of-laws rules, except that
+        the Federal Arbitration Act governs the interpretation and enforcement of
+        Section 13. Subject to Section 13, any court proceedings will be brought
+        exclusively in the state or federal courts located in Texas, and you
+        consent to their jurisdiction.
       </p>
 
       <h3>13. Dispute resolution, arbitration &amp; class-action waiver</h3>
@@ -291,7 +293,8 @@ function TermsContent() {
         final and binding individual arbitration, rather than in court, except that
         you may bring claims in small-claims court if they qualify. The arbitration
         will be conducted by a recognized arbitration provider under its applicable
-        rules. Judgment on the award may be entered in any court with jurisdiction.
+        rules, seated in Texas (or conducted remotely where the provider&rsquo;s rules
+        allow). Judgment on the award may be entered in any court with jurisdiction.
       </p>
       <p>
         <strong>Class-action waiver.</strong> You and Zenith agree that each may

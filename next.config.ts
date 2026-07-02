@@ -113,11 +113,13 @@ const securityHeaders = [
   },
   {
     /* Restrict access to sensitive browser APIs Zenith does not use.
-       geolocation is required for Open-Meteo weather; camera/mic blocked. */
+       geolocation → weather + distance tracker; microphone → AI Co-Pilot
+       dictation + study-dock voice memos (self only — embedded iframes stay
+       blocked, and the browser still shows its own permission prompt). */
     key:   'Permissions-Policy',
     value: [
       'camera=()',
-      'microphone=()',
+      'microphone=(self)',
       'payment=()',
       'usb=()',
       'magnetometer=()',
