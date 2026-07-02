@@ -151,8 +151,10 @@
   justify-content: center;
   border-radius: 3px;
   border: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+  /* Digits use the body sans (clearer 1/2/3 shapes than the mono) and scale
+     with the board so counts are legible instead of blurring together. */
+  font-family: var(--font-body);
+  font-size: clamp(0.9rem, 2vmin, 1.3rem);
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -465,4 +467,43 @@
 .collectBtnLost:hover:not(:disabled) {
   background:   color-mix(in srgb, var(--accent-purple) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent-purple) 48%, transparent);
+}
+
+/* ── Difficulty selector ─────────────────────────────────────────── */
+.difficultyBar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: var(--sp-2);
+}
+.difficultyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 45%, transparent);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 160ms var(--ease-smooth);
+}
+.difficultyBtn:hover {
+  border-color: color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  color: var(--text-primary);
+}
+.difficultyBtnActive {
+  border-color: color-mix(in srgb, var(--accent-purple) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 14%, transparent);
+  color: var(--accent-purple);
+}
+.difficultyMines {
+  font-size: 0.55rem;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }

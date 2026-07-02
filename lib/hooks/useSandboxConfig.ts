@@ -17,6 +17,9 @@ export interface SandboxConfig {
   // Utility widgets
   timerWidget:       boolean
   stopwatch:         boolean
+  counter:           boolean
+  // Sports
+  sportsTeams:       boolean
   // Library
   readingTracker:    boolean
   // Vault
@@ -44,6 +47,8 @@ export const SANDBOX_DEFAULTS: SandboxConfig = {
   distanceTracker: true,
   timerWidget:     true,
   stopwatch:       false,
+  counter:         false,
+  sportsTeams:     false,
   readingTracker:  true,
   customLinks:     true,
   vocabTracker:    false,
@@ -66,7 +71,9 @@ export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
   distanceTracker: 'Distance Tracker',
   timerWidget:     'Timer',
   stopwatch:       'Stopwatch',
-  readingTracker:  'Reading Tracker',
+  counter:         'Counter',
+  sportsTeams:     'My Teams',
+  readingTracker:  'Library',
   customLinks:     'Quick Links',
   vocabTracker:    'Polyglot Vault',
   gpaWidget:       'GPA',
@@ -88,6 +95,8 @@ export const WIDGET_VIEWS: Record<keyof SandboxConfig, string> = {
   distanceTracker: 'friends-network',
   timerWidget:     'home',
   stopwatch:       'home',
+  counter:         'home',
+  sportsTeams:     'sports',
   readingTracker:  'book-tracker',
   customLinks:     'custom-links',
   vocabTracker:    'vocab-builder',
@@ -111,6 +120,8 @@ export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
   distanceTracker: 'normal',
   timerWidget:     'normal',
   stopwatch:       'normal',
+  counter:         'normal',
+  sportsTeams:     'normal',
   readingTracker:  'normal',
   customLinks:     'normal',
   vocabTracker:    'normal',

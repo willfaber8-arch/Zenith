@@ -107,10 +107,12 @@ function PlantModal({
   onClose,
   onSave,
   initial,
+  onDelete,
 }: {
   onClose:  () => void
   onSave:   (p: Omit<Houseplant, 'id'>) => void
   initial?: Houseplant
+  onDelete?: () => void
 }) {
   const [query,     setQuery]     = useState('')
   const [selected,  setSelected]  = useState<PlantCatalogEntry | null>(null)
@@ -281,6 +283,9 @@ function PlantModal({
               {!initial && (
                 <button type="button" className={styles.backBtn} onClick={() => setCustom(false)}>← Back</button>
               )}
+              {initial && onDelete && (
+                <button type="button" className={styles.deleteModalBtn} onClick={onDelete}>Delete Plant</button>
+              )}
               <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
               <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={!canSave}>
                 {initial ? 'Save Changes' : 'Add Plant'}
@@ -329,11 +334,10 @@ function HealthPicker({ plantId, current }: { plantId: number; current?: number 
 /* ── Plant card ───────────────────────────────────────────── */
 
 function PlantCard({
-  plant, onEdit, onDelete, onOpenLog,
+  plant, onEdit, onOpenLog,
 }: {
   plant:     Houseplant
   onEdit:    (p: Houseplant) => void
-  onDelete:  (id: number)    => void
   onOpenLog: (p: Houseplant) => void
 }) {
   const days      = daysSince(plant.lastWateredDate)
@@ -405,7 +409,6 @@ function PlantCard({
         <HealthPicker plantId={plant.id!} current={ext.healthRating} />
         <button type="button" className={styles.journalBtn} onClick={() => onOpenLog(plant)}>📖 Journal</button>
         <button type="button" className={styles.editBtn} onClick={() => onEdit(plant)}>Edit</button>
-        <button type="button" className={styles.deleteBtn} onClick={() => onDelete(plant.id!)}>✕</button>
       </div>
 
       {ext.notes && <p className={styles.notesText}>{ext.notes}</p>}
@@ -735,7 +738,6 @@ export default function BotanistView() {
               <PlantCard
                 plant={plant}
                 onEdit={p => setEditPlant(p)}
-                onDelete={handleDelete}
                 onOpenLog={p => setLogPlant(p)}
               />
             </div>
@@ -748,7 +750,12 @@ export default function BotanistView() {
         <PlantModal onClose={() => setShowAdd(false)} onSave={handleAdd} />
       )}
       {editPlant && (
-        <PlantModal onClose={() => setEditPlant(null)} onSave={handleEdit} initial={editPlant} />
+        <PlantModal
+          onClose={() => setEditPlant(null)}
+          onSave={handleEdit}
+          initial={editPlant}
+          onDelete={() => { const id = editPlant.id; setEditPlant(null); if (id != null) void handleDelete(id) }}
+        />
       )}
       {logPlant && (
         <PlantLogModal plant={logPlant} onClose={() => setLogPlant(null)} />

@@ -406,7 +406,7 @@ export default function ZenSnake({ onSessionComplete }: ZenSnakeProps) {
     })
 
     const payout = final * 5
-    if (payout > 0) void addResourcesRef.current('organic_spores', payout).catch(() => {})
+    if (payout > 0) void addResourcesRef.current('cosmic_dust', payout).catch(() => {})
     onSessionComplete?.(final)
     // Do NOT request next frame — loop halts here
   }
@@ -648,7 +648,7 @@ export default function ZenSnake({ onSessionComplete }: ZenSnakeProps) {
           ════════════════════════════════════════════════════════ */}
       <p className={styles.hint} aria-live="polite">
         {phase === 'idle'     && 'Press any arrow key or swipe to begin navigating.'}
-        {phase === 'active'   && `Collecting organic spores — length: ${snakeLength}`}
+        {phase === 'active'   && `Collecting cosmic dust — length: ${snakeLength}`}
         {phase === 'gameover' && ' '}
       </p>
 

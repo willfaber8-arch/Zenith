@@ -28,7 +28,6 @@ export type ViewId =
   | 'book-tracker'
   | 'tournament-hub'
   // Creator's Choice
-  | 'aquascaping'
   | 'trail-hunter'
   | 'botanist'
   | 'games'
@@ -102,7 +101,7 @@ export const NAV_CONFIG: NavCategory[] = [
           { id: 'calendar',      label: 'Universal Calendar', category: 'essentials', color: '#60a5fa' },
           { id: 'meal-planning', label: 'Meal Planning',      category: 'essentials', color: '#86efac' },
           { id: 'wellness',      label: 'Mental Wellness',    category: 'essentials', color: '#f9a8d4' },
-          { id: 'book-tracker',  label: 'Reading Tracker',    category: 'essentials', color: '#f97316' },
+          { id: 'book-tracker',  label: 'Library',    category: 'essentials', color: '#f97316' },
         ],
       },
     ],
@@ -112,10 +111,9 @@ export const NAV_CONFIG: NavCategory[] = [
     label: "Creator's Choice",
     bgTint: '#090f0b',            // Deep Obsidian-Green
     links: [
-      { id: 'aquascaping',   label: 'Aquascaping Engine', category: 'creator', color: '#059669' },
       { id: 'trail-hunter',  label: 'Trail Hunter',       category: 'creator', color: '#22c55e' },
       { id: 'botanist',      label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
-      { id: 'games',         label: 'Arcade Hub',         category: 'creator', color: '#a3e635' },
+      { id: 'games',         label: 'Arcade',             category: 'creator', color: '#a3e635' },
       { id: 'sports',        label: 'Sports Tracker',     category: 'creator', color: '#34d399' },
       { id: 'world-events',  label: 'World Events',       category: 'creator', color: '#818cf8' },
       { id: 'personal-brand',label: 'Personal Brand Hub', category: 'creator', color: '#fbbf24' },

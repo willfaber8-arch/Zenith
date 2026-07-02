@@ -811,3 +811,22 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Delete button inside the edit modal (moved off the card to prevent
+   accidental deletion). */
+.deleteModalBtn {
+  margin-right: auto;
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+}
+.deleteModalBtn:hover {
+  background: rgba(248, 113, 113, 0.16);
+  border-color: rgba(248, 113, 113, 0.55);
+}

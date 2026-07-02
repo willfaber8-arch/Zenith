@@ -578,6 +578,91 @@ function WheelOfNames() {
 // Bracket Builder component
 // ─────────────────────────────────────────────────────────────
 
+/* ── Bracket builder settings + parsing helpers ─────────────────── */
+
+type BracketFormat = 'single' | 'round_robin'
+
+interface BracketSettings {
+  format:      BracketFormat
+  randomize:   boolean   // shuffle seeding before building
+  teamsMode:   boolean    // pair participants into teams
+  teamSize:    number     // members per team when teamsMode
+  thirdPlace:  boolean    // single-elim: add a 3rd-place playoff
+}
+
+const DEFAULT_SETTINGS: BracketSettings = {
+  format:     'single',
+  randomize:  false,
+  teamsMode:  false,
+  teamSize:   2,
+  thirdPlace: false,
+}
+
+/** Split on commas OR newlines, trim, drop blanks. Accepts either style. */
+function parseParticipants(raw: string): string[] {
+  return raw
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+}
+
+/** Fisher-Yates shuffle (non-mutating). */
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/** Group names into teams of `size`, labelled "A & B". */
+function chunkIntoTeams(names: string[], size: number): string[] {
+  if (size < 2) return names
+  const teams: string[] = []
+  for (let i = 0; i < names.length; i += size) {
+    teams.push(names.slice(i, i + size).join(' & '))
+  }
+  return teams
+}
+
+/** Turn raw input + settings into the final ordered entrant list. */
+function resolveEntrants(raw: string, s: BracketSettings): string[] {
+  let names = parseParticipants(raw)
+  if (s.randomize) names = shuffled(names)
+  if (s.teamsMode) names = chunkIntoTeams(names, s.teamSize)
+  return names.slice(0, BRACKET_MAX)
+}
+
+/* Round-robin: every entrant plays every other once. */
+interface RRMatch { a: string; b: string; winner: string | null }
+
+function buildRoundRobin(entrants: string[]): RRMatch[] {
+  const matches: RRMatch[] = []
+  for (let i = 0; i < entrants.length; i++)
+    for (let j = i + 1; j < entrants.length; j++)
+      matches.push({ a: entrants[i], b: entrants[j], winner: null })
+  return matches
+}
+
+interface RRStanding { name: string; wins: number; played: number }
+
+function roundRobinStandings(entrants: string[], matches: RRMatch[]): RRStanding[] {
+  const wins:   Record<string, number> = {}
+  const played: Record<string, number> = {}
+  for (const e of entrants) { wins[e] = 0; played[e] = 0 }
+  for (const m of matches) {
+    if (m.winner) {
+      wins[m.winner] = (wins[m.winner] ?? 0) + 1
+      played[m.a] = (played[m.a] ?? 0) + 1
+      played[m.b] = (played[m.b] ?? 0) + 1
+    }
+  }
+  return entrants
+    .map(name => ({ name, wins: wins[name] ?? 0, played: played[name] ?? 0 }))
+    .sort((x, y) => y.wins - x.wins || x.name.localeCompare(y.name))
+}
+
 function BracketBuilder() {
   const [textInput, setTextInput] = useState<string>(() => {
     const saved = loadJson<{ input: string }>(BRACKET_KEY, { input: '' })
@@ -587,22 +672,57 @@ function BracketBuilder() {
     const saved = loadJson<{ bracket: Bracket }>(BRACKET_KEY, { bracket: [] })
     return saved.bracket
   })
+  const [settings, setSettings] = useState<BracketSettings>(() => {
+    const saved = loadJson<{ settings?: BracketSettings }>(BRACKET_KEY, {})
+    return { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }
+  })
+  const [rrMatches, setRrMatches] = useState<RRMatch[]>(() => {
+    const saved = loadJson<{ rrMatches?: RRMatch[] }>(BRACKET_KEY, {})
+    return saved.rrMatches ?? []
+  })
+  const [rrEntrants, setRrEntrants] = useState<string[]>(() => {
+    const saved = loadJson<{ rrEntrants?: string[] }>(BRACKET_KEY, {})
+    return saved.rrEntrants ?? []
+  })
 
   const champion = getChampion(bracket)
 
-  const handleGenerate = useCallback(() => {
-    const participants = textInput
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0)
-      .slice(0, BRACKET_MAX)
+  const persist = useCallback((patch: Record<string, unknown>) => {
+    const base = loadJson<Record<string, unknown>>(BRACKET_KEY, {})
+    saveJson(BRACKET_KEY, { ...base, input: textInput, settings, ...patch })
+  }, [textInput, settings])
 
-    if (participants.length < 2) return
-
-    const newBracket = buildBracket(participants)
-    setBracket(newBracket)
-    saveJson(BRACKET_KEY, { input: textInput, bracket: newBracket })
+  const setSetting = useCallback(<K extends keyof BracketSettings>(k: K, v: BracketSettings[K]) => {
+    setSettings(prev => {
+      const next = { ...prev, [k]: v }
+      const base = loadJson<Record<string, unknown>>(BRACKET_KEY, {})
+      saveJson(BRACKET_KEY, { ...base, input: textInput, settings: next })
+      return next
+    })
   }, [textInput])
+
+  const entrantPreview = useMemo(
+    () => resolveEntrants(textInput, settings),
+    [textInput, settings],
+  )
+
+  const handleGenerate = useCallback(() => {
+    const entrants = resolveEntrants(textInput, settings)
+    if (entrants.length < 2) return
+
+    if (settings.format === 'round_robin') {
+      const matches = buildRoundRobin(entrants)
+      setRrEntrants(entrants)
+      setRrMatches(matches)
+      setBracket([])
+      persist({ rrEntrants: entrants, rrMatches: matches, bracket: [] })
+    } else {
+      const newBracket = buildBracket(entrants)
+      setBracket(newBracket)
+      setRrMatches([]); setRrEntrants([])
+      persist({ bracket: newBracket, rrMatches: [], rrEntrants: [] })
+    }
+  }, [textInput, settings, persist])
 
   const handleAdvance = useCallback((
     round: number,
@@ -612,21 +732,32 @@ function BracketBuilder() {
     if (isTbd(winner) || winner === 'BYE') return
     setBracket(prev => {
       const next = advanceWinner(prev, round, matchIdx, winner)
-      saveJson(BRACKET_KEY, { input: textInput, bracket: next })
+      persist({ bracket: next })
       return next
     })
-  }, [textInput])
+  }, [persist])
+
+  const handleRrPick = useCallback((idx: number, winner: string) => {
+    setRrMatches(prev => {
+      const next = prev.map((m, i) =>
+        i === idx ? { ...m, winner: m.winner === winner ? null : winner } : m)
+      persist({ rrMatches: next })
+      return next
+    })
+  }, [persist])
 
   const handleReset = useCallback(() => {
-    setBracket([])
-    saveJson(BRACKET_KEY, { input: textInput, bracket: [] })
-  }, [textInput])
+    setBracket([]); setRrMatches([]); setRrEntrants([])
+    persist({ bracket: [], rrMatches: [], rrEntrants: [] })
+  }, [persist])
 
-  const participantCount = textInput
-    .split('\n')
-    .filter(s => s.trim().length > 0)
-    .slice(0, BRACKET_MAX)
-    .length
+  const participantCount = entrantPreview.length
+  const hasResult = bracket.length > 0 || rrMatches.length > 0
+  const standings = useMemo(
+    () => (rrMatches.length ? roundRobinStandings(rrEntrants, rrMatches) : []),
+    [rrEntrants, rrMatches],
+  )
+  const rrLeader = standings.length && standings[0].wins > 0 ? standings[0].name : null
 
   return (
     <div className={styles.bracketLayout}>
@@ -638,22 +769,67 @@ function BracketBuilder() {
             className={styles.participantTextarea}
             value={textInput}
             onChange={e => setTextInput(e.target.value)}
-            placeholder={'Player One&#10;Player Two&#10;Player Three&#10;…'}
-            aria-label="Participant names, one per line"
+            placeholder={'Player One, Player Two, Player Three, …\n(commas or new lines)'}
+            aria-label="Participant names, separated by commas or new lines"
             spellCheck={false}
           />
           <p className={styles.participantHint}>
-            {participantCount} name{participantCount !== 1 ? 's' : ''} · max {BRACKET_MAX}
+            {participantCount} {settings.teamsMode ? 'team' : 'entrant'}{participantCount !== 1 ? 's' : ''} · max {BRACKET_MAX} · comma or line separated
           </p>
+
+          {/* ── Settings ─────────────────────────── */}
+          <div className={styles.bracketSettings}>
+            <div className={styles.settingRow}>
+              <span className={styles.settingLabel}>Format</span>
+              <div className={styles.segToggle} role="group" aria-label="Tournament format">
+                <button type="button"
+                  className={`${styles.segBtn} ${settings.format === 'single' ? styles.segBtnActive : ''}`}
+                  aria-pressed={settings.format === 'single'}
+                  onClick={() => setSetting('format', 'single')}>Single Elim</button>
+                <button type="button"
+                  className={`${styles.segBtn} ${settings.format === 'round_robin' ? styles.segBtnActive : ''}`}
+                  aria-pressed={settings.format === 'round_robin'}
+                  onClick={() => setSetting('format', 'round_robin')}>Round Robin</button>
+              </div>
+            </div>
+
+            <label className={styles.settingCheck}>
+              <input type="checkbox" checked={settings.randomize}
+                onChange={e => setSetting('randomize', e.target.checked)} />
+              <span>Randomize seeding</span>
+            </label>
+
+            <label className={styles.settingCheck}>
+              <input type="checkbox" checked={settings.teamsMode}
+                onChange={e => setSetting('teamsMode', e.target.checked)} />
+              <span>Group into teams</span>
+            </label>
+
+            {settings.teamsMode && (
+              <div className={styles.settingRow}>
+                <span className={styles.settingLabel}>Team size</span>
+                <input type="number" min={2} max={8} value={settings.teamSize}
+                  className={styles.settingNumber}
+                  onChange={e => setSetting('teamSize', Math.max(2, Math.min(8, Number(e.target.value) || 2)))} />
+              </div>
+            )}
+
+            {settings.format === 'round_robin' && participantCount >= 2 && (
+              <p className={styles.settingNote}>
+                Everyone plays {Math.max(0, participantCount - 1)} game{participantCount - 1 !== 1 ? 's' : ''} — guaranteed minimum.
+              </p>
+            )}
+          </div>
+
           <button
             className={styles.generateBtn}
             onClick={handleGenerate}
             disabled={participantCount < 2}
             type="button"
           >
-            Generate Bracket
+            {settings.format === 'round_robin' ? 'Generate Schedule' : 'Generate Bracket'}
           </button>
-          {bracket.length > 0 && (
+          {hasResult && (
             <button className={styles.resetBtn} onClick={handleReset} type="button">
               Reset
             </button>
@@ -662,7 +838,7 @@ function BracketBuilder() {
       </div>
 
       {/* ── Champion banner ───────────────────────── */}
-      {champion && !champion.startsWith('TBD_') && (
+      {settings.format === 'single' && champion && !champion.startsWith('TBD_') && (
         <div className={styles.championBanner} role="status" aria-live="polite">
           <span className={styles.championGlyph} aria-hidden="true">◈</span>
           <div className={styles.championMeta}>
@@ -671,9 +847,51 @@ function BracketBuilder() {
           </div>
         </div>
       )}
+      {settings.format === 'round_robin' && rrLeader && (
+        <div className={styles.championBanner} role="status" aria-live="polite">
+          <span className={styles.championGlyph} aria-hidden="true">◈</span>
+          <div className={styles.championMeta}>
+            <p className={styles.championLabel}>Leader</p>
+            <p className={styles.championName}>{rrLeader}</p>
+          </div>
+        </div>
+      )}
 
-      {/* ── Bracket display ───────────────────────── */}
-      {bracket.length === 0 ? (
+      {/* ── Round-robin display ───────────────────── */}
+      {settings.format === 'round_robin' && rrMatches.length > 0 && (
+        <div className={styles.rrLayout}>
+          <div className={styles.rrStandings}>
+            <p className={styles.roundLabel}>Standings</p>
+            {standings.map((s, i) => (
+              <div key={s.name} className={styles.rrStandRow}>
+                <span className={styles.rrRank}>{i + 1}</span>
+                <span className={styles.rrStandName}>{s.name}</span>
+                <span className={styles.rrStandWins}>{s.wins}W</span>
+                <span className={styles.rrStandPlayed}>{s.played} pl</span>
+              </div>
+            ))}
+          </div>
+          <div className={styles.rrMatchList}>
+            <p className={styles.roundLabel}>Matches · tap the winner</p>
+            {rrMatches.map((m, idx) => (
+              <div key={idx} className={styles.rrMatch}>
+                {[m.a, m.b].map(name => (
+                  <button key={name} type="button"
+                    className={`${styles.matchSlot} ${m.winner === name ? styles.matchSlotWinner : ''}`}
+                    aria-pressed={m.winner === name}
+                    onClick={() => handleRrPick(idx, name)}>
+                    <span className={`${styles.slotDot} ${m.winner === name ? styles.slotDotWinner : ''}`} aria-hidden="true" />
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bracket display (single elim) ─────────── */}
+      {settings.format === 'single' && (bracket.length === 0 ? (
         <div className={styles.bracketEmpty} aria-label="Bracket not yet generated">
           <p className={styles.bracketEmptyGlyph}>◈</p>
           <p className={styles.bracketEmptyText}>
@@ -731,7 +949,7 @@ function BracketBuilder() {
             ))}
           </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }

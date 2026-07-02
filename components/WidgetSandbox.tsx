@@ -27,6 +27,8 @@ const WIDGET_ACCENT: Record<keyof SandboxConfig, string> = {
   distanceTracker: '#2dd4bf',
   timerWidget:     '#7c95ff',
   stopwatch:       '#52cca3',
+  counter:         '#38bdf8',
+  sportsTeams:     '#34d399',
   readingTracker:  '#a78bfa',
   customLinks:     '#7c95ff',
   vocabTracker:    '#f59e0b',
@@ -56,6 +58,8 @@ import WellnessWidget          from './widgets/WellnessWidget'
 import MealWidget              from './widgets/MealWidget'
 import NewsWidget              from './widgets/NewsWidget'
 import ArcadeWidget            from './widgets/ArcadeWidget'
+import CounterWidget           from './widgets/CounterWidget'
+import SportsWidget            from './widgets/SportsWidget'
 import styles from './WidgetSandbox.module.css'
 
 /* ── Per-widget error boundary ────────────────────────────────── */
@@ -99,6 +103,8 @@ const DEFAULT_ORDER: (keyof SandboxConfig)[] = [
   'distanceTracker',
   'timerWidget',
   'stopwatch',
+  'counter',
+  'sportsTeams',
   'readingTracker',
   'customLinks',
   'vocabTracker',
@@ -146,6 +152,8 @@ function renderWidget(key: keyof SandboxConfig): ReactNode {
     case 'distanceTracker': return w(<DistanceTrackerWidget />)
     case 'timerWidget':     return w(<TimerWidget />)
     case 'stopwatch':       return w(<StopwatchWidget />)
+    case 'counter':         return w(<CounterWidget />)
+    case 'sportsTeams':     return w(<SportsWidget />)
     case 'readingTracker':  return w(<ReadingTrackerWidget />)
     case 'customLinks':     return w(<QuickLinksWidget />)
     case 'vocabTracker':    return w(<VocabWidget />)

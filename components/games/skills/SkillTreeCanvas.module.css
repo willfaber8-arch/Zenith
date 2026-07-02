@@ -36,6 +36,11 @@
   position:      relative;
   width:         100%;
   aspect-ratio:  4 / 3;
+  /* Cap the height so the tree doesn't dominate the pane and push the
+     selected-node cost detail below the fold. Centres when width-capped. */
+  max-height:    380px;
+  max-width:     507px;   /* 380 * 4/3 — keeps the 4:3 ratio at the cap */
+  margin:        0 auto;
   background:    var(--bg-main);
   border-radius: var(--r-lg);
   border:        1px solid var(--border-subtle);

@@ -494,6 +494,7 @@
   padding: var(--sp-6);
   width: 420px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
@@ -505,6 +506,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .modalTitle {
@@ -534,6 +536,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-right: 2px;   /* room for the scrollbar so inputs don't clip */
 }
 
 .formLabel {
@@ -577,8 +583,9 @@
   display: flex;
   gap: var(--sp-2);
   justify-content: flex-end;
-  padding-top: var(--sp-2);
+  padding-top: var(--sp-3);
   border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .modalCancelBtn {
@@ -672,27 +679,47 @@
 .shelf {
   display: flex;
   flex-direction: column;
+  /* Wooden shelf bay: warm grain back panel framed by side uprights so the
+     books read as sitting inside a real bookcase. */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(58, 40, 22, 0.0) 0px,
+      rgba(58, 40, 22, 0.0) 6px,
+      rgba(30, 20, 11, 0.18) 7px,
+      rgba(58, 40, 22, 0.0) 8px),
+    linear-gradient(180deg, #3a2817 0%, #2c1d10 100%);
+  border-radius: 4px 4px 0 0;
+  padding: 0 10px;
+  border-left:  10px solid #43301a;
+  border-right: 10px solid #43301a;
+  box-shadow: inset 0 6px 14px -6px rgba(0, 0, 0, 0.7);
 }
 
 .shelfBooks {
   display: flex;
   align-items: flex-end;
-  gap: 7px;
-  min-height: 196px;
-  padding: 0 22px;
+  gap: 8px;
+  min-height: 286px;
+  padding: 0 14px;
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .shelfLedge {
-  height: 12px;
+  height: 18px;
   width: 100%;
-  border-radius: 2px 2px 3px 3px;
-  background: linear-gradient(180deg, #6a4e29 0%, #43301a 55%, #2a1d11 100%);
+  border-radius: 0 0 4px 4px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.0) 0px,
+      rgba(0, 0, 0, 0.0) 22px,
+      rgba(0, 0, 0, 0.12) 23px,
+      rgba(0, 0, 0, 0.0) 24px),
+    linear-gradient(180deg, #74542c 0%, #4a3420 50%, #2a1d11 100%);
   box-shadow:
-    0 8px 16px -5px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(212, 168, 83, 0.30),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+    0 10px 20px -6px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(212, 168, 83, 0.35),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.45);
 }
 
 /* Individual spine */
@@ -743,23 +770,41 @@
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-family: var(--lb-serif);
-  font-size: 0.70rem;
+  font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.015em;
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-height: 132px;
+  max-height: 190px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 .spineRating {
   writing-mode: vertical-rl;
-  font-size: 0.48rem;
+  font-size: 0.52rem;
   letter-spacing: 0.04em;
   color: rgba(255, 230, 160, 0.92);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* Author — small, horizontal, at the base of the spine */
+.spineAuthor {
+  writing-mode: horizontal-tb;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.46rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 1px 0;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Full-context table ──────────────────────────────────── */
@@ -1069,4 +1114,135 @@
   font-size: 0.58rem;
   letter-spacing: 0.05em;
   color: var(--text-dark);
+}
+
+/* ── Edit-mode toggle (top-right) ─────────────────────────────── */
+.editModeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--lb-parchment-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 160ms, border-color 160ms, background 160ms;
+}
+.editModeBtn:hover { color: var(--lb-parchment); border-color: var(--lb-parchment); }
+.editModeBtnOn {
+  color: var(--lb-parchment);
+  border-color: var(--lb-parchment);
+  background: var(--lb-parchment-dim);
+}
+
+/* ── Sort control ─────────────────────────────────────────────── */
+.sortWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.sortLabel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-dark);
+}
+.sortSelect {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  padding: 7px 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+}
+.sortSelect:focus { border-color: var(--lb-parchment-border); }
+
+/* ── Timer action button ──────────────────────────────────────── */
+.actionBtnTimer {
+  border-color: rgba(124, 149, 255, 0.4) !important;
+  color: var(--accent-purple) !important;
+}
+
+/* ── Add-modal two-column row ─────────────────────────────────── */
+.formRow {
+  display: flex;
+  gap: var(--sp-3);
+}
+.formCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+/* The shared .formLabel uses a negative margin to tighten against the parent
+   flex gap; inside a column that has no such gap it would overlap the input,
+   so neutralise it here. */
+.formCol .formLabel {
+  margin-bottom: 0;
+}
+
+/* ── Reading log (detail modal) ───────────────────────────────── */
+.logSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+}
+.logHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.logStats {
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--lb-parchment);
+}
+.logEmpty {
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+}
+.logList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 168px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.logRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+.logDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.logMeta {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--text-dark);
+  white-space: nowrap;
 }

@@ -65,7 +65,7 @@ const SHOP_CATALOG = SHOP_CATALOG_STATIC
    ════════════════════════════════════════════════════════════════ */
 
 /** Right-pane navigation tabs. */
-export type GamesRightTab = 'arcade' | 'crucible' | 'upgrades' | 'codex' | 'skills' | 'shop'
+export type GamesRightTab = 'arcade' | 'crucible' | 'upgrades' | 'skills' | 'shop'
 
 /** Left-pane biosphere station selector. */
 export type BiosphereStation = 'terminal' | 'aquarium' | 'zoo'
@@ -106,12 +106,6 @@ export interface GamesTabShellSlots {
    * Receives the storage upgrade purchase interface.
    */
   upgradesContent?: React.ReactNode
-
-  /**
-   * Right pane · Codex tab.
-   * Receives the stats matrix and achievement display.
-   */
-  codexContent?: React.ReactNode
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -126,9 +120,8 @@ interface RightTabMeta {
 
 const RIGHT_TABS: RightTabMeta[] = [
   { id: 'arcade',   label: 'Arcade',   icon: '⬡' },
-  { id: 'crucible', label: 'Crucible', icon: '◈' },
+  { id: 'crucible', label: 'Refinery', icon: '◈' },
   { id: 'upgrades', label: 'Storage',  icon: '↑' },
-  { id: 'codex',    label: 'Codex',    icon: '◫' },
   { id: 'skills',   label: 'Skills',   icon: '⟡' },
   { id: 'shop',     label: 'Shop',     icon: '✦' },
 ]
@@ -903,9 +896,71 @@ function UpgradesPanel() {
   /* True once the first async load resolves (matrices has at least one key). */
   const loaded = Object.keys(matrices).length > 0
 
+  /* Inventory summary (merged from the former Codex tab). */
+  const cpNode         = resources['cosmetic_points']
+  const totalHarvested = RESOURCE_IDS
+    .filter(id => RESOURCE_META[id].isHarvested)
+    .reduce((sum, id) => sum + (resources[id]?.totalEarnedLifetime ?? 0), 0)
+
   return (
     <div>
-      <p className={styles.sectionHeading}>Storage Expansion</p>
+      {/* ── Inventory: live resource balances ─────────────── */}
+      <div className={styles.codexSummary}>
+        <div className={styles.codexSummaryStat}>
+          <p className={styles.codexSummaryLabel}>✦ Balance</p>
+          <p className={styles.codexSummaryValue}>
+            {(cpNode?.balance ?? 0).toLocaleString()}
+          </p>
+        </div>
+        <div className={styles.codexSummaryStat}>
+          <p className={styles.codexSummaryLabel}>✦ Total Earned</p>
+          <p className={styles.codexSummaryValue}>
+            {(cpNode?.totalEarnedLifetime ?? 0).toLocaleString()}
+          </p>
+        </div>
+        <div className={styles.codexSummaryStat}>
+          <p className={styles.codexSummaryLabel}>Resources Harvested</p>
+          <p className={styles.codexSummaryValue}>
+            {totalHarvested.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      <p className={styles.sectionHeading}>Inventory</p>
+
+      <div className={styles.codexColHeader}>
+        <span />
+        <span />
+        <span className={styles.codexColHeaderLabel}>Balance</span>
+        <span className={styles.codexColHeaderLabel}>Lifetime</span>
+      </div>
+
+      <div className={styles.codexTable}>
+        {RESOURCE_IDS.map(id => {
+          const node = resources[id]
+          const meta = RESOURCE_META[id]
+          const dotClass =
+            meta.category === 'raw'      ? styles.resourceDotRaw
+            : meta.category === 'refined' ? styles.resourceDotRefined
+            : styles.resourceDotCurrency
+
+          return (
+            <div key={id} className={styles.codexRow}>
+              <span className={`${styles.resourceDot} ${dotClass}`} aria-hidden="true" />
+              <span className={styles.codexRowLabel}>{meta.name}</span>
+              <span className={styles.codexRowCurrent}>
+                {(node?.balance ?? 0).toLocaleString()}
+              </span>
+              <span className={styles.codexRowLifetime}>
+                {(node?.totalEarnedLifetime ?? 0).toLocaleString()}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Storage capacity upgrades ─────────────────────── */}
+      <p className={styles.sectionHeading} style={{ marginTop: 'var(--sp-6)' }}>Storage Expansion</p>
 
       {upgradeError && (
         <p className={styles.upgradeErrorMsg}>{upgradeError}</p>
@@ -1005,77 +1060,6 @@ function UpgradesPanel() {
   )
 }
 
-/* ── Codex — lifetime stats panel ──────────────────────────────── */
-
-function CodexPanel() {
-  const { resources } = useZenithEconomy()
-
-  const cpNode          = resources['cosmetic_points']
-  const totalHarvested  = RESOURCE_IDS
-    .filter(id => RESOURCE_META[id].isHarvested)
-    .reduce((sum, id) => sum + (resources[id]?.totalEarnedLifetime ?? 0), 0)
-
-  return (
-    <div>
-      {/* ── Summary strip ─────────────────────────────── */}
-      <div className={styles.codexSummary}>
-        <div className={styles.codexSummaryStat}>
-          <p className={styles.codexSummaryLabel}>✦ Balance</p>
-          <p className={styles.codexSummaryValue}>
-            {(cpNode?.balance ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className={styles.codexSummaryStat}>
-          <p className={styles.codexSummaryLabel}>✦ Total Earned</p>
-          <p className={styles.codexSummaryValue}>
-            {(cpNode?.totalEarnedLifetime ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className={styles.codexSummaryStat}>
-          <p className={styles.codexSummaryLabel}>Resources Harvested</p>
-          <p className={styles.codexSummaryValue}>
-            {totalHarvested.toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Per-resource ledger ────────────────────────── */}
-      <p className={styles.sectionHeading}>Inventory Ledger</p>
-
-      <div className={styles.codexColHeader}>
-        <span />
-        <span />
-        <span className={styles.codexColHeaderLabel}>Balance</span>
-        <span className={styles.codexColHeaderLabel}>Lifetime</span>
-      </div>
-
-      <div className={styles.codexTable}>
-        {RESOURCE_IDS.map(id => {
-          const node = resources[id]
-          const meta = RESOURCE_META[id]
-          const dotClass =
-            meta.category === 'raw'      ? styles.resourceDotRaw
-            : meta.category === 'refined' ? styles.resourceDotRefined
-            : styles.resourceDotCurrency
-
-          return (
-            <div key={id} className={styles.codexRow}>
-              <span className={`${styles.resourceDot} ${dotClass}`} aria-hidden="true" />
-              <span className={styles.codexRowLabel}>{meta.name}</span>
-              <span className={styles.codexRowCurrent}>
-                {(node?.balance ?? 0).toLocaleString()}
-              </span>
-              <span className={styles.codexRowLifetime}>
-                {(node?.totalEarnedLifetime ?? 0).toLocaleString()}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 /* ════════════════════════════════════════════════════════════════
    §4  MAIN SHELL COMPONENT
    ════════════════════════════════════════════════════════════════ */
@@ -1085,7 +1069,6 @@ export default function GamesTabShell({
   arcadeContent,
   crucibleContent,
   upgradesContent,
-  codexContent,
 }: GamesTabShellSlots = {}) {
 
   /* ── Internal navigation state ────────────────────────────── */
@@ -1120,7 +1103,6 @@ export default function GamesTabShell({
       case 'arcade':   return arcadeContent   ?? <ArcadePlaceholder />
       case 'crucible': return crucibleContent ?? <CruciblePanel />
       case 'upgrades': return upgradesContent ?? <UpgradesPanel />
-      case 'codex':    return codexContent    ?? <CodexPanel />
       case 'skills':   return <SkillsPanel />
       case 'shop':     return <ShopPanel />
     }

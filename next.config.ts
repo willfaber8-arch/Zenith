@@ -48,9 +48,10 @@ const ContentSecurityPolicy = [
   /* Fonts — Google Fonts CDN (Plus Jakarta Sans, Space Grotesk) */
   `font-src 'self' https://fonts.gstatic.com`,
 
-  /* Images — data URIs for SVG icons, blobs for canvas export, OSM map
-     tiles, and team badges from TheSportsDB's image CDN (Sports Tracker) */
-  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.thesportsdb.com https://r2.thesportsdb.com`,
+  /* Images — data URIs for SVG icons, blobs for canvas export, map tiles
+     (OpenStreetMap + CartoDB basemaps used by the Trail Hunter map), and team
+     badges from TheSportsDB's image CDN (Sports Tracker) */
+  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.thesportsdb.com https://r2.thesportsdb.com`,
 
   /* Connections — Open-Meteo weather, Nominatim geocoding, Supabase sync,
      PeerJS signalling (*.0.peerjs.com), WebRTC ICE/STUN.
@@ -112,11 +113,13 @@ const securityHeaders = [
   },
   {
     /* Restrict access to sensitive browser APIs Zenith does not use.
-       geolocation is required for Open-Meteo weather; camera/mic blocked. */
+       geolocation → weather + distance tracker; microphone → AI Co-Pilot
+       dictation + study-dock voice memos (self only — embedded iframes stay
+       blocked, and the browser still shows its own permission prompt). */
     key:   'Permissions-Policy',
     value: [
       'camera=()',
-      'microphone=()',
+      'microphone=(self)',
       'payment=()',
       'usb=()',
       'magnetometer=()',
@@ -204,8 +207,8 @@ const nextConfig: NextConfig = {
       cacheGroups: {
         ...existingGroups,
 
-        /* Leaflet + react-leaflet — only loaded on AquascapingView
-           and TrailHunterView. Separate chunk keeps the home screen fast. */
+        /* Leaflet + react-leaflet — only loaded on TrailHunterView.
+           Separate chunk keeps the home screen fast. */
         leaflet: {
           test:             /[\\/]node_modules[\\/](leaflet|react-leaflet)[\\/]/,
           name:             'vendor-leaflet',

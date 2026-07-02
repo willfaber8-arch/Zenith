@@ -1,23 +1,46 @@
 'use client'
 
-import { useState, useMemo, useRef, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import {
   type LibraryBook,
   type ReadingStatus,
+  type BookFormat,
+  type SortKey,
   type GoodreadsImportResult,
   STATUS_LABELS,
   STATUS_GLYPHS,
   SPINE_COLORS,
+  BOOK_GENRES,
+  BOOK_FORMATS,
+  SORT_LABELS,
+  sortBooks,
   spineColorFor,
+  computeBookStats,
+  type ReadingSession,
 } from '@/types/bookTracker'
+import ReadingTimer from '@/components/ReadingTimer'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
 import { syncHabitSource } from '@/lib/habitSync'
 import { useToast } from '@/lib/ToastContext'
 import styles from './BookTrackerDashboard.module.css'
 
 /* ── Helpers ─────────────────────────────────────────────── */
+
+/**
+ * Renders children into document.body via a portal. ViewRouter wraps each view
+ * in a `transform: scale(...)` element, which makes `position: fixed` resolve
+ * against that wrapper instead of the viewport — pushing modals partly under
+ * the tab bar. The portal escapes the transformed ancestor.
+ */
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(children, document.body)
+}
 
 function fmtDate(ms: number | undefined): string {
   if (!ms) return ''
@@ -30,22 +53,22 @@ function fmtDate(ms: number | undefined): string {
  *  to a stable id-hash so the shelf has natural height variation. */
 function spineHeight(book: LibraryBook): number {
   if (book.totalPages) {
-    return Math.max(146, Math.min(188, 124 + book.totalPages / 7))
+    return Math.max(210, Math.min(264, 184 + book.totalPages / 6))
   }
   let h = 0
   for (let i = 0; i < book.id.length; i++) h = (h * 17 + book.id.charCodeAt(i)) >>> 0
-  return 150 + (h % 34)
+  return 214 + (h % 40)
 }
 
 /** Deterministic spine width (px) for subtle book-to-book variation. */
 function spineWidth(book: LibraryBook): number {
   let h = 0
   for (let i = 0; i < book.id.length; i++) h = (h * 13 + book.id.charCodeAt(i)) >>> 0
-  return 42 + (h % 4) * 3   // 42, 45, 48, 51
+  return 54 + (h % 4) * 4   // 54, 58, 62, 66
 }
 
-const SPINES_PER_SHELF = 8
-const BOOKS_PER_PAGE    = 24
+const SPINES_PER_SHELF = 7
+const BOOKS_PER_PAGE    = 21
 
 type ViewTab = 'LIBRARY' | 'TBR' | 'READING' | 'ALL'
 
@@ -101,6 +124,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         <span className={styles.spineRating}>{'★'.repeat(Math.min(book.userRating, 5))}</span>
       )}
       <span className={styles.spineBandBottom} />
+      {book.author && <span className={styles.spineAuthor}>{book.author}</span>}
     </button>
   )
 }
@@ -192,6 +216,7 @@ function FullContextTable({ books }: { books: LibraryBook[] }) {
 function BookDetailModal({
   book, reviewDraft, onReviewChange, onSaveReview,
   onRate, onSetColor, onStatusChange, onDelete, onClose,
+  editMode, onEditDetails, onStartReading,
 }: {
   book: LibraryBook
   reviewDraft: string | undefined
@@ -202,13 +227,23 @@ function BookDetailModal({
   onStatusChange: (s: ReadingStatus) => void
   onDelete: () => void
   onClose: () => void
+  editMode: boolean
+  onEditDetails: () => void
+  onStartReading: () => void
 }) {
   const color = spineColorFor(book)
   const currentText = reviewDraft !== undefined ? reviewDraft : (book.customReviewText ?? '')
   const isDirty = reviewDraft !== undefined && reviewDraft !== (book.customReviewText ?? '')
 
+  const sessions = useLiveQuery(
+    () => db.reading_sessions.where('bookId').equals(book.id).toArray(),
+    [book.id],
+  ) ?? []
+  const sortedSessions = [...sessions].sort((a, b) => b.createdAt - a.createdAt)
+  const stats = computeBookStats(sessions)
+
   return (
-    <>
+    <ModalPortal>
       <div className={styles.modalBackdrop} onClick={onClose} />
       <div className={styles.detailModal} role="dialog" aria-modal="true" aria-label={book.title}>
         <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
@@ -235,9 +270,14 @@ function BookDetailModal({
             <div className={styles.detailAuthor}>by {book.author || 'Unknown Author'}</div>
 
             <div className={styles.detailMeta}>
+              {book.genre && <span className={styles.metaPill}>{book.genre}</span>}
+              {book.series && <span className={styles.metaPill}>{book.series}</span>}
+              {book.publicationYear && <span className={styles.metaPill}>{book.publicationYear}</span>}
+              {book.format && <span className={styles.metaPill}>{book.format}</span>}
               {book.dateCompleted && <span className={styles.datePill}>Read {fmtDate(book.dateCompleted)}</span>}
               {book.totalPages ? <span className={styles.metaPill}>{book.totalPages.toLocaleString()} pp</span> : null}
               {book.readCount > 1 && <span className={styles.metaPill}>Read ×{book.readCount}</span>}
+              {book.readingMinutes ? <span className={styles.metaPill}>⏱ {Math.round(book.readingMinutes)} min read</span> : null}
             </div>
 
             <div className={styles.ratingRow}>
@@ -291,6 +331,35 @@ function BookDetailModal({
         </div>
 
         {/* Shelf-move actions */}
+        {/* Reading log + stats */}
+        <div className={styles.logSection}>
+          <div className={styles.logHead}>
+            <span className={styles.fieldLabel}>Reading Log</span>
+            {stats.sessions > 0 && (
+              <div className={styles.logStats}>
+                <span>⏱ {stats.totalMinutes} min</span>
+                {stats.totalPages > 0 && <span>· {stats.totalPages} pp</span>}
+                {stats.pagesPerMin != null && <span>· {stats.pagesPerMin} ppm</span>}
+              </div>
+            )}
+          </div>
+          {sortedSessions.length === 0 ? (
+            <p className={styles.logEmpty}>No sessions yet — hit ⏱ Read to start a timed reading session.</p>
+          ) : (
+            <ul className={styles.logList}>
+              {sortedSessions.slice(0, 8).map(s => (
+                <li key={s.id} className={styles.logRow}>
+                  <span className={styles.logDate}>{fmtDate(s.createdAt)}</span>
+                  <span className={styles.logMeta}>
+                    {s.minutes} min{s.pagesRead ? ` · ${s.pagesRead} pp` : ''}
+                    {s.pagesRead && s.minutes > 0 ? ` · ${Math.round((s.pagesRead / s.minutes) * 10) / 10} ppm` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className={styles.detailActions}>
           {book.readingStatus !== 'COMPLETED' && (
             <button
@@ -310,18 +379,27 @@ function BookDetailModal({
               ◈ Move to TBR
             </button>
           )}
-          <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onDelete}>
-            ✕ Remove
+          <button className={`${styles.actionBtn} ${styles.actionBtnTimer}`} onClick={onStartReading}>
+            ⏱ Read
           </button>
+          {editMode && (
+            <>
+              <button className={styles.actionBtn} onClick={onEditDetails}>✎ Edit details</button>
+              <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onDelete}>
+                ✕ Remove
+              </button>
+            </>
+          )}
         </div>
       </div>
-    </>
+    </ModalPortal>
   )
 }
 
 /* ── Book card (Reading + All Books list) ────────────────── */
 function BookCard({
   book, reviewDraft, onReviewChange, onSaveReview, onRate, onStatusChange, onDelete, index,
+  editMode, onStartReading,
 }: {
   book: LibraryBook
   reviewDraft: string | undefined
@@ -331,6 +409,8 @@ function BookCard({
   onStatusChange: (status: ReadingStatus) => void
   onDelete: () => void
   index: number
+  editMode: boolean
+  onStartReading: () => void
 }) {
   const currentText = reviewDraft !== undefined ? reviewDraft : (book.customReviewText ?? '')
   const isDirty = reviewDraft !== undefined && reviewDraft !== (book.customReviewText ?? '')
@@ -389,6 +469,7 @@ function BookCard({
       </div>
 
       <div className={styles.cardActions}>
+        <button className={`${styles.actionBtn} ${styles.actionBtnTimer}`} onClick={onStartReading}>⏱ Read</button>
         {book.readingStatus === 'TO_READ' && (
           <button className={styles.actionBtn} onClick={() => onStatusChange('CURRENTLY_READING')}>◎ Start Reading</button>
         )}
@@ -404,7 +485,9 @@ function BookCard({
             <button className={styles.actionBtn} onClick={() => onStatusChange('TO_READ')}>◈ Move to TBR</button>
           </>
         )}
-        <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onDelete}>✕ Remove</button>
+        {editMode && (
+          <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onDelete}>✕ Remove</button>
+        )}
       </div>
     </div>
   )
@@ -418,16 +501,24 @@ export default function BookTrackerDashboard() {
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingId,    setEditingId]    = useState<string | null>(null)  // book being edited (add modal reused)
   const [addTitle,     setAddTitle]     = useState('')
   const [addAuthor,    setAddAuthor]    = useState('')
   const [addPages,     setAddPages]     = useState('')
   const [addStatus,    setAddStatus]    = useState<ReadingStatus>('COMPLETED')
   const [addColor,     setAddColor]     = useState<string>(SPINE_COLORS[0])
+  const [addGenre,     setAddGenre]     = useState('')
+  const [addYear,      setAddYear]      = useState('')
+  const [addSeries,    setAddSeries]    = useState('')
+  const [addFormat,    setAddFormat]    = useState<BookFormat | ''>('')
   const [reviewEdits,  setReviewEdits]  = useState<Record<string, string>>({})
   const [fullContext,  setFullContext]  = useState(false)
+  const [sortKey,      setSortKey]      = useState<SortKey>('recent')
+  const [editMode,     setEditMode]     = useState(false)
   const [libraryPage,  setLibraryPage]  = useState(0)
   const [tbrPage,      setTbrPage]      = useState(0)
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
+  const [timerBookId,  setTimerBookId]  = useState<string | null>(null)  // reading-timer target
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -447,29 +538,21 @@ export default function BookTrackerDashboard() {
     return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
   }
 
-  // Library = completed, newest read first
   const libraryBooks = useMemo(() =>
-    allBooks
-      .filter(b => b.readingStatus === 'COMPLETED' && matchesSearch(b))
-      .sort((a, b) => (b.dateCompleted ?? b.addedAt) - (a.dateCompleted ?? a.addedAt)),
-  [allBooks, searchQuery])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'COMPLETED' && matchesSearch(b)), sortKey),
+  [allBooks, searchQuery, sortKey])
 
-  // TBR = to-read, newest added first
   const tbrBooks = useMemo(() =>
-    allBooks
-      .filter(b => b.readingStatus === 'TO_READ' && matchesSearch(b))
-      .sort((a, b) => b.addedAt - a.addedAt),
-  [allBooks, searchQuery])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'TO_READ' && matchesSearch(b)), sortKey),
+  [allBooks, searchQuery, sortKey])
 
   const readingBooks = useMemo(() =>
-    allBooks
-      .filter(b => b.readingStatus === 'CURRENTLY_READING' && matchesSearch(b))
-      .sort((a, b) => (b.dateStarted ?? b.addedAt) - (a.dateStarted ?? a.addedAt)),
-  [allBooks, searchQuery])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'CURRENTLY_READING' && matchesSearch(b)), sortKey),
+  [allBooks, searchQuery, sortKey])
 
   const allFiltered = useMemo(() =>
-    allBooks.filter(matchesSearch).sort((a, b) => b.addedAt - a.addedAt),
-  [allBooks, searchQuery])
+    sortBooks(allBooks.filter(matchesSearch), sortKey),
+  [allBooks, searchQuery, sortKey])
 
   const selectedBook = selectedId ? allBooks.find(b => b.id === selectedId) ?? null : null
 
@@ -540,32 +623,98 @@ export default function BookTrackerDashboard() {
   }
 
   const handleDelete = async (bookId: string) => {
-    await db.library_books.delete(bookId)
+    // Cascade: remove the book's logged reading sessions too.
+    const keys = await db.reading_sessions.where('bookId').equals(bookId).primaryKeys().catch(() => [] as number[])
+    await Promise.all([
+      db.library_books.delete(bookId),
+      keys.length ? db.reading_sessions.bulkDelete(keys) : Promise.resolve(),
+    ])
     if (selectedId === bookId) setSelectedId(null)
+  }
+
+  const resetAddForm = () => {
+    setAddTitle(''); setAddAuthor(''); setAddPages('')
+    setAddStatus('COMPLETED'); setAddColor(SPINE_COLORS[0])
+    setAddGenre(''); setAddYear(''); setAddSeries(''); setAddFormat('')
+    setEditingId(null)
+  }
+
+  const closeAddModal = () => { setShowAddModal(false); resetAddForm() }
+
+  const openEditBook = (b: LibraryBook) => {
+    setEditingId(b.id)
+    setAddTitle(b.title); setAddAuthor(b.author)
+    setAddPages(b.totalPages ? String(b.totalPages) : '')
+    setAddStatus(b.readingStatus); setAddColor(spineColorFor(b))
+    setAddGenre(b.genre ?? ''); setAddYear(b.publicationYear ? String(b.publicationYear) : '')
+    setAddSeries(b.series ?? ''); setAddFormat(b.format ?? '')
+    setSelectedId(null)
+    setShowAddModal(true)
   }
 
   const handleAddBook = async () => {
     if (!addTitle.trim()) return
     const now = Date.now()
     const pages = parseInt(addPages, 10) || undefined
-    const book: LibraryBook = {
-      id: crypto.randomUUID(),
-      title: addTitle.trim(),
+    const year  = parseInt(addYear, 10) || undefined
+    const common = {
+      title:  addTitle.trim(),
       author: addAuthor.trim(),
       totalPages: pages,
+      readingStatus: addStatus,
+      spineColor: addColor,
+      genre:           addGenre.trim() || undefined,
+      publicationYear: year,
+      series:          addSeries.trim() || undefined,
+      format:          addFormat || undefined,
+    }
+
+    if (editingId) {
+      await db.library_books.update(editingId, common)
+      closeAddModal()
+      toast(`"${common.title}" updated.`, 'success')
+      return
+    }
+
+    const book: LibraryBook = {
+      id: crypto.randomUUID(),
       userRating: 0,
       readCount: addStatus === 'COMPLETED' ? 1 : 0,
-      readingStatus: addStatus,
       dateCompleted:  addStatus === 'COMPLETED'         ? now : undefined,
       dateStarted:    addStatus === 'CURRENTLY_READING' ? now : undefined,
-      spineColor: addColor,
       addedAt: now,
+      ...common,
     }
     await db.library_books.put(book)
-    setAddTitle(''); setAddAuthor(''); setAddPages('')
-    setAddStatus('COMPLETED'); setAddColor(SPINE_COLORS[0])
-    setShowAddModal(false)
+    closeAddModal()
     toast(`"${book.title}" added to your ${addStatus === 'TO_READ' ? 'TBR list' : 'library'}.`, 'success')
+  }
+
+  /** Log a finished reading session (time + optional pages) against a book,
+   *  and advance the reading habit. */
+  const handleLogReading = async (bookId: string, minutes: number, pagesRead?: number) => {
+    if (minutes <= 0 && !pagesRead) { setTimerBookId(null); return }
+    const b = allBooks.find(x => x.id === bookId)
+    if (b) {
+      const now = Date.now()
+      await db.reading_sessions.add({
+        bookId,
+        date: new Date().toISOString().slice(0, 10),
+        minutes,
+        pagesRead,
+        createdAt: now,
+      })
+      await db.library_books.update(bookId, {
+        readingMinutes: (b.readingMinutes ?? 0) + minutes,
+        lastReadAt: now,
+      })
+      // Auto-sync: a logged reading session advances any habit on the
+      // 'reading' source (same bridge used when starting/finishing a book).
+      void syncHabitSource('reading', 1)
+      const pp = pagesRead ? ` · ${pagesRead} pages` : ''
+      toast(`Logged ${minutes} min${pp} reading "${b.title}".`, 'success')
+    }
+    setTimerBookId(null)
   }
 
   /* ── Render ──────────────────────────── */
@@ -593,7 +742,15 @@ export default function BookTrackerDashboard() {
           >
             {importPhase === 'loading' ? 'Importing…' : 'Import Goodreads CSV'}
           </button>
-          <button className={styles.addBtn} onClick={() => setShowAddModal(true)}>+ Add Book</button>
+          <button className={styles.addBtn} onClick={() => { resetAddForm(); setShowAddModal(true) }}>+ Add Book</button>
+          <button
+            className={`${styles.editModeBtn} ${editMode ? styles.editModeBtnOn : ''}`}
+            onClick={() => setEditMode(v => !v)}
+            title={editMode ? 'Done editing — books are locked' : 'Edit library (enables editing & removing books)'}
+            aria-pressed={editMode}
+          >
+            {editMode ? '✓ Done' : '✎ Edit'}
+          </button>
         </div>
       </div>
 
@@ -614,7 +771,7 @@ export default function BookTrackerDashboard() {
         ))}
       </div>
 
-      {/* Search + (library) view toggle */}
+      {/* Search + sort + (library) view toggle */}
       <div className={styles.searchRow}>
         <input
           className={styles.searchInput}
@@ -623,6 +780,18 @@ export default function BookTrackerDashboard() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
         />
+        <label className={styles.sortWrap}>
+          <span className={styles.sortLabel}>Sort</span>
+          <select
+            className={styles.sortSelect}
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value as SortKey)}
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map(k => (
+              <option key={k} value={k}>{SORT_LABELS[k]}</option>
+            ))}
+          </select>
+        </label>
         {activeTab === 'LIBRARY' && (
           <div className={styles.viewToggle}>
             <button
@@ -700,6 +869,8 @@ export default function BookTrackerDashboard() {
                 onRate={r => handleRate(book.id, r)}
                 onStatusChange={s => handleStatusChange(book, s)}
                 onDelete={() => handleDelete(book.id)}
+                editMode={editMode}
+                onStartReading={() => setTimerBookId(book.id)}
               />
             ))}
           </div>
@@ -729,6 +900,8 @@ export default function BookTrackerDashboard() {
                 onRate={r => handleRate(book.id, r)}
                 onStatusChange={s => handleStatusChange(book, s)}
                 onDelete={() => handleDelete(book.id)}
+                editMode={editMode}
+                onStartReading={() => setTimerBookId(book.id)}
               />
             ))}
           </div>
@@ -747,17 +920,20 @@ export default function BookTrackerDashboard() {
           onStatusChange={s => handleStatusChange(selectedBook, s)}
           onDelete={() => handleDelete(selectedBook.id)}
           onClose={() => setSelectedId(null)}
+          editMode={editMode}
+          onEditDetails={() => openEditBook(selectedBook)}
+          onStartReading={() => setTimerBookId(selectedBook.id)}
         />
       )}
 
       {/* Add Book Modal */}
       {showAddModal && (
-        <>
-          <div className={styles.modalBackdrop} onClick={() => setShowAddModal(false)} />
-          <div className={styles.modal} role="dialog" aria-modal={true} aria-label="Add book">
+        <ModalPortal>
+          <div className={styles.modalBackdrop} onClick={closeAddModal} />
+          <div className={styles.modal} role="dialog" aria-modal={true} aria-label={editingId ? 'Edit book' : 'Add book'}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>Add Book</span>
-              <button className={styles.modalClose} onClick={() => setShowAddModal(false)} aria-label="Close">✕</button>
+              <span className={styles.modalTitle}>{editingId ? 'Edit Book' : 'Add Book'}</span>
+              <button className={styles.modalClose} onClick={closeAddModal} aria-label="Close">✕</button>
             </div>
 
             <div className={styles.modalForm}>
@@ -781,15 +957,63 @@ export default function BookTrackerDashboard() {
                 onChange={e => setAddAuthor(e.target.value)}
               />
 
-              <span className={styles.formLabel}>Pages</span>
+              <span className={styles.formLabel}>Genre</span>
               <input
                 className={styles.formInput}
-                type="number"
-                placeholder="Total pages (optional)"
-                value={addPages}
-                onChange={e => setAddPages(e.target.value)}
-                min={1}
+                type="text"
+                list="lib-genre-list"
+                placeholder="e.g. Fantasy (pick or type your own)"
+                value={addGenre}
+                onChange={e => setAddGenre(e.target.value)}
               />
+              <datalist id="lib-genre-list">
+                {BOOK_GENRES.map(g => <option key={g} value={g} />)}
+              </datalist>
+
+              <div className={styles.formRow}>
+                <div className={styles.formCol}>
+                  <span className={styles.formLabel}>Pages</span>
+                  <input
+                    className={styles.formInput}
+                    type="number"
+                    placeholder="Total pages"
+                    value={addPages}
+                    onChange={e => setAddPages(e.target.value)}
+                    min={1}
+                  />
+                </div>
+                <div className={styles.formCol}>
+                  <span className={styles.formLabel}>Published</span>
+                  <input
+                    className={styles.formInput}
+                    type="number"
+                    placeholder="Year"
+                    value={addYear}
+                    onChange={e => setAddYear(e.target.value)}
+                    min={0}
+                    max={2100}
+                  />
+                </div>
+              </div>
+
+              <span className={styles.formLabel}>Series</span>
+              <input
+                className={styles.formInput}
+                type="text"
+                placeholder="e.g. Mistborn #1 (optional)"
+                value={addSeries}
+                onChange={e => setAddSeries(e.target.value)}
+              />
+
+              <span className={styles.formLabel}>Format</span>
+              <select
+                className={styles.formSelect}
+                value={addFormat}
+                onChange={e => setAddFormat(e.target.value as BookFormat | '')}
+              >
+                <option value="">— Not set —</option>
+                {BOOK_FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+              </select>
 
               <span className={styles.formLabel}>Shelf</span>
               <select
@@ -822,14 +1046,30 @@ export default function BookTrackerDashboard() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.modalCancelBtn} onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className={styles.modalCancelBtn} onClick={closeAddModal}>Cancel</button>
               <button className={styles.modalSubmitBtn} onClick={handleAddBook} disabled={!addTitle.trim()}>
-                Add Book
+                {editingId ? 'Save Changes' : 'Add Book'}
               </button>
             </div>
           </div>
-        </>
+        </ModalPortal>
       )}
+
+      {/* Reading timer (full-screen) */}
+      {timerBookId && (() => {
+        const tb = allBooks.find(b => b.id === timerBookId)
+        if (!tb) return null
+        return (
+          <ModalPortal>
+            <ReadingTimer
+              bookTitle={tb.title}
+              bookAuthor={tb.author}
+              onFinish={(mins, pagesRead) => handleLogReading(timerBookId, mins, pagesRead)}
+              onClose={() => setTimerBookId(null)}
+            />
+          </ModalPortal>
+        )
+      })()}
     </div>
   )
 }

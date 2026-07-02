@@ -35,6 +35,27 @@ function FilterChip({ label, active, onClick }: FilterChipProps) {
   )
 }
 
+/* ── Match-mode toggle (Any / All) ────────────────────────── */
+
+function ModeToggle({ mode, onChange }: { mode: 'ANY' | 'ALL'; onChange: (m: 'ANY' | 'ALL') => void }) {
+  return (
+    <span className={styles.modeToggle} role="group" aria-label="Match mode">
+      {(['ANY', 'ALL'] as const).map(m => (
+        <button
+          key={m}
+          type="button"
+          aria-pressed={mode === m}
+          onClick={() => onChange(m)}
+          className={`${styles.modeBtn} ${mode === m ? styles.modeBtnActive : ''}`}
+          title={m === 'ANY' ? 'Match games with ANY of the selected' : 'Match only games with ALL of the selected'}
+        >
+          {m === 'ANY' ? 'Any' : 'All'}
+        </button>
+      ))}
+    </span>
+  )
+}
+
 /* ── Cost badge (inside game card) ────────────────────────── */
 
 function CostBadge({ cost }: { cost: CostCategory }) {
@@ -140,6 +161,7 @@ export default function GameFinderDashboard() {
     activeCosts,
     activePlatforms,
     activeGenres,
+    matchMode,
     filteredGames,
     hasActiveFilters,
     totalGames,
@@ -148,6 +170,7 @@ export default function GameFinderDashboard() {
     toggleCost,
     togglePlatform,
     toggleGenre,
+    setMatchMode,
     clearAll,
   } = useGameFinder()
 
@@ -179,7 +202,10 @@ export default function GameFinderDashboard() {
 
         {/* Cost */}
         <div className={styles.filterSection}>
-          <span className={styles.filterSectionLabel}>Cost</span>
+          <div className={styles.filterSectionHead}>
+            <span className={styles.filterSectionLabel}>Cost</span>
+            <ModeToggle mode={matchMode.cost} onChange={m => setMatchMode('cost', m)} />
+          </div>
           <div className={styles.chipGroup}>
             {ALL_COST_CATEGORIES.map(c => (
               <FilterChip
@@ -194,7 +220,10 @@ export default function GameFinderDashboard() {
 
         {/* Platform */}
         <div className={styles.filterSection}>
-          <span className={styles.filterSectionLabel}>Platform</span>
+          <div className={styles.filterSectionHead}>
+            <span className={styles.filterSectionLabel}>Platform</span>
+            <ModeToggle mode={matchMode.platform} onChange={m => setMatchMode('platform', m)} />
+          </div>
           <div className={styles.chipGroup}>
             {ALL_PLATFORMS.map(p => (
               <FilterChip
@@ -209,7 +238,10 @@ export default function GameFinderDashboard() {
 
         {/* Genre */}
         <div className={styles.filterSection}>
-          <span className={styles.filterSectionLabel}>Genre</span>
+          <div className={styles.filterSectionHead}>
+            <span className={styles.filterSectionLabel}>Genre</span>
+            <ModeToggle mode={matchMode.genre} onChange={m => setMatchMode('genre', m)} />
+          </div>
           <div className={styles.chipGroup}>
             {ALL_GENRES.map(g => (
               <FilterChip

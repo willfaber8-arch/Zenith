@@ -47,8 +47,8 @@ const SOLVED_TILES: readonly number[] = Object.freeze(
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]
 )
 
-const SHARD_PAYOUT       = 300
-const QUANTUM_FUEL_BONUS = 5
+/* Solving the puzzle refines stardust glass. Kept small to fit refined caps. */
+const GLASS_PAYOUT = 15
 
 /* ════════════════════════════════════════════════════════════════
    §2  PUBLIC TYPES
@@ -268,12 +268,11 @@ export default function ShiftMatrix({
     stopTimer()
     setPhase('won')
 
-    // Dual atomic payouts — throw-never, fire-and-forget
-    void addResources('raw_data_shards', SHARD_PAYOUT).catch(() => {})
-    void addResources('quantum_fuel',    QUANTUM_FUEL_BONUS).catch(() => {})
+    // Refine stardust glass on solve — throw-never, fire-and-forget
+    void addResources('stardust_glass', GLASS_PAYOUT).catch(() => {})
 
-    onSessionComplete?.(SHARD_PAYOUT)
-    onGameComplete?.({ score: SHARD_PAYOUT, status: 'completed' })
+    onSessionComplete?.(GLASS_PAYOUT)
+    onGameComplete?.({ score: GLASS_PAYOUT, status: 'completed' })
   }, [stopTimer, addResources, onSessionComplete, onGameComplete])
 
   /* ── Core slide action ───────────────────────────────────────── */
@@ -408,7 +407,7 @@ export default function ShiftMatrix({
         <div className={styles.stat}>
           <span className={styles.statLabel}>PRIZE</span>
           <span className={`${styles.statValue} ${styles.statGreen}`}>
-            {SHARD_PAYOUT} shards
+            {GLASS_PAYOUT} glass
           </span>
         </div>
       </div>
@@ -512,15 +511,9 @@ export default function ShiftMatrix({
               <div className={styles.resultDivider} aria-hidden="true" />
 
               <div className={styles.resultRow}>
-                <span className={styles.resultLabel}>Raw Data Shards</span>
+                <span className={styles.resultLabel}>Stardust Glass</span>
                 <span className={`${styles.resultVal} ${styles.resultGreen}`}>
-                  +{SHARD_PAYOUT}
-                </span>
-              </div>
-              <div className={styles.resultRow}>
-                <span className={styles.resultLabel}>Quantum Fuel</span>
-                <span className={`${styles.resultVal} ${styles.resultPurple}`}>
-                  +{QUANTUM_FUEL_BONUS}
+                  +{GLASS_PAYOUT}
                 </span>
               </div>
             </div>

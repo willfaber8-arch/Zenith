@@ -101,16 +101,29 @@
    ════════════════════════════════════════════════════════════════ */
 
 .canvasWrapper {
-  flex-shrink:   0;
-  border-radius: var(--r-md);
-  overflow:      hidden;
-  border:        1px solid color-mix(in srgb, var(--border-subtle) 28%, transparent);
-  /* canvas dimensions are fixed at 360×360 via HTML attributes */
+  /* Grow to fill the arcade slot and centre a square canvas inside it, so
+     the game reads at a comparable size to the other arcade games instead
+     of a tiny 360px box. */
+  flex:            1;
+  min-height:      0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
 }
 
 .canvas {
-  display: block;   /* prevents inline bottom gap */
-  cursor:  default;
+  display:       block;   /* prevents inline bottom gap */
+  cursor:        default;
+  /* Internal resolution stays 360×360 (HTML attrs); CSS upscales it to a
+     square that fills the available height/width. */
+  height:        100%;
+  width:         auto;
+  max-width:     100%;
+  max-height:    100%;
+  aspect-ratio:  1 / 1;
+  border-radius: var(--r-md);
+  overflow:      hidden;
+  border:        1px solid color-mix(in srgb, var(--border-subtle) 28%, transparent);
 }
 
 /* ════════════════════════════════════════════════════════════════

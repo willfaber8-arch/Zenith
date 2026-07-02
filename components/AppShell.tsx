@@ -182,6 +182,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="Main navigation"
         style={sidebarStyle}
         aria-hidden={isStudyModeActive}
+        data-tour="sidebar"
       >
         <div className={styles.sidebarInner}>
 
@@ -209,6 +210,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   type="button"
                   className={`${styles.navItem} ${activeView === 'home' ? styles.navItemActive : ''}`}
                   onClick={handleHome}
+                  data-tour="nav-home"
                   style={{
                     '--item-hover-bg':  'rgba(124, 149, 255, 0.12)',
                     '--item-active-bg': 'rgba(124, 149, 255, 0.18)',
@@ -354,6 +356,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               className={`${styles.navItem} ${activeView === 'settings' ? styles.navItemActive : ''}`}
               onClick={() => navigate('settings', null as unknown as typeof activeCategory)}
               aria-label="Open Settings"
+              data-tour="nav-settings"
               style={{
                 '--item-hover-bg': 'rgba(124, 149, 255, 0.08)',
                 '--item-accent':   'var(--text-muted)',
@@ -607,6 +610,7 @@ function NavLinkItem({
         className={`${styles.navItem} ${styles.navItemIndented} ${active ? styles.navItemActive : ''}`}
         onClick={onClick}
         onContextMenu={handleContextMenu}
+        data-tour={`nav-${link.id}`}
         style={{
           '--item-hover-bg':  hexToRgba(effectiveColor, 0.12),
           '--item-active-bg': hexToRgba(effectiveColor, 0.18),

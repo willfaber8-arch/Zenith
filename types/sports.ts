@@ -107,6 +107,8 @@ export interface FollowedTeam {
   /** TheSportsDB numeric league id — used for standings rank lookup */
   leagueDbId:   string | null
   sportId:      SportId | null
+  /** Official team website (scheme-normalised to https://), or null. */
+  website?:     string | null
 }
 
 /** A single recent fixture for a followed team. */
@@ -129,4 +131,17 @@ export interface TeamSearchHit {
   league:  string | null
   country: string | null
   sport:   string | null
+  /** Official team website (scheme-normalised to https://), or null. */
+  website: string | null
+}
+
+/** A single upcoming fixture for a team (schedule month view). */
+export interface TeamFixture {
+  eventId:  string
+  date:     string          // YYYY-MM-DD
+  time:     string | null   // HH:MM (local wall-clock from strTime), or null if unknown
+  homeTeam: string
+  awayTeam: string
+  league:   string
+  isHome:   boolean
 }

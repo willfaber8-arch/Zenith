@@ -22,7 +22,6 @@
  *   LazyGamesTabShell          Arcade hub shell — imports all canvas games
  *   LazyGamesArcade            All six canvas games in one chunk
  *   LazyTrailHunterView        Leaflet map + 70-trail dataset
- *   LazyAquascapingView        Three-pane: validator / cart / water log
  *   LazyVocabBuilderView       SM-2 spaced-repetition engine
  *   LazyMealPlanningView       4-tab planner + recipe importer
  *   LazySubscriptionPackagesView  Burn-rate analytics
@@ -167,19 +166,6 @@ export const LazyTrailHunterView = dynamic(
 )
 
 /**
- * AquascapingView — three-pane view: Ecosystem Validator, Supplier Cart,
- * Water Parameter Logger. The water log embeds a pure SVG chart; the cart
- * has a 22-item catalog with vendor math. Reasonably heavy.
- */
-export const LazyAquascapingView = dynamic(
-  () => import('@/components/views/AquascapingView'),
-  {
-    ssr:     false,
-    loading: makeSkeleton('default'),
-  },
-)
-
-/**
  * VocabBuilderView — SM-2 spaced-repetition engine with flip-card HUD.
  * Full deck CRUD + IDB v19 schema. Lazy because most sessions don't visit
  * the Polyglot Vault.
@@ -301,10 +287,11 @@ export const LazyAiCopilotSidebar = dynamic(
   { ssr: false, loading: EmptyLoader },
 )
 
-/** TutorialSpotlight — first-time user walkthrough shown for 3 sessions only.
- *  Saves ~8 KB of modal/animation code from the initial parse budget. */
-export const LazyTutorialSpotlight = dynamic(
-  () => import('@/components/TutorialSpotlight'),
+/** GuidedTour — optional first-launch walkthrough that spotlights the real
+ *  interface (anchored highlights + pointing arrows). Offered once via a
+ *  welcome card; replayable from Settings → Help & Tour. */
+export const LazyGuidedTour = dynamic(
+  () => import('@/components/GuidedTour'),
   { ssr: false, loading: EmptyLoader },
 )
 

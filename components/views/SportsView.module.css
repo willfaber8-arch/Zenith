@@ -363,19 +363,27 @@
 .searchGlyph {
   position: absolute;
   left: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
   color: var(--text-dark);
   pointer-events: none;
-  line-height: 1;
+  line-height: 0;
+  z-index: 1;
 }
 
 .searchInput {
   width: 100%;
+  box-sizing: border-box;
   background: var(--bg-main);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-md);
-  padding: var(--sp-2) var(--sp-7) var(--sp-2) var(--sp-8);
+  /* left padding clears the absolutely-positioned glyph (12px left + 14px + gap) */
+  padding: var(--sp-2) var(--sp-8) var(--sp-2) calc(var(--sp-3) + 14px + var(--sp-2));
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 0.82rem;
@@ -383,7 +391,7 @@
   transition: border-color var(--dur-base);
 }
 
-.searchInput:focus { border-color: var(--accent-purple); }
+.searchInput:focus { border-color: var(--cat-accent, var(--accent-purple)); }
 
 .searchClear {
   position: absolute;
@@ -543,4 +551,434 @@
   font-family: var(--font-mono);
   font-size: 0.62rem;
   color: var(--text-dark);
+}
+
+/* ── Clickable affordances ─────────────────────────────────────── */
+.clickable { cursor: pointer; }
+
+.clickable:hover {
+  border-color: var(--cat-accent, var(--accent-green));
+}
+
+.clickable:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-green));
+  outline-offset: 2px;
+}
+
+.rowClickable { cursor: pointer; }
+
+.dashFooter {
+  margin-top: auto;
+  padding-top: var(--sp-1);
+}
+
+.siteLink {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--cat-accent, var(--accent-green));
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.siteLink:hover { text-decoration: underline; }
+
+/* ── Calendar-sync toggle bar ──────────────────────────────────── */
+.syncBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.syncToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-base), border-color var(--dur-base);
+}
+
+.syncToggle:hover { color: var(--text-primary); }
+
+.syncToggleOn {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-green));
+}
+
+.syncToggleTrack {
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  position: relative;
+  transition: background var(--dur-base);
+  flex-shrink: 0;
+}
+
+.syncToggleOn .syncToggleTrack {
+  background: var(--cat-accent, var(--accent-green));
+}
+
+.syncToggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform var(--dur-base) var(--ease-smooth);
+}
+
+.syncToggleOn .syncToggleThumb {
+  transform: translateX(16px);
+  background: var(--bg-main);
+}
+
+.syncNote {
+  font-size: 0.72rem;
+  color: var(--text-dark);
+}
+
+/* ── Team directory ────────────────────────────────────────────── */
+.directory {
+  display: flex;
+  flex-direction: column;
+}
+
+.dirScroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dirGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.dirGroupLabel {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.dirGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dirTeam {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.dirTeam:hover {
+  border-color: var(--cat-accent, var(--accent-green));
+  background: var(--bg-hover);
+}
+
+.dirTeam:disabled { opacity: 0.55; cursor: wait; }
+
+.dirTeamOn {
+  border-color: var(--cat-accent, var(--accent-green));
+  background: color-mix(in srgb, var(--cat-accent, var(--accent-green)) 8%, var(--surface-card));
+}
+
+.dirTeamName {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dirTeamAction {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--cat-accent, var(--accent-green));
+  flex-shrink: 0;
+}
+
+.dirTeamOn .dirTeamAction { color: #fbbf24; }
+
+/* ── Team detail modal ─────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--sp-8) var(--sp-4);
+  overflow-y: auto;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-card);
+}
+
+.modalClose {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: var(--sp-1);
+}
+
+.modalClose:hover { color: var(--text-primary); }
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding-right: var(--sp-6);
+}
+
+.modalHeadInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.modalName {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modalLeague {
+  font-size: 0.74rem;
+  color: var(--text-dark);
+}
+
+.modalMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.followToggle {
+  background: var(--bg-active);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: var(--sp-1) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.followToggle:hover { color: var(--text-primary); }
+
+.followToggleOn {
+  color: #fbbf24;
+  border-color: var(--cat-accent, var(--accent-green));
+}
+
+.modalSection {
+  margin-bottom: var(--sp-5);
+}
+
+.modalSection:last-child { margin-bottom: 0; }
+
+.modalSectionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cat-accent, var(--accent-green));
+  margin: 0 0 var(--sp-3);
+}
+
+.resultList {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.resultItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.resultTeams strong { color: var(--text-primary); }
+
+/* ── Schedule month view ───────────────────────────────────────── */
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.scheduleNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.schedNavBtn {
+  background: var(--bg-active);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.schedNavBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-green));
+}
+
+.schedMonthLabel {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.monthColHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.monthColHead {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  text-align: center;
+  padding-bottom: var(--sp-1);
+}
+
+.monthCells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(56px, auto);
+  gap: 2px;
+}
+
+.monthCell {
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.monthCellOut { opacity: 0.28; }
+
+.monthCellToday {
+  border-color: var(--cat-accent, var(--accent-green));
+}
+
+.monthCellNum {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dark);
+}
+
+.monthCellNumToday {
+  color: var(--bg-main);
+  background: var(--cat-accent, var(--accent-green));
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.monthEvt {
+  font-size: 0.56rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--league-accent, var(--accent-green)) 18%, transparent);
+  border-left: 2px solid var(--league-accent, var(--accent-green));
+  border-radius: 2px;
+  padding: 1px 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scheduleState {
+  background: var(--bg-main);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-5) var(--sp-4);
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.scheduleNote {
+  font-size: 0.68rem;
+  color: var(--text-dark);
+  margin: 0;
+  text-align: right;
 }

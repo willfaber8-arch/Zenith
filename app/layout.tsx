@@ -55,11 +55,12 @@ import Toast             from '@/components/Toast'
 import HabitSyncToaster  from '@/components/HabitSyncToaster'
 import ErrorBoundary     from '@/components/ErrorBoundary'
 import ThemeApplicator from '@/components/ThemeApplicator'
+import DataResetGate from '@/components/DataResetGate'
 import NumberInputSelect from '@/components/NumberInputSelect'
 import {
   LazyBackgroundCanvasManager as BackgroundCanvasManager,
   LazyAiCopilotSidebar        as AiCopilotSidebar,
-  LazyTutorialSpotlight       as TutorialSpotlight,
+  LazyGuidedTour              as GuidedTour,
   LazyOnboardingCinematic     as OnboardingCinematic,
 } from '@/lib/dynamicViews'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
@@ -134,6 +135,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}
     >
       <body>
+        {/* One-time local data wipe — runs before any provider opens IndexedDB. */}
+        <DataResetGate />
         {/*
          * PROVIDER CHAIN (innermost wins for same context):
          *   NavProvider   — centralised view / category routing state
@@ -179,7 +182,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <Toast />
                         <HabitSyncToaster />
                         <AiCopilotSidebar />
-                        <TutorialSpotlight />
+                        <GuidedTour />
                         <OnboardingCinematic />
                         {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
                       </ContextMenuProvider>

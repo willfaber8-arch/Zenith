@@ -172,6 +172,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               className={`${styles.copilotBtn} ${copilotOpen ? styles.copilotBtnActive : ''}`}
               onClick={toggleCopilot}
               aria-label={copilotOpen ? 'Close Co-Pilot' : 'Open AI Co-Pilot'}
+              data-tour="copilot"
               aria-expanded={copilotOpen}
               title="AI Co-Pilot"
             >

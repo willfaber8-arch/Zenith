@@ -6,6 +6,13 @@ import {
 } from '@/types/gameFinder'
 import type { CostCategory, Platform, Genre, PeerGame } from '@/types/gameFinder'
 
+/* ── Match modes ──────────────────────────────────────────────
+   ANY = union ("include": a game matches if it has at least one
+   of the selected values). ALL = intersection ("exclusive": a game
+   must have every selected value). */
+export type MatchMode = 'ANY' | 'ALL'
+export type FilterDimension = 'cost' | 'platform' | 'genre'
+
 /* ── Public interface ─────────────────────────────────────── */
 
 export interface GameFinderState {
@@ -14,6 +21,7 @@ export interface GameFinderState {
   activeCosts:     Set<CostCategory>
   activePlatforms: Set<Platform>
   activeGenres:    Set<Genre>
+  matchMode:       Record<FilterDimension, MatchMode>
 
   /* ── Derived metrics ──────────────────────── */
   filteredGames:    PeerGame[]
@@ -26,6 +34,7 @@ export interface GameFinderState {
   toggleCost:      (c: CostCategory)   => void
   togglePlatform:  (p: Platform)       => void
   toggleGenre:     (g: Genre)          => void
+  setMatchMode:    (d: FilterDimension, m: MatchMode) => void
   clearAll:        ()                  => void
 }
 
@@ -36,10 +45,17 @@ export function useGameFinder(): GameFinderState {
   const [activeCosts,     setActiveCosts]       = useState<Set<CostCategory>>(() => new Set())
   const [activePlatforms, setActivePlatforms]   = useState<Set<Platform>>(() => new Set())
   const [activeGenres,    setActiveGenres]      = useState<Set<Genre>>(() => new Set())
+  const [matchMode,       setMatchModeState]    = useState<Record<FilterDimension, MatchMode>>(
+    () => ({ cost: 'ANY', platform: 'ANY', genre: 'ANY' }),
+  )
 
   /* ── Stable setters via useCallback([]) ─────────────────── */
 
   const setSearchQuery = useCallback((q: string) => setSearchQueryState(q), [])
+
+  const setMatchMode = useCallback((d: FilterDimension, m: MatchMode) => {
+    setMatchModeState(prev => ({ ...prev, [d]: m }))
+  }, [])
 
   const toggleCost = useCallback((c: CostCategory) => {
     setActiveCosts(prev => {
@@ -70,6 +86,7 @@ export function useGameFinder(): GameFinderState {
     setActiveCosts(new Set())
     setActivePlatforms(new Set())
     setActiveGenres(new Set())
+    setMatchModeState({ cost: 'ANY', platform: 'ANY', genre: 'ANY' })
   }, [])
 
   /* ── Derived state ────────────────────────────────────────── */
@@ -106,24 +123,40 @@ export function useGameFinder(): GameFinderState {
         !game.description.toLowerCase().includes(q)
       ) return false
 
-      // ── Cost (exact match on single field) ────────────────
-      if (activeCosts.size > 0 && !activeCosts.has(game.costCategory)) return false
+      // ── Cost (single field per game) ──────────────────────
+      // ANY = cost is in the selected set. ALL with >1 selected can't be
+      // satisfied by one value → yields none (consistent with the mode).
+      if (activeCosts.size > 0) {
+        const inSet = activeCosts.has(game.costCategory)
+        if (matchMode.cost === 'ALL' ? (activeCosts.size > 1 || !inSet) : !inSet) return false
+      }
 
-      // ── Platform (intersection: at least one shared) ──────
-      if (activePlatforms.size > 0 && !game.platforms.some(p => activePlatforms.has(p))) return false
+      // ── Platform (ANY = share ≥1; ALL = game has every selected) ──
+      if (activePlatforms.size > 0) {
+        const ok = matchMode.platform === 'ALL'
+          ? [...activePlatforms].every(p => game.platforms.includes(p))
+          : game.platforms.some(p => activePlatforms.has(p))
+        if (!ok) return false
+      }
 
-      // ── Genre (intersection: at least one shared) ─────────
-      if (activeGenres.size > 0 && !game.genres.some(g => activeGenres.has(g))) return false
+      // ── Genre (ANY = share ≥1; ALL = game has every selected) ──
+      if (activeGenres.size > 0) {
+        const ok = matchMode.genre === 'ALL'
+          ? [...activeGenres].every(g => game.genres.includes(g))
+          : game.genres.some(g => activeGenres.has(g))
+        if (!ok) return false
+      }
 
       return true
     })
-  }, [searchQuery, activeCosts, activePlatforms, activeGenres])
+  }, [searchQuery, activeCosts, activePlatforms, activeGenres, matchMode])
 
   return {
     searchQuery,
     activeCosts,
     activePlatforms,
     activeGenres,
+    matchMode,
     filteredGames,
     hasActiveFilters,
     totalGames: DEFAULT_PEER_GAMES.length,
@@ -132,6 +165,7 @@ export function useGameFinder(): GameFinderState {
     toggleCost,
     togglePlatform,
     toggleGenre,
+    setMatchMode,
     clearAll,
   }
 }

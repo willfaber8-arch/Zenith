@@ -1,24 +1,23 @@
 /* ════════════════════════════════════════════════════════════════
-   BioSynthesizer — Step 4.4 · Harvest Station
+   BioSynthesizer — Harvest Station · "Ball Catcher"
    Layout contract:
      .root          — full-height flex column; position:relative for overlay
-     .statsBar      — 360px stat strip aligned to CANVAS_W
+     .statsBar      — responsive HUD strip (matches canvas max width)
      .statGroup     — individual metric column
      .statLabel     — mono caption (0.5rem, uppercase, text-dark)
      .statValue     — mono value (1rem, bold)
      .statDivider   — 1px vertical rule
      .statGreen     — accent-green value tint
      .statPurple    — accent-purple value tint
-     .statUrgent    — rose tint for last-10-second timer
-     .canvasWrapper — border frame around the canvas element
-     .canvas        — the <canvas> itself (display:block)
+     .targetChip    — swatch + label row for the live target colour
+     .targetSwatch  — small round colour dot (inline colour from JS)
+     .canvasWrapper — responsive frame; canvas sizes to its width
+     .canvas        — the <canvas> itself (display:block, width from JS)
      .hint          — one-line footer hint (mono, text-dark)
-     .resultOverlay — absolute full-bleed session-end overlay
+     .resultOverlay — absolute full-bleed game-over overlay
      .resultCard    — centred card with slide-up entrance
-     result sub-elements mirror Core2048.module.css exactly
 
-   All colour values use design-token CSS custom properties.
-   No hardcoded hex values anywhere in this file.
+   Colour values use design-token CSS custom properties.
    ════════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════════
@@ -40,8 +39,8 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   STATS BAR
-   Fixed at 360px to align exactly with CANVAS_W.
+   STATS BAR — HUD
+   Width tracks the canvas column (max 640px), full-width otherwise.
    ════════════════════════════════════════════════════════════════ */
 
 .statsBar {
@@ -49,7 +48,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 360px;
+  width: 100%;
+  max-width: 640px;
   padding: var(--sp-2) var(--sp-5);
   border-radius: var(--r-md);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
@@ -60,8 +60,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   flex: 1;
+  min-width: 0;
 }
 
 .statLabel {
@@ -97,32 +98,49 @@
   color: var(--accent-purple);
 }
 
-.statUrgent {
-  color:     #ff6b8a;
-  animation: urgentPulse 500ms ease-in-out infinite alternate;
+/* ── Target colour chip ────────────────────────────────────────── */
+
+.targetChip {
+  display:     inline-flex;
+  align-items: center;
+  gap:         var(--sp-2);
 }
 
-@keyframes urgentPulse {
-  from { opacity: 1.0; }
-  to   { opacity: 0.55; }
+.targetSwatch {
+  width:         12px;
+  height:        12px;
+  border-radius: 50%;
+  flex-shrink:   0;
+  /* background-color + box-shadow supplied inline from the component */
 }
 
 /* ════════════════════════════════════════════════════════════════
    CANVAS WRAPPER + CANVAS
+   The wrapper fills the available width; the component measures it
+   via ResizeObserver and sizes the <canvas> to match (3:4).
    ════════════════════════════════════════════════════════════════ */
 
 .canvasWrapper {
-  flex-shrink:   0;
-  border-radius: var(--r-md);
+  flex-shrink:   1;
+  width:         100%;
+  max-width:     640px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  border-radius: var(--r-lg);
   overflow:      hidden;
-  border:        1px solid color-mix(in srgb, var(--border-subtle) 28%, transparent);
-  /* width + height derive from canvas attributes (360×400) */
+  border:        1px solid color-mix(in srgb, var(--border-subtle) 32%, transparent);
+  box-shadow:    0 0 32px color-mix(in srgb, var(--accent-green) 4%, transparent);
 }
 
 .canvas {
-  /* display:block prevents the default inline bottom gap */
-  display: block;
-  cursor:  pointer;
+  display:       block;
+  cursor:        grab;
+  touch-action:  none;   /* let Pointer Events own drag gestures on touch */
+}
+
+.canvas:active {
+  cursor: grabbing;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -140,7 +158,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   OVERLAYS — session-end result
+   OVERLAY — game over
    ════════════════════════════════════════════════════════════════ */
 
 .resultOverlay {
@@ -183,6 +201,7 @@
   font-family:    var(--font-mono);
   font-size:      0.58rem;
   letter-spacing: 0.03em;
+  text-transform: uppercase;
   color:          var(--accent-green);
   margin:         0;
 }
@@ -226,7 +245,7 @@
   margin:     var(--sp-1) 0;
 }
 
-/* ── Action button ─────────────────────────────────────────── */
+/* ── Action button ─────────────────────────────────────────────── */
 
 .restartBtn {
   font-family:    var(--font-mono);

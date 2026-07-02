@@ -11,7 +11,7 @@ const BUG_AREAS = [
   'Study Shield / Pomodoro',
   'Sync / Data Storage',
   'Performance / Loading',
-  'Games / Arcade Hub',
+  'Games / Arcade',
   'Settings / Themes',
   'Other',
 ] as const
@@ -57,9 +57,18 @@ export default function HelpView() {
     setErrorMsg('')
     setSubmit('sending')
 
+    // Web3Forms access key — configured via env, never hardcoded in source.
+    // The key is public-by-design (client-side form service) but keeping it
+    // out of the repo lets it be rotated without a code change.
+    const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_KEY ?? ''
+    if (!accessKey) {
+      setErrorMsg('The feedback form isn’t configured on this deployment yet. Please try again later.')
+      setSubmit('error')
+      return
+    }
+
     const body: Record<string, string> = {
-      // Web3Forms access key — maps to developer email server-side
-      access_key: 'cde0e1e3-c90b-4b5b-89ab-e50d6dd31d3e',
+      access_key: accessKey,
       subject:    `[Zenith Beta Feedback] ${area}`,
       from_name:  'Zenith Feedback Bot',
       replyto:    email.trim(),
@@ -69,9 +78,9 @@ export default function HelpView() {
     }
     if (imageB64 && imageName) {
       body['Attachment Name'] = imageName
-      // Include a note — Web3Forms free tier doesn't support file attachments,
-      // so we mention the attachment was attempted and ask user to email directly
-      body['Screenshot Note'] = `User attached: ${imageName} (see GitHub issue if image is needed)`
+      // Web3Forms free tier doesn't support file attachments — note it so the
+      // reviewer can ask the tester for the screenshot in the email follow-up.
+      body['Screenshot Note'] = `User attached: ${imageName} (request via email follow-up if needed)`
     }
 
     try {
@@ -84,21 +93,13 @@ export default function HelpView() {
       if (data.success) {
         setSubmit('sent')
       } else {
-        setErrorMsg(data.message ?? 'Submission failed. Please try the GitHub issue link below.')
+        setErrorMsg(data.message ?? 'Submission failed. Please try again in a few minutes.')
         setSubmit('error')
       }
     } catch {
-      setErrorMsg('Network error. Please try the GitHub issue link below.')
+      setErrorMsg('Network error. Please check your connection and try again.')
       setSubmit('error')
     }
-  }
-
-  function buildGitHubIssueUrl() {
-    const title  = encodeURIComponent(`[Beta Feedback] ${area}`)
-    const body   = encodeURIComponent(
-      `**Area:** ${area}\n\n**Description:**\n${description.trim() || '(no description)'}\n\n**Reported by:** ${email.trim() || 'anonymous'}`
-    )
-    return `https://github.com/willfaber8-arch/zenith/issues/new?title=${title}&body=${body}&labels=bug,beta-feedback`
   }
 
   return (
@@ -204,15 +205,6 @@ export default function HelpView() {
                 >
                   {submitState === 'sending' ? 'Sending…' : 'Send Report'}
                 </button>
-
-                <a
-                  href={buildGitHubIssueUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.githubLink}
-                >
-                  Open GitHub issue ↗
-                </a>
               </div>
 
               <p className={styles.privacyNote}>
@@ -234,31 +226,6 @@ export default function HelpView() {
             </p>
           </div>
 
-          <div className={styles.card}>
-            <p className={styles.cardLabel}>Quick Links</p>
-            <ul className={styles.linkList}>
-              <li>
-                <a
-                  href="https://github.com/willfaber8-arch/zenith/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.extLink}
-                >
-                  GitHub Issues ↗
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/willfaber8-arch/zenith"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.extLink}
-                >
-                  Source Repository ↗
-                </a>
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

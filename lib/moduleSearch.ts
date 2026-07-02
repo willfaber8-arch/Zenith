@@ -4,7 +4,7 @@
  * Powers the Topbar module finder. Zenith has grown large, so this index maps
  * each routable view to a friendly label, a one-line hint, and a list of
  * keyword synonyms a new user might type ("budget" → Subscriptions,
- * "fish tank" → Aquascaping). Pure module — no React / Dexie imports.
+ * "trail" → Trail Hunter). Pure module — no React / Dexie imports.
  *
  * `category` is the value passed to `navigate(view, category)` so the
  * background tint morph matches the destination (null = neutral, e.g. Home /
@@ -68,7 +68,7 @@ export const MODULE_INDEX: ModuleEntry[] = [
   { id: 'game-finder', label: 'Game Hub', category: 'essentials',
     hint: 'Find multiplayer games to play with friends',
     keywords: ['multiplayer', 'party games', 'find games', 'play', 'co-op', 'board games', 'video games'] },
-  { id: 'book-tracker', label: 'Reading Tracker', category: 'essentials',
+  { id: 'book-tracker', label: 'Library', category: 'essentials',
     hint: 'Track your reading list & finished books',
     keywords: ['reading', 'books', 'library', 'goodreads', 'literature', 'novel', 'bookshelf', 'to read'] },
   { id: 'subscriptions', label: 'Subscriptions', category: 'essentials',
@@ -82,18 +82,15 @@ export const MODULE_INDEX: ModuleEntry[] = [
     keywords: ['tournament', 'bracket', 'wheel of names', 'competition', 'raffle', 'picker', 'random', 'spinner', 'draw'] },
 
   /* ── Creator's Choice ── */
-  { id: 'aquascaping', label: 'Aquascaping Engine', category: 'creator',
-    hint: 'Aquarium compatibility, cart & water chemistry',
-    keywords: ['aquarium', 'fish', 'tank', 'fish tank', 'aquascape', 'water', 'shrimp', 'plants', 'nitrogen cycle'] },
   { id: 'trail-hunter', label: 'Trail Hunter', category: 'creator',
     hint: 'Discover hiking trails across the US',
     keywords: ['hiking', 'trails', 'outdoors', 'hikes', 'maps', 'nature', 'walking', 'mountains'] },
   { id: 'botanist', label: 'Botanist Guide', category: 'creator',
     hint: 'Houseplant care & watering schedule',
     keywords: ['plants', 'houseplants', 'gardening', 'watering', 'flora', 'greenery', 'plant care'] },
-  { id: 'games', label: 'Arcade Hub', category: 'creator',
+  { id: 'games', label: 'Arcade', category: 'creator',
     hint: 'Mini-games, resource economy & cosmetic shop',
-    keywords: ['arcade', 'mini games', 'economy', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake'] },
+    keywords: ['arcade', 'arcade hub', 'mini games', 'economy', 'refinery', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake', 'ball catcher', 'speed typer', 'typing', 'sliding puzzle', 'storage', 'inventory', 'shards'] },
 
   /* ── Personalized Vault ── */
   { id: 'custom-links', label: 'Custom Link Manager', category: 'vault',
