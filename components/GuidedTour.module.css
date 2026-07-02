@@ -1,0 +1,280 @@
+/* ════════════════════════════════════════════════════════════════
+   GuidedTour — spotlight walkthrough styles
+   Layer stack (root context): shield/spot 700 · arrow/card 701
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Welcome dialog ──────────────────────────────────────────────── */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: rgba(5, 8, 15, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  animation: tourFadeIn 260ms var(--ease-smooth);
+}
+
+.welcomeCard {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-8) var(--sp-6) var(--sp-5);
+  text-align: center;
+  animation: tourCardIn 380ms var(--ease-expo);
+}
+
+.welcomeGlyph {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: var(--accent-purple);
+  background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  border-radius: var(--r-lg);
+}
+
+.welcomeTitle {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.welcomeBody {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-5);
+}
+
+.welcomeActions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  margin-bottom: var(--sp-3);
+}
+
+.welcomeHint {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dark);
+}
+
+/* ── Tour chrome ─────────────────────────────────────────────────── */
+
+.tourRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+}
+
+/* Invisible full-screen shield — swallows every click so the app
+   underneath is inert while the tour runs. */
+.shield {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+/* The spotlight "hole": everything OUTSIDE it is dimmed by the huge
+   box-shadow; transitioning top/left/width/height makes the cutout
+   glide from one target to the next. */
+.spot {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 200vmax rgba(5, 8, 15, 0.78),
+    0 0 0 2px color-mix(in srgb, var(--accent-purple) 85%, transparent),
+    0 0 22px 4px color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  transition:
+    top    420ms var(--ease-expo),
+    left   420ms var(--ease-expo),
+    width  420ms var(--ease-expo),
+    height 420ms var(--ease-expo);
+  animation: spotPulse 2.2s ease-in-out infinite;
+  pointer-events: auto; /* the highlighted element itself is locked too */
+}
+
+/* Finish step — no target, dim the whole screen evenly. */
+.fullDim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.78);
+  animation: tourFadeIn 300ms var(--ease-smooth);
+}
+
+/* ── Pointing arrow ──────────────────────────────────────────────── */
+
+.arrow {
+  position: fixed;
+  z-index: 701;
+  color: var(--accent-purple);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-purple) 60%, transparent));
+  transition: top 420ms var(--ease-expo), left 420ms var(--ease-expo);
+}
+
+/* The SVG points LEFT by default. */
+.arrowLeft  { animation: arrowBobX 900ms ease-in-out infinite; }
+.arrowRight { transform: rotate(180deg); animation: arrowBobXR 900ms ease-in-out infinite; }
+.arrowUp    { transform: rotate(90deg);  animation: arrowBobYU 900ms ease-in-out infinite; }
+.arrowDown  { transform: rotate(-90deg); animation: arrowBobYD 900ms ease-in-out infinite; }
+
+@keyframes arrowBobX  { 0%, 100% { translate: 0 0; } 50% { translate: 7px 0; } }
+@keyframes arrowBobXR { 0%, 100% { translate: 0 0; } 50% { translate: -7px 0; } }
+@keyframes arrowBobYU { 0%, 100% { translate: 0 0; } 50% { translate: 0 7px; } }
+@keyframes arrowBobYD { 0%, 100% { translate: 0 0; } 50% { translate: 0 -7px; } }
+
+/* ── Step card ───────────────────────────────────────────────────── */
+
+.card {
+  position: fixed;
+  z-index: 701;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 25%, var(--border-subtle));
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card), 0 12px 40px -8px rgba(0, 0, 0, 0.6);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  animation: tourCardIn 340ms var(--ease-expo);
+}
+
+.stepCount {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  margin-bottom: var(--sp-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.body {
+  font-size: 0.83rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-4);
+}
+
+.dots {
+  display: flex;
+  gap: 5px;
+  margin-bottom: var(--sp-4);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text-dark) 55%, transparent);
+  transition: all 240ms var(--ease-smooth);
+}
+
+.dotActive {
+  width: 20px;
+  background: var(--accent-purple);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.navBtns {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.primaryBtn {
+  padding: 8px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 18%, transparent);
+  color: var(--accent-purple);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 160ms var(--ease-smooth);
+}
+.primaryBtn:hover {
+  background: color-mix(in srgb, var(--accent-purple) 28%, transparent);
+}
+
+.backBtn {
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms var(--ease-smooth);
+}
+.backBtn:hover { color: var(--text-primary); border-color: color-mix(in srgb, var(--text-muted) 40%, transparent); }
+
+.ghostBtn {
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ghostBtn:hover { color: var(--text-muted); }
+
+/* ── Keyframes ───────────────────────────────────────────────────── */
+
+@keyframes tourFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes tourCardIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Centered finish card uses an inline translate(-50%,-50%) transform,
+   so its entrance must not animate transform — fade only. */
+
+@keyframes spotPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 200vmax rgba(5, 8, 15, 0.78),
+      0 0 0 2px color-mix(in srgb, var(--accent-purple) 85%, transparent),
+      0 0 22px 4px color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 200vmax rgba(5, 8, 15, 0.78),
+      0 0 0 3px var(--accent-purple),
+      0 0 30px 8px color-mix(in srgb, var(--accent-purple) 60%, transparent);
+  }
+}

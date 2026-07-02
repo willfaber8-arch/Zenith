@@ -60,7 +60,7 @@ export default function HomeView() {
           <div className={styles.biomeWrap}>
             <BiomeWidget />
           </div>
-          <div className={styles.showcase}>
+          <div className={styles.showcase} data-tour="widgets">
             <section className="anim-fade-in">
               <WidgetSandbox />
             </section>
@@ -69,7 +69,7 @@ export default function HomeView() {
       )}
 
       {/* ── Free mode: single drag canvas handles everything ── */}
-      {layoutMode === 'free' && <FreeWidgetCanvas />}
+      {layoutMode === 'free' && <div data-tour="widgets"><FreeWidgetCanvas /></div>}
     </>
   )
 }

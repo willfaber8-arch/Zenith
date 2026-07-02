@@ -60,7 +60,7 @@ import NumberInputSelect from '@/components/NumberInputSelect'
 import {
   LazyBackgroundCanvasManager as BackgroundCanvasManager,
   LazyAiCopilotSidebar        as AiCopilotSidebar,
-  LazyTutorialSpotlight       as TutorialSpotlight,
+  LazyGuidedTour              as GuidedTour,
   LazyOnboardingCinematic     as OnboardingCinematic,
 } from '@/lib/dynamicViews'
 /* TestBridge is only bundled when NEXT_PUBLIC_E2E=1 (playwright.config.ts webServer.env) */
@@ -182,7 +182,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <Toast />
                         <HabitSyncToaster />
                         <AiCopilotSidebar />
-                        <TutorialSpotlight />
+                        <GuidedTour />
                         <OnboardingCinematic />
                         {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
                       </ContextMenuProvider>

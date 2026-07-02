@@ -287,10 +287,11 @@ export const LazyAiCopilotSidebar = dynamic(
   { ssr: false, loading: EmptyLoader },
 )
 
-/** TutorialSpotlight — first-time user walkthrough shown for 3 sessions only.
- *  Saves ~8 KB of modal/animation code from the initial parse budget. */
-export const LazyTutorialSpotlight = dynamic(
-  () => import('@/components/TutorialSpotlight'),
+/** GuidedTour — optional first-launch walkthrough that spotlights the real
+ *  interface (anchored highlights + pointing arrows). Offered once via a
+ *  welcome card; replayable from Settings → Help & Tour. */
+export const LazyGuidedTour = dynamic(
+  () => import('@/components/GuidedTour'),
   { ssr: false, loading: EmptyLoader },
 )
 

@@ -68,6 +68,7 @@ export default function CosmeticPointsIndicator() {
       onKeyDown={handleKeyDown}
       aria-label={`${formatted} Credits — open Arcade`}
       title="Credits — click to open Arcade"
+      data-tour="credits"
     >
       <span className={styles.label}>✦</span>
       <span className={styles.value}>{formatted}</span>
