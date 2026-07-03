@@ -121,7 +121,7 @@
   top: var(--sp-3);
   right: var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 0.42rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -134,7 +134,7 @@
 
 .themeEquipped {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -148,7 +148,7 @@
   background: color-mix(in srgb, var(--accent-green) 8%, transparent);
   color: var(--accent-green);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -260,7 +260,7 @@
 .fieldLabel {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -300,7 +300,7 @@
   background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
   color: var(--accent-purple);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -329,7 +329,7 @@
 
 .accountDetailLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -433,7 +433,7 @@
 
 .aboutLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -516,7 +516,7 @@
 
 .backdropBtnHint {
   font-family:  var(--font-mono);
-  font-size:    0.55rem;
+  font-size:    0.65rem;
   letter-spacing: 0.06em;
   color:        var(--text-dark);
 }
@@ -1283,7 +1283,7 @@
   top: var(--sp-2);
   right: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   padding: 2px 6px;

@@ -5,6 +5,7 @@ import { createPortal }   from 'react-dom'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db }             from '@/lib/db'
 import { useToast }       from '@/lib/ToastContext'
+import { safeExternalHref } from '@/lib/safeUrl'
 import type { MealPlanSlot, SavedMealRecipe, MealIngredient, MealType, PlanType } from '@/lib/db'
 import {
   INGREDIENT_PRICES, INGREDIENT_PRICE_MAP,
@@ -1426,7 +1427,7 @@ function RecipesTab({
               {r.notes && <p className={styles.recipeCardNotes}>{r.notes}</p>}
               <StarRating recipeName={r.title} ratings={ratings} onRate={onRate} />
               {r.url && (
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className={styles.recipeCardLink}>
+                <a href={safeExternalHref(r.url)} target="_blank" rel="noopener noreferrer" className={styles.recipeCardLink}>
                   Open recipe →
                 </a>
               )}

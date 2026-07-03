@@ -65,7 +65,9 @@ const ContentSecurityPolicy = [
     `wss://*.supabase.co`,
     `https://0.peerjs.com`,
     `wss://0.peerjs.com`,
-    `stun:stun.l.google.com:19302`,
+    // NOTE: no `stun:` entry — STUN/TURN traffic is WebRTC-internal and is
+    // not governed by connect-src; browsers reject the scheme as an invalid
+    // source and logged a console error on every page load.
   ].join(' '),
 
   /* Workers — Next.js service-worker support */

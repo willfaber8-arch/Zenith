@@ -56,7 +56,7 @@
 
 .streamLabel {
   font-family:    var(--font-mono);
-  font-size:      0.42rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.06em;
   color:          var(--accent-green);
@@ -79,7 +79,7 @@
   background:     transparent;
   color:          var(--text-dark);
   font-family:    var(--font-mono);
-  font-size:      0.42rem;
+  font-size:      0.62rem;
   font-weight:    600;
   letter-spacing: 0.10em;
   cursor:         pointer;
@@ -140,7 +140,7 @@
 
 .emptyLabel {
   font-family:    var(--font-mono);
-  font-size:      0.47rem;
+  font-size:      0.62rem;
   font-weight:    600;
   letter-spacing: 0.04em;
   color:          rgba(255, 255, 255, 0.13);
@@ -257,7 +257,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size:   0.40rem;
+  font-size:   0.62rem;
   letter-spacing: 0.24em;
   color:       rgba(255, 255, 255, 0.07);
   background:  rgba(0, 0, 0, 0.30);
@@ -307,7 +307,7 @@
   }
 
   .emptyLabel {
-    font-size:      0.42rem;
+    font-size:      0.62rem;
     letter-spacing: 0.04em;
   }
 

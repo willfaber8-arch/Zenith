@@ -61,7 +61,7 @@
 
 .gpaTierBadge {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
 
 .breakdownLabel {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -131,7 +131,7 @@
 
 .breakdownCredits {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
 }
@@ -147,7 +147,7 @@
 
 .targetLabel {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -212,7 +212,7 @@
   top: 12px;
   transform: translateX(-50%);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   color: var(--text-dark);
   white-space: nowrap;
 }
@@ -225,7 +225,7 @@
   padding: 4px 10px;
   border-radius: var(--r-lg);
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -297,7 +297,7 @@
   border-radius: var(--r-md);
   color: var(--text-dark);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -383,7 +383,7 @@
 
 .cardProjectedTag {
   font-family: var(--font-mono);
-  font-size: 0.4375rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -412,7 +412,7 @@
 
 .cardCredits {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
 }
@@ -495,7 +495,7 @@
 
 .courseCode {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-muted);
@@ -515,7 +515,7 @@
 
 .courseCredits {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
   text-align: right;
@@ -707,7 +707,7 @@
 
 .formLabel {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -770,7 +770,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   background: transparent;
   border: 1px solid var(--border-subtle);
@@ -806,7 +806,7 @@
   border-radius: var(--r-md);
   color: var(--accent-purple);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -838,7 +838,7 @@
   border-radius: var(--r-md);
   color: var(--text-dark);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -862,7 +862,7 @@
   border-radius: var(--r-sm);
   color: var(--text-dark);
   font-family: var(--font-mono);
-  font-size: 0.4375rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -930,7 +930,7 @@
   border-radius: var(--r-md);
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.10em;
   text-transform: uppercase;

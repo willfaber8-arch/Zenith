@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { createPortal }  from 'react-dom'
+import { safeExternalHref, normalizeExternalUrl } from '@/lib/safeUrl'
 import { useLiveQuery }  from 'dexie-react-hooks'
 import { db }            from '@/lib/db'
 import type { CustomBookmark } from '@/lib/db'
@@ -77,7 +78,11 @@ function AddModal({ categories, onSave, onClose, initial }: AddModalProps) {
 
   const handleSave = () => {
     if (!form.label.trim() || !form.url.trim()) return
-    onSave({ ...form, folderName: effectiveCategory })
+    // Normalise to a safe http(s) URL — rejects javascript:/data: schemes,
+    // prepends https:// to bare domains.
+    const normalized = normalizeExternalUrl(form.url)
+    if (!normalized) return
+    onSave({ ...form, url: normalized, folderName: effectiveCategory })
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -195,7 +200,7 @@ function LinkCard({ bookmark, onDelete, onEdit }: LinkCardProps) {
   return (
     <div className={styles.card}>
       <a
-        href={bookmark.url}
+        href={safeExternalHref(bookmark.url)}
         target="_blank"
         rel="noopener noreferrer"
         className={styles.cardLink}

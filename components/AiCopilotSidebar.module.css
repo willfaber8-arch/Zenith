@@ -100,7 +100,7 @@
 
 .statusChip {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--text-dark);
@@ -455,7 +455,7 @@
   top: var(--sp-2);
   right: var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -583,7 +583,7 @@
 
 .inputHint {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   letter-spacing: 0.05em;
   color: var(--text-dark);
 }

@@ -297,7 +297,7 @@
 
 .bundleTotalLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dark);
@@ -360,7 +360,7 @@
 .cycleBadge {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   padding: 2px 6px;

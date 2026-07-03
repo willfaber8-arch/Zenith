@@ -191,7 +191,7 @@
 
 .toggleWarning {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   color:       var(--rose);
   letter-spacing: 0.04em;
   animation:   warnPulse 1.8s ease-in-out infinite;
@@ -298,7 +298,7 @@
 
 .metricLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   color:          var(--amber-ghost);
   text-transform: uppercase;
   letter-spacing: 0.10em;
@@ -370,7 +370,7 @@
 
 .logTimestamp {
   font-family: var(--font-mono);
-  font-size:   0.55rem;
+  font-size:   0.65rem;
   color:       rgba(229, 193, 124, 0.18);
   flex-shrink: 0;
   width:       84px;
@@ -379,7 +379,7 @@
 
 .logPrefix {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   flex-shrink: 0;
   width:       66px;
 }
@@ -488,7 +488,7 @@
 
 .resultStatLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   color:          var(--amber-ghost);
   text-transform: uppercase;
   letter-spacing: 0.08em;

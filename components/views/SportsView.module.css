@@ -6,7 +6,7 @@
 /* ── Section labels ────────────────────────────────────────────── */
 .sectionLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: var(--cat-accent, var(--accent-purple));
   margin: 0 0 var(--sp-3);
@@ -266,7 +266,7 @@
 
 .divisionCell {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: var(--sp-3) var(--sp-4) var(--sp-2) !important;
@@ -672,7 +672,7 @@
 
 .dirGroupLabel {
   font-family: var(--font-mono);
-  font-size: 0.56rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-dark);
@@ -829,7 +829,7 @@
 
 .modalSectionLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cat-accent, var(--accent-green));
@@ -902,7 +902,7 @@
 
 .monthColHead {
   font-family: var(--font-mono);
-  font-size: 0.54rem;
+  font-size: 0.65rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dark);
@@ -953,7 +953,7 @@
 }
 
 .monthEvt {
-  font-size: 0.56rem;
+  font-size: 0.65rem;
   line-height: 1.25;
   color: var(--text-primary);
   background: color-mix(in srgb, var(--league-accent, var(--accent-green)) 18%, transparent);

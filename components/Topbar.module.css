@@ -173,7 +173,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 0.4375rem;
+  font-size: 0.62rem;
   font-weight: 800;
   color: var(--bg-main);
   flex-shrink: 0;
@@ -228,7 +228,7 @@
 
 .copilotLabel {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--text-dark);

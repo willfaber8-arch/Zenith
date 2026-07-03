@@ -48,7 +48,7 @@
 }
 
 .widgetEyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -58,7 +58,7 @@
 
 .widgetBadge {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.06em;
   color:          var(--widget-accent, var(--accent-purple));
@@ -168,7 +168,7 @@
 }
 
 .eyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -241,7 +241,7 @@
 
 .eventTime {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.05em;
   color:          var(--text-dark);
 }
@@ -297,7 +297,7 @@
 
 .taskDue {
   font-family:    var(--font-mono);
-  font-size:      0.5625rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   color:          var(--text-dark);
   flex-shrink:    0;
@@ -364,7 +364,7 @@
 
 .ringLabel {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.08em;
   color:          var(--text-dark);
   margin-top:     2px;
@@ -413,7 +413,7 @@
 
 .habitStreak {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.04em;
   color:          var(--text-dark);
   flex-shrink:    0;
@@ -442,7 +442,7 @@
 }
 
 .timerLabel {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -509,7 +509,7 @@
 
 .weatherMeta {
   font-family:    var(--font-mono);
-  font-size:      0.5625rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   color:          var(--text-dark);
 }
@@ -575,7 +575,7 @@
   border:       1px solid var(--border-subtle);
   background:   transparent;
   font-family:  var(--font-mono);
-  font-size:    0.55rem;
+  font-size:    0.65rem;
   font-weight:  600;
   letter-spacing: 0.06em;
   color:        var(--text-dark);
@@ -702,7 +702,7 @@
   border:         1px solid var(--border-subtle);
   background:     transparent;
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   font-weight:    600;
   letter-spacing: 0.06em;
   color:          var(--text-dark);
@@ -732,7 +732,7 @@
   border-radius:  var(--r-sm);
   background:     rgba(82, 204, 163, 0.05);
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   color:          var(--text-dark);
 }
 
@@ -784,7 +784,7 @@
 
 .rtStat {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   color:          var(--text-dark);
 }
@@ -847,7 +847,7 @@
 
 .qlLabel {
   font-family:   var(--font-body);
-  font-size:     0.50rem;
+  font-size:     0.62rem;
   font-weight:   500;
   color:         var(--text-dark);
   letter-spacing: 0.01em;
@@ -874,7 +874,7 @@
 
 .dataHeroSub {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color:          var(--text-dark);
@@ -923,14 +923,14 @@
 
 .dataSub {
   font-family:    var(--font-mono);
-  font-size:      0.50rem;
+  font-size:      0.62rem;
   color:          var(--text-dark);
   letter-spacing: 0.06em;
 }
 
 .dataBadge {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   font-weight:    700;
   padding:        2px 7px;
   border-radius:  var(--r-sm);
@@ -968,7 +968,7 @@
 
 .newsRowSource {
   font-family:    var(--font-mono);
-  font-size:      0.45rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.10em;
   text-transform: uppercase;

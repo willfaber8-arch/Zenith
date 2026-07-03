@@ -63,7 +63,7 @@
 
 .headerLabel {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   color:          rgba(45, 212, 191, 0.40);
 }
@@ -75,7 +75,7 @@
   align-items:    center;
   gap:            4px;
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.04em;
   color:          rgba(45, 212, 191, 0.72);
   background:     rgba(45, 212, 191, 0.08);
@@ -118,7 +118,7 @@
 
 .emptyText {
   font-family:    var(--font-mono);
-  font-size:      0.575rem;
+  font-size:      0.65rem;
   letter-spacing: 0.10em;
   color:          rgba(45, 212, 191, 0.38);
   line-height:    1.85;
@@ -179,7 +179,7 @@
   gap:             var(--sp-2);
   flex-wrap:       wrap;
   font-family:     var(--font-mono);
-  font-size:       0.575rem;
+  font-size:       0.65rem;
   letter-spacing:  0.06em;
   color:           var(--text-dark);
   border-top:      1px solid rgba(45, 212, 191, 0.07);

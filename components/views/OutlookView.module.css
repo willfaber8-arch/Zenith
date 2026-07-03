@@ -424,7 +424,7 @@
 }
 
 .habitWeekLabel {
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -474,7 +474,7 @@
 }
 
 .todayBadge {
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;

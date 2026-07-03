@@ -39,7 +39,7 @@
 
 .vpLabel {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -51,7 +51,7 @@
   align-items: center;
   gap: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
 }
 
@@ -183,7 +183,7 @@
 
 .activityLabel {
   font-family: var(--font-mono);
-  font-size: 0.475rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -207,7 +207,7 @@
 
 .fieldLabel {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -336,7 +336,7 @@
 
 .historyMeta {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   white-space: nowrap;
   overflow: hidden;
@@ -353,13 +353,13 @@
 
 .historyDate {
   font-family: var(--font-mono);
-  font-size: 0.50rem;
+  font-size: 0.62rem;
   color: var(--text-dark);
 }
 
 .historyVP {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #f59e0b;
 }
@@ -484,7 +484,7 @@
 .biomeSurface {
   padding: var(--sp-2) var(--sp-4);
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   letter-spacing: 0.15em;
   color: rgba(255,255,255,0.14);
   background: rgba(0,0,0,0.25);
@@ -551,7 +551,7 @@
 
 .vpSmallLabel {
   font-family: var(--font-mono);
-  font-size: 0.45rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: color-mix(in srgb, #f59e0b 60%, transparent);
@@ -612,7 +612,7 @@
 
 .ownedBadge {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--cat-accent, var(--accent-purple));
@@ -620,7 +620,7 @@
 
 .buyBtn {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-sm);

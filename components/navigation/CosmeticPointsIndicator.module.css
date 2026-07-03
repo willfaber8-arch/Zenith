@@ -33,7 +33,7 @@
 
 .label {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.10em;
   color: var(--text-muted);
@@ -42,7 +42,7 @@
 
 .value {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--accent-green);

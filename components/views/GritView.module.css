@@ -30,7 +30,7 @@
   background:      rgba(124, 149, 255, 0.07);
   border:          1px solid rgba(124, 149, 255, 0.16);
   font-family:     var(--font-mono);
-  font-size:       0.4375rem;
+  font-size:       0.62rem;
   font-weight:     700;
   letter-spacing:  0.14em;
   text-transform:  uppercase;
@@ -74,7 +74,7 @@
 
 .formulaSymbol {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.12em;
   color:          var(--accent-purple);
@@ -88,7 +88,7 @@
 }
 
 .formulaDesc {
-  font-size:   0.5625rem;
+  font-size:   0.65rem;
   color:       var(--text-dark);
   line-height: 1.5;
 }

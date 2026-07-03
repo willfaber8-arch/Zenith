@@ -205,7 +205,7 @@
 .notesCount {
   align-self: flex-end;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.65rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
 }
@@ -457,7 +457,7 @@
 
 .calCellNum {
   font-family:    var(--font-body);
-  font-size:      9px;
+  font-size:      0.65rem;
   font-weight:    600;
   color:          rgba(255, 255, 255, 0.75);
   line-height:    1;
