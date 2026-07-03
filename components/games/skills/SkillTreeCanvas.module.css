@@ -35,11 +35,13 @@
 .canvasWrap {
   position:      relative;
   width:         100%;
+  /* Adaptable size: fill the pane width at a 4:3 ratio, growing with the
+     viewport but bounded so it neither dwarfs the pane nor shrinks to an
+     unreadable box. The selected-node cost detail is sticky, so a taller
+     tree no longer pushes it out of view. The SVG's viewBox scales to fit. */
   aspect-ratio:  4 / 3;
-  /* Cap the height so the tree doesn't dominate the pane and push the
-     selected-node cost detail below the fold. Centres when width-capped. */
-  max-height:    380px;
-  max-width:     507px;   /* 380 * 4/3 — keeps the 4:3 ratio at the cap */
+  min-height:    clamp(360px, 52vh, 560px);
+  max-height:    min(78vh, 720px);
   margin:        0 auto;
   background:    var(--bg-main);
   border-radius: var(--r-lg);
