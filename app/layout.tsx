@@ -105,14 +105,14 @@ const spaceGrotesk = localFont({
 /* ── App metadata ─────────────────────────────────────────────── */
 export const metadata: Metadata = {
   title: {
-    default:  'Zenith OS',
-    template: '%s · Zenith OS',
+    default:  'Zenith',
+    template: '%s · Zenith',
   },
   description:
     'Your minimalist academic command centre — task management, ' +
     'study tools, habit tracking, and custom productivity modules.',
   keywords: ['productivity', 'academic', 'dashboard', 'study', 'tasks'],
-  authors:  [{ name: 'Zenith OS' }],
+  authors:  [{ name: 'Zenith' }],
 }
 
 export const viewport: Viewport = {

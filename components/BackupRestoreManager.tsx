@@ -211,7 +211,7 @@ export default function BackupRestoreManager() {
             type="file"
             accept=".json,application/json"
             onChange={(e) => void handleFileChange(e)}
-            aria-label="Select Zenith OS backup file"
+            aria-label="Select Zenith backup file"
           />
         </div>
 

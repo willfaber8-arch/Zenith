@@ -112,7 +112,7 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
           <div className={styles.badge}>
             <div className={styles.logoMark} aria-hidden="true">Z</div>
             <div className={styles.logoTextGroup}>
-              <span className={styles.logoTitle}>Zenith OS</span>
+              <span className={styles.logoTitle}>Zenith</span>
               <span className={styles.logoTag}>Personal Command Centre</span>
             </div>
           </div>
@@ -170,7 +170,7 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
           <div className={styles.badge}>
             <div className={styles.logoMark} aria-hidden="true">Z</div>
             <div className={styles.logoTextGroup}>
-              <span className={styles.logoTitle}>Zenith OS</span>
+              <span className={styles.logoTitle}>Zenith</span>
               <span className={styles.logoTag}>Personal Command Centre</span>
             </div>
           </div>
@@ -206,7 +206,7 @@ function SupabaseAuthForm({ signIn, signUp, localSignIn }: SupabaseAuthFormProps
         <div className={styles.badge}>
           <div className={styles.logoMark} aria-hidden="true">Z</div>
           <div className={styles.logoTextGroup}>
-            <span className={styles.logoTitle}>Zenith OS</span>
+            <span className={styles.logoTitle}>Zenith</span>
             <span className={styles.logoTag}>Personal Command Centre</span>
           </div>
         </div>
@@ -394,7 +394,7 @@ function LocalAuthForm({ signIn }: LocalAuthFormProps) {
         <div className={styles.badge}>
           <div className={styles.logoMark} aria-hidden="true">Z</div>
           <div className={styles.logoTextGroup}>
-            <span className={styles.logoTitle}>Zenith OS</span>
+            <span className={styles.logoTitle}>Zenith</span>
             <span className={styles.logoTag}>Personal Command Centre</span>
           </div>
         </div>
