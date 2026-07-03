@@ -159,7 +159,7 @@
 
 .deckStatChip {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.06em;
   padding: 1px 5px;
   border-radius: var(--r-sm);
@@ -479,7 +479,7 @@
 
 .nextReviewLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.04em;
   color: var(--text-dark);
   white-space: nowrap;
@@ -497,7 +497,7 @@
 
 .cardActionBtn {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 3px 7px;
@@ -993,7 +993,7 @@
 
 .aiCardNum {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   width: 20px;
   flex-shrink: 0;
@@ -1183,7 +1183,7 @@
 
 .engStatLabel {
   font-family:     var(--font-mono);
-  font-size:       0.55rem;
+  font-size:       0.65rem;
   letter-spacing:  0.16em;
   text-transform:  uppercase;
   color:           var(--text-dark);
@@ -1336,7 +1336,7 @@
 
 .engWordDue {
   font-family:     var(--font-mono);
-  font-size:       0.58rem;
+  font-size:       0.65rem;
   letter-spacing:  0.10em;
   color:           var(--text-dark);
   white-space:     nowrap;
@@ -1455,7 +1455,7 @@
 
 .engMasteryBadge {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   padding:        2px 7px;

@@ -19,6 +19,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useFollowedTeams } from '@/lib/hooks/useFollowedTeams'
+import { safeExternalHref } from '@/lib/safeUrl'
 import { useGameNotifications } from '@/lib/hooks/useGameNotifications'
 import { syncFollowedGamesToCalendar, type FixturesByTeam } from '@/utils/sportsCalendarSync'
 import {
@@ -108,10 +109,12 @@ function FormPill({ outcome }: { outcome: TeamResult['outcome'] }) {
 /** Official-site external link. */
 function SiteLink({ href }: { href: string | null | undefined }) {
   if (!href) return null
+  const safe = safeExternalHref(href)
+  if (safe === '#') return null
   return (
     <a
       className={styles.siteLink}
-      href={href}
+      href={safe}
       target="_blank"
       rel="noopener noreferrer"
       onClick={e => e.stopPropagation()}

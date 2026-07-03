@@ -175,7 +175,7 @@
   padding: 2px 7px;
   border-radius: var(--r-sm);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -207,7 +207,7 @@
 .hint {
   padding: var(--sp-2) var(--sp-4) var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   letter-spacing: 0.06em;
   color: var(--text-dark);
   opacity: 0.6;

@@ -225,7 +225,7 @@ export default function OnboardingCinematic() {
       className={`${styles.overlay} ${isExiting ? styles.overlayExit : ''}`}
       role="status"
       aria-live="polite"
-      aria-label="Zenith OS system initialization"
+      aria-label="Zenith system initialization"
     >
       {/* ── Ambient corner ornaments ──────────────────── */}
       <span className={styles.cornerTL} aria-hidden="true">◈</span>
@@ -237,7 +237,7 @@ export default function OnboardingCinematic() {
         {/* Header row */}
         <div className={styles.header}>
           <span className={styles.headerDot} aria-hidden="true" />
-          <span className={styles.headerTitle}>Zenith OS</span>
+          <span className={styles.headerTitle}>Zenith</span>
           <span className={styles.headerSub}>System Initialization</span>
         </div>
 
@@ -291,7 +291,7 @@ export default function OnboardingCinematic() {
               className={styles.ctaBtn}
               onClick={handleWake}
               autoFocus
-              aria-label="Enter Zenith OS workspace"
+              aria-label="Enter Zenith workspace"
             >
               Enter Workspace
             </button>

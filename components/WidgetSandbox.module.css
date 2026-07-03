@@ -21,7 +21,7 @@
 }
 
 .sandboxEyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -262,7 +262,7 @@
 }
 
 .editWidthBadge {
-  font-size:      0.45rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -316,7 +316,7 @@
 /* ── Bottom hint text ─────────────────────────────────────── */
 
 .editHint {
-  font-size:   0.5625rem;
+  font-size:   0.65rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;

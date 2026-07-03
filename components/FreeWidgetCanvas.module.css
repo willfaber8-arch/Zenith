@@ -119,7 +119,7 @@
 .hexInput {
   width:          68px;
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   background:     rgba(124, 149, 255, 0.03);
   border:         1px solid var(--border-subtle);
@@ -208,7 +208,7 @@
 }
 
 .visPanelTitle {
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   font-family:    var(--font-mono);
   letter-spacing: 0.12em;
   color:          var(--text-dark);
@@ -292,7 +292,7 @@
 }
 
 .resetBtn {
-  font-size:       0.58rem;
+  font-size:       0.65rem;
   font-family:     var(--font-mono);
   color:           var(--text-dark);
   background:      transparent;

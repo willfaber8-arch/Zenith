@@ -71,7 +71,7 @@
 
 .identityLabel {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   color:          var(--gold-dim);
   letter-spacing: 0.02em;
   flex-shrink:    0;
@@ -96,7 +96,7 @@
 
 .identityNodeLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   color:          var(--gold-ghost);
   letter-spacing: 0.02em;
   flex-shrink:    0;
@@ -126,7 +126,7 @@
 
 .metricBadgeLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   color:          var(--gold-ghost);
   letter-spacing: 0.02em;
   line-height:    1;
@@ -230,7 +230,7 @@
 
 .logHeaderTitle {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   color:          var(--gold-ghost);
   text-transform: uppercase;
   letter-spacing: 0.10em;
@@ -238,7 +238,7 @@
 
 .logClearBtn {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   color:          var(--gold-ghost);
   background:     transparent;
   border:         1px solid transparent;
@@ -293,7 +293,7 @@
 
 .logTs {
   font-family: var(--font-mono);
-  font-size:   0.52rem;
+  font-size:   0.65rem;
   color:       rgba(212, 175, 95, 0.16);
   flex-shrink: 0;
   width:       76px;
@@ -302,14 +302,14 @@
 
 .logPfx {
   font-family: var(--font-mono);
-  font-size:   0.56rem;
+  font-size:   0.65rem;
   flex-shrink: 0;
   width:       74px;
 }
 
 .logMsg {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   word-break:  break-word;
   line-height: 1.5;
 }

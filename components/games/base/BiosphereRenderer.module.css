@@ -336,7 +336,7 @@
 
 .codeHeaderTitle {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.14em;
   color:          var(--text-dark);
   margin-left:    var(--sp-1);
@@ -394,7 +394,7 @@
 
 .uptimeLabel {
   font-family:    var(--font-mono);
-  font-size:      0.48rem;
+  font-size:      0.62rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color:          var(--text-dark);
@@ -502,7 +502,7 @@
 
 .stageTierLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   font-weight:    700;
   letter-spacing: 0.10em;
   color:          var(--accent-green);
@@ -561,7 +561,7 @@
 
 .emptyHint {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   color:          var(--text-dark);
   text-align:     center;
   max-width:      210px;

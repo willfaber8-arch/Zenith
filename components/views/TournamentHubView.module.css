@@ -313,7 +313,7 @@
 
 .winnerLabel {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color:          var(--accent-green);
@@ -340,7 +340,7 @@
 
 .historyLabel {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.18em;
   color:          var(--text-dark);
   text-transform: uppercase;
@@ -421,7 +421,7 @@
 
 .participantHint {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   color:       var(--text-dark);
   letter-spacing: 0.1em;
 }
@@ -485,7 +485,7 @@
 /* Round header label */
 .roundLabel {
   font-family:    var(--font-mono);
-  font-size:      0.54rem;
+  font-size:      0.65rem;
   letter-spacing: 0.18em;
   color:          var(--text-dark);
   text-transform: uppercase;
@@ -607,7 +607,7 @@
 
 .championLabel {
   font-family:    var(--font-mono);
-  font-size:      0.54rem;
+  font-size:      0.65rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color:          var(--accent-warm);
@@ -679,7 +679,7 @@
 
 .weightToggle {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -750,7 +750,7 @@
 .winnerRemoveBtn {
   margin-top:     var(--sp-3);
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   font-weight:    600;
   letter-spacing: 0.1em;
   text-transform: uppercase;

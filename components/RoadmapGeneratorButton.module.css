@@ -47,7 +47,7 @@
 
 .headerEyebrow {
   font-family:     var(--font-mono);
-  font-size:       0.55rem;
+  font-size:       0.65rem;
   letter-spacing:  0.14em;
   text-transform:  uppercase;
   color:           var(--text-dark);
@@ -122,7 +122,7 @@
 
 .charCount {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   color:       var(--text-dark);
   white-space: nowrap;
 }
@@ -273,7 +273,7 @@
 }
 
 .successCount {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color:     var(--text-dark);
   letter-spacing: 0.08em;
 }
@@ -344,7 +344,7 @@
 
 .categoryBadge {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding:        2px 6px;

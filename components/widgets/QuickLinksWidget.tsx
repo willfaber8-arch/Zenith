@@ -3,6 +3,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState }     from 'react'
 import { db }           from '@/lib/db'
+import { safeExternalHref } from '@/lib/safeUrl'
 import { useNav }       from '@/lib/NavContext'
 import wStyles from './Widget.module.css'
 
@@ -64,7 +65,7 @@ export default function QuickLinksWidget() {
           {bookmarks.map(b => (
             <a
               key={b.id}
-              href={b.url}
+              href={safeExternalHref(b.url)}
               target="_blank"
               rel="noopener noreferrer"
               className={wStyles.qlItem}

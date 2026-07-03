@@ -65,7 +65,7 @@
 
 .eyebrow {
   font-family:    var(--font-mono);
-  font-size:      0.48rem;
+  font-size:      0.62rem;
   letter-spacing: 0.18em;
   color:          rgba(194, 169, 128, 0.38);
   text-transform: uppercase;
@@ -175,7 +175,7 @@
 
 .dividerLabel {
   font-family:    var(--font-mono);
-  font-size:      0.44rem;
+  font-size:      0.62rem;
   letter-spacing: 0.18em;
   color:          rgba(194, 169, 128, 0.26);
   text-transform: uppercase;
@@ -226,7 +226,7 @@
 
 .channelLabel {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.14em;
   color:          rgba(194, 169, 128, 0.55);
   text-transform: uppercase;
@@ -234,7 +234,7 @@
 
 .channelVol {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   letter-spacing: 0.06em;
   color:          rgba(194, 169, 128, 0.34);
   min-width:      26px;
@@ -345,7 +345,7 @@
 
 .hint {
   font-family:    var(--font-mono);
-  font-size:      0.46rem;
+  font-size:      0.62rem;
   letter-spacing: 0.10em;
   color:          rgba(194, 169, 128, 0.25);
   text-transform: uppercase;

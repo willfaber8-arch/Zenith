@@ -109,7 +109,7 @@
 
 .linkBtn {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -172,7 +172,7 @@
 
 .dueWhen {
   font-family: var(--font-mono);
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   flex-shrink: 0;
   letter-spacing: 0.04em;
@@ -431,7 +431,7 @@
 
 .feedTime {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   letter-spacing: 0.06em;
   color: var(--text-dark);
   margin-top: 1px;

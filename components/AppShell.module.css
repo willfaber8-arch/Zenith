@@ -150,7 +150,7 @@
 
 .betaBadge {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   line-height: 1;
@@ -194,7 +194,7 @@
 }
 
 .categoryLabel {
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -210,7 +210,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -243,7 +243,7 @@
 }
 
 .subCatLabel {
-  font-size: 0.4375rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -348,7 +348,7 @@
   background: var(--item-active-bg, rgba(124, 149, 255, 0.18));
   color:       var(--item-accent,   var(--accent-purple));
   font-family: var(--font-mono);
-  font-size:   0.4375rem;
+  font-size:   0.62rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   display: flex;
@@ -655,7 +655,7 @@
 }
 
 .customizeSectionLabel {
-  font-size:      0.42rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.22em;
   text-transform: uppercase;

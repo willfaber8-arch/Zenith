@@ -43,7 +43,7 @@
 /* ── Cell header label ────────────────────────────────────────── */
 .cellLabel {
   font-family:   var(--font-mono);
-  font-size:     0.55rem;
+  font-size:     0.65rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color:         rgba(194, 169, 128, 0.5);

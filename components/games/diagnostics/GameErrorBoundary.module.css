@@ -51,7 +51,7 @@
 
 .terminalLabel {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   font-weight:    700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -68,7 +68,7 @@
   border:      1px solid color-mix(in srgb, var(--accent-purple) 25%, transparent);
   background:  color-mix(in srgb, var(--accent-purple) 8%, transparent);
   font-family: var(--font-mono);
-  font-size:   0.52rem;
+  font-size:   0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   color:       var(--text-muted);
@@ -122,7 +122,7 @@
 
 .retryCount {
   font-family: var(--font-mono);
-  font-size:   0.55rem;
+  font-size:   0.65rem;
   color:       var(--text-dark);
   letter-spacing: 0.06em;
   flex:        1;
@@ -142,7 +142,7 @@
   background:      color-mix(in srgb, var(--accent-purple) 10%, transparent);
   color:           var(--accent-purple);
   font-family:     var(--font-mono);
-  font-size:       0.575rem;
+  font-size:       0.65rem;
   font-weight:     700;
   letter-spacing:  0.08em;
   text-transform:  uppercase;
@@ -181,7 +181,7 @@
   background:      rgba(255, 90, 90, 0.08);
   color:           rgba(255, 140, 140, 0.88);
   font-family:     var(--font-mono);
-  font-size:       0.575rem;
+  font-size:       0.65rem;
   font-weight:     700;
   letter-spacing:  0.08em;
   text-transform:  uppercase;

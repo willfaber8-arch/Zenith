@@ -78,7 +78,7 @@
 }
 
 .lobbyCardEyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -190,7 +190,7 @@
 }
 
 .p2pNote {
-  font-size:  0.5625rem;
+  font-size:  0.65rem;
   color:      var(--text-dark);
   text-align: center;
   line-height: 1.5;
@@ -227,7 +227,7 @@
 }
 
 .roomEyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -247,7 +247,7 @@
 }
 
 .leaveBtn {
-  font-size:      0.5625rem;
+  font-size:      0.65rem;
   font-weight:    700;
   letter-spacing: 0.08em;
   color:          var(--text-dark);
@@ -294,7 +294,7 @@
 }
 
 .sidebarLabel {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -364,7 +364,7 @@
 }
 
 .peerTask {
-  font-size:     0.5625rem;
+  font-size:     0.65rem;
   color:         var(--text-dark);
   white-space:   nowrap;
   overflow:      hidden;
@@ -392,7 +392,7 @@
 }
 
 .roomCodeLabel {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   color:          var(--text-dark);
@@ -408,7 +408,7 @@
 
 .copyBtn {
   align-self:     flex-start;
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -464,7 +464,7 @@
 }
 
 .timerEyebrow {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -472,7 +472,7 @@
 }
 
 .syncBadge {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.08em;
   color:          var(--accent-green);
@@ -549,7 +549,7 @@
 }
 
 .chatLabel {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -600,7 +600,7 @@
 }
 
 .chatName {
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   font-weight:    700;
   letter-spacing: 0.06em;
   color:          var(--accent-purple);
@@ -619,7 +619,7 @@
 
 .chatTime {
   font-family: var(--font-mono);
-  font-size:   0.5rem;
+  font-size:   0.62rem;
   color:       var(--text-dark);
   flex-shrink: 0;
   align-self:  flex-end;

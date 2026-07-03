@@ -73,7 +73,7 @@
 
 .headerLabel {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.42);
 }
@@ -85,7 +85,7 @@
   align-items:    center;
   gap:            4px;
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.04em;
   color:          rgba(245, 158, 11, 0.80);
   background:     rgba(245, 158, 11, 0.08);
@@ -137,7 +137,7 @@
   align-items:    center;
   gap:            var(--sp-2);
   font-family:    var(--font-mono);
-  font-size:      0.56rem;
+  font-size:      0.65rem;
   letter-spacing: 0.10em;
   color:          rgba(82, 204, 163, 0.40);
   margin-top:     var(--sp-1);
@@ -161,7 +161,7 @@
 
 .syncMeta {
   font-family:    var(--font-mono);
-  font-size:      0.555rem;
+  font-size:      0.65rem;
   letter-spacing: 0.06em;
   color:          rgba(82, 204, 163, 0.35);
   line-height:    1.5;
@@ -173,7 +173,7 @@
   align-items:    center;
   gap:            5px;
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.55);
   background:     transparent;
@@ -236,7 +236,7 @@
 
 .emptyText {
   font-family:    var(--font-mono);
-  font-size:      0.575rem;
+  font-size:      0.65rem;
   letter-spacing: 0.09em;
   color:          rgba(82, 204, 163, 0.38);
   line-height:    1.80;
@@ -280,7 +280,7 @@
 
 .errorStrip {
   font-family:    var(--font-mono);
-  font-size:      0.56rem;
+  font-size:      0.65rem;
   letter-spacing: 0.06em;
   color:          rgba(248, 113, 113, 0.75);
   padding:        var(--sp-2) var(--sp-3);
@@ -319,7 +319,7 @@
 
 .syncingLabel {
   font-family:    var(--font-mono);
-  font-size:      0.56rem;
+  font-size:      0.65rem;
   letter-spacing: 0.04em;
   color:          rgba(82, 204, 163, 0.45);
 }

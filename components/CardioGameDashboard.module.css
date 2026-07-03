@@ -42,7 +42,7 @@
 
 .tierBadge {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding:        3px 10px;
@@ -68,7 +68,7 @@
 }
 
 .resSymbol {
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.1em;
   padding:        2px 5px;
   border-radius:  var(--r-sm);
@@ -89,7 +89,7 @@
 
 .headerMeta {
   font-family: var(--font-mono);
-  font-size:   0.58rem;
+  font-size:   0.65rem;
   color:       var(--d-muted);
   letter-spacing: 0.06em;
 }
@@ -127,7 +127,7 @@
 
 .panelTitle {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color:          var(--d-muted);
@@ -194,7 +194,7 @@
 
 .diffBadge {
   font-family:    var(--font-mono);
-  font-size:      0.52rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding:        2px 6px;
@@ -216,7 +216,7 @@
 
 .trailReward {
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.06em;
   padding:        2px 5px;
   border-radius:  var(--r-sm);
@@ -288,7 +288,7 @@
 
 .runDestLabel {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   color:          var(--d-muted);
   padding:        var(--sp-2) var(--sp-4);
@@ -400,7 +400,7 @@
 
 .logLabel {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color:          var(--d-muted);
@@ -451,7 +451,7 @@
 
 .abandonBtn {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding:        var(--sp-2) var(--sp-3);
@@ -530,7 +530,7 @@
   left:           50%;
   transform:      translateX(-50%);
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color:          var(--d-accent);
@@ -554,7 +554,7 @@
   border:         1px solid color-mix(in srgb, var(--d-accent) 35%, transparent);
   background:     color-mix(in srgb, var(--d-accent) 10%, var(--d-bg));
   font-family:    var(--font-mono);
-  font-size:      0.55rem;
+  font-size:      0.65rem;
   letter-spacing: 0.06em;
   color:          var(--d-accent);
   white-space:    nowrap;
@@ -609,7 +609,7 @@
 
 .inventoryName {
   font-family:    var(--font-mono);
-  font-size:      0.48rem;
+  font-size:      0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color:          var(--d-muted);
@@ -631,7 +631,7 @@
 
 .upgradeTitle {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color:          var(--d-muted);
@@ -736,7 +736,7 @@
 
 .runHistoryTitle {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color:          var(--d-muted);

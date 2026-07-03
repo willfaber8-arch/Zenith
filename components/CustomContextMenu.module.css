@@ -56,7 +56,7 @@
 
 .sectionLabel {
   font-family:    var(--font-mono);
-  font-size:      0.43rem;
+  font-size:      0.62rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color:          rgba(244, 241, 234, 0.26);
@@ -161,7 +161,7 @@
 
 .badgeLabel {
   font-family:    var(--font-mono);
-  font-size:      0.46rem;
+  font-size:      0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color:          rgba(244, 241, 234, 0.22);

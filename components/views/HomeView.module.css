@@ -106,7 +106,7 @@
 
 .studyModeCtaEyebrow {
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -244,7 +244,7 @@
 }
 
 .swatchMeta {
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   font-family: var(--font-mono);
   letter-spacing: 0.01em;
@@ -272,7 +272,7 @@
 }
 
 .typeTag {
-  font-size: 0.5625rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -329,7 +329,7 @@
 }
 
 .devLabel {
-  font-size:      0.4375rem;
+  font-size:      0.62rem;
   font-weight:    600;
   letter-spacing: 0.18em;
   text-transform: uppercase;

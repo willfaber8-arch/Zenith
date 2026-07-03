@@ -117,7 +117,7 @@
   border: 1px solid color-mix(in srgb, var(--cat-accent) 30%, transparent);
   background: color-mix(in srgb, var(--cat-accent) 8%, transparent);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   color: var(--cat-accent);
@@ -181,7 +181,7 @@
   background: transparent;
   color: var(--text-dark);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -225,7 +225,7 @@
 
 .resourceSectionTitle {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -258,7 +258,7 @@
 
 .resourceName {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   color: var(--text-muted);
@@ -305,7 +305,7 @@
 
 .resourceInfinite {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
   letter-spacing: 0.04em;
   margin-top: 2px;
@@ -388,7 +388,7 @@
   background: var(--cat-accent);
   color: var(--bg-main);
   font-family: var(--font-mono);
-  font-size: 0.50rem;
+  font-size: 0.62rem;
   font-weight: 800;
   line-height: 1;
 }
@@ -554,7 +554,7 @@
   background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
   color: var(--accent-purple);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -625,7 +625,7 @@
 
 .sectionHeading {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -700,7 +700,7 @@
 
 .recipeMeta {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   letter-spacing: 0.04em;
   color: var(--text-muted);
   line-height: 1.4;
@@ -721,7 +721,7 @@
 
 .recipeBalance {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: var(--cat-accent);
   flex-shrink: 0;
@@ -737,7 +737,7 @@
   background: color-mix(in srgb, var(--cat-accent) 10%, transparent);
   color: var(--cat-accent);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -759,7 +759,7 @@
 
 .processingBadge {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dark);
@@ -841,7 +841,7 @@
 
 .upgradeLevelBadge {
   font-family: var(--font-mono);
-  font-size: 0.50rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -881,7 +881,7 @@
   background: color-mix(in srgb, var(--cat-accent) 10%, transparent);
   color: var(--cat-accent);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -902,7 +902,7 @@
 
 .upgradeMaxBadge {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -914,7 +914,7 @@
 
 .upgradeErrorMsg {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   color: #f87171;
   margin-bottom: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
@@ -1072,7 +1072,7 @@
 
 .shopCatBtn {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1098,7 +1098,7 @@
 
 .shopMsg {
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   padding: var(--sp-2) var(--sp-4);
   border-radius: var(--r-sm);
   margin-bottom: var(--sp-4);
@@ -1165,7 +1165,7 @@
   top: var(--sp-3);
   right: var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 0.45rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -1226,7 +1226,7 @@
   background: transparent;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.05em;
   cursor: pointer;
   transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
@@ -1243,7 +1243,7 @@
 
 .shopEquippedLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--cat-accent);
@@ -1257,7 +1257,7 @@
   background: color-mix(in srgb, var(--cat-accent) 10%, transparent);
   color: var(--cat-accent);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -1282,7 +1282,7 @@
   background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
   color: var(--accent-purple);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 220ms ease, border-color 220ms ease, opacity 180ms ease;
@@ -1305,7 +1305,7 @@
 }
 
 .shopBuyIcon {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--text-dark);
 }
 
@@ -1379,7 +1379,7 @@
 
 .skillCostChip {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   letter-spacing: 0.03em;
   color: var(--text-dark);
   padding: 2px 7px;
@@ -1410,7 +1410,7 @@
   background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
   color: var(--accent-purple);
   font-family: var(--font-mono);
-  font-size: 0.575rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1428,7 +1428,7 @@
 
 .skillUnlockedBadge {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--cat-accent);
@@ -1437,7 +1437,7 @@
 
 .skillLockedLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   letter-spacing: 0.05em;
   color: var(--text-dark);
   text-align: right;
@@ -1446,7 +1446,7 @@
 
 .skillMsgOk {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   color: var(--cat-accent);
   text-align: right;
   white-space: nowrap;
@@ -1454,7 +1454,7 @@
 
 .skillMsgErr {
   font-family: var(--font-mono);
-  font-size: 0.525rem;
+  font-size: 0.65rem;
   color: #f87171;
   text-align: right;
   white-space: nowrap;

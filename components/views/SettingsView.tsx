@@ -1069,7 +1069,7 @@ export default function SettingsView() {
           <div className={styles.aboutGrid}>
             <div className={styles.aboutRow}>
               <span className={styles.aboutLabel}>Version</span>
-              <span className={styles.aboutValue}>Zenith OS · 2026.R13</span>
+              <span className={styles.aboutValue}>Zenith · 2026.R13</span>
             </div>
             <div className={styles.aboutRow}>
               <span className={styles.aboutLabel}>Framework</span>

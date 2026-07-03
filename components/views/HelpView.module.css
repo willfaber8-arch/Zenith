@@ -34,7 +34,7 @@
 
 .cardLabel {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--cat-accent, var(--accent-purple));
   margin: 0 0 var(--sp-4);
 }

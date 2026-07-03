@@ -67,7 +67,7 @@
 
 .statLabel {
   font-family:    var(--font-mono);
-  font-size:      0.5rem;
+  font-size:      0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color:          var(--text-dark);
@@ -199,7 +199,7 @@
 
 .resultHeading {
   font-family:    var(--font-mono);
-  font-size:      0.58rem;
+  font-size:      0.65rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color:          var(--accent-green);
