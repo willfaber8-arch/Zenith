@@ -12,7 +12,7 @@
 import { db } from '@/lib/db'
 import type { Priority } from '@/lib/db'
 import type { BillingCycle } from '@/types/finance'
-import type { ReadingStatus } from '@/types/bookTracker'
+import type { ReadingStatus, LibraryBook } from '@/types/bookTracker'
 import { isKnownAction, DASHBOARD_WIDGET_KEYS, type CopilotAction } from '@/lib/copilotTools'
 import { SANDBOX_STORAGE_KEY }                   from '@/lib/hooks/useSandboxConfig'
 import { savePreset, findPresetByName, applyPreset } from '@/lib/dashboardPresets'
@@ -314,6 +314,61 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         addedAt:       Date.now(),
       })
       return `Added "${title}" to your library.`
+    }
+
+    /* ── Enrich an existing library book (AI Librarian autofill) ────── */
+    case 'update_book': {
+      const title = str(a.title)
+      if (!title) throw new Error('A book title is required to update it.')
+      const wantAuthor = str(a.author).toLowerCase()
+
+      // Find the matching book: prefer an exact (case-insensitive) title match,
+      // otherwise a title `includes` match. When several candidates share a
+      // title, disambiguate by author when one was provided.
+      const all      = await db.library_books.toArray()
+      const titleLc  = title.toLowerCase()
+      const exact    = all.filter(b => b.title.toLowerCase() === titleLc)
+      const partial  = exact.length ? exact : all.filter(b => b.title.toLowerCase().includes(titleLc))
+      if (partial.length === 0) throw new Error(`No book titled "${title}" found in your library.`)
+
+      const target = (wantAuthor
+        ? partial.find(b => (b.author ?? '').toLowerCase().includes(wantAuthor))
+        : undefined) ?? partial[0]
+
+      // Only fill fields that are currently empty/missing — never overwrite the
+      // user's own userRating or readingStatus.
+      const updates: Partial<LibraryBook> = {}
+
+      const genre = str(a.genre)
+      if (genre && !target.genre) updates.genre = genre
+
+      const series = str(a.series)
+      if (series && !target.series) updates.series = series
+
+      const review = str(a.review)
+      if (review && !target.customReviewText) updates.customReviewText = review
+
+      const pages = num(a.pages)
+      if (Number.isFinite(pages) && pages > 0 && !target.totalPages) {
+        updates.totalPages = Math.floor(pages)
+      }
+
+      const year = num(a.publicationYear)
+      if (Number.isFinite(year) && year > 0 && !target.publicationYear) {
+        updates.publicationYear = Math.floor(year)
+      }
+
+      const rating = num(a.rating)
+      if (Number.isFinite(rating) && rating >= 0 && target.globalRating === undefined) {
+        updates.globalRating = Math.round(Math.min(5, Math.max(0, rating)) * 100) / 100
+      }
+
+      const filled = Object.keys(updates)
+      if (filled.length === 0) {
+        return `"${target.title}" already has those details — nothing to fill.`
+      }
+      await db.library_books.update(target.id, updates)
+      return `Filled in ${filled.length} detail${filled.length > 1 ? 's' : ''} for "${target.title}".`
     }
 
     /* ── Saved recipe ───────────────────────────────────────────────── */

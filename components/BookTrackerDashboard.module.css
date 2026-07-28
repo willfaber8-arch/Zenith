@@ -94,6 +94,44 @@
   background: rgba(124, 149, 255, 0.06);
 }
 
+/* ── AI Librarian button ─────────────────────────────────── */
+.librarianBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--lb-gold);
+  border: 1px solid rgba(212, 168, 83, 0.32);
+  border-radius: var(--r-xl);
+  padding: 4px 14px;
+  background: rgba(212, 168, 83, 0.10);
+  cursor: pointer;
+  transition: background 200ms var(--ease-smooth), border-color 200ms var(--ease-smooth),
+    opacity 200ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.librarianBtn:hover:not(:disabled) {
+  background: rgba(212, 168, 83, 0.20);
+  border-color: rgba(212, 168, 83, 0.52);
+}
+
+.librarianBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.librarianSpinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(212, 168, 83, 0.30);
+  border-top-color: var(--lb-gold);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
 /* ── Tab bar ─────────────────────────────────────────────── */
 .tabBar {
   display: flex;
