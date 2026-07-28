@@ -54,7 +54,8 @@ const ContentSecurityPolicy = [
   `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.thesportsdb.com https://r2.thesportsdb.com`,
 
   /* Connections — Open-Meteo weather, Nominatim geocoding, Supabase sync,
-     PeerJS signalling (*.0.peerjs.com), WebRTC ICE/STUN.
+     PeerJS signalling (*.0.peerjs.com), WebRTC ICE/STUN, plus Microsoft
+     Graph + Entra ID (MSAL token endpoints) for direct Outlook sync.
      Wildcard *.supabase.co covers both the API and storage subdomains.    */
   [
     `connect-src`,
@@ -65,6 +66,8 @@ const ContentSecurityPolicy = [
     `wss://*.supabase.co`,
     `https://0.peerjs.com`,
     `wss://0.peerjs.com`,
+    `https://graph.microsoft.com`,
+    `https://login.microsoftonline.com`,
     // NOTE: no `stun:` entry — STUN/TURN traffic is WebRTC-internal and is
     // not governed by connect-src; browsers reject the scheme as an invalid
     // source and logged a console error on every page load.
@@ -76,8 +79,9 @@ const ContentSecurityPolicy = [
   /* Media — canvas blob URLs for hardscape export */
   `media-src 'self' blob:`,
 
-  /* Frames — music embeds for the focus audio player */
-  `frame-src https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com`,
+  /* Frames — music embeds for the focus audio player + MSAL silent-token
+     iframe (Microsoft Entra ID login endpoint). */
+  `frame-src https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com https://login.microsoftonline.com`,
   `frame-ancestors 'none'`,
 
   /* Object — no Flash / plugins */

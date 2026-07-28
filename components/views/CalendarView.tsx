@@ -37,6 +37,9 @@ import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
 import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type TodoItem } from '@/lib/db'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
+import { useToast } from '@/lib/ToastContext'
+import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
+import { outlookComposeUrl, type ExternalCalendarEvent } from '@/lib/microsoftCalendar'
 import styles from './CalendarView.module.css'
 
 /* ── Personal event color presets (mirrors habits color picker) ── */
@@ -179,12 +182,19 @@ interface CalendarManagerProps {
   onCreateLocal:        (name: string, color: string) => void
   onDeleteLocal:        (id: number) => void
   onToggleLocal:        (cal: LocalCalendar) => void
+  /* Microsoft Calendar direct-sync controls */
+  msConfigured:         boolean
+  msAccount:            { username: string } | null
+  msConnecting:         boolean
+  onMsConnect:          () => void
+  onMsDisconnect:       () => void
 }
 
 function CalendarManager({
   feeds, localCalendars, isFetching,
   onAddFeed, onDeleteFeed, onRefreshFeed, onToggleFeed,
   onCreateLocal, onDeleteLocal, onToggleLocal,
+  msConfigured, msAccount, msConnecting, onMsConnect, onMsDisconnect,
 }: CalendarManagerProps) {
   const [mode,     setMode]     = useState<'local' | 'import'>('local')
 
@@ -223,6 +233,57 @@ function CalendarManager({
 
   return (
     <div className={styles.calMgrBody}>
+      {/* ── Microsoft Calendar direct sync ─────────────────────── */}
+      <div className={styles.msSection}>
+        <div className={styles.msSectionHead}>
+          <span className={styles.msSectionDot} aria-hidden="true" />
+          <span className={styles.msSectionLabel}>Microsoft Calendar</span>
+          {msConfigured && msAccount && (
+            <span className={styles.msConnectedBadge}>Connected</span>
+          )}
+        </div>
+
+        {msConfigured ? (
+          msAccount ? (
+            <div className={styles.msConnectedRow}>
+              <span className={styles.msAccountName} title={msAccount.username}>
+                {msAccount.username}
+              </span>
+              <button
+                type="button"
+                className={styles.msDisconnectBtn}
+                onClick={onMsDisconnect}
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className={styles.msHint}>
+                Connect your Microsoft account to push personal events straight into
+                your Outlook / Microsoft 365 calendar.
+              </p>
+              <button
+                type="button"
+                className={styles.addFeedBtn}
+                onClick={onMsConnect}
+                disabled={msConnecting}
+                aria-busy={msConnecting}
+              >
+                {msConnecting ? 'Connecting…' : 'Connect Microsoft'}
+              </button>
+            </>
+          )
+        ) : (
+          <p className={styles.msHint}>
+            Direct two-way sync is disabled — an admin can set{' '}
+            <code className={styles.msCode}>NEXT_PUBLIC_MS_CLIENT_ID</code> to enable it.
+            The instant <strong>Add to Outlook Calendar</strong> link on each event still
+            works for everyone with no sign-in required.
+          </p>
+        )}
+      </div>
+
       {/* ── Create / import form (always open inside the modal) ── */}
       <div className={styles.newCalForm}>
           <div className={styles.newCalModeRow} role="group" aria-label="Calendar type">
@@ -1261,6 +1322,42 @@ export default function CalendarView() {
   const { feeds, events, isFetching, addFeed, deleteFeed, refreshFeed } =
     useCalendarData()
 
+  const { toast } = useToast()
+  const ms = useMicrosoftCalendar()
+
+  /* ── Microsoft Calendar / Outlook handlers ───────────────── */
+  const handleMsConnect = useCallback(async () => {
+    try {
+      await ms.connect()
+      toast('Microsoft Calendar connected.', 'success')
+    } catch {
+      toast('Microsoft sign-in was cancelled or failed.', 'error')
+    }
+  }, [ms.connect, toast])
+
+  const handleMsDisconnect = useCallback(async () => {
+    try {
+      await ms.disconnect()
+      toast('Microsoft Calendar disconnected.', 'info')
+    } catch {
+      toast('Could not disconnect Microsoft Calendar.', 'error')
+    }
+  }, [ms.disconnect, toast])
+
+  const handleAddToOutlook = useCallback((evt: ExternalCalendarEvent) => {
+    if (typeof window === 'undefined') return
+    window.open(outlookComposeUrl(evt), '_blank', 'noopener,noreferrer')
+  }, [])
+
+  const handlePushMicrosoft = useCallback(async (evt: ExternalCalendarEvent) => {
+    try {
+      await ms.pushEvent(evt)
+      toast(`"${evt.title}" pushed to Microsoft Calendar.`, 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to push event to Microsoft.', 'error')
+    }
+  }, [ms.pushEvent, toast])
+
   const [view,          setView]          = useState<ViewMode>('week')
   const [weekStart,     setWeekStart]     = useState(() => getWeekStart(new Date()))
   const [showCalMgr,    setShowCalMgr]    = useState(false)
@@ -1655,10 +1752,27 @@ export default function CalendarView() {
 
       {/* ── Modals ────────────────────────────────────── */}
       {showNewEvent && (
-        <NewEventModal onClose={() => setShowNewEvent(false)} onSave={handleAddEvent} localCalendars={localCalendars} />
+        <NewEventModal
+          onClose={() => setShowNewEvent(false)}
+          onSave={handleAddEvent}
+          localCalendars={localCalendars}
+          msConfigured={ms.configured}
+          msConnected={ms.account !== null}
+          onAddToOutlook={handleAddToOutlook}
+          onPushMicrosoft={handlePushMicrosoft}
+        />
       )}
       {editEvent && (
-        <NewEventModal onClose={() => setEditEvent(null)} onSave={handleEditEvent} initial={editEvent} localCalendars={localCalendars} />
+        <NewEventModal
+          onClose={() => setEditEvent(null)}
+          onSave={handleEditEvent}
+          initial={editEvent}
+          localCalendars={localCalendars}
+          msConfigured={ms.configured}
+          msConnected={ms.account !== null}
+          onAddToOutlook={handleAddToOutlook}
+          onPushMicrosoft={handlePushMicrosoft}
+        />
       )}
 
       {/* ── Calendar manager modal (create local / import + manage) ── */}
@@ -1688,6 +1802,11 @@ export default function CalendarView() {
               onCreateLocal={createLocalCalendar}
               onDeleteLocal={deleteLocalCalendar}
               onToggleLocal={toggleLocalCalendar}
+              msConfigured={ms.configured}
+              msAccount={ms.account}
+              msConnecting={ms.connecting}
+              onMsConnect={handleMsConnect}
+              onMsDisconnect={handleMsDisconnect}
             />
           </div>
         </ModalPortal>
@@ -1701,11 +1820,16 @@ export default function CalendarView() {
 
 function NewEventModal({
   onClose, onSave, initial, localCalendars,
+  msConfigured, msConnected, onAddToOutlook, onPushMicrosoft,
 }: {
   onClose:  () => void
   onSave:   (e: Omit<PersonalEvent, 'id'>) => void
   initial?: PersonalEvent
   localCalendars: LocalCalendar[]
+  msConfigured:    boolean
+  msConnected:     boolean
+  onAddToOutlook:  (e: ExternalCalendarEvent) => void
+  onPushMicrosoft: (e: ExternalCalendarEvent) => void | Promise<void>
 }) {
   const todayStr = new Date().toISOString().slice(0, 10)
   const initDate = initial ? new Date(initial.startMs).toISOString().slice(0, 10) : todayStr
@@ -1738,14 +1862,30 @@ function NewEventModal({
 
   const canSave = title.trim().length > 0 && date.length > 0
 
-  function handleSave() {
-    if (!canSave) return
+  /* Shared start/end derivation — reused by save and external-calendar export. */
+  function computeTimes(): { startMs: number; endMs: number } {
     const startMs = allDay
       ? new Date(date + 'T00:00:00').getTime()
       : new Date(`${date}T${start}:00`).getTime()
     const endMs = allDay
       ? startMs + 86_400_000
       : Math.max(startMs + 900_000, new Date(`${date}T${end}:00`).getTime())
+    return { startMs, endMs }
+  }
+
+  function buildExternalEvent(): ExternalCalendarEvent {
+    const { startMs, endMs } = computeTimes()
+    return {
+      title:       title.trim(),
+      startMs, endMs,
+      allDay,
+      description: desc.trim() || undefined,
+    }
+  }
+
+  function handleSave() {
+    if (!canSave) return
+    const { startMs, endMs } = computeTimes()
     onSave({
       title:    title.trim(),
       startMs, endMs,
@@ -1856,6 +1996,47 @@ function NewEventModal({
           <div className={styles.evField}>
             <label className={styles.evLabel} htmlFor="ev-desc">Description (optional)</label>
             <input id="ev-desc" type="text" className={styles.evInput} placeholder="Add a note…" value={desc} onChange={e => setDesc(e.target.value)} />
+          </div>
+
+          {/* ── External calendar export ─────────────────────── */}
+          <div className={styles.evExternal}>
+            <span className={styles.evExternalLabel}>Add to Microsoft</span>
+            <div className={styles.evExternalRow}>
+              <button
+                type="button"
+                className={styles.evOutlookBtn}
+                onClick={() => onAddToOutlook(buildExternalEvent())}
+                disabled={!canSave}
+                title="Open Outlook web with this event pre-filled — no sign-in needed"
+              >
+                Add to Outlook Calendar ↗
+              </button>
+              {msConfigured && (
+                <button
+                  type="button"
+                  className={styles.evPushBtn}
+                  onClick={() => { void onPushMicrosoft(buildExternalEvent()) }}
+                  disabled={!canSave || !msConnected}
+                  title={
+                    msConnected
+                      ? 'Push this event directly to your Microsoft 365 calendar'
+                      : 'Connect Microsoft in "Manage Calendars" to enable direct sync'
+                  }
+                >
+                  Push to Microsoft
+                </button>
+              )}
+            </div>
+            {msConfigured && !msConnected && (
+              <span className={styles.evExternalHint}>
+                Connect your Microsoft account in “Manage Calendars” for one-click direct sync.
+              </span>
+            )}
+            {!msConfigured && (
+              <span className={styles.evExternalHint}>
+                The Outlook link works instantly for everyone — no setup required.
+              </span>
+            )}
           </div>
 
           <div className={styles.evActions}>
