@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { db }        from '@/lib/db'
-import { shouldAutoAskNotifications, markAskedFor } from '@/lib/permissionGate'
 
 /* ── Constants ──────────────────────────────────────────────── */
 
@@ -108,16 +107,10 @@ export function useNotifications(): void {
     if (typeof window === 'undefined' || !('Notification' in window)) return
 
     async function init() {
-      // Auto-prompt for notification permission ONCE, ever. After the
-      // first ask (granted, denied, or dismissed) we latch it in
-      // localStorage and never auto-prompt again — the user can re-enable
-      // from Settings. This stops the "asks every page load" behaviour
-      // that happened when the prompt was dismissed (permission stays
-      // 'default', so the old `=== 'default'` check re-fired each load).
-      if (shouldAutoAskNotifications()) {
-        markAskedFor('notifications')
-        await Notification.requestPermission()
-      }
+      // Notifications are strictly OPT-IN: we NEVER auto-prompt on load.
+      // The browser popup only appears when the user explicitly enables
+      // notifications once from Settings → Notifications. Here we only run
+      // reminders if permission was already granted.
       if (Notification.permission === 'granted') {
         await checkUpcoming()
       }
