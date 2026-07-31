@@ -31,6 +31,7 @@ export type ViewId =
   | 'trail-hunter'
   | 'botanist'
   | 'games'
+  | 'cube-timer'
   // Personalized Vault
   | 'custom-links'
   | 'stats'
@@ -115,6 +116,7 @@ export const NAV_CONFIG: NavCategory[] = [
       { id: 'botanist',      label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
       { id: 'games',         label: 'Arcade',             category: 'creator', color: '#a3e635' },
       { id: 'sports',        label: 'Sports Tracker',     category: 'creator', color: '#34d399' },
+      { id: 'cube-timer',    label: 'Cube Timer',         category: 'creator', color: '#10b981' },
       { id: 'world-events',  label: 'World Events',       category: 'creator', color: '#818cf8' },
       { id: 'personal-brand',label: 'Personal Brand Hub', category: 'creator', color: '#fbbf24' },
       { id: 'game-finder',   label: 'Game Hub',           category: 'creator', color: '#c084fc' },

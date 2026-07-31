@@ -280,6 +280,20 @@ export const LazyCalendarView = dynamic(
    ROOT-LEVEL OVERLAYS (conditionally rendered, never needed at first paint)
    ═══════════════════════════════════════════════════════════════ */
 
+/**
+ * CubeTimerView — Rubik's cube speedsolving timer (Creator's Choice).
+ * Keyboard/pointer-driven timer with a requestAnimationFrame display loop,
+ * random-move scramble generators, and penalty-aware session statistics.
+ * Client-only (Web APIs + IndexedDB) — lazy keeps it off the initial bundle.
+ */
+export const LazyCubeTimerView = dynamic(
+  () => import('@/components/views/CubeTimerView'),
+  {
+    ssr:     false,
+    loading: EmptyLoader,
+  },
+)
+
 /** AiCopilotSidebar — slide-over chat panel with streaming Anthropic responses.
  *  Only opens when the user clicks the ◎ button; never visible at first paint. */
 export const LazyAiCopilotSidebar = dynamic(
