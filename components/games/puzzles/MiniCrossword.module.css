@@ -1,0 +1,245 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-1) var(--sp-4);
+  color: var(--text-primary);
+}
+
+/* ── Top row: stopwatch + active clue ─────────────────────────── */
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.clueBanner {
+  flex: 1;
+  min-width: 220px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 8%, var(--surface-card));
+}
+.clueBannerText {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+.solvedText {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--cat-accent);
+  letter-spacing: 0.01em;
+}
+
+/* ── Play area ────────────────────────────────────────────────── */
+.playArea {
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* ── Board ────────────────────────────────────────────────────── */
+.board {
+  --gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: var(--gap);
+  width: min(340px, 78vw);
+  aspect-ratio: 1 / 1;
+  padding: var(--gap);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--cat-accent) 22%, var(--bg-main));
+  box-shadow:
+    0 18px 44px -22px rgba(0, 0, 0, 0.75),
+    inset 0 0 0 1px color-mix(in srgb, var(--cat-accent) 20%, transparent);
+  outline: none;
+  flex-shrink: 0;
+  user-select: none;
+}
+.board:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--cat-accent) 40%, transparent),
+    0 18px 44px -22px rgba(0, 0, 0, 0.75);
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background 160ms var(--ease-smooth),
+    box-shadow 160ms var(--ease-smooth),
+    transform 160ms var(--ease-smooth);
+}
+.cell:hover { background: color-mix(in srgb, var(--cat-accent) 10%, var(--surface-card)); }
+
+.block {
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--bg-main) 78%, #000);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat-accent) 8%, transparent);
+}
+
+.cellInWord {
+  background: color-mix(in srgb, var(--cat-accent) 18%, var(--surface-card));
+}
+.cellActive {
+  background: color-mix(in srgb, var(--cat-accent) 34%, var(--surface-card));
+  box-shadow:
+    inset 0 0 0 2px var(--cat-accent),
+    0 0 18px -4px color-mix(in srgb, var(--cat-accent) 60%, transparent);
+  transform: translateZ(0);
+}
+.cellBad {
+  background: color-mix(in srgb, #f87171 30%, var(--surface-card));
+  box-shadow: inset 0 0 0 2px #f87171;
+  animation: cellShake 380ms var(--ease-smooth);
+}
+
+.num {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.cellActive .num,
+.cellInWord .num { color: color-mix(in srgb, var(--text-primary) 80%, var(--cat-accent)); }
+
+.letter {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 5.2vw, 1.6rem);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Win reveal — staggered pop + green flash */
+.boardSolved { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat-accent) 40%, transparent); }
+.cellSolved {
+  background: color-mix(in srgb, var(--cat-accent) 26%, var(--surface-card));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  animation: cellWin 520ms var(--ease-expo) backwards;
+  animation-delay: calc(var(--wi) * 55ms);
+}
+.cellSolved .letter { color: var(--cat-accent); }
+
+/* ── Clue lists ───────────────────────────────────────────────── */
+.clues {
+  flex: 1;
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.clueCol { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.clueTitle {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-accent);
+  padding-bottom: 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cat-accent) 22%, transparent);
+}
+.clueList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.clueItem {
+  display: flex;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms var(--ease-smooth), color 140ms var(--ease-smooth);
+  border-left: 2px solid transparent;
+}
+.clueItem:hover { background: var(--bg-hover); color: var(--text-primary); }
+.clueItemActive {
+  background: color-mix(in srgb, var(--cat-accent) 16%, transparent);
+  color: var(--text-primary);
+  border-left-color: var(--cat-accent);
+}
+.clueNum {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cat-accent);
+  min-width: 15px;
+}
+.clueTextSpan { font-family: var(--font-body); font-size: 0.8rem; line-height: 1.3; }
+
+/* ── Controls ─────────────────────────────────────────────────── */
+.controls { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.ghostBtn {
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+}
+.ghostBtn:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--cat-accent) 45%, transparent);
+  background: var(--bg-hover);
+}
+.primaryBtn {
+  padding: 8px 20px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 18%, transparent);
+  color: var(--cat-accent);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+  animation: btnRise 300ms var(--ease-expo);
+}
+.primaryBtn:hover { background: color-mix(in srgb, var(--cat-accent) 28%, transparent); }
+
+/* ── Keyframes ────────────────────────────────────────────────── */
+@keyframes cellWin {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+@keyframes cellShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+@keyframes btnRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 560px) {
+  .playArea { flex-direction: column; align-items: center; }
+  .clues { width: min(340px, 78vw); }
+}

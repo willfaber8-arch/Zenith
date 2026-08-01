@@ -1,0 +1,25 @@
+.watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 8%, var(--surface-card));
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-dark);
+  transition: background 200ms ease;
+}
+.watchRunning .dot {
+  background: var(--cat-accent);
+  animation: swPulse 1.4s ease-in-out infinite;
+}
+.time { letter-spacing: 0.02em; }
+@keyframes swPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }

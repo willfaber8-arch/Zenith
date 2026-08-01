@@ -144,6 +144,14 @@ export const LazyGamesTabShell = dynamic(
  * so it can be independently lazy-loaded — meaning the six canvas game
  * implementations only download when the user clicks into the Arcade tab.
  */
+export const LazyPuzzleLounge = dynamic(
+  () => import('@/components/games/puzzles/PuzzleLounge'),
+  {
+    ssr:     false,
+    loading: makeSkeleton('default'),
+  },
+)
+
 export const LazyGamesArcade = dynamic(
   () => import('@/components/games/GamesArcade'),
   {

@@ -65,7 +65,7 @@ const SHOP_CATALOG = SHOP_CATALOG_STATIC
    ════════════════════════════════════════════════════════════════ */
 
 /** Right-pane navigation tabs. */
-export type GamesRightTab = 'arcade' | 'crucible' | 'upgrades' | 'skills' | 'shop'
+export type GamesRightTab = 'arcade' | 'puzzles' | 'crucible' | 'upgrades' | 'skills' | 'shop'
 
 /** Left-pane biosphere station selector. */
 export type BiosphereStation = 'terminal' | 'aquarium' | 'zoo'
@@ -92,6 +92,7 @@ export interface GamesTabShellSlots {
    * Receives the game carousel / selection grid.
    */
   arcadeContent?: React.ReactNode
+  puzzleContent?: React.ReactNode
 
   /**
    * Right pane · Crucible tab.
@@ -120,6 +121,7 @@ interface RightTabMeta {
 
 const RIGHT_TABS: RightTabMeta[] = [
   { id: 'arcade',   label: 'Arcade',   icon: '⬡' },
+  { id: 'puzzles',  label: 'Puzzles',  icon: '◆' },
   { id: 'crucible', label: 'Refinery', icon: '◈' },
   { id: 'upgrades', label: 'Storage',  icon: '↑' },
   { id: 'skills',   label: 'Skills',   icon: '⟡' },
@@ -1067,6 +1069,7 @@ function UpgradesPanel() {
 export default function GamesTabShell({
   biosphereContent,
   arcadeContent,
+  puzzleContent,
   crucibleContent,
   upgradesContent,
 }: GamesTabShellSlots = {}) {
@@ -1101,6 +1104,7 @@ export default function GamesTabShell({
   function resolveRightContent(): React.ReactNode {
     switch (rightTab) {
       case 'arcade':   return arcadeContent   ?? <ArcadePlaceholder />
+      case 'puzzles':  return puzzleContent  ?? <ArcadePlaceholder />
       case 'crucible': return crucibleContent ?? <CruciblePanel />
       case 'upgrades': return upgradesContent ?? <UpgradesPanel />
       case 'skills':   return <SkillsPanel />

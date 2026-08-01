@@ -1,0 +1,101 @@
+.lounge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── Game selector ─────────────────────────────────────────────── */
+.gameTabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.gameTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sp-3) var(--sp-2);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 60%, transparent);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 180ms var(--ease-smooth);
+}
+.gameTab:hover {
+  border-color: color-mix(in srgb, var(--cat-accent) 40%, transparent);
+  color: var(--text-primary);
+}
+.gameTabActive {
+  border-color: color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 12%, var(--surface-card));
+  color: var(--cat-accent);
+}
+.gameIcon { font-size: 1.2rem; line-height: 1; }
+.gameLabel { font-family: var(--font-body); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; }
+
+/* ── Controls ──────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.diffGroup {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.diffBtn {
+  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+}
+.diffBtn:hover { color: var(--text-primary); }
+.diffBtnActive {
+  background: color-mix(in srgb, var(--cat-accent) 16%, transparent);
+  color: var(--cat-accent);
+}
+.rewardHint {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dark);
+  letter-spacing: 0.03em;
+}
+.rewardHint strong { color: var(--cat-accent); }
+.newBtn {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 35%, transparent);
+  background: transparent;
+  color: var(--cat-accent);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+}
+.newBtn:hover { background: color-mix(in srgb, var(--cat-accent) 12%, transparent); }
+
+/* ── Game stage ────────────────────────────────────────────────── */
+.gameStage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: puzzleFade 240ms var(--ease-smooth);
+}
+@keyframes puzzleFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
