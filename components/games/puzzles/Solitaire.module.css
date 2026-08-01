@@ -1,9 +1,9 @@
 /* Klondike Solitaire — dark felt board, Creator's-Choice green accents. */
 
 .solitaire {
-  --card-w: clamp(42px, 8.4vw, 74px);
+  --card-w: clamp(46px, 8.6vw, 78px);
   --card-h: calc(var(--card-w) * 1.42);
-  --gap: clamp(5px, 1.1vw, 12px);
+  --gap: clamp(3px, 0.7vw, 8px);
   --felt-1: #0a1712;
   --felt-2: #0d2019;
   --card-face: #f4f6f2;
@@ -95,13 +95,34 @@
 }
 
 /* ── Rows / grid ───────────────────────────────────────────────────── */
-.topRow,
+/* Top row is decoupled from the tableau grid: stock+waste cluster left,
+   the 4 foundations cluster right, separated by a divider from the columns. */
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-bottom: 1px solid color-mix(in srgb, var(--cat-accent) 16%, transparent);
+}
+.topLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+.foundations {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
 .tableau {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: var(--gap);
+  align-items: start;
 }
-.tableau { align-items: start; }
 
 .slot {
   position: relative;
@@ -118,7 +139,6 @@
 .stockSlot { border-style: solid; }
 .slotDim { opacity: 0.75; }
 .wasteSlot { border-style: solid; width: calc(var(--card-w) * 1.55); overflow: visible; }
-.topSpacer { pointer-events: none; }
 
 .slotGhost {
   position: absolute; inset: 0;
@@ -158,6 +178,7 @@
   top: 0; left: 0;
   width: var(--card-w);
   height: var(--card-h);
+  touch-action: none;
 }
 .foundationCard { cursor: pointer; }
 
@@ -178,6 +199,7 @@
   width: var(--card-w);
   height: var(--card-h);
   cursor: pointer;
+  touch-action: none;
   transition: top 220ms var(--ease-expo), transform 130ms var(--ease-smooth),
               box-shadow 130ms var(--ease-smooth);
 }
@@ -229,8 +251,8 @@
   right: clamp(3px, 0.8vw, 6px);
   transform: rotate(180deg);
 }
-.cornerRank { font-size: clamp(0.62rem, 1.9vw, 0.95rem); font-weight: 800; }
-.cornerSuit { font-size: clamp(0.5rem, 1.5vw, 0.75rem); }
+.cornerRank { font-size: clamp(0.74rem, 2.1vw, 1.08rem); font-weight: 800; letter-spacing: -0.01em; }
+.cornerSuit { font-size: clamp(0.6rem, 1.6vw, 0.84rem); font-weight: 700; margin-top: 1px; }
 .centerPip {
   position: absolute;
   inset: 0;
@@ -324,7 +346,37 @@
   100% { transform: translateY(360px) rotate(calc(var(--rot) + 360deg)); opacity: 0; }
 }
 
+/* ── Drag & drop ───────────────────────────────────────────────────── */
+/* Source cards being carried: dimmed in place while the float layer moves. */
+.dragging .card {
+  opacity: 0.32;
+  filter: saturate(0.6);
+}
+
+/* Valid drop target highlight while a drag is in flight. */
+.dropOk {
+  outline: 2px dashed color-mix(in srgb, var(--cat-accent) 70%, transparent);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--cat-accent) 12%, transparent) !important;
+  border-radius: var(--r-md);
+}
+
+/* Floating drag layer — follows the pointer via transform only. */
+.dragLayer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  pointer-events: none;
+  will-change: transform;
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6));
+}
+.dragCard {
+  position: absolute;
+  left: 0;
+}
+
 @media (max-width: 520px) {
-  .solitaire { --gap: 4px; padding: var(--sp-2); }
+  .solitaire { --gap: 3px; padding: var(--sp-2); }
   .wasteSlot { width: calc(var(--card-w) * 1.35); }
 }

@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { PuzzleGameProps, Difficulty } from './types'
 import { usePuzzleTimer } from './usePuzzleTimer'
 import PuzzleStopwatch from './PuzzleStopwatch'
@@ -38,9 +39,15 @@ const RANK_LABEL: string[] = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '
 
 const suitIndex = (s: Suit) => SUITS.indexOf(s)
 
-/* Fanning geometry (fractions of card height). */
-const EXPOSE_UP   = 0.30
+/* Fanning geometry (fractions of card height).
+   Face-up cards fan wide enough that every buried card's top-left index
+   (rank + suit) stays legible; face-down cards stay tightly stacked. */
+const EXPOSE_UP   = 0.38
 const EXPOSE_DOWN = 0.15
+
+/* Pointer must travel this many px before a press becomes a drag (so a
+   plain click/tap still registers as click-to-move). */
+const DRAG_THRESHOLD = 6
 
 /* ─── Locations ────────────────────────────────────────────────────── */
 
@@ -50,6 +57,36 @@ type Location =
   | { type: 'foundation'; idx: number }
 
 interface Selection { loc: Location; index: number }
+
+/** Encode a drop-target pile as a `data-drop` attribute string. */
+function dropAttr(loc: Location): string {
+  if (loc.type === 'waste')      return 'waste'
+  if (loc.type === 'tableau')    return `tableau:${loc.col}`
+  return `foundation:${loc.idx}`
+}
+
+/** Parse a `data-drop` attribute string back into a Location. */
+function parseDrop(s: string): Location | null {
+  if (s === 'waste') return { type: 'waste' }
+  const [kind, n] = s.split(':')
+  const idx = Number(n)
+  if (kind === 'tableau'    && Number.isFinite(idx)) return { type: 'tableau', col: idx }
+  if (kind === 'foundation' && Number.isFinite(idx)) return { type: 'foundation', idx }
+  return null
+}
+
+/* Transient state for the floating drag layer. */
+interface DragState {
+  from:      Location
+  fromIndex: number
+  cards:     Card[]
+  cardW:     number   // px
+  cardH:     number   // px
+  offsetX:   number   // pointer→card-top-left offset at pickup
+  offsetY:   number
+  x:         number   // pointer position when the drag began (initial render)
+  y:         number
+}
 
 /* ─── Game state ───────────────────────────────────────────────────── */
 
@@ -249,9 +286,16 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
   const [autoRunning, setAuto]    = useState(false)
   const [showWin, setShowWin]     = useState(false)
 
-  const wonRef     = useRef(false)
-  const startedRef = useRef(false)
-  const autoGuard  = useRef(0)
+  const [drag, setDrag] = useState<DragState | null>(null)
+
+  const wonRef        = useRef(false)
+  const startedRef    = useRef(false)
+  const autoGuard     = useRef(0)
+  const gameRef       = useRef<GameState | null>(game)
+  const dragLayerRef  = useRef<HTMLDivElement | null>(null)
+
+  // Keep a live ref so window pointer handlers read the latest board.
+  useEffect(() => { gameRef.current = game }, [game])
 
   // Deal on mount (client only → no SSR / hydration mismatch from Math.random).
   useEffect(() => { setGame(deal()) }, [])
@@ -322,6 +366,95 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
     const to = locToDest(loc)
     if (!to || !tryMove(game, sel.loc, sel.index, to)) setSel(null)
   }, [game, autoRunning, showWin, sel, tryMove])
+
+  /* Pointer drag: pick up a movable card (and the valid run beneath it),
+     float it under the cursor, then drop-test on release. Click-to-move still
+     works because a press that never crosses DRAG_THRESHOLD stays a click. */
+  const handleCardPointerDown = useCallback(
+    (loc: Location, index: number, e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!game || autoRunning || showWin) return
+      if (e.button !== 0) return                       // primary button / touch only
+      if (!isSelectable(game, loc, index)) return      // only movable origins drag
+
+      const pile = pileOf(game, loc)
+      const cards = pile.slice(index).map(c => ({ ...c }))
+      const rect = e.currentTarget.getBoundingClientRect()
+      const startX = e.clientX
+      const startY = e.clientY
+      const offsetX = startX - rect.left
+      const offsetY = startY - rect.top
+      let started = false
+
+      const applyTransform = (px: number, py: number, lift: boolean) => {
+        const layer = dragLayerRef.current
+        if (!layer) return
+        layer.style.transform =
+          `translate(${px - offsetX}px, ${py - offsetY}px)` +
+          (lift ? ' rotate(3deg) scale(1.045)' : ' rotate(0deg) scale(1)')
+      }
+
+      const move = (ev: PointerEvent) => {
+        if (!started) {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return
+          started = true
+          setSel(null)
+          setDrag({
+            from: loc, fromIndex: index, cards,
+            cardW: rect.width, cardH: rect.height,
+            offsetX, offsetY, x: ev.clientX, y: ev.clientY,
+          })
+        }
+        applyTransform(ev.clientX, ev.clientY, true)
+      }
+
+      const finishSnap = () => setDrag(null)
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('pointercancel', up)
+      }
+
+      const up = (ev: PointerEvent) => {
+        cleanup()
+        if (!started) return   // pure click → leave it to the onClick handler
+
+        // Swallow the click this drag would otherwise synthesise, so the drop
+        // doesn't also fire click-to-move on whatever is under the pointer.
+        const swallow = (ce: Event) => {
+          ce.stopImmediatePropagation()
+          ce.preventDefault()
+          window.removeEventListener('click', swallow, true)
+        }
+        window.addEventListener('click', swallow, true)
+        window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+
+        // Hit-test the pile under the pointer (drag layer is pointer-events:none).
+        const under = document.elementFromPoint(ev.clientX, ev.clientY)
+        const dropEl = under ? (under.closest('[data-drop]') as HTMLElement | null) : null
+        const to = dropEl?.dataset.drop ? parseDrop(dropEl.dataset.drop) : null
+
+        const g = gameRef.current
+        if (to && g) {
+          const ns = performMove(g, loc, index, to)
+          if (ns) { ensureStarted(); commit(ns); setDrag(null); return }
+        }
+
+        // Invalid / dropped on nothing → animate a smooth snap back to origin.
+        const layer = dragLayerRef.current
+        if (!layer) { setDrag(null); return }
+        layer.style.transition = 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)'
+        applyTransform(rect.left + offsetX, rect.top + offsetY, false)
+        layer.addEventListener('transitionend', finishSnap, { once: true })
+        window.setTimeout(finishSnap, 320)
+      }
+
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+    },
+    [game, autoRunning, showWin, isSelectable, ensureStarted, commit],
+  )
 
   /* Double-click a top card → send straight to its foundation. */
   const onCardAuto = useCallback((loc: Location, index: number) => {
@@ -444,6 +577,15 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
     !!sel && sel.loc.type === loc.type &&
     JSON.stringify(sel.loc) === JSON.stringify(loc) && index >= sel.index
 
+  /* Cards currently carried by the drag layer (dimmed in place). */
+  const isInDraggedRun = (loc: Location, index: number) =>
+    !!drag && drag.from.type === loc.type &&
+    JSON.stringify(drag.from) === JSON.stringify(loc) && index >= drag.fromIndex
+
+  /* While dragging, is `loc` a legal destination for the carried run? */
+  const isDropTarget = (loc: Location) =>
+    !!drag && !!performMove(game, drag.from, drag.fromIndex, loc)
+
   /* Waste: show up to the last 3 cards fanned. */
   const wasteLen = game.waste.length
   const wasteStart = Math.max(0, wasteLen - 3)
@@ -487,74 +629,80 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
         </div>
       </div>
 
-      {/* Top row: stock + waste | spacer | 4 foundations */}
+      {/* Top row: stock + waste clustered LEFT · 4 foundations clustered RIGHT */}
       <div className={styles.topRow}>
-        <button
-          type="button"
-          className={`${styles.slot} ${styles.stockSlot} ${stockCanAct ? '' : styles.slotDim}`}
-          onClick={onStockClick}
-          aria-label="Stock pile"
-        >
-          {game.stock.length > 0 ? (
-            <CardView card={{ id: 'back', suit: 'S', rank: 0, faceUp: false }} />
-          ) : (
-            <span className={styles.recycleGlyph}>
-              {game.waste.length > 0 && (cfg.redeals == null || game.redealsUsed < cfg.redeals) ? '↻' : '✕'}
-            </span>
-          )}
-          {game.stock.length > 0 && <span className={styles.stockCount}>{game.stock.length}</span>}
-        </button>
+        <div className={styles.topLeft}>
+          <button
+            type="button"
+            className={`${styles.slot} ${styles.stockSlot} ${stockCanAct ? '' : styles.slotDim}`}
+            onClick={onStockClick}
+            aria-label="Stock pile"
+          >
+            {game.stock.length > 0 ? (
+              <CardView card={{ id: 'back', suit: 'S', rank: 0, faceUp: false }} />
+            ) : (
+              <span className={styles.recycleGlyph}>
+                {game.waste.length > 0 && (cfg.redeals == null || game.redealsUsed < cfg.redeals) ? '↻' : '✕'}
+              </span>
+            )}
+            {game.stock.length > 0 && <span className={styles.stockCount}>{game.stock.length}</span>}
+          </button>
 
-        <div
-          className={`${styles.slot} ${styles.wasteSlot}`}
-          onClick={() => onPileClick({ type: 'waste' })}
-          aria-label="Waste pile"
-        >
-          {wasteVisible.length === 0 && <span className={styles.slotGhost} />}
-          {wasteVisible.map((card, i) => {
-            const globalIndex = wasteStart + i
-            const isTop = globalIndex === wasteLen - 1
+          <div
+            className={`${styles.slot} ${styles.wasteSlot}`}
+            onClick={() => onPileClick({ type: 'waste' })}
+            aria-label="Waste pile"
+          >
+            {wasteVisible.length === 0 && <span className={styles.slotGhost} />}
+            {wasteVisible.map((card, i) => {
+              const globalIndex = wasteStart + i
+              const isTop = globalIndex === wasteLen - 1
+              const wasteLoc: Location = { type: 'waste' }
+              return (
+                <div
+                  key={card.id}
+                  className={`${styles.wasteCard} ${isTop && selEq(wasteLoc, globalIndex) ? styles.selected : ''} ${isInDraggedRun(wasteLoc, globalIndex) ? styles.dragging : ''}`}
+                  style={{ left: `calc(var(--card-w) * ${i * 0.26})`, zIndex: i, pointerEvents: isTop ? 'auto' : 'none' }}
+                  onPointerDown={isTop ? (e) => handleCardPointerDown(wasteLoc, globalIndex, e) : undefined}
+                  onClick={isTop ? (e) => { e.stopPropagation(); onCardClick(wasteLoc, globalIndex) } : undefined}
+                  onDoubleClick={isTop ? (e) => { e.stopPropagation(); onCardAuto(wasteLoc, globalIndex) } : undefined}
+                >
+                  <CardView card={card} />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className={styles.foundations}>
+          {game.foundations.map((f, idx) => {
+            const topIndex = f.length - 1
+            const loc: Location = { type: 'foundation', idx }
             return (
               <div
-                key={card.id}
-                className={`${styles.wasteCard} ${isTop && selEq({ type: 'waste' }, globalIndex) ? styles.selected : ''}`}
-                style={{ left: `calc(var(--card-w) * ${i * 0.26})`, zIndex: i, pointerEvents: isTop ? 'auto' : 'none' }}
-                onClick={isTop ? (e) => { e.stopPropagation(); onCardClick({ type: 'waste' }, globalIndex) } : undefined}
-                onDoubleClick={isTop ? (e) => { e.stopPropagation(); onCardAuto({ type: 'waste' }, globalIndex) } : undefined}
+                key={idx}
+                data-drop={dropAttr(loc)}
+                className={`${styles.slot} ${styles.foundationSlot} ${isDropTarget(loc) ? styles.dropOk : ''}`}
+                onClick={() => onPileClick(loc)}
+                aria-label={`${SUIT_SYMBOL[SUITS[idx]]} foundation`}
               >
-                <CardView card={card} />
+                {f.length === 0 ? (
+                  <span className={`${styles.foundationGhost} ${styles[SUIT_COLOR[SUITS[idx]]]}`}>
+                    {SUIT_SYMBOL[SUITS[idx]]}
+                  </span>
+                ) : (
+                  <div
+                    className={`${styles.foundationCard} ${selEq(loc, topIndex) ? styles.selected : ''} ${isInDraggedRun(loc, topIndex) ? styles.dragging : ''}`}
+                    onPointerDown={(e) => handleCardPointerDown(loc, topIndex, e)}
+                    onClick={(e) => { e.stopPropagation(); onCardClick(loc, topIndex) }}
+                  >
+                    <CardView card={f[topIndex]} />
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
-
-        <div className={styles.topSpacer} />
-
-        {game.foundations.map((f, idx) => {
-          const topIndex = f.length - 1
-          const loc: Location = { type: 'foundation', idx }
-          return (
-            <div
-              key={idx}
-              className={`${styles.slot} ${styles.foundationSlot}`}
-              onClick={() => onPileClick(loc)}
-              aria-label={`${SUIT_SYMBOL[SUITS[idx]]} foundation`}
-            >
-              {f.length === 0 ? (
-                <span className={`${styles.foundationGhost} ${styles[SUIT_COLOR[SUITS[idx]]]}`}>
-                  {SUIT_SYMBOL[SUITS[idx]]}
-                </span>
-              ) : (
-                <div
-                  className={`${styles.foundationCard} ${selEq(loc, topIndex) ? styles.selected : ''}`}
-                  onClick={(e) => { e.stopPropagation(); onCardClick(loc, topIndex) }}
-                >
-                  <CardView card={f[topIndex]} />
-                </div>
-              )}
-            </div>
-          )
-        })}
       </div>
 
       {/* Tableau */}
@@ -569,18 +717,21 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
           return (
             <div
               key={c}
-              className={styles.column}
+              data-drop={dropAttr(loc)}
+              className={`${styles.column} ${isDropTarget(loc) ? styles.dropOk : ''}`}
               style={{ minHeight: `calc(var(--card-h) * ${heightUnits.toFixed(3)})` }}
               onClick={() => onPileClick(loc)}
             >
               {col.length === 0 && <span className={styles.slotGhost} />}
               {col.map((card, i) => {
                 const selectedRun = card.faceUp && isInSelectedRun(loc, i)
+                const draggedRun = card.faceUp && isInDraggedRun(loc, i)
                 return (
                   <div
                     key={card.id}
-                    className={`${styles.stackCard} ${selectedRun ? styles.selected : ''}`}
+                    className={`${styles.stackCard} ${selectedRun ? styles.selected : ''} ${draggedRun ? styles.dragging : ''}`}
                     style={{ top: `calc(var(--card-h) * ${tops[i].toFixed(3)})`, zIndex: i + 1 }}
+                    onPointerDown={(e) => handleCardPointerDown(loc, i, e)}
                     onClick={(e) => { e.stopPropagation(); onCardClick(loc, i) }}
                     onDoubleClick={(e) => { e.stopPropagation(); onCardAuto(loc, i) }}
                   >
@@ -592,6 +743,34 @@ export default function Solitaire({ difficulty, onWin }: PuzzleGameProps) {
           )
         })}
       </div>
+
+      {/* Floating drag layer — follows the pointer (transform only). */}
+      {drag && (
+        <div
+          ref={dragLayerRef}
+          className={styles.dragLayer}
+          aria-hidden="true"
+          style={{
+            width: drag.cardW,
+            transform: `translate(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px) rotate(3deg) scale(1.045)`,
+          }}
+        >
+          {drag.cards.map((card, i) => (
+            <div
+              key={card.id}
+              className={styles.dragCard}
+              style={{
+                top: `${i * EXPOSE_UP * drag.cardH}px`,
+                width: drag.cardW,
+                height: drag.cardH,
+                zIndex: i,
+              }}
+            >
+              <CardView card={card} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Win celebration */}
       {showWin && (
