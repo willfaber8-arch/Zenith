@@ -55,6 +55,7 @@ import {
   LazyPersonalBrandView        as PersonalBrandView,
   LazyWorldEventsView          as WorldEventsView,
   LazyWorkoutsView             as WorkoutsView,
+  LazyCubeTimerView            as CubeTimerView,
 } from '@/lib/dynamicViews'
 
 /* GameFinderView is small (wraps a single component) — keep synchronous */
@@ -70,6 +71,7 @@ function resolveView(id: ViewId): JSX.Element {
   if (id === 'study-shield')    return <StudyShieldView />
   if (id === 'trail-hunter')    return <TrailHunterView />
   if (id === 'botanist')        return <BotanistView />
+  if (id === 'cube-timer')      return <CubeTimerView />
   if (id === 'wellness')        return <WellnessView />
   if (id === 'habits')          return <HabitsView />
   if (id === 'custom-links')    return <CustomLinksView />

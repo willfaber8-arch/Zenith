@@ -160,6 +160,21 @@ export const COPILOT_TOOLS: ToolDef[] = [
     },
   },
   {
+    name:        'update_book',
+    description: 'Enrich an EXISTING book already in the user\'s Library with researched details. Match the book by its title (case-insensitive). Only fills in fields that are currently missing — never overwrites the user\'s own rating or reading status. Use this to autofill genre, page count, publication year, series, a short synopsis, and the typical community rating for books the user owns.',
+    required:    ['title'],
+    params: {
+      title:           { type: 'string', description: 'Exact title of the existing book to update (used to find it)' },
+      author:          { type: 'string', description: 'Optional author name — used to disambiguate when several books share a title' },
+      genre:           { type: 'string', description: 'Primary genre, e.g. "Fantasy", "History", "Memoir"' },
+      pages:           { type: 'number', description: 'Total page count' },
+      publicationYear: { type: 'number', description: 'Year first published, e.g. 2019' },
+      series:          { type: 'string', description: 'Series name + number, e.g. "Mistborn #1"' },
+      review:          { type: 'string', description: 'A short 1–2 sentence synopsis / description of the book' },
+      rating:          { type: 'number', description: 'Typical community / average rating, 0–5 (stored as the global rating)' },
+    },
+  },
+  {
     name:        'add_recipe',
     description: 'Save a recipe to the Meal Planning recipe box.',
     required:    ['title'],
@@ -294,7 +309,7 @@ export function toolsSystemNote(todayIso: string): string {
   return `
 
 ACTION CAPABILITIES:
-You can manage the user's entire Zenith workspace via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, add_recipe, set_dashboard_widget (show/hide home widgets), set_profile (name / university / major), save_dashboard_preset (snapshot current widget config under a name), load_dashboard_preset (apply a saved preset by name), add_vocab_word (add a flashcard to Polyglot Vault), and add_todo (add a task to the Calendar to-do list). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
+You can manage the user's entire Zenith workspace via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, update_book (enrich an existing Library book with researched genre/pages/year/series/synopsis/rating), add_recipe, set_dashboard_widget (show/hide home widgets), set_profile (name / university / major), save_dashboard_preset (snapshot current widget config under a name), load_dashboard_preset (apply a saved preset by name), add_vocab_word (add a flashcard to Polyglot Vault), and add_todo (add a task to the Calendar to-do list). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
 
 BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response when the user asks for several things at once (e.g. "set up my dashboard for finals week" → several set_dashboard_widget calls followed by save_dashboard_preset to lock it in). The user sees one confirmation card listing every proposed action and approves them all at once, so batching is preferred over many back-and-forth turns.
 
@@ -331,6 +346,16 @@ export function describeAction(a: CopilotAction): string {
       return `Log mood · stress ${g('stressLevel')}/10 · energy ${g('energyLevel')}/10${g('mood') ? ` (${g('mood')})` : ''}`
     case 'add_book':
       return `Add book "${g('title')}"${g('author') ? ` by ${g('author')}` : ''}`
+    case 'update_book': {
+      const fields: string[] = []
+      if (g('genre'))           fields.push('genre')
+      if (g('pages'))           fields.push('pages')
+      if (g('publicationYear')) fields.push('year')
+      if (g('series'))          fields.push('series')
+      if (g('review'))          fields.push('synopsis')
+      if (g('rating'))          fields.push('rating')
+      return `Fill in details for "${g('title')}"${fields.length ? ` · ${fields.join(', ')}` : ''}`
+    }
     case 'add_recipe':
       return `Save recipe "${g('title')}"`
     case 'set_dashboard_widget':

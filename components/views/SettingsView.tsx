@@ -170,6 +170,53 @@ function ThemeForgePanel({
   )
 }
 
+/* ── Notifications — one-time opt-in for browser reminders ─────── */
+function NotificationsPanel() {
+  const { toast } = useToast()
+  const [perm, setPerm] = useState<'default' | 'granted' | 'denied' | 'unsupported'>('default')
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) { setPerm('unsupported'); return }
+    setPerm(Notification.permission as 'default' | 'granted' | 'denied')
+  }, [])
+
+  const enable = async () => {
+    if (perm === 'unsupported') return
+    try {
+      const res = await Notification.requestPermission()
+      setPerm(res as 'default' | 'granted' | 'denied')
+      if (res === 'granted') toast('Notifications enabled — you won’t be asked again.', 'success')
+      else if (res === 'denied') toast('Notifications blocked. You can re-enable them in your browser’s site settings.', 'info')
+    } catch { /* noop */ }
+  }
+
+  return (
+    <>
+      <p className={styles.sectionSubtitle}>
+        Zenith never prompts you on its own. Turn this on once to get browser
+        reminders for upcoming deadlines and followed games — you won&apos;t be
+        asked again.
+      </p>
+      {perm === 'granted' ? (
+        <p className={styles.aboutValue} style={{ color: 'var(--accent-green)' }}>
+          ✓ Notifications enabled. To turn them off, use your browser&apos;s site settings.
+        </p>
+      ) : perm === 'denied' ? (
+        <p className={styles.sectionSubtitle}>
+          Notifications are <strong>blocked</strong> for this site. Re-enable them from your
+          browser&apos;s site permissions (the padlock/site-info icon in the address bar).
+        </p>
+      ) : perm === 'unsupported' ? (
+        <p className={styles.sectionSubtitle}>This browser doesn&apos;t support notifications.</p>
+      ) : (
+        <button className={styles.dataBtn} onClick={() => void enable()}>
+          🔔 Enable browser notifications
+        </button>
+      )}
+    </>
+  )
+}
+
 /* ── Anchor section definitions ────────────────────────────────── */
 
 const SETTINGS_SECTIONS = [
@@ -178,6 +225,7 @@ const SETTINGS_SECTIONS = [
   { id: 's-ai',            label: 'AI'            },
   { id: 's-help',          label: 'Help'          },
   { id: 's-account',       label: 'Account'       },
+  { id: 's-notifications', label: 'Notifications' },
   { id: 's-audio',         label: 'Audio'         },
   { id: 's-privacy',       label: 'Data'          },
   { id: 's-analytics',     label: 'Analytics'     },
@@ -1006,6 +1054,11 @@ export default function SettingsView() {
               </span>
             </div>
           </div>
+        </Section>
+
+        {/* ── Notifications ───────────────────────────────────── */}
+        <Section id="s-notifications" title="Notifications">
+          <NotificationsPanel />
         </Section>
 
         {/* ── Focus Audio ─────────────────────────────────────── */}

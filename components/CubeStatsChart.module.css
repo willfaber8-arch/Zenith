@@ -1,0 +1,109 @@
+/* CubeStatsChart — Creator's Choice (green accent) solve-time trend */
+
+.card {
+  --v-accent: var(--cat-accent, var(--accent-green));
+  background:     var(--surface-card);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-lg);
+  padding:        var(--sp-5) var(--sp-6);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+  box-shadow:     var(--shadow-card);
+  position:       relative;
+  overflow:       hidden;
+}
+
+.card::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: var(--sp-6); right: var(--sp-6);
+  height:     1px;
+  background: linear-gradient(
+    90deg, transparent, var(--v-accent) 40%,
+    var(--v-accent) 60%, transparent
+  );
+  opacity: 0.5;
+}
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  flex-wrap:       wrap;
+  gap:             var(--sp-2);
+}
+
+.eyebrow {
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  font-weight:    700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  line-height:    1;
+}
+
+.legend {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-3);
+}
+
+.legendItem {
+  display:     inline-flex;
+  align-items: center;
+  gap:         6px;
+  font-family: var(--font-mono);
+  font-size:   0.68rem;
+  color:       var(--text-muted);
+}
+.legendItem i {
+  width:         14px;
+  height:        3px;
+  border-radius: 2px;
+  display:       inline-block;
+}
+
+.svg {
+  display:  block;
+  width:    100%;
+  height:   auto;
+  overflow: visible;
+}
+
+.skeleton {
+  width:         100%;
+  height:        220px;
+  border-radius: var(--r-md);
+  background:    rgba(255, 255, 255, 0.03);
+  animation:     pulseGlow 2s ease-in-out infinite;
+}
+
+.emptyState {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-2);
+  height:          180px;
+  text-align:      center;
+}
+.emptyIcon {
+  font-size:   1.3rem;
+  opacity:     0.3;
+  line-height: 1;
+  color:       var(--v-accent);
+}
+.emptyText {
+  font-size:   0.82rem;
+  font-weight: 500;
+  color:       var(--text-muted);
+  line-height: 1.5;
+}
+.emptySubtext {
+  font-size:   0.72rem;
+  color:       var(--text-dark);
+  line-height: 1.5;
+  max-width:   300px;
+}

@@ -419,6 +419,20 @@ export interface TodoItem {
   createdAt:   number    //   Unix ms
 }
 
+/**
+ * CubeSolve — one recorded Rubik's cube speedsolve.
+ * Powers: Cube Timer (Creator's Choice). Grouped into named sessions.
+ */
+export interface CubeSolve {
+  id:        string   // * PK — explicit string UUID (no auto-increment)
+  sessionId: string   // * indexed — FK-style link to a named timer session
+  puzzle:    string   // '222' | '333' | '444' | 'pyraminx' (PuzzleId)
+  timeMs:    number   //   raw solve time in milliseconds (no penalty applied)
+  penalty:   'OK' | 'PLUS2' | 'DNF'  //   penalty state; drives effective time
+  scramble:  string   //   the scramble sequence this solve was on
+  createdAt: number   // * indexed — Unix ms; chronological ordering
+}
+
 /* ════════════════════════════════════════════════════════════════
    2.  DATABASE CLASS
    ────────────────────────────────────────────────────────────────
@@ -485,6 +499,7 @@ class ZenithDatabase extends Dexie {
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
+  cube_solves!:                 EntityTable<CubeSolve,                'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1041,6 +1056,20 @@ class ZenithDatabase extends Dexie {
      */
     this.version(33).stores({
       completed_trails: '++id, trailId, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 34 — Cube Timer (speedsolving)
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   cube_solves — one row per recorded Rubik's cube solve.
+     *     id        explicit string UUID PK (no auto-increment)
+     *     sessionId indexed — per-session filter (named timer sessions)
+     *     createdAt indexed — chronological ordering within a session
+     *   puzzle / timeMs / penalty / scramble are non-indexed record fields.
+     */
+    this.version(34).stores({
+      cube_solves: 'id, sessionId, createdAt',
     })
   }
 }

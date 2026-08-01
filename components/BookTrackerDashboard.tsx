@@ -25,6 +25,9 @@ import ReadingTimer from '@/components/ReadingTimer'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
 import { syncHabitSource } from '@/lib/habitSync'
 import { useToast } from '@/lib/ToastContext'
+import { useAiConfig } from '@/lib/hooks/useAiConfig'
+import { ACTION_MARKER, type CopilotAction } from '@/lib/copilotTools'
+import { executeCopilotAction } from '@/lib/copilotActions'
 import styles from './BookTrackerDashboard.module.css'
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -496,10 +499,12 @@ function BookCard({
 /* ── Main Dashboard ──────────────────────────────────────── */
 export default function BookTrackerDashboard() {
   const { toast } = useToast()
+  const { authHeaders, config } = useAiConfig()
 
   const [activeTab,    setActiveTab]    = useState<ViewTab>('LIBRARY')
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
+  const [enrichPhase,  setEnrichPhase]  = useState<'idle' | 'running'>('idle')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId,    setEditingId]    = useState<string | null>(null)  // book being edited (add modal reused)
   const [addTitle,     setAddTitle]     = useState('')
@@ -574,7 +579,11 @@ export default function BookTrackerDashboard() {
       const result: GoodreadsImportResult = await importGoodreadsCSV(text)
       if (result.imported > 0) {
         setImportPhase('done')
-        toast(`Imported ${result.imported} books from Goodreads.`, 'success')
+        const dupNote = result.skipped > 0 ? ` (${result.skipped} already in your library)` : ''
+        toast(`Imported ${result.imported} book${result.imported !== 1 ? 's' : ''} from Goodreads${dupNote}.`, 'success')
+      } else if (result.skipped > 0) {
+        setImportPhase('idle')
+        toast(`All ${result.skipped} book${result.skipped !== 1 ? 's are' : ' is'} already in your library — nothing new to import.`, 'info')
       } else {
         setImportPhase('idle')
         toast(result.errors[0] ?? 'No books found in CSV.', 'error')
@@ -584,6 +593,97 @@ export default function BookTrackerDashboard() {
       toast('CSV import failed. Check that this is a Goodreads export file.', 'error')
     }
     e.target.value = ''
+  }
+
+  /* Books the AI Librarian can enrich — missing a page count OR a genre. */
+  const booksNeedingDetails = useMemo(
+    () => allBooks.filter(b => !b.totalPages || !b.genre),
+    [allBooks],
+  )
+
+  /**
+   * AI "Librarian" enrichment pass. Sends up to 20 under-described books to
+   * /api/chat and relies on the model calling the `update_book` tool for each.
+   * Streams the response exactly like AiCopilotSidebar, then parses the
+   * ACTION_MARKER payload and executes each update against IndexedDB.
+   */
+  const handleAiFill = async () => {
+    if (enrichPhase === 'running') return
+    const candidates = booksNeedingDetails.slice(0, 20)
+    if (candidates.length === 0) {
+      toast('Every book already has a page count and genre.', 'info')
+      return
+    }
+    if (!config.userApiKey) {
+      toast('Add an AI key in Settings → AI Provider to use the Librarian.', 'error')
+      return
+    }
+
+    setEnrichPhase('running')
+    try {
+      const list = candidates
+        .map((b, i) => `${i + 1}. "${b.title}"${b.author ? ` by ${b.author}` : ''}`)
+        .join('\n')
+
+      const userMessage =
+        'You are a librarian. Fill in the details for each of these books I own. ' +
+        'For EVERY book, call the update_book tool once, passing its title (and author) plus ' +
+        'any details you know: genre, pages, publicationYear, series, review (a 1–2 sentence synopsis), ' +
+        'and rating (the typical community average, 0–5). Research each title from your own knowledge and ' +
+        'be accurate. Do not ask questions — just emit the update_book tool calls.\n\n' + list
+
+      const res = await fetch('/api/chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body:    JSON.stringify({ messages: [{ role: 'user', content: userMessage }] }),
+      })
+
+      if (!res.ok || !res.body) {
+        const errBody = await res.json().catch(() => ({ error: 'Request failed' }))
+        throw new Error(errBody.error ?? 'Request failed')
+      }
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let   full    = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        full += decoder.decode(value, { stream: true })
+      }
+
+      let actions: CopilotAction[] = []
+      const markerIdx = full.indexOf(ACTION_MARKER)
+      if (markerIdx >= 0) {
+        try {
+          const parsed = JSON.parse(full.slice(markerIdx + ACTION_MARKER.length))
+          if (Array.isArray(parsed)) actions = parsed as CopilotAction[]
+        } catch { /* malformed action payload — ignore */ }
+      }
+
+      const updates = actions.filter(a => a.name === 'update_book')
+      if (updates.length === 0) {
+        toast('The Librarian could not find details for those books. Try again.', 'info')
+        return
+      }
+
+      let filled = 0
+      for (const a of updates) {
+        try { await executeCopilotAction(a); filled++ } catch { /* skip failed row */ }
+      }
+
+      toast(
+        filled > 0
+          ? `Filled in details for ${filled} book${filled !== 1 ? 's' : ''}.`
+          : 'No new details could be added.',
+        filled > 0 ? 'success' : 'info',
+      )
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'The Librarian is unavailable.'
+      toast(msg.length < 120 ? msg : 'The Librarian is unavailable. Check your AI key in Settings.', 'error')
+    } finally {
+      setEnrichPhase('idle')
+    }
   }
 
   const handleRate = async (bookId: string, rating: number) => {
@@ -743,6 +843,18 @@ export default function BookTrackerDashboard() {
             {importPhase === 'loading' ? 'Importing…' : 'Import Goodreads CSV'}
           </button>
           <button className={styles.addBtn} onClick={() => { resetAddForm(); setShowAddModal(true) }}>+ Add Book</button>
+          <button
+            className={styles.librarianBtn}
+            onClick={handleAiFill}
+            disabled={enrichPhase === 'running' || booksNeedingDetails.length === 0}
+            title={booksNeedingDetails.length === 0
+              ? 'Every book already has a page count and genre'
+              : `Ask the AI Librarian to research ${Math.min(booksNeedingDetails.length, 20)} book${booksNeedingDetails.length === 1 ? '' : 's'} missing details`}
+          >
+            {enrichPhase === 'running'
+              ? <><span className={styles.librarianSpinner} aria-hidden="true" />Researching…</>
+              : `✨ Ask AI to Fill Details${booksNeedingDetails.length > 0 ? ` (${Math.min(booksNeedingDetails.length, 20)})` : ''}`}
+          </button>
           <button
             className={`${styles.editModeBtn} ${editMode ? styles.editModeBtnOn : ''}`}
             onClick={() => setEditMode(v => !v)}

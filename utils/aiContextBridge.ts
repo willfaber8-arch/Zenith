@@ -136,7 +136,10 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
 
   lines.push('════ ZENITH USER CONTEXT SNAPSHOT ════')
   lines.push(`Timestamp: ${new Date().toUTCString()}`)
-  lines.push(`Lookback:  ${LOOKBACK_DAYS} days`)
+  lines.push('This snapshot spans the user\'s ENTIRE Zenith workspace — tasks, habits, mood,')
+  lines.push('library, calendar, workouts, meals, subscriptions, vocabulary, links and identity.')
+  lines.push(`(Tasks & mood use a ${LOOKBACK_DAYS}-day window; other sections reflect current state.)`)
+  lines.push('You can read all of it AND act on any of it using your tools.')
   lines.push('')
 
   // — Task & milestone velocity —
@@ -209,6 +212,121 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
     })
   } else {
     lines.push('  No mood logs recorded in the lookback window.')
+  }
+
+  /* ── 5. Whole-app snapshot — everything else the co-pilot can see & act on ── */
+  const nowMs      = Date.now()
+  const in14dMs    = nowMs + 14 * 86_400_000
+  const weekAgoMs  = nowMs - 7 * 86_400_000
+  const safe = async <T>(p: Promise<T>, fallback: T): Promise<T> => {
+    try { return await p } catch { return fallback }
+  }
+
+  // Pull the rest of the user's data in parallel (each guarded).
+  const [
+    books, personalEvents, feedEvents, cardio, recipes, mealSlots,
+    subs, vocabCards, vocabDecks, bookmarks, plants, profile,
+  ] = await Promise.all([
+    safe(db.library_books.toArray(),    []),
+    safe(db.personalEvents.toArray(),   []),
+    safe(db.calendarEvents.toArray(),   []),
+    safe(db.cardioSessions.toArray(),   []),
+    safe(db.savedMealRecipes.toArray(), []),
+    safe(db.mealPlanSlots.toArray(),    []),
+    safe(db.subscription_items.toArray(), []),
+    safe(db.vocab_cards.toArray(),      []),
+    safe(db.vocab_decks.toArray(),      []),
+    safe(db.customBookmarks.toArray(),  []),
+    safe(db.houseplants.toArray(),      []),
+    safe(db.userProfile.get(1),         undefined),
+  ])
+
+  // — Library —
+  if (books.length > 0) {
+    const reading   = books.filter(b => b.readingStatus === 'CURRENTLY_READING')
+    const completed = books.filter(b => b.readingStatus === 'COMPLETED')
+    const toRead    = books.filter(b => b.readingStatus === 'TO_READ')
+    const missing   = books.filter(b => !b.totalPages || !b.genre).length
+    lines.push('')
+    lines.push('── LIBRARY (books) ──')
+    lines.push(`Total: ${books.length} | reading: ${reading.length} | finished: ${completed.length} | to-read: ${toRead.length}`)
+    if (missing > 0) lines.push(`${missing} book(s) missing details (pages/genre) — offer to research & autofill via update_book.`)
+    reading.slice(0, 4).forEach(b => lines.push(`  READING: "${b.title}" by ${b.author}`))
+    ;[...completed].sort((a, b) => (b.dateCompleted ?? 0) - (a.dateCompleted ?? 0)).slice(0, 6)
+      .forEach(b => lines.push(`  FINISHED: "${b.title}" by ${b.author}${b.userRating ? ` (${b.userRating}★)` : ''}`))
+  }
+
+  // — Calendar (upcoming) —
+  const upcomingPersonal = personalEvents
+    .filter(e => e.startMs >= nowMs && e.startMs <= in14dMs)
+    .sort((a, b) => a.startMs - b.startMs)
+  const upcomingFeed = feedEvents.filter(e => e.startMs >= nowMs && e.startMs <= in14dMs).length
+  if (upcomingPersonal.length > 0 || upcomingFeed > 0) {
+    lines.push('')
+    lines.push('── CALENDAR (next 14 days) ──')
+    lines.push(`Personal events: ${upcomingPersonal.length} | subscribed-feed events: ${upcomingFeed}`)
+    upcomingPersonal.slice(0, 6).forEach(e => {
+      const d = new Date(e.startMs)
+      lines.push(`  ${d.toISOString().slice(0, 10)} — "${e.title}" [${e.category}]`)
+    })
+  }
+
+  // — Workouts —
+  if (cardio.length > 0) {
+    const week = cardio.filter(c => c.completedAt >= weekAgoMs)
+    const weekMins = week.reduce((s, c) => s + (c.durationMinutes || 0), 0)
+    lines.push('')
+    lines.push('── WORKOUTS (cardio) ──')
+    lines.push(`Logged sessions: ${cardio.length} | this week: ${week.length} session(s), ${weekMins} min`)
+  }
+
+  // — Meals —
+  if (recipes.length > 0 || mealSlots.length > 0) {
+    lines.push('')
+    lines.push('── MEALS ──')
+    lines.push(`Saved recipes: ${recipes.length} | planned meal slots: ${mealSlots.length}`)
+    recipes.slice(0, 5).forEach(r => lines.push(`  recipe: "${r.title}"${r.category ? ` [${r.category}]` : ''}`))
+  }
+
+  // — Subscriptions —
+  if (subs.length > 0) {
+    const monthly = subs.reduce((s, x) =>
+      s + (x.billingCycle === 'ANNUAL' ? (x.monthlyCost || 0) / 12 : (x.monthlyCost || 0)), 0)
+    lines.push('')
+    lines.push('── SUBSCRIPTIONS ──')
+    lines.push(`Active: ${subs.length} | est. monthly outflow: $${monthly.toFixed(2)}`)
+    subs.slice(0, 6).forEach(x => lines.push(`  "${x.name}" — $${x.monthlyCost}/${x.billingCycle === 'ANNUAL' ? 'yr' : 'mo'}`))
+  }
+
+  // — Vocabulary (spaced repetition) —
+  if (vocabCards.length > 0) {
+    const due = vocabCards.filter(c => (c.nextReviewTimestamp ?? 0) <= nowMs).length
+    lines.push('')
+    lines.push('── POLYGLOT VAULT (vocab) ──')
+    lines.push(`Decks: ${vocabDecks.length} | cards: ${vocabCards.length} | due for review now: ${due}`)
+  }
+
+  // — Custom links —
+  if (bookmarks.length > 0) {
+    const folders = [...new Set(bookmarks.map(b => b.folderName).filter(Boolean))]
+    lines.push('')
+    lines.push('── SAVED LINKS ──')
+    lines.push(`${bookmarks.length} link(s)${folders.length ? ` across: ${folders.slice(0, 8).join(', ')}` : ''}`)
+  }
+
+  // — Plants —
+  if (plants.length > 0) {
+    lines.push('')
+    lines.push(`── BOTANIST ── ${plants.length} plant(s) tracked.`)
+  }
+
+  // — Identity —
+  if (profile && (profile.universityName || profile.majorIdentifier || profile.userName)) {
+    lines.push('')
+    lines.push('── IDENTITY ──')
+    if (profile.userName)        lines.push(`Name: ${profile.userName}`)
+    if (profile.universityName)  lines.push(`University: ${profile.universityName}`)
+    if (profile.majorIdentifier) lines.push(`Major: ${profile.majorIdentifier}`)
   }
 
   // — Dashboard presets —

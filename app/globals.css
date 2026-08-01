@@ -311,6 +311,9 @@ html[data-color-scheme='light'] body {
 
 html {
   height: 100%;
+  /* Stop the whole page from rubber-banding / bouncing when a scroll hits its
+     limit — only the scroll container reacts, the UI itself stays put. */
+  overscroll-behavior: none;
   /*
    * color-scheme: dark instructs the browser to render its own chrome
    * (scrollbars, form controls, date pickers) in a dark style that
@@ -321,6 +324,7 @@ html {
 
 body {
   min-height: 100%;
+  overscroll-behavior: none;
   background-color: var(--bg-main);
   /* Neutral accent-agnostic default texture so no theme's background dots
      clash with its accent. Themes (and the Theme Forge) override these vars. */

@@ -91,6 +91,9 @@ export const MODULE_INDEX: ModuleEntry[] = [
   { id: 'games', label: 'Arcade', category: 'creator',
     hint: 'Mini-games, resource economy & cosmetic shop',
     keywords: ['arcade', 'arcade hub', 'mini games', 'economy', 'refinery', 'crucible', 'biosphere', 'cosmetic', 'shop', 'credits', 'minesweeper', '2048', 'snake', 'ball catcher', 'speed typer', 'typing', 'sliding puzzle', 'storage', 'inventory', 'shards'] },
+  { id: 'cube-timer', label: 'Cube Timer', category: 'creator',
+    hint: 'Speedcubing timer with scrambles & ao5 stats',
+    keywords: ['cube', 'rubik', 'rubiks', 'timer', 'speedcube', 'speedcubing', 'scramble', 'ao5', 'ao12', 'pyraminx', '2x2', '3x3', '4x4', 'cstimer'] },
 
   /* ── Personalized Vault ── */
   { id: 'custom-links', label: 'Custom Link Manager', category: 'vault',

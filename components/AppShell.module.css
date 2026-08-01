@@ -39,6 +39,7 @@
   background-color: var(--surface-card);
   border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
+  overscroll-behavior: contain;
   animation: slideInLeft var(--dur-slow) var(--ease-expo) both;
 }
 
@@ -169,6 +170,7 @@
 .nav {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--sp-3) var(--sp-3) var(--sp-4);
 }
 
@@ -401,6 +403,9 @@
 .viewport {
   flex: 1;
   overflow-y: auto;
+  /* Contain overscroll so reaching the top/bottom doesn't chain-bounce the
+     whole shell — the scrollbar stops, the interface doesn't lurch. */
+  overscroll-behavior: contain;
   min-height: 0;
 
   /* Default / Scholastic (essentials) — periwinkle */
