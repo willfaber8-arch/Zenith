@@ -379,7 +379,7 @@ function GreetingCard() {
     e.preventDefault()
     const q = query.trim()
     if (q) {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer')
+      window.open(`https://www.bing.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer')
       setQuery('')
     }
   }
