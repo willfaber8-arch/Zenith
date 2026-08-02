@@ -10,6 +10,10 @@
   flex-direction: column;
   align-items: center;
   gap: var(--sp-3);
+  /* Sits above the home-screen cards below it so the autofill dropdown
+     isn't clipped/overlapped by the biome widget or dashboard. */
+  position: relative;
+  z-index: 60;
 }
 
 /* ── Monospaced label above the bar ──────────────────────────────── */
@@ -204,3 +208,90 @@
     height: 48px;
   }
 }
+
+/* ── Autofill suggestions (recent searches) ─────────────────────── */
+
+/* Anchors the absolutely-positioned dropdown to the input bar. */
+.barWrap {
+  position: relative;
+  z-index: 60;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 22%, var(--border-subtle));
+  border-radius: var(--r-md);
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.6);
+  animation: sugIn 160ms var(--ease-smooth);
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@keyframes sugIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.suggestion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--ease-smooth), color 140ms var(--ease-smooth);
+}
+
+.suggestion:hover,
+.suggestionActive {
+  background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  color: var(--text-primary);
+}
+
+.sugIcon {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  flex-shrink: 0;
+}
+
+.sugText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clearHistoryBtn {
+  width: 100%;
+  margin-top: 2px;
+  padding: 7px 10px;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: transparent;
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  transition: color 140ms var(--ease-smooth);
+}
+.clearHistoryBtn:hover { color: var(--text-muted); }
