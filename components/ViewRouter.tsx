@@ -48,6 +48,7 @@ import {
   LazyTournamentHubView        as TournamentHubView,
   LazyGamesTabShell            as GamesTabShell,
   LazyGamesArcade              as GamesArcade,
+  LazyPuzzleLounge             as PuzzleLounge,
   LazyVocabBuilderView         as VocabBuilderView,
   LazyMealPlanningView         as MealPlanningView,
   LazySubscriptionPackagesView as SubscriptionPackagesView,
@@ -104,7 +105,7 @@ function resolveView(id: ViewId): JSX.Element {
      *   3. User clicks "Arcade ⬡" tab → GamesArcade chunk downloads
      *      (Minesweeper, ScriptingMatrix, ShiftMatrix, 2048, BioSynth, ZenSnake)
      */
-    return <GamesTabShell arcadeContent={<GamesArcade />} />
+    return <GamesTabShell arcadeContent={<GamesArcade />} puzzleContent={<PuzzleLounge />} />
   }
 
   return <HomeView />

@@ -17,7 +17,8 @@ export default function GoogleSearchHUD() {
   const handleSearchSubmission = useCallback(() => {
     const trimmed = query.trim()
     if (!trimmed) return
-    const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`
+    // Microsoft Bing (the Edge default search engine).
+    const targetUrl = `https://www.bing.com/search?q=${encodeURIComponent(trimmed)}`
     window.open(targetUrl, '_blank', 'noopener,noreferrer')
   }, [query])
 

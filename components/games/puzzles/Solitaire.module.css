@@ -1,0 +1,382 @@
+/* Klondike Solitaire — dark felt board, Creator's-Choice green accents. */
+
+.solitaire {
+  --card-w: clamp(46px, 8.6vw, 78px);
+  --card-h: calc(var(--card-w) * 1.42);
+  --gap: clamp(3px, 0.7vw, 8px);
+  --felt-1: #0a1712;
+  --felt-2: #0d2019;
+  --card-face: #f4f6f2;
+  --card-red: #d1435b;
+  --card-black: #1d2733;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--felt-2), var(--felt-1) 70%);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 18%, transparent);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
+  min-height: 100%;
+}
+
+.loading {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+/* ── HUD ───────────────────────────────────────────────────────────── */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.mode {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: var(--cat-accent);
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 8%, transparent);
+}
+.stat { display: inline-flex; align-items: baseline; gap: 5px; }
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+}
+.statValue {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.actions { margin-left: auto; display: inline-flex; gap: var(--sp-2); flex-wrap: wrap; }
+.actionBtn {
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-card) 70%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms var(--ease-smooth);
+}
+.actionBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--cat-accent) 45%, transparent);
+}
+.actionBtn:disabled { opacity: 0.4; cursor: default; }
+.autoBtn {
+  border-color: color-mix(in srgb, var(--cat-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cat-accent) 16%, transparent);
+  color: var(--cat-accent);
+  animation: autoGlow 1.8s ease-in-out infinite;
+}
+.autoBtn:hover:not(:disabled) { background: color-mix(in srgb, var(--cat-accent) 26%, transparent); }
+@keyframes autoGlow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cat-accent) 40%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--cat-accent) 12%, transparent); }
+}
+
+/* ── Rows / grid ───────────────────────────────────────────────────── */
+/* Top row is decoupled from the tableau grid: stock+waste cluster left,
+   the 4 foundations cluster right, separated by a divider from the columns. */
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-bottom: 1px solid color-mix(in srgb, var(--cat-accent) 16%, transparent);
+}
+.topLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+.foundations {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
+.tableau {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+.slot {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--r-md);
+  padding: 0;
+  border: 1px dashed color-mix(in srgb, var(--cat-accent) 22%, transparent);
+  background: rgba(255, 255, 255, 0.02);
+}
+.stockSlot,
+.wasteSlot,
+.foundationSlot { cursor: pointer; }
+.stockSlot { border-style: solid; }
+.slotDim { opacity: 0.75; }
+.wasteSlot { border-style: solid; width: calc(var(--card-w) * 1.55); overflow: visible; }
+
+.slotGhost {
+  position: absolute; inset: 0;
+  border-radius: var(--r-md);
+}
+.recycleGlyph {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 1.4rem;
+  color: color-mix(in srgb, var(--cat-accent) 60%, transparent);
+}
+.stockCount {
+  position: absolute;
+  bottom: -6px; right: -4px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--felt-1);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 30%, transparent);
+  border-radius: 99px;
+  padding: 1px 5px;
+}
+
+.foundationGhost {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 1.6rem;
+  opacity: 0.28;
+}
+.foundationGhost.red { color: var(--card-red); }
+.foundationGhost.black { color: color-mix(in srgb, var(--text-primary) 70%, transparent); }
+
+.wasteCard,
+.foundationCard {
+  position: absolute;
+  top: 0; left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  touch-action: none;
+}
+.foundationCard { cursor: pointer; }
+
+/* ── Tableau columns ───────────────────────────────────────────────── */
+.column {
+  position: relative;
+  width: var(--card-w);
+  min-height: var(--card-h);
+  border-radius: var(--r-md);
+}
+.column > .slotGhost {
+  border: 1px dashed color-mix(in srgb, var(--cat-accent) 20%, transparent);
+  height: var(--card-h);
+}
+.stackCard {
+  position: absolute;
+  left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  cursor: pointer;
+  touch-action: none;
+  transition: top 220ms var(--ease-expo), transform 130ms var(--ease-smooth),
+              box-shadow 130ms var(--ease-smooth);
+}
+
+/* ── Card faces ────────────────────────────────────────────────────── */
+.card {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--r-md);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+.cardUp {
+  background: linear-gradient(160deg, #ffffff, var(--card-face));
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.cardUp.red { color: var(--card-red); }
+.cardUp.black { color: var(--card-black); }
+
+.cardDown {
+  background:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--cat-accent) 30%, #0e2a20) 0 6px,
+      #0c2119 6px 12px);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 40%, transparent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.backPattern {
+  position: absolute; inset: 4px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 45%, transparent);
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--cat-accent) 22%, transparent) 0 22%, transparent 24%);
+}
+
+.corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.92;
+  font-family: var(--font-display);
+}
+.cornerTL { top: clamp(2px, 0.6vw, 5px); left: clamp(3px, 0.8vw, 6px); }
+.cornerBR {
+  bottom: clamp(2px, 0.6vw, 5px);
+  right: clamp(3px, 0.8vw, 6px);
+  transform: rotate(180deg);
+}
+.cornerRank { font-size: clamp(0.74rem, 2.1vw, 1.08rem); font-weight: 800; letter-spacing: -0.01em; }
+.cornerSuit { font-size: clamp(0.6rem, 1.6vw, 0.84rem); font-weight: 700; margin-top: 1px; }
+.centerPip {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1.1rem, 3.4vw, 2rem);
+  opacity: 0.9;
+}
+
+/* ── Selection ─────────────────────────────────────────────────────── */
+.selected .card,
+.stackCard.selected .card,
+.wasteCard.selected .card,
+.foundationCard.selected .card {
+  box-shadow: 0 0 0 2px var(--cat-accent), 0 4px 12px color-mix(in srgb, var(--cat-accent) 45%, transparent);
+  transform: translateY(-3px);
+}
+.stackCard.selected { z-index: 60 !important; }
+
+/* subtle hover lift on the top of the stack */
+.stackCard:hover .cardUp,
+.wasteCard:hover .cardUp,
+.foundationCard:hover .cardUp {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+/* ── Win overlay ───────────────────────────────────────────────────── */
+.winOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-lg);
+  background: rgba(6, 14, 10, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  animation: fadeIn 260ms var(--ease-smooth);
+}
+.winCard {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: var(--sp-6) var(--sp-8);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 40%, transparent);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: winPop 420ms var(--ease-expo);
+}
+@keyframes winPop {
+  from { opacity: 0; transform: scale(0.9) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.winGlyph {
+  font-size: 1.9rem;
+  letter-spacing: 0.2em;
+  color: var(--cat-accent);
+  margin-bottom: var(--sp-2);
+}
+.winTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-2);
+}
+.winTime {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-4);
+}
+.winTime strong { color: var(--cat-accent); }
+
+.confettiField { position: absolute; inset: 0; overflow: hidden; z-index: 1; pointer-events: none; }
+.confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation-name: confettiFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-10px) rotate(var(--rot)); opacity: 0; }
+  10% { opacity: 0.95; }
+  100% { transform: translateY(360px) rotate(calc(var(--rot) + 360deg)); opacity: 0; }
+}
+
+/* ── Drag & drop ───────────────────────────────────────────────────── */
+/* Source cards being carried: dimmed in place while the float layer moves. */
+.dragging .card {
+  opacity: 0.32;
+  filter: saturate(0.6);
+}
+
+/* Valid drop target highlight while a drag is in flight. */
+.dropOk {
+  outline: 2px dashed color-mix(in srgb, var(--cat-accent) 70%, transparent);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--cat-accent) 12%, transparent) !important;
+  border-radius: var(--r-md);
+}
+
+/* Floating drag layer — follows the pointer via transform only. */
+.dragLayer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  pointer-events: none;
+  will-change: transform;
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6));
+}
+.dragCard {
+  position: absolute;
+  left: 0;
+}
+
+@media (max-width: 520px) {
+  .solitaire { --gap: 3px; padding: var(--sp-2); }
+  .wasteSlot { width: calc(var(--card-w) * 1.35); }
+}
