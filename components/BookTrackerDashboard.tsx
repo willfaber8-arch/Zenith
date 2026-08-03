@@ -22,6 +22,7 @@ import {
   type ReadingSession,
 } from '@/types/bookTracker'
 import ReadingTimer from '@/components/ReadingTimer'
+import { resolveCoverUrl } from '@/utils/bookCovers'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
 import { importKindleClippings, type KindleImportResult } from '@/utils/kindleClippings'
 import { syncHabitSource } from '@/lib/habitSync'
@@ -267,32 +268,112 @@ function StarRow({
   )
 }
 
+/** Front-cover proportions (width ÷ height) — a standard trade paperback. */
+const COVER_ASPECT = 0.66
+
 /* ── A single book spine on the shelf ────────────────────── */
+/**
+ * A book on the shelf. At rest it is purely a spine; the front cover is folded
+ * 90° back into the page along the spine's left edge (see `.coverFace`), so it
+ * is edge-on and invisible. Hovering — or focusing, since the spine is a real
+ * button — swings the whole book out of the row and turns the cover to face
+ * the reader. Books without artwork just get the plain lift instead.
+ */
 function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
   const color  = spineColorFor(book)
   const label  = displayTitle(book.title)
   const byline = book.author ? shortAuthor(book.author) : ''
+  const height = spineHeight(book)
+
+  // `coverUrl` points at an arbitrary remote host, so the <img> itself is the
+  // only reliable validator. A 404 / blocked host flips this to 'error' and the
+  // cover face is dropped entirely — never an empty white rectangle.
+  const src = book.coverUrl || null
+  const [imgState, setImgState] = useState<'loading' | 'ok' | 'error'>('loading')
+  useEffect(() => { setImgState('loading') }, [src])
+  const showCover = src !== null && imgState !== 'error'
+
   return (
     <button
-      className={styles.spine}
+      className={`${styles.spine} ${showCover ? styles.spineWithCover : ''}`}
       style={{
         // The colour drives layered gradients in CSS (sheen, rounded-spine
         // shading, page edge) rather than a flat inline background.
         '--spine-color': color,
-        height: spineHeight(book),
+        // Cover width is derived from this book's height so every jacket keeps
+        // real book proportions regardless of how thick the spine is.
+        '--cover-w': `${Math.round(height * COVER_ASPECT)}px`,
+        height,
         width:  spineWidth(book),
       } as React.CSSProperties}
       onClick={onOpen}
-      title={`${book.title}${book.author ? ' — ' + book.author : ''}`}
+      title={`${book.title}${book.author ? ' — ' + book.author : ''}${showCover ? ' — hover to see the cover' : ''}`}
+    >
+      <span className={styles.spineFace}>
+        <span className={styles.spineBandTop} />
+        <span className={styles.spineTitle}>{label}</span>
+        {book.userRating > 0 && (
+          <span className={styles.spineRating}>{'★'.repeat(Math.min(book.userRating, 5))}</span>
+        )}
+        <span className={styles.spineBandBottom} />
+        {byline && <span className={styles.spineAuthor}>{byline}</span>}
+        {showCover && <span className={styles.coverPip} aria-hidden="true" />}
+      </span>
+
+      {showCover && (
+        <span
+          className={`${styles.coverFace} ${imgState === 'loading' ? styles.coverFaceLoading : ''}`}
+          aria-hidden="true"
+        >
+          <img
+            className={styles.coverImg}
+            src={src}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onLoad={() => setImgState('ok')}
+            onError={() => setImgState('error')}
+          />
+        </span>
+      )}
+    </button>
+  )
+}
+
+/**
+ * Detail-modal cover art. Falls back to the large spine preview whenever the
+ * book has no resolved cover or the image fails to load.
+ */
+function DetailCoverArt({ book, color }: { book: LibraryBook; color: string }) {
+  const [failed, setFailed] = useState(false)
+  const src = book.coverUrl || null
+
+  if (src !== null && !failed) {
+    return (
+      <div className={styles.detailCoverWrap}>
+        <img
+          className={styles.detailCoverImg}
+          src={src}
+          alt={`Cover of ${book.title}`}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={styles.detailSpine}
+      style={{ '--spine-color': color } as React.CSSProperties}
     >
       <span className={styles.spineBandTop} />
-      <span className={styles.spineTitle}>{label}</span>
-      {book.userRating > 0 && (
-        <span className={styles.spineRating}>{'★'.repeat(Math.min(book.userRating, 5))}</span>
-      )}
+      <span className={styles.detailSpineTitle}>{book.title}</span>
       <span className={styles.spineBandBottom} />
-      {byline && <span className={styles.spineAuthor}>{byline}</span>}
-    </button>
+    </div>
   )
 }
 
@@ -422,15 +503,8 @@ function BookDetailModal({
         <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
 
         <div className={styles.detailTop}>
-          {/* Large spine preview */}
-          <div
-            className={styles.detailSpine}
-            style={{ '--spine-color': color } as React.CSSProperties}
-          >
-            <span className={styles.spineBandTop} />
-            <span className={styles.detailSpineTitle}>{book.title}</span>
-            <span className={styles.spineBandBottom} />
-          </div>
+          {/* Real cover art when we have it; large spine preview otherwise */}
+          <DetailCoverArt book={book} color={color} />
 
           <div className={styles.detailInfo}>
             <span className={`${styles.statusBadge} ${
@@ -708,6 +782,9 @@ export default function BookTrackerDashboard() {
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
   const [kindlePhase,  setKindlePhase]  = useState<'idle' | 'loading'>('idle')
   const [enrichPhase,  setEnrichPhase]  = useState<'idle' | 'running'>('idle')
+  const [coverPhase,   setCoverPhase]   = useState<{ running: boolean; done: number; total: number }>(
+    { running: false, done: 0, total: 0 },
+  )
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId,    setEditingId]    = useState<string | null>(null)  // book being edited (add modal reused)
   const [addTitle,     setAddTitle]     = useState('')
@@ -730,6 +807,11 @@ export default function BookTrackerDashboard() {
 
   const fileInputRef   = useRef<HTMLInputElement>(null)
   const kindleInputRef = useRef<HTMLInputElement>(null)
+  const coverAbortRef  = useRef<AbortController | null>(null)
+
+  // Cover lookups are network work owned by this view — tear them down if the
+  // user navigates away mid-sweep rather than leaving requests in flight.
+  useEffect(() => () => coverAbortRef.current?.abort(), [])
 
   /* ── Live data ────────────────────────── */
   const allBooks = useLiveQuery(() => db.library_books.toArray(), []) ?? []
@@ -939,6 +1021,84 @@ export default function BookTrackerDashboard() {
     }
   }
 
+  /* ── Cover art ─────────────────────────────────────────────
+     `coverUrl` is a three-state cache written straight onto the book row:
+       undefined → never looked up      null → looked up, no artwork exists
+       string    → resolved cover URL
+     so a sweep only ever touches books it has not already answered, and
+     re-running fills the gaps left by a previous (or interrupted) run. */
+  const booksNeedingCovers = useMemo(
+    () => allBooks.filter(b => b.coverUrl === undefined),
+    [allBooks],
+  )
+  const booksWithCoverMisses = useMemo(
+    () => allBooks.filter(b => b.coverUrl === null),
+    [allBooks],
+  )
+
+  /** Once every fresh book is resolved the button turns into a misses retry. */
+  const coverIsRetry   = booksNeedingCovers.length === 0 && booksWithCoverMisses.length > 0
+  const coverQueue     = coverIsRetry ? booksWithCoverMisses : booksNeedingCovers
+
+  /**
+   * Resolve cover art for a batch of books, a few at a time.
+   *
+   * Open Library and Google Books are free and un-keyed, so the sweep runs a
+   * fixed pool of COVER_CONCURRENCY workers pulling from one shared cursor —
+   * steady, bounded pressure on both services instead of a burst of hundreds
+   * of parallel requests. Every answer (hit *or* miss) is written back
+   * immediately, so an interrupted run keeps everything it already resolved.
+   */
+  const runCoverSweep = async (queue: LibraryBook[]) => {
+    if (coverPhase.running || queue.length === 0) return
+
+    const COVER_CONCURRENCY = 4
+    const controller = new AbortController()
+    coverAbortRef.current = controller
+    setCoverPhase({ running: true, done: 0, total: queue.length })
+
+    let cursor = 0
+    let done   = 0
+    let found  = 0
+
+    const worker = async () => {
+      while (cursor < queue.length && !controller.signal.aborted) {
+        const book = queue[cursor++]
+        let url: string | null = null
+        try {
+          url = await resolveCoverUrl(book, { verify: true, signal: controller.signal })
+        } catch {
+          url = null   // treat any failure as "no cover found this pass"
+        }
+        // An aborted request resolves as a miss — don't cache that as an answer.
+        if (controller.signal.aborted) return
+        try {
+          await db.library_books.update(book.id, { coverUrl: url, coverCheckedAt: Date.now() })
+        } catch {
+          /* book removed mid-sweep — nothing to write */
+        }
+        if (url) found++
+        done++
+        setCoverPhase(p => (p.running ? { ...p, done } : p))
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(COVER_CONCURRENCY, queue.length) }, () => worker()),
+    )
+
+    coverAbortRef.current = null
+    if (controller.signal.aborted) return
+
+    setCoverPhase({ running: false, done: 0, total: 0 })
+    toast(
+      found > 0
+        ? `Found covers for ${found} of ${done} book${done !== 1 ? 's' : ''}.`
+        : `No cover art found for ${done} book${done !== 1 ? 's' : ''}. Adding an ISBN or exact title helps.`,
+      found > 0 ? 'success' : 'info',
+    )
+  }
+
   const handleRate = async (bookId: string, rating: number) => {
     await db.library_books.update(bookId, { userRating: rating })
   }
@@ -1113,6 +1273,28 @@ export default function BookTrackerDashboard() {
             {kindlePhase === 'loading'
               ? <><span className={styles.kindleSpinner} aria-hidden="true" />Reading clippings…</>
               : '❝ Import from Kindle'}
+          </button>
+          <button
+            className={`${styles.coverBtn} ${coverPhase.running ? styles.coverBtnRunning : ''}`}
+            onClick={() => void runCoverSweep(coverQueue)}
+            disabled={coverPhase.running || coverQueue.length === 0}
+            title={
+              coverPhase.running
+                ? 'Looking up cover art — you can keep using the library'
+                : coverQueue.length === 0
+                  ? 'Every book already has cover art or has been checked'
+                  : coverIsRetry
+                    ? `Try Open Library and Google Books again for ${coverQueue.length} book${coverQueue.length === 1 ? '' : 's'} with no cover`
+                    : `Look up cover art for ${coverQueue.length} book${coverQueue.length === 1 ? '' : 's'}`
+            }
+          >
+            {coverPhase.running
+              ? <><span className={styles.coverSpinner} aria-hidden="true" />Fetching covers… {coverPhase.done}/{coverPhase.total}</>
+              : coverQueue.length === 0
+                ? '◲ Covers up to date'
+                : coverIsRetry
+                  ? `◲ Retry cover misses (${coverQueue.length})`
+                  : `◲ Fetch covers (${coverQueue.length})`}
           </button>
           <button className={styles.addBtn} onClick={() => { resetAddForm(); setShowAddModal(true) }}>+ Add Book</button>
           <button
