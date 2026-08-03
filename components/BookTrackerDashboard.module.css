@@ -1283,3 +1283,228 @@
   color: var(--text-dark);
   white-space: nowrap;
 }
+
+/* ══════════════════════════════════════════════════════════
+   Kindle clippings — import control + per-book highlight panel
+   ══════════════════════════════════════════════════════════ */
+
+.kindleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--lb-parchment);
+  border: 1px solid var(--lb-parchment-border);
+  border-radius: var(--r-xl);
+  padding: 4px 14px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 200ms var(--ease-smooth), border-color 200ms var(--ease-smooth),
+    color 200ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.kindleBtn:hover:not(:disabled) {
+  background: var(--lb-parchment-dim);
+  border-color: rgba(194, 169, 128, 0.42);
+}
+
+.kindleBtn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.kindleSpinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(194, 169, 128, 0.28);
+  border-top-color: var(--lb-parchment);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+/* Inline "how to get the file" hint under the metrics bar */
+.kindleHint {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+  margin: calc(-1 * var(--sp-4)) 0 var(--sp-5);
+}
+
+.kindleHintGlyph {
+  color: var(--lb-parchment);
+}
+
+.kindleHintCode {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--lb-parchment);
+  background: var(--lb-parchment-dim);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+/* Card header right cluster (clipping badge + page pill) */
+.cardHeaderRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ❝ count badge on a book card — toggles the panel */
+.clipBadgeBtn {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--lb-parchment);
+  background: var(--lb-parchment-dim);
+  border: 1px solid var(--lb-parchment-border);
+  border-radius: var(--r-xl);
+  padding: 2px 9px;
+  cursor: pointer;
+  transition: background 180ms var(--ease-smooth), border-color 180ms var(--ease-smooth);
+}
+
+.clipBadgeBtn:hover {
+  background: rgba(194, 169, 128, 0.22);
+  border-color: rgba(194, 169, 128, 0.42);
+}
+
+/* Detail-modal section wrapper */
+.clipSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.clipToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 180ms var(--ease-smooth);
+}
+
+.clipToggle:hover {
+  color: var(--text-primary);
+}
+
+.clipBadge {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--lb-parchment);
+  background: var(--lb-parchment-dim);
+  border: 1px solid var(--lb-parchment-border);
+  border-radius: var(--r-xl);
+  padding: 2px 9px;
+}
+
+.clipChevron {
+  margin-left: auto;
+  font-size: 0.62rem;
+  color: var(--text-dark);
+}
+
+/* The list itself */
+.clipPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  animation: cardIn 240ms var(--ease-expo) both;
+}
+
+.clipList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.clipRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--lb-parchment-border);
+}
+
+/* Notes read as the user's own voice — periwinkle, not parchment. */
+.clipRowNote {
+  border-left-color: var(--accent-purple-dim);
+  background: rgba(124, 149, 255, 0.05);
+}
+
+.clipTopLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.clipTag {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--lb-parchment);
+}
+
+.clipTagNote {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+}
+
+.clipLoc {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.clipText {
+  font-family: var(--lb-serif);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.clipDate {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+}
+
+.clipBookmarks {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dark);
+  padding-left: 2px;
+}

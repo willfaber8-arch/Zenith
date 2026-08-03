@@ -433,6 +433,31 @@ export interface CubeSolve {
   createdAt: number   // * indexed — Unix ms; chronological ordering
 }
 
+/**
+ * KindleClippingType — the three record kinds a Kindle writes into
+ * `documents/My Clippings.txt`.
+ */
+export type KindleClippingType = 'HIGHLIGHT' | 'NOTE' | 'BOOKMARK'
+
+/**
+ * KindleClipping — one highlight, note or bookmark imported from a
+ * Kindle's `My Clippings.txt` file.
+ * Powers: Library → per-book highlights panel.
+ */
+export interface KindleClipping {
+  id:        string              // * PK — explicit string UUID (no auto-increment)
+  bookId:    string | null       // * indexed — FK → LibraryBook.id (null if unlinked)
+  title:     string              //   book title exactly as the Kindle recorded it
+  author:    string              //   'Unknown' when the clipping line has no author
+  type:      KindleClippingType  //   HIGHLIGHT | NOTE | BOOKMARK
+  text:      string              //   clipping body (empty for bookmarks)
+  page?:     number              //   printed page number when present
+  location?: string              //   Kindle location range, e.g. "176-177"
+  addedAt?:  number              // * indexed — Unix ms parsed from "Added on …"
+  hash:      string              // * indexed — stable identity for import de-dup
+  importedAt: number             //   Unix ms the row was written locally
+}
+
 /* ════════════════════════════════════════════════════════════════
    2.  DATABASE CLASS
    ────────────────────────────────────────────────────────────────
@@ -500,6 +525,7 @@ class ZenithDatabase extends Dexie {
   todo_items!:                  EntityTable<TodoItem,                 'id'>
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
+  kindle_clippings!:            EntityTable<KindleClipping,           'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1070,6 +1096,23 @@ class ZenithDatabase extends Dexie {
      */
     this.version(34).stores({
       cube_solves: 'id, sessionId, createdAt',
+    })
+
+    /* ────────────────────────────────────────────────────────────
+     * VERSION 35 — Kindle clippings (My Clippings.txt importer)
+     * ────────────────────────────────────────────────────────────
+     * New table:
+     *   kindle_clippings — one row per highlight / note / bookmark
+     *     imported from a Kindle's `documents/My Clippings.txt`.
+     *     id      explicit string UUID PK (no auto-increment)
+     *     bookId  indexed — FK → library_books.id; per-book highlight panel
+     *     hash    indexed — stable clipping identity; makes re-importing
+     *             the same file a no-op
+     *     addedAt indexed — chronological ordering of clippings
+     *   title / author / type / text / page / location are non-indexed.
+     */
+    this.version(35).stores({
+      kindle_clippings: 'id, bookId, hash, addedAt',
     })
   }
 }
