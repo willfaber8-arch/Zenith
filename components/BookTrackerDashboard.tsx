@@ -54,21 +54,109 @@ function fmtDate(ms: number | undefined): string {
 }
 
 /** Deterministic spine height (px) — pages drive thickness; falls back
- *  to a stable id-hash so the shelf has natural height variation. */
+ *  to a stable id-hash so the shelf has natural height variation.
+ *  Range 206–272px; the spine's contents flex to fit whatever it returns. */
 function spineHeight(book: LibraryBook): number {
   if (book.totalPages) {
-    return Math.max(210, Math.min(264, 184 + book.totalPages / 6))
+    return Math.round(Math.max(206, Math.min(272, 178 + book.totalPages / 5.5)))
   }
   let h = 0
   for (let i = 0; i < book.id.length; i++) h = (h * 17 + book.id.charCodeAt(i)) >>> 0
-  return 214 + (h % 40)
+  return 208 + (h % 62)
 }
 
 /** Deterministic spine width (px) for subtle book-to-book variation. */
 function spineWidth(book: LibraryBook): number {
   let h = 0
   for (let i = 0; i < book.id.length; i++) h = (h * 13 + book.id.charCodeAt(i)) >>> 0
-  return 54 + (h % 4) * 4   // 54, 58, 62, 66
+  return 58 + (h % 4) * 4   // 58, 62, 66, 70
+}
+
+/* ── Spine label helpers (display-only — stored data is never mutated) ──── */
+
+/** Generational / academic tails that follow a surname rather than being one. */
+const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'phd', 'md', 'esq'])
+
+/** Lowercase particles that belong to the surname ("Le Guin", "van Gogh"). */
+const NAME_PARTICLES = new Set([
+  'van', 'von', 'de', 'del', 'della', 'der', 'den', 'da', 'di', 'du',
+  'dos', 'das', 'la', 'le', 'lo', 'ter', 'ten', 'bin', 'ibn', 'saint', 'st',
+])
+
+const normWord = (w: string): string => w.toLowerCase().replace(/[.,]/g, '')
+
+/** "J." / "R" — a single letter, optionally dotted. */
+const isInitialToken = (w: string): boolean => /^[\p{L}]\.?$/u.test(w)
+
+/**
+ * Reduce a full author name to the surname, which is the only part that
+ * reliably fits a 58–70px spine. "Brandon Sanderson" → "Sanderson",
+ * "Herbert, Frank" → "Herbert", "R. J. Potter" → "Potter",
+ * "Ursula K. Le Guin" → "Le Guin", "Homer" → "Homer".
+ */
+function surnameOf(fullName: string): string {
+  const cleaned = fullName.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+
+  // "Last, First" (Goodreads / Kindle export order): the surname leads.
+  const comma = cleaned.indexOf(',')
+  const head  = comma > 0 ? cleaned.slice(0, comma).trim() : ''
+  const words = (head || cleaned).split(/[\s,]+/).filter(Boolean)
+
+  if (words.length === 0) return cleaned
+  if (words.length === 1) return words[0]
+
+  // Peel generational suffixes off the tail so they don't masquerade as names.
+  const suffixes: string[] = []
+  while (words.length > 1 && NAME_SUFFIXES.has(normWord(words[words.length - 1]))) {
+    suffixes.unshift(words.pop() as string)
+  }
+  const withSuffix = (base: string): string =>
+    // A short surname can carry its suffix ("King Jr."); a long one drops it.
+    suffixes.length > 0 && base.length + suffixes[0].length + 1 <= 11
+      ? `${base} ${suffixes[0]}`
+      : base
+
+  if (words.length === 1) return withSuffix(words[0])
+
+  // Walk back off any trailing initials, then absorb surname particles.
+  let end = words.length - 1
+  while (end > 0 && isInitialToken(words[end])) end--
+  let start = end
+  while (start > 0 && NAME_PARTICLES.has(normWord(words[start - 1]))) start--
+
+  const surname = words.slice(start, end + 1).join(' ')
+  if (!surname || isInitialToken(surname)) return withSuffix(words.join(' '))
+  return withSuffix(surname)
+}
+
+/** Spine-sized author label. Falls back to the raw name if nothing survives. */
+function shortAuthor(fullName: string): string {
+  const name = fullName.trim()
+  if (!name) return ''
+  return surnameOf(name) || name
+}
+
+/** Trailing "(…)", "[…]" or "{…}" group — series/edition noise on a spine. */
+const TRAILING_GROUP_RE = /\s*[([{][^()[\]{}]*[)\]}]\s*$/
+/** Trailing volume marker: "Mistborn, #3" → "Mistborn". */
+const TRAILING_NUMBER_RE = /[\s,;:–—-]+#\s*\d+$/
+
+/**
+ * Spine-only title. Strips trailing series/edition parentheticals and bracket
+ * groups so a spine reads "Oathbringer" rather than "Oathbringer (The S…".
+ * Display-only: the modal, table and database keep the full stored title.
+ */
+function displayTitle(rawTitle: string): string {
+  const original = rawTitle.replace(/\s+/g, ' ').trim()
+  let t = original
+  for (let i = 0; i < 3; i++) {
+    const next = t.replace(TRAILING_GROUP_RE, '').trim()
+    if (next === t || next.length === 0) break
+    t = next
+  }
+  const trimmed = t.replace(TRAILING_NUMBER_RE, '').trim()
+  return trimmed || t || original
 }
 
 /* ── Kindle clipping helpers ─────────────────────────────── */
@@ -181,21 +269,29 @@ function StarRow({
 
 /* ── A single book spine on the shelf ────────────────────── */
 function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
-  const color = spineColorFor(book)
+  const color  = spineColorFor(book)
+  const label  = displayTitle(book.title)
+  const byline = book.author ? shortAuthor(book.author) : ''
   return (
     <button
       className={styles.spine}
-      style={{ background: color, height: spineHeight(book), width: spineWidth(book) }}
+      style={{
+        // The colour drives layered gradients in CSS (sheen, rounded-spine
+        // shading, page edge) rather than a flat inline background.
+        '--spine-color': color,
+        height: spineHeight(book),
+        width:  spineWidth(book),
+      } as React.CSSProperties}
       onClick={onOpen}
       title={`${book.title}${book.author ? ' — ' + book.author : ''}`}
     >
       <span className={styles.spineBandTop} />
-      <span className={styles.spineTitle}>{book.title}</span>
+      <span className={styles.spineTitle}>{label}</span>
       {book.userRating > 0 && (
         <span className={styles.spineRating}>{'★'.repeat(Math.min(book.userRating, 5))}</span>
       )}
       <span className={styles.spineBandBottom} />
-      {book.author && <span className={styles.spineAuthor}>{book.author}</span>}
+      {byline && <span className={styles.spineAuthor}>{byline}</span>}
     </button>
   )
 }
@@ -329,7 +425,7 @@ function BookDetailModal({
           {/* Large spine preview */}
           <div
             className={styles.detailSpine}
-            style={{ background: color }}
+            style={{ '--spine-color': color } as React.CSSProperties}
           >
             <span className={styles.spineBandTop} />
             <span className={styles.detailSpineTitle}>{book.title}</span>
