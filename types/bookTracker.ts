@@ -26,6 +26,9 @@ export interface LibraryBook {
   format?: BookFormat
   readingMinutes?: number       // cumulative minutes logged by the reading timer
   lastReadAt?: number           // UTC ms of the last reading session
+  // ── Cover art (resolved from Open Library / Google Books, cached here) ──
+  coverUrl?: string | null      // null = looked up, none found
+  coverCheckedAt?: number       // UTC ms of the last lookup (avoids retry loops)
 }
 
 /** Common genres for the add-book dropdown (plus a free-text custom option). */

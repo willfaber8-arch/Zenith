@@ -94,6 +94,7 @@ function PrivacyContent() {
         <li><strong>Weather</strong> (Open-Meteo): your approximate location/coordinates to fetch a local forecast.</li>
         <li><strong>Sports</strong> (TheSportsDB): team names and league identifiers you request.</li>
         <li><strong>News</strong> (public RSS sources such as BBC, NPR, The Guardian): requests for public headlines.</li>
+        <li><strong>Book covers</strong> (Open Library, Google Books): when you fetch cover art for your Library, the book&rsquo;s ISBN — or its title and author when there is no ISBN — is sent to look up the image. The resulting cover URL is cached locally so the lookup is not repeated.</li>
         <li><strong>AI features</strong> (Anthropic): text you submit to the AI Co-Pilot or generators is sent to the AI provider to produce a response.</li>
         <li><strong>Peer features</strong> (WebRTC/PeerJS): if you connect with a friend, data you choose to share is exchanged directly, peer-to-peer.</li>
         <li><strong>Embeds &amp; icons</strong> (YouTube, Google favicon service, OpenStreetMap): loaded to display media, site icons, or maps you request.</li>

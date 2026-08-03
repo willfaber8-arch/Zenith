@@ -132,6 +132,50 @@
   animation: spin 700ms linear infinite;
 }
 
+/* ── Cover-art fetch button ──────────────────────────────── */
+.coverBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-xl);
+  padding: 4px 14px;
+  background: rgba(124, 149, 255, 0.08);
+  cursor: pointer;
+  transition: background 200ms var(--ease-smooth), border-color 200ms var(--ease-smooth),
+    opacity 200ms var(--ease-smooth);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverBtn:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.18);
+  border-color: rgba(124, 149, 255, 0.52);
+}
+
+.coverBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.coverBtnRunning:disabled {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+.coverSpinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(124, 149, 255, 0.28);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
 /* ── Tab bar ─────────────────────────────────────────────── */
 .tabBar {
   display: flex;
@@ -717,93 +761,364 @@
   display: flex;
   flex-direction: column;
   /* Wooden shelf bay: warm grain back panel framed by side uprights so the
-     books read as sitting inside a real bookcase. */
+     books read as sitting inside a real bookcase. Layer order (top → bottom):
+     ambient bay light · depth falloff · fine grain · plank figure · base wood. */
   background:
+    radial-gradient(130% 78% at 50% -6%,
+      rgba(226, 186, 110, 0.10) 0%,
+      rgba(226, 186, 110, 0.03) 42%,
+      rgba(0, 0, 0, 0) 72%),
+    linear-gradient(180deg,
+      rgba(0, 0, 0, 0.16) 0%,
+      rgba(0, 0, 0, 0) 34%,
+      rgba(0, 0, 0, 0) 62%,
+      rgba(0, 0, 0, 0.34) 100%),
     repeating-linear-gradient(90deg,
-      rgba(58, 40, 22, 0.0) 0px,
-      rgba(58, 40, 22, 0.0) 6px,
-      rgba(30, 20, 11, 0.18) 7px,
-      rgba(58, 40, 22, 0.0) 8px),
-    linear-gradient(180deg, #3a2817 0%, #2c1d10 100%);
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 5px,
+      rgba(22, 14, 7, 0.20) 5px,
+      rgba(22, 14, 7, 0.20) 6px,
+      rgba(0, 0, 0, 0) 6px,
+      rgba(0, 0, 0, 0) 11px),
+    repeating-linear-gradient(90deg,
+      rgba(255, 214, 150, 0) 0px,
+      rgba(255, 214, 150, 0) 37px,
+      rgba(255, 214, 150, 0.035) 37px,
+      rgba(255, 214, 150, 0.035) 39px,
+      rgba(255, 214, 150, 0) 39px,
+      rgba(255, 214, 150, 0) 79px),
+    linear-gradient(180deg, #3d2a18 0%, #2b1c10 100%);
   border-radius: 4px 4px 0 0;
   padding: 0 10px;
   border-left:  10px solid #43301a;
   border-right: 10px solid #43301a;
-  box-shadow: inset 0 6px 14px -6px rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 6px 14px -6px rgba(0, 0, 0, 0.72),
+    inset 6px 0 12px -8px rgba(0, 0, 0, 0.55),
+    inset -6px 0 12px -8px rgba(0, 0, 0, 0.55);
 }
 
 .shelfBooks {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  min-height: 286px;
+  /* Headroom above the tallest spine (272px) so a hovered book that pivots
+     forward is never sliced by the scroll container's clip box. `overflow-x`
+     forces `overflow-y` to compute to `auto`, so this slack is what keeps the
+     3D reveal whole — it is deliberately larger than the pop-out needs. */
+  min-height: 304px;
   padding: 0 14px;
   overflow-x: auto;
   scrollbar-width: thin;
+  /* Camera for the pull-off-the-shelf reveal. Lives on the direct parent of
+     the books so each spine rotates in its own vanishing-point space. */
+  perspective: 1500px;
+  perspective-origin: 50% 62%;
+  position: relative;
+  z-index: 1;
 }
 
 .shelfLedge {
-  height: 18px;
+  position: relative;
+  height: 20px;
   width: 100%;
   border-radius: 0 0 4px 4px;
   background:
     repeating-linear-gradient(90deg,
-      rgba(0, 0, 0, 0.0) 0px,
-      rgba(0, 0, 0, 0.0) 22px,
-      rgba(0, 0, 0, 0.12) 23px,
-      rgba(0, 0, 0, 0.0) 24px),
-    linear-gradient(180deg, #74542c 0%, #4a3420 50%, #2a1d11 100%);
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 26px,
+      rgba(0, 0, 0, 0.13) 26px,
+      rgba(0, 0, 0, 0.13) 27px,
+      rgba(0, 0, 0, 0) 27px,
+      rgba(0, 0, 0, 0) 53px),
+    repeating-linear-gradient(90deg,
+      rgba(255, 214, 150, 0) 0px,
+      rgba(255, 214, 150, 0) 12px,
+      rgba(255, 214, 150, 0.045) 12px,
+      rgba(255, 214, 150, 0.045) 13px,
+      rgba(255, 214, 150, 0) 13px,
+      rgba(255, 214, 150, 0) 29px),
+    linear-gradient(180deg, #7d5b30 0%, #5b4025 38%, #3a2815 72%, #241809 100%);
   box-shadow:
-    0 10px 20px -6px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(212, 168, 83, 0.35),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.45);
+    0 12px 22px -7px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(226, 186, 110, 0.42),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.50);
 }
 
-/* Individual spine */
+/* Ambient occlusion where the books meet the ledge. */
+.shelfLedge::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1px;
+  height: 8px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.40) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+/*
+ * Individual book. The <button> itself is only a 3D chassis: it holds no paint
+ * of its own so it can carry `transform-style: preserve-3d` (which `overflow`
+ * and `isolation` would otherwise flatten). The visible spine lives in
+ * `.spineFace`, and the front cover hangs off the spine's left edge in
+ * `.coverFace`, hinged 90° back into the page like a real book.
+ */
 .spine {
   flex-shrink: 0;
   border: none;
+  padding: 0;
+  background: none;
+  /* Explicit: the cover face has to be able to swing outside the button box. */
+  overflow: visible;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: transform 300ms var(--ease-expo), filter 300ms var(--ease-smooth);
+  will-change: transform;
+}
+
+/* The painted spine — everything that used to live on the button itself. */
+.spineFace {
+  position: absolute;
+  inset: 0;
   border-radius: 3px 3px 1px 1px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 9px 3px 8px;
-  cursor: pointer;
-  position: relative;
+  gap: 5px;
+  padding: 8px 3px 7px;
+  overflow: hidden;
+  /* Guarantees the z-index:-1 sheen/page-edge layers stay inside the spine,
+     above its own background but behind the title and author. */
+  isolation: isolate;
   color: #f4eede;
+  /* Rounded-spine shading painted over the book's own colour: a sheen down
+     the left edge falling away to a darkened right side. */
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0) 16%,
+      rgba(0, 0, 0, 0) 78%,
+      rgba(0, 0, 0, 0.20) 100%),
+    linear-gradient(90deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.09) 9%,
+      rgba(255, 255, 255, 0.02) 24%,
+      rgba(0, 0, 0, 0) 48%,
+      rgba(0, 0, 0, 0.10) 72%,
+      rgba(0, 0, 0, 0.24) 90%,
+      rgba(0, 0, 0, 0.34) 100%),
+    var(--spine-color, #3a3a46);
   box-shadow:
-    inset -3px 0 7px rgba(0, 0, 0, 0.38),
-    inset 3px 0 4px rgba(255, 255, 255, 0.14),
+    inset -3px 0 8px rgba(0, 0, 0, 0.34),
+    inset 3px 0 5px rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 2px 3px -1px rgba(0, 0, 0, 0.62),
     0 7px 11px -4px rgba(0, 0, 0, 0.55);
-  transition: transform 240ms var(--ease-expo), box-shadow 240ms var(--ease-smooth);
-  will-change: transform;
+  transition: box-shadow 240ms var(--ease-smooth);
 }
 
-.spine:hover {
+/* Crisp highlight rule down the left edge — catches the bay light. */
+.spineFace::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 1px;
+  top: 3px;
+  bottom: 3px;
+  width: 1px;
+  border-radius: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.26) 14%,
+    rgba(255, 255, 255, 0.26) 86%,
+    rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+/* Faint page-block peeking past the right edge of the spine. */
+.spineFace::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0) 60%),
+    repeating-linear-gradient(180deg,
+      rgba(244, 238, 222, 0.16) 0px,
+      rgba(244, 238, 222, 0.16) 1px,
+      rgba(0, 0, 0, 0.20) 1px,
+      rgba(0, 0, 0, 0.20) 3px);
+  pointer-events: none;
+}
+
+/* Baseline interaction for every book: lift it clear of the shelf. This is
+   also the graceful fallback whenever a book has no cover art (or its cover
+   404s), so a missing image never leaves an empty white rectangle behind. */
+.spine:hover,
+.spine:focus-visible {
   transform: translateY(-12px);
-  box-shadow:
-    inset -3px 0 7px rgba(0, 0, 0, 0.38),
-    inset 3px 0 4px rgba(255, 255, 255, 0.18),
-    0 16px 22px -6px rgba(0, 0, 0, 0.6);
+  z-index: 30;
 }
 
+.spine:hover .spineFace,
+.spine:focus-visible .spineFace {
+  box-shadow:
+    inset -3px 0 8px rgba(0, 0, 0, 0.34),
+    inset 3px 0 5px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 18px 24px -7px rgba(0, 0, 0, 0.62);
+}
+
+.spine:focus-visible {
+  outline: 2px solid rgba(226, 186, 110, 0.65);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ── Hover reveal: pull the book off the shelf and turn its cover to us ──
+   Only books that actually have artwork opt into the 3D chassis. Neighbours
+   never reflow — nothing but `transform` animates, and the hovered book is
+   raised above the rest of the row and the ledge by its z-index. */
+.spineWithCover {
+  transform-style: preserve-3d;
+  transform-origin: left center;
+}
+
+.spineWithCover:hover,
+.spineWithCover:focus-visible {
+  /* Hinged on the left edge: the book swings out of the row, the spine turns
+     edge-on and the cover face rotates around to read almost flat-on. */
+  transform: translateX(-26px) translateY(-12px) translateZ(26px) rotateY(-72deg);
+}
+
+/* The front cover — hinged along the spine's left edge and folded 90° into
+   the page, so at rest it is exactly edge-on and occupies no visible area. */
+.coverFace {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--cover-w, 150px);
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  transform-style: flat;
+  backface-visibility: hidden;
+  border-radius: 2px 3px 3px 2px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(145deg, #221a12 0%, #17110b 60%, #100c07 100%);
+  box-shadow:
+    0 22px 34px -14px rgba(0, 0, 0, 0.80),
+    inset 0 0 0 1px rgba(226, 186, 110, 0.14);
+  transition: opacity 300ms var(--ease-smooth);
+}
+
+.spineWithCover:hover .coverFace,
+.spineWithCover:focus-visible .coverFace {
+  opacity: 1;
+  /* Keeps the pointer inside the button once it travels onto the cover, so
+     the reveal doesn't flicker when the cursor leaves the thin spine strip. */
+  pointer-events: auto;
+}
+
+.coverImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* Board sheen: a little light down the hinge edge so the cover reads as a
+   physical board rather than a flat sticker. */
+.coverFace::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.12) 5%,
+      rgba(255, 255, 255, 0.05) 12%,
+      rgba(255, 255, 255, 0) 42%,
+      rgba(0, 0, 0, 0.10) 100%);
+}
+
+/* Placeholder shimmer while the remote image is still decoding — the reveal
+   never opens onto a blank white box. */
+.coverFaceLoading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(100deg,
+    rgba(226, 186, 110, 0) 20%,
+    rgba(226, 186, 110, 0.13) 50%,
+    rgba(226, 186, 110, 0) 80%);
+  animation: coverShimmer 1250ms var(--ease-smooth) infinite;
+}
+
+@keyframes coverShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Whisper-quiet mark telling the reader this book has artwork to reveal. */
+.coverPip {
+  position: absolute;
+  top: 19px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 238, 194, 0.34);
+  box-shadow: 0 0 3px rgba(255, 238, 194, 0.28);
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-smooth);
+}
+
+.spine:hover .coverPip,
+.spine:focus-visible .coverPip {
+  opacity: 0;
+}
+
+/* Embossed foil rules top and bottom. */
 .spineBandTop,
 .spineBandBottom {
   width: 100%;
   height: 6px;
   flex-shrink: 0;
   border-radius: 1px;
-  background: rgba(0, 0, 0, 0.20);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  background: linear-gradient(180deg,
+    rgba(255, 238, 194, 0.34) 0%,
+    rgba(212, 168, 83, 0.30) 40%,
+    rgba(122, 90, 36, 0.28) 68%,
+    rgba(0, 0, 0, 0.26) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 216, 0.44),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34);
 }
 
-.spineBandBottom {
-  margin-top: auto;
-}
-
+/*
+ * The title is the only flexible child: it takes whatever height is left over
+ * after the bands, rating and author have claimed theirs, so the author can
+ * never be pushed past the bottom edge of the spine and sliced by the ledge.
+ */
 .spineTitle {
+  flex: 1 1 0;
+  min-height: 0;
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-family: var(--lb-serif);
@@ -814,11 +1129,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-height: 190px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 .spineRating {
+  flex-shrink: 0;
   writing-mode: vertical-rl;
   font-size: 0.65rem;
   letter-spacing: 0.04em;
@@ -826,22 +1141,44 @@
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
-/* Author — small, horizontal, at the base of the spine */
+/* Author — small, horizontal, at the base of the spine. Never shrinks. */
 .spineAuthor {
+  flex-shrink: 0;
   writing-mode: horizontal-tb;
   width: 100%;
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  line-height: 1.15;
+  letter-spacing: 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.74);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 2px 1px 0;
+  padding: 1px 0 0;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No shelf-pull, no 3D swing: the cover simply cross-fades in place over the
+     spine. Still zero reflow — the cover stays absolutely positioned. */
+  .spine {
+    transition: none;
+  }
+  .spine:hover,
+  .spine:focus-visible,
+  .spineWithCover:hover,
+  .spineWithCover:focus-visible {
+    transform: none;
+  }
+  .spineWithCover:hover .coverFace,
+  .spineWithCover:focus-visible .coverFace {
+    transform: none;
+  }
+  .coverFaceLoading::after {
+    animation: none;
+  }
 }
 
 /* ── Full-context table ──────────────────────────────────── */
@@ -954,14 +1291,68 @@
   align-items: center;
   padding: 12px 4px 10px;
   gap: 8px;
+  position: relative;
+  overflow: hidden;
   color: #f4eede;
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0) 16%,
+      rgba(0, 0, 0, 0) 78%,
+      rgba(0, 0, 0, 0.20) 100%),
+    linear-gradient(90deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.10) 9%,
+      rgba(255, 255, 255, 0.02) 24%,
+      rgba(0, 0, 0, 0) 48%,
+      rgba(0, 0, 0, 0.10) 72%,
+      rgba(0, 0, 0, 0.26) 90%,
+      rgba(0, 0, 0, 0.36) 100%),
+    var(--spine-color, #3a3a46);
   box-shadow:
-    inset -4px 0 9px rgba(0, 0, 0, 0.4),
+    inset -4px 0 9px rgba(0, 0, 0, 0.40),
     inset 4px 0 5px rgba(255, 255, 255, 0.16),
     0 8px 16px -4px rgba(0, 0, 0, 0.55);
 }
 
+/* Real cover art in the detail modal — takes the spine preview's slot when the
+   book has resolved artwork; the spine block below is the fallback. */
+.detailCoverWrap {
+  flex-shrink: 0;
+  width: 134px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px 5px 5px 3px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(145deg, #221a12 0%, #17110b 60%, #100c07 100%);
+  box-shadow:
+    0 14px 26px -10px rgba(0, 0, 0, 0.72),
+    inset 0 0 0 1px rgba(226, 186, 110, 0.16);
+}
+
+.detailCoverImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Hinge shading so the modal cover matches the shelf treatment. */
+.detailCoverWrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.40) 0%,
+    rgba(0, 0, 0, 0.10) 5%,
+    rgba(255, 255, 255, 0.05) 12%,
+    rgba(255, 255, 255, 0) 45%);
+}
+
 .detailSpineTitle {
+  flex: 1 1 0;
+  min-height: 0;
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-family: var(--lb-serif);
@@ -971,7 +1362,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-height: 150px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
