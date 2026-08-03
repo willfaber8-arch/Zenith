@@ -51,7 +51,7 @@ const ContentSecurityPolicy = [
   /* Images — data URIs for SVG icons, blobs for canvas export, map tiles
      (OpenStreetMap + CartoDB basemaps used by the Trail Hunter map), and team
      badges from TheSportsDB's image CDN (Sports Tracker) */
-  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.thesportsdb.com https://r2.thesportsdb.com`,
+  `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.thesportsdb.com https://r2.thesportsdb.com https://covers.openlibrary.org https://books.google.com https://*.googleusercontent.com`,
 
   /* Connections — Open-Meteo weather, Nominatim geocoding, Supabase sync,
      PeerJS signalling (*.0.peerjs.com), WebRTC ICE/STUN, plus Microsoft
@@ -68,6 +68,9 @@ const ContentSecurityPolicy = [
     `wss://0.peerjs.com`,
     `https://graph.microsoft.com`,
     `https://login.microsoftonline.com`,
+    // Book covers — Open Library (HEAD verify) + Google Books volume search.
+    `https://covers.openlibrary.org`,
+    `https://www.googleapis.com`,
     // NOTE: no `stun:` entry — STUN/TURN traffic is WebRTC-internal and is
     // not governed by connect-src; browsers reject the scheme as an invalid
     // source and logged a console error on every page load.
