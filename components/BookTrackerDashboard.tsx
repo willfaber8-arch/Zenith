@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/lib/db'
+import { db, type KindleClipping } from '@/lib/db'
 import {
   type LibraryBook,
   type ReadingStatus,
@@ -23,6 +23,7 @@ import {
 } from '@/types/bookTracker'
 import ReadingTimer from '@/components/ReadingTimer'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
+import { importKindleClippings, type KindleImportResult } from '@/utils/kindleClippings'
 import { syncHabitSource } from '@/lib/habitSync'
 import { useToast } from '@/lib/ToastContext'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
@@ -68,6 +69,73 @@ function spineWidth(book: LibraryBook): number {
   let h = 0
   for (let i = 0; i < book.id.length; i++) h = (h * 13 + book.id.charCodeAt(i)) >>> 0
   return 54 + (h % 4) * 4   // 54, 58, 62, 66
+}
+
+/* ── Kindle clipping helpers ─────────────────────────────── */
+
+/** In-book ordering key — Kindle location start, else printed page, else time. */
+function clippingOrder(c: KindleClipping): number {
+  if (c.location) {
+    const n = parseInt(c.location.split('-')[0], 10)
+    if (Number.isFinite(n)) return n
+  }
+  if (c.page !== undefined) return c.page
+  return c.addedAt ?? 0
+}
+
+/** Sorted in reading order, bookmarks stripped out (counted separately). */
+function readableClippings(list: KindleClipping[]): KindleClipping[] {
+  return list
+    .filter(c => c.type !== 'BOOKMARK')
+    .sort((a, b) => clippingOrder(a) - clippingOrder(b))
+}
+
+/**
+ * Per-book highlights & notes panel. Notes carry their own accent so they
+ * read as the user's voice; bookmarks collapse into a single footer line.
+ */
+function ClippingsPanel({ clippings }: { clippings: KindleClipping[] }) {
+  const rows      = readableClippings(clippings)
+  const bookmarks = clippings.length - rows.length
+
+  if (rows.length === 0 && bookmarks === 0) return null
+
+  return (
+    <div className={styles.clipPanel}>
+      {rows.length === 0 ? (
+        <p className={styles.logEmpty}>Only bookmarks were imported for this book.</p>
+      ) : (
+        <ul className={styles.clipList}>
+          {rows.map(c => (
+            <li
+              key={c.id}
+              className={`${styles.clipRow} ${c.type === 'NOTE' ? styles.clipRowNote : ''}`}
+            >
+              <div className={styles.clipTopLine}>
+                <span className={c.type === 'NOTE' ? styles.clipTagNote : styles.clipTag}>
+                  {c.type === 'NOTE' ? '✎ Note' : '❝ Highlight'}
+                </span>
+                <span className={styles.clipLoc}>
+                  {c.page !== undefined ? `p. ${c.page}` : ''}
+                  {c.page !== undefined && c.location ? ' · ' : ''}
+                  {c.location ? `loc ${c.location}` : ''}
+                </span>
+              </div>
+              <p className={styles.clipText}>{c.text}</p>
+              {c.addedAt !== undefined && (
+                <span className={styles.clipDate}>{fmtDate(c.addedAt)}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {bookmarks > 0 && (
+        <div className={styles.clipBookmarks}>
+          ◷ {bookmarks} bookmark{bookmarks !== 1 ? 's' : ''} imported
+        </div>
+      )}
+    </div>
+  )
 }
 
 const SPINES_PER_SHELF = 7
@@ -245,6 +313,12 @@ function BookDetailModal({
   const sortedSessions = [...sessions].sort((a, b) => b.createdAt - a.createdAt)
   const stats = computeBookStats(sessions)
 
+  const clippings = useLiveQuery(
+    () => db.kindle_clippings.where('bookId').equals(book.id).toArray(),
+    [book.id],
+  ) ?? []
+  const [showClips, setShowClips] = useState(false)
+
   return (
     <ModalPortal>
       <div className={styles.modalBackdrop} onClick={onClose} />
@@ -333,6 +407,22 @@ function BookDetailModal({
           )}
         </div>
 
+        {/* Kindle highlights */}
+        {clippings.length > 0 && (
+          <div className={styles.clipSection}>
+            <button
+              className={styles.clipToggle}
+              onClick={() => setShowClips(v => !v)}
+              aria-expanded={showClips}
+            >
+              <span className={styles.clipBadge}>❝ {clippings.length}</span>
+              Kindle highlights &amp; notes
+              <span className={styles.clipChevron}>{showClips ? '▾' : '▸'}</span>
+            </button>
+            {showClips && <ClippingsPanel clippings={clippings} />}
+          </div>
+        )}
+
         {/* Shelf-move actions */}
         {/* Reading log + stats */}
         <div className={styles.logSection}>
@@ -402,7 +492,7 @@ function BookDetailModal({
 /* ── Book card (Reading + All Books list) ────────────────── */
 function BookCard({
   book, reviewDraft, onReviewChange, onSaveReview, onRate, onStatusChange, onDelete, index,
-  editMode, onStartReading,
+  editMode, onStartReading, clippings,
 }: {
   book: LibraryBook
   reviewDraft: string | undefined
@@ -414,7 +504,9 @@ function BookCard({
   index: number
   editMode: boolean
   onStartReading: () => void
+  clippings: KindleClipping[]
 }) {
+  const [showClips, setShowClips] = useState(false)
   const currentText = reviewDraft !== undefined ? reviewDraft : (book.customReviewText ?? '')
   const isDirty = reviewDraft !== undefined && reviewDraft !== (book.customReviewText ?? '')
   const statusCls =
@@ -428,10 +520,24 @@ function BookCard({
         <span className={`${styles.statusBadge} ${statusCls}`}>
           {STATUS_GLYPHS[book.readingStatus]}&nbsp;{STATUS_LABELS[book.readingStatus]}
         </span>
-        {book.totalPages ? (
-          <span className={styles.metaPill}>{book.totalPages.toLocaleString()} pp</span>
-        ) : null}
+        <span className={styles.cardHeaderRight}>
+          {clippings.length > 0 && (
+            <button
+              className={styles.clipBadgeBtn}
+              onClick={() => setShowClips(v => !v)}
+              aria-expanded={showClips}
+              title={`${clippings.length} Kindle clipping${clippings.length !== 1 ? 's' : ''}`}
+            >
+              ❝ {clippings.length}
+            </button>
+          )}
+          {book.totalPages ? (
+            <span className={styles.metaPill}>{book.totalPages.toLocaleString()} pp</span>
+          ) : null}
+        </span>
       </div>
+
+      {showClips && clippings.length > 0 && <ClippingsPanel clippings={clippings} />}
 
       <div className={styles.cardBodyRow}>
         <div className={styles.cardMiniSpine} style={{ background: spineColorFor(book) }} />
@@ -504,6 +610,7 @@ export default function BookTrackerDashboard() {
   const [activeTab,    setActiveTab]    = useState<ViewTab>('LIBRARY')
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
+  const [kindlePhase,  setKindlePhase]  = useState<'idle' | 'loading'>('idle')
   const [enrichPhase,  setEnrichPhase]  = useState<'idle' | 'running'>('idle')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId,    setEditingId]    = useState<string | null>(null)  // book being edited (add modal reused)
@@ -525,10 +632,25 @@ export default function BookTrackerDashboard() {
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [timerBookId,  setTimerBookId]  = useState<string | null>(null)  // reading-timer target
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef   = useRef<HTMLInputElement>(null)
+  const kindleInputRef = useRef<HTMLInputElement>(null)
 
   /* ── Live data ────────────────────────── */
   const allBooks = useLiveQuery(() => db.library_books.toArray(), []) ?? []
+
+  /* Kindle clippings, bucketed by bookId for O(1) per-card lookup. */
+  const allClippings = useLiveQuery(() => db.kindle_clippings.toArray(), []) ?? []
+  const clippingsByBook = useMemo(() => {
+    const map = new Map<string, KindleClipping[]>()
+    for (const c of allClippings) {
+      if (!c.bookId) continue
+      const list = map.get(c.bookId)
+      if (list) list.push(c)
+      else map.set(c.bookId, [c])
+    }
+    return map
+  }, [allClippings])
+  const clippingsFor = (bookId: string): KindleClipping[] => clippingsByBook.get(bookId) ?? []
 
   const counts = useMemo(() => ({
     total:     allBooks.length,
@@ -592,6 +714,41 @@ export default function BookTrackerDashboard() {
       setImportPhase('idle')
       toast('CSV import failed. Check that this is a Goodreads export file.', 'error')
     }
+    e.target.value = ''
+  }
+
+  /**
+   * Kindle `My Clippings.txt` import. Fully local: the file is read in the
+   * browser, parsed, de-duplicated by clipping hash and folded into the
+   * library. Re-importing the same file imports nothing.
+   */
+  const handleKindleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setKindlePhase('loading')
+    try {
+      const text = await file.text()
+      const r: KindleImportResult = await importKindleClippings(text)
+
+      if (r.errors.length > 0) {
+        toast(r.errors[0], 'error')
+      } else if (r.clippingsImported > 0) {
+        const clip  = `${r.clippingsImported} highlight${r.clippingsImported !== 1 ? 's' : ''}`
+        const books = `${r.booksTouched} book${r.booksTouched !== 1 ? 's' : ''}`
+        const fresh = r.booksCreated > 0 ? ` (${r.booksCreated} new)` : ''
+        toast(`Imported ${clip} across ${books}${fresh}.`, 'success')
+      } else if (r.clippingsSkipped > 0) {
+        toast(
+          `All ${r.clippingsSkipped} clipping${r.clippingsSkipped !== 1 ? 's are' : ' is'} already imported — nothing new in this file.`,
+          'info',
+        )
+      } else {
+        toast('No clippings found in that file.', 'info')
+      }
+    } catch {
+      toast('Kindle import failed. Select the "My Clippings.txt" file from your Kindle.', 'error')
+    }
+    setKindlePhase('idle')
     e.target.value = ''
   }
 
@@ -723,11 +880,13 @@ export default function BookTrackerDashboard() {
   }
 
   const handleDelete = async (bookId: string) => {
-    // Cascade: remove the book's logged reading sessions too.
+    // Cascade: remove the book's logged reading sessions + Kindle clippings too.
     const keys = await db.reading_sessions.where('bookId').equals(bookId).primaryKeys().catch(() => [] as number[])
+    const clipKeys = await db.kindle_clippings.where('bookId').equals(bookId).primaryKeys().catch(() => [] as string[])
     await Promise.all([
       db.library_books.delete(bookId),
       keys.length ? db.reading_sessions.bulkDelete(keys) : Promise.resolve(),
+      clipKeys.length ? db.kindle_clippings.bulkDelete(clipKeys) : Promise.resolve(),
     ])
     if (selectedId === bookId) setSelectedId(null)
   }
@@ -827,6 +986,13 @@ export default function BookTrackerDashboard() {
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
+      <input
+        ref={kindleInputRef}
+        type="file"
+        accept=".txt,text/plain"
+        style={{ display: 'none' }}
+        onChange={handleKindleFile}
+      />
 
       {/* Metrics bar */}
       <div className={styles.metricsBar}>
@@ -841,6 +1007,16 @@ export default function BookTrackerDashboard() {
             disabled={importPhase === 'loading'}
           >
             {importPhase === 'loading' ? 'Importing…' : 'Import Goodreads CSV'}
+          </button>
+          <button
+            className={styles.kindleBtn}
+            onClick={() => kindlePhase !== 'loading' && kindleInputRef.current?.click()}
+            disabled={kindlePhase === 'loading'}
+            title='Plug your Kindle in by USB, open the "documents" folder and select My Clippings.txt'
+          >
+            {kindlePhase === 'loading'
+              ? <><span className={styles.kindleSpinner} aria-hidden="true" />Reading clippings…</>
+              : '❝ Import from Kindle'}
           </button>
           <button className={styles.addBtn} onClick={() => { resetAddForm(); setShowAddModal(true) }}>+ Add Book</button>
           <button
@@ -865,6 +1041,14 @@ export default function BookTrackerDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Kindle import hint */}
+      <p className={styles.kindleHint}>
+        <span className={styles.kindleHintGlyph}>❝</span>
+        Kindle: plug your device in by USB, open the <code className={styles.kindleHintCode}>documents</code> folder
+        and select <code className={styles.kindleHintCode}>My Clippings.txt</code> — every highlight and note
+        lands on its book. Nothing leaves this device.
+      </p>
 
       {/* Tab bar */}
       <div className={styles.tabBar}>
@@ -983,6 +1167,7 @@ export default function BookTrackerDashboard() {
                 onDelete={() => handleDelete(book.id)}
                 editMode={editMode}
                 onStartReading={() => setTimerBookId(book.id)}
+                clippings={clippingsFor(book.id)}
               />
             ))}
           </div>
@@ -1014,6 +1199,7 @@ export default function BookTrackerDashboard() {
                 onDelete={() => handleDelete(book.id)}
                 editMode={editMode}
                 onStartReading={() => setTimerBookId(book.id)}
+                clippings={clippingsFor(book.id)}
               />
             ))}
           </div>
