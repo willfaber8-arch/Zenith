@@ -39,6 +39,7 @@ import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/li
 import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
+import CloudSnapshotManager       from '@/components/CloudSnapshotManager'
 import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
 import styles from './SettingsView.module.css'
@@ -227,6 +228,7 @@ const SETTINGS_SECTIONS = [
   { id: 's-account',       label: 'Account'       },
   { id: 's-notifications', label: 'Notifications' },
   { id: 's-audio',         label: 'Audio'         },
+  { id: 's-cloud',         label: 'Cloud Sync'    },
   { id: 's-privacy',       label: 'Data'          },
   { id: 's-analytics',     label: 'Analytics'     },
   { id: 's-shortcuts',     label: 'Shortcuts'     },
@@ -1067,6 +1069,17 @@ export default function SettingsView() {
             Ambient soundscapes and music streams for deep focus sessions.
           </p>
           <FocusAudioPlayer />
+        </Section>
+
+        {/* ── Cloud Snapshot ──────────────────────────────────── */}
+        <Section id="s-cloud" title="Cloud Sync">
+          <p className={styles.sectionSubtitle}>
+            Your whole workspace is saved to your account so it follows you
+            between browser profiles on this computer. The newest save wins —
+            saving happens automatically in the background, and loading
+            replaces whatever is in the current profile.
+          </p>
+          <CloudSnapshotManager />
         </Section>
 
         {/* ── Privacy & Data ───────────────────────────────────── */}

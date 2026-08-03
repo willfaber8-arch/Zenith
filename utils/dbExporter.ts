@@ -32,18 +32,21 @@ export type MasterBackupPayload = {
 const BACKUP_FORMAT_VERSION = 1
 
 /* ══════════════════════════════════════════════════════════════════
-   exportLocalDatabaseToJson
+   buildBackupPayload
    ══════════════════════════════════════════════════════════════════ */
 
 /**
- * Reads every registered Dexie table, packages the rows into a single
- * JSON archive, and triggers a file download named:
- *   zenith_os_backup_YYYY_MM_DD.json
+ * Reads every registered Dexie table and returns the complete backup
+ * envelope — WITHOUT touching the DOM or triggering a download.
  *
- * Call from a browser event handler only — never in SSR or useEffect
- * without an explicit client-side guard.
+ * This is the shared serialisation core used by:
+ *   • exportLocalDatabaseToJson()  → file download (Eject Button)
+ *   • services/cloudSnapshot.ts    → Supabase whole-database snapshot
+ *
+ * Browser-only: must be called from an event handler, useEffect, or any
+ * other client-side context — never during SSR.
  */
-export async function exportLocalDatabaseToJson(): Promise<void> {
+export async function buildBackupPayload(): Promise<MasterBackupPayload> {
   const tables: { [tableName: string]: unknown[] } = {}
 
   /*
@@ -61,12 +64,28 @@ export async function exportLocalDatabaseToJson(): Promise<void> {
     }
   }
 
-  const payload: MasterBackupPayload = {
+  return {
     version:       BACKUP_FORMAT_VERSION,
     exportedAt:    Date.now(),
     schemaVersion: db.verno,
     tables,
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   exportLocalDatabaseToJson
+   ══════════════════════════════════════════════════════════════════ */
+
+/**
+ * Reads every registered Dexie table, packages the rows into a single
+ * JSON archive, and triggers a file download named:
+ *   zenith_os_backup_YYYY_MM_DD.json
+ *
+ * Call from a browser event handler only — never in SSR or useEffect
+ * without an explicit client-side guard.
+ */
+export async function exportLocalDatabaseToJson(): Promise<void> {
+  const payload = await buildBackupPayload()
 
   /* ── Serialise ──────────────────────────────────────────────── */
   const json = JSON.stringify(payload, null, 2)
