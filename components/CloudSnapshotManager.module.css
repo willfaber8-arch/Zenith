@@ -1,0 +1,234 @@
+/* CloudSnapshotManager.module.css — whole-database Cloud Snapshot panel
+   Mirrors BackupRestoreManager's structure in the periwinkle accent so the
+   local archive and the cloud copy read as siblings, not duplicates. */
+
+/* ── Root panel ───────────────────────────────────────────────── */
+.panel {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  overflow:      hidden;
+}
+
+/* ── Two-column action row ────────────────────────────────────── */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+@media (max-width: 640px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Individual action cell ───────────────────────────────────── */
+.cell {
+  padding:        var(--sp-5) var(--sp-6);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-3);
+}
+
+.cell + .cell {
+  border-left: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 640px) {
+  .cell + .cell {
+    border-left: none;
+    border-top:  1px solid var(--border-subtle);
+  }
+}
+
+/* ── Cell header label ────────────────────────────────────────── */
+.cellLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin:         0;
+}
+
+/* ── Cell description text ────────────────────────────────────── */
+.cellDesc {
+  font-size:   0.72rem;
+  line-height: 1.55;
+  color:       var(--text-muted);
+  margin:      0;
+  flex:        1;
+}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.pushBtn,
+.pullBtn {
+  display:        inline-flex;
+  align-items:    center;
+  justify-content: center;
+  gap:            var(--sp-2);
+  padding:        var(--sp-2) var(--sp-4);
+  border-radius:  var(--r-sm);
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  letter-spacing: 0.04em;
+  cursor:         pointer;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    color        var(--dur-base) var(--ease-smooth),
+    opacity      var(--dur-base) var(--ease-smooth);
+}
+
+/* Push — filled periwinkle (the primary, safe action) */
+.pushBtn {
+  background: var(--bg-active);
+  border:     1px solid var(--accent-purple-dim);
+  color:      var(--accent-purple);
+}
+
+.pushBtn:hover:not(:disabled) {
+  background:   rgba(124, 149, 255, 0.18);
+  border-color: var(--accent-purple);
+}
+
+.pushBtn:active:not(:disabled) {
+  background: rgba(124, 149, 255, 0.25);
+}
+
+/* Pull — outline (destructive: replaces local data) */
+.pullBtn {
+  background: transparent;
+  border:     1px solid var(--border-subtle);
+  color:      var(--text-muted);
+}
+
+.pullBtn:hover:not(:disabled) {
+  background:   var(--bg-hover);
+  border-color: var(--accent-purple-dim);
+  color:        var(--text-primary);
+}
+
+.pullBtn:active:not(:disabled) {
+  background: var(--bg-active);
+}
+
+.pushBtn:disabled,
+.pullBtn:disabled {
+  opacity: 0.4;
+  cursor:  not-allowed;
+}
+
+/* ── Conflict callout ─────────────────────────────────────────── */
+.conflictBox {
+  padding:       var(--sp-4) var(--sp-6);
+  background:    rgba(245, 158, 11, 0.06);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.20);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--sp-2);
+}
+
+.conflictTitle {
+  margin:         0;
+  font-family:    var(--font-mono);
+  font-size:      0.66rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color:          #f59e0b;
+}
+
+.conflictBody {
+  margin:      0;
+  font-size:   0.72rem;
+  line-height: 1.55;
+  color:       var(--text-muted);
+}
+
+.conflictActions {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       var(--sp-3);
+  margin-top: var(--sp-1);
+}
+
+/* ── Status strip ─────────────────────────────────────────────── */
+.status {
+  padding:        var(--sp-3) var(--sp-6);
+  border-top:     1px solid var(--border-subtle);
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.08em;
+  min-height:     36px;
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+}
+
+/* ── Indicator dot ────────────────────────────────────────────── */
+.dot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.dotIdle {
+  background: var(--text-dark);
+}
+
+.dotWorking {
+  background: var(--accent-purple);
+  animation:  snapshotPulse 900ms ease-in-out infinite;
+}
+
+.dotSuccess {
+  background: var(--accent-green);
+}
+
+.dotConflict {
+  background: #f59e0b;
+  animation:  snapshotPulse 1.4s ease-in-out infinite;
+}
+
+.dotError {
+  background: #ff5c5c;
+}
+
+@keyframes snapshotPulse {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50%      { opacity: 0.35; transform: scale(0.72); }
+}
+
+/* ── Status text ──────────────────────────────────────────────── */
+.statusIdle {
+  color:       var(--text-dark);
+  line-height: 1.4;
+}
+
+.statusWorking {
+  color:     var(--accent-purple);
+  animation: snapshotTextBreathe 1.4s ease-in-out infinite;
+}
+
+@keyframes snapshotTextBreathe {
+  0%, 100% { opacity: 1;    }
+  50%      { opacity: 0.55; }
+}
+
+.statusSuccess {
+  color:       var(--accent-green);
+  line-height: 1.4;
+}
+
+.statusConflict {
+  color:       #f59e0b;
+  line-height: 1.4;
+}
+
+.statusError {
+  color:       #ff5c5c;
+  flex-wrap:   wrap;
+  line-height: 1.4;
+}
