@@ -807,7 +807,13 @@
      forces `overflow-y` to compute to `auto`, so this slack is what keeps the
      3D reveal whole — it is deliberately larger than the pop-out needs. */
   min-height: 304px;
-  padding: 0 14px;
+  /* Sideways slack, for the same reason as the `min-height` above: `overflow-x`
+     makes this element a clip box on BOTH axes, and a hovered book's cover
+     projects ~26px past the spine's left edge once it has swung out. At the old
+     14px the first book on every shelf had its cover sliced by the bay wall
+     (measured: 21.8px lost). Kept symmetric so the last book gets the same
+     room when the shelf is scrolled to its end. */
+  padding: 0 40px;
   overflow-x: auto;
   scrollbar-width: thin;
   /* Camera for the pull-off-the-shelf reveal. Lives on the direct parent of
@@ -1897,4 +1903,62 @@
   font-size: 0.62rem;
   color: var(--text-dark);
   padding-left: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE  (≤767px)
+   The shelf's horizontal scroll is intentional and already
+   contained by `.shelfBooks { overflow-x: auto }` — it is left
+   alone. What did not fit were the --sp-8 page gutter, the fixed
+   360px search field, and the 310px grid minimum (which forces a
+   track wider than a 320px viewport can hold).
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .root {
+    padding: var(--sp-4);
+  }
+
+  .searchInput {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .searchRow,
+  .metricsActions,
+  .metricsBar {
+    flex-wrap: wrap;
+  }
+
+  /* The action row is a 4-button strip that used to run to 823px */
+  .metricsActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tab strip: let it scroll inside its own rail rather than
+     widening the page. */
+  .tabBar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tabBar::-webkit-scrollbar { display: none; }
+
+  .tab {
+    padding: var(--sp-2) var(--sp-3);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .detailTop {
+    flex-direction: column;
+    align-items: center;
+  }
 }
