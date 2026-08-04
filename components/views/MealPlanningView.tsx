@@ -1622,6 +1622,13 @@ function KitchenSetupTab({
     }, () => {
       toast('Location access denied.', 'error')
       setLocLoading(false)
+    }, {
+      // Explicit user gesture, but a recent cached fix is plenty for a
+      // 6 km supermarket search — avoids forcing a fresh hardware fix
+      // (and the OS location indicator) on every press.
+      enableHighAccuracy: false,
+      timeout:            10_000,
+      maximumAge:         10 * 60 * 1_000,
     })
   }
 

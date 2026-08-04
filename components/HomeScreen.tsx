@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getUrgentTasks, type Task } from '@/lib/db'
-import { fetchWeather, type WeatherData } from '@/lib/weather'
+import { useWeather } from '@/lib/hooks/useWeather'
 import styles from './HomeScreen.module.css'
 
 function getGreeting(date: Date): string {
@@ -20,8 +20,12 @@ function formatDue(iso: string): string {
 
 export default function HomeScreen() {
   const [now, setNow] = useState<Date | null>(null)
-  const [weather, setWeather] = useState<WeatherData | null>(null)
-  const [weatherState, setWeatherState] = useState<'loading' | 'ok' | 'error'>('loading')
+  /* Weather comes from the shared provider — never call
+     navigator.geolocation directly from a component. useWeather owns the
+     single, permission-gated acquisition for the whole app. */
+  const { status: weatherStatus, weather } = useWeather()
+  const weatherState: 'loading' | 'ok' | 'error' =
+    weatherStatus === 'ok' ? 'ok' : weatherStatus === 'loading' || weatherStatus === 'idle' ? 'loading' : 'error'
   const [tasks, setTasks] = useState<Task[]>([])
   const [tasksReady, setTasksReady] = useState(false)
 
@@ -30,27 +34,6 @@ export default function HomeScreen() {
     setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
-  }, [])
-
-  // Weather via browser geolocation + Open-Meteo (no API key required)
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setWeatherState('error')
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const data = await fetchWeather(pos.coords.latitude, pos.coords.longitude)
-        if (data) {
-          setWeather(data)
-          setWeatherState('ok')
-        } else {
-          setWeatherState('error')
-        }
-      },
-      () => setWeatherState('error'),
-      { timeout: 8000 },
-    )
   }, [])
 
   // Urgent tasks from IndexedDB

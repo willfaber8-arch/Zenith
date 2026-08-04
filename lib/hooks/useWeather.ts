@@ -19,8 +19,11 @@
  *     instantly from the cached coordinates — no geolocation call, no
  *     prompt, no GPS spin.
  *   • A silent background refresh runs once per session with a long
- *     `maximumAge`, so when the permission grant persists (the common
- *     case) the browser returns a cached fix without re-prompting.
+ *     `maximumAge` — and ONLY when navigator.permissions reports the
+ *     grant is still live. A cached coordinate entry outlives a browser
+ *     grant (Edge "Allow this time", a second profile, "clear site data
+ *     on close"), so refreshing unconditionally re-raised the location
+ *     prompt on every launch.
  *   • The very first time — and only the first time — Zenith may
  *     auto-prompt for location (tracked via permissionGate). After that
  *     the auto-prompt never fires again; the cached coordinates carry
@@ -33,7 +36,11 @@
 
 import { useEffect, useState } from 'react'
 import { fetchWeather, type WeatherData } from '@/lib/weather'
-import { hasAskedFor, markAskedFor }      from '@/lib/permissionGate'
+import {
+  hasAskedFor,
+  markAskedFor,
+  queryGeoPermission,
+}                                          from '@/lib/permissionGate'
 
 const COORDS_KEY = 'zenith_geo_cache_v1'
 
@@ -144,33 +151,57 @@ function ensureStarted(): void {
   if (started || typeof window === 'undefined') return
   started = true
 
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    emit({ status: 'denied', weather: null, city: null })
+    return
+  }
+
   const cached = readCoords()
 
   if (cached) {
     // Instant weather from cached coordinates — no prompt, no GPS.
     emit({ status: 'loading', weather: null, city: cached.city ?? null })
     void loadWeather(cached.lat, cached.lon, cached.city ?? null)
-    // Silently refresh coordinates in the background for next time.
-    acquirePosition(false)
+
+    /* Background coordinate refresh.
+     *
+     * This MUST be gated on the browser's real permission state. The
+     * localStorage coordinate cache long outlives a browser grant:
+     * an Edge "Allow this time" grant, a second browser profile, or
+     * "clear cookies and site data on close" all reset the grant while
+     * this cache survives. Calling getCurrentPosition() unconditionally
+     * here re-raised the location prompt on EVERY single launch — the
+     * cached coordinates already render the widget, so a lapsed grant
+     * simply means we skip the refresh instead of nagging the user. */
+    void queryGeoPermission().then(state => {
+      if (state === 'granted') acquirePosition(false)
+    })
     return
   }
 
-  // No cached coordinates yet. Auto-prompt at most once, ever.
-  if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    emit({ status: 'denied', weather: null, city: null })
-    return
-  }
-  if (hasAskedFor('location')) {
-    // We asked before and never got coordinates → user declined. Stay
-    // quiet; the user can re-enable from the browser, which will populate
-    // the cache on the next successful lookup.
-    emit({ status: 'denied', weather: null, city: null })
-    return
-  }
+  // No cached coordinates yet.
+  void queryGeoPermission().then(state => {
+    if (state === 'granted') {
+      // Already granted → acquire silently. No prompt can appear, so
+      // this must not consume the one-shot auto-ask latch.
+      emit({ status: 'loading', weather: null, city: null })
+      acquirePosition(false)
+      return
+    }
 
-  emit({ status: 'loading', weather: null, city: null })
-  markAskedFor('location')
-  acquirePosition(true)
+    if (state === 'denied' || hasAskedFor('location')) {
+      // Blocked, or we already spent our single auto-ask and never got
+      // coordinates. Stay quiet — the user can re-enable from the
+      // browser, which populates the cache on the next lookup.
+      emit({ status: 'denied', weather: null, city: null })
+      return
+    }
+
+    // 'prompt' / 'unknown' and we have never auto-asked → ask exactly once, ever.
+    emit({ status: 'loading', weather: null, city: null })
+    markAskedFor('location')
+    acquirePosition(true)
+  })
 }
 
 /* ── Public hook ──────────────────────────────────────────────── */
