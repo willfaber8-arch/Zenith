@@ -814,7 +814,14 @@ export default function BookTrackerDashboard() {
   useEffect(() => () => coverAbortRef.current?.abort(), [])
 
   /* ── Live data ────────────────────────── */
-  const allBooks = useLiveQuery(() => db.library_books.toArray(), []) ?? []
+  // `useLiveQuery` yields `undefined` for the boot frame before IndexedDB has
+  // answered. `booksLoaded` distinguishes "still loading" from "genuinely
+  // empty library" — the automatic cover sweep must not fire on the former.
+  // The `?? []` fallback is memoised so an empty library doesn't hand every
+  // downstream `useMemo` a brand-new array identity on every render.
+  const allBooksRaw = useLiveQuery(() => db.library_books.toArray(), [])
+  const booksLoaded = allBooksRaw !== undefined
+  const allBooks = useMemo(() => allBooksRaw ?? [], [allBooksRaw])
 
   /* Kindle clippings, bucketed by bookId for O(1) per-card lookup. */
   const allClippings = useLiveQuery(() => db.kindle_clippings.toArray(), []) ?? []

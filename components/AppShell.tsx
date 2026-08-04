@@ -8,6 +8,8 @@ import { useNavBadge }     from '@/lib/NavBadgeContext'
 import { useStudyMode }    from '@/lib/StudyModeContext'
 import { useHiddenNavItems } from '@/lib/hooks/useHiddenNavItems'
 import { useNotifications }  from '@/lib/hooks/useNotifications'
+import { useIsMobileViewport } from '@/lib/hooks/useMediaQuery'
+import { useBodyScrollLock }   from '@/lib/hooks/useBodyScrollLock'
 import Topbar                    from './Topbar'
 import BadgeSyncEffect           from './BadgeSyncEffect'
 import MentalHealthBurnoutBanner from './MentalHealthBurnoutBanner'
@@ -134,16 +136,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const EASE_OUT = 'cubic-bezier(0.4, 0, 0.2, 1)'
   const EASE_IN  = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
+  /*
+   * NOTE: the desktop collapse (`sidebarHidden`) is deliberately NOT
+   * expressed here. An inline `width: 0` beats every media query, so a
+   * collapse performed on desktop used to survive into the ≤767px
+   * drawer and open it to zero width. The collapse now lives in
+   * `.sidebarCollapsed`, which the mobile media query can override.
+   * Only study-mode transforms — which are correct at every width —
+   * stay inline.
+   */
   const sidebarStyle = useMemo<React.CSSProperties>(() => ({
-    width:         sidebarHidden ? 0 : undefined,
-    overflow:      sidebarHidden ? 'hidden' : undefined,
-    transform:     isStudyModeActive ? 'translateX(-100%)' : 'translateX(0)',
+    transform:     isStudyModeActive ? 'translateX(-100%)' : undefined,
     opacity:       isStudyModeActive ? 0 : 1,
     pointerEvents: isStudyModeActive ? 'none' : undefined,
     transition:    isStudyModeActive
       ? `width 300ms ${EASE_OUT}, transform 400ms ${EASE_OUT}, opacity 300ms ease`
       : `width 300ms ${EASE_IN},  transform 400ms ${EASE_IN},  opacity 300ms ease`,
-  }), [isStudyModeActive, sidebarHidden])
+  }), [isStudyModeActive])
 
   const topbarStyle = useMemo<React.CSSProperties>(() => ({
     transform:  isStudyModeActive ? 'translateY(-100%)' : 'translateY(0)',
@@ -153,6 +162,61 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       : `transform 380ms ${EASE_IN},  opacity 280ms ease`,
   }), [isStudyModeActive])
 
+  /* ── Mobile drawer behaviour ────────────────────────────────────
+   * `open` only has a visual effect below the 767px breakpoint (the
+   * hamburger that sets it is `display:none` above it), but the
+   * scroll lock, Escape handler and focus management must not run on
+   * desktop, so they are gated on a real matchMedia read.
+   * ─────────────────────────────────────────────────────────────── */
+  const isMobile     = useIsMobileViewport()
+  const drawerOpen   = isMobile && open
+  const sidebarRef   = useRef<HTMLElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
+
+  useBodyScrollLock(drawerOpen)
+
+  /* Escape closes the drawer */
+  useEffect(() => {
+    if (!drawerOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.repeat) setOpen(false)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [drawerOpen])
+
+  /* Move focus into the drawer on open, restore it on close */
+  useEffect(() => {
+    if (!drawerOpen) return
+    previousFocus.current = document.activeElement as HTMLElement | null
+    const first = sidebarRef.current?.querySelector<HTMLElement>(
+      'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    )
+    first?.focus()
+    return () => {
+      previousFocus.current?.focus?.()
+      previousFocus.current = null
+    }
+  }, [drawerOpen])
+
+  /* Keep Tab inside the drawer while it is acting as a modal surface */
+  const handleSidebarKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (!drawerOpen || e.key !== 'Tab') return
+    const focusables = sidebarRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    if (!focusables || focusables.length === 0) return
+    const first = focusables[0]
+    const last  = focusables[focusables.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
   const handleLink = (link: NavLink) => {
     navigate(link.id, link.category)
     setOpen(false)
@@ -160,6 +224,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleHome = () => {
     navigate('home', null)
+    setOpen(false)
+  }
+
+  /* Footer destinations must close the drawer too — otherwise on a phone
+     you tap Settings and the drawer stays parked over the view. */
+  const handleFooterNav = (view: 'friends-network' | 'settings' | 'help') => {
+    if (view === 'friends-network') navigate(view, 'essentials')
+    else navigate(view, null as unknown as typeof activeCategory)
     setOpen(false)
   }
 
@@ -178,10 +250,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* ── Persistent Sidebar ──────────────────────────────── */}
       <aside
         id="sidebar"
-        className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`}
+        ref={sidebarRef}
+        className={[
+          styles.sidebar,
+          open          ? styles.sidebarOpen      : '',
+          sidebarHidden ? styles.sidebarCollapsed : '',
+        ].filter(Boolean).join(' ')}
         aria-label="Main navigation"
         style={sidebarStyle}
         aria-hidden={isStudyModeActive}
+        /* On a phone the drawer covers the workspace — announce it as a
+           modal dialog. On desktop it is a permanent landmark. */
+        role={isMobile ? 'dialog' : undefined}
+        aria-modal={drawerOpen ? true : undefined}
+        onKeyDown={handleSidebarKeyDown}
         data-tour="sidebar"
       >
         <div className={styles.sidebarInner}>
@@ -340,7 +422,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               className={`${styles.navItem} ${activeView === 'friends-network' ? styles.navItemActive : ''}`}
-              onClick={() => navigate('friends-network', 'essentials')}
+              onClick={() => handleFooterNav('friends-network')}
               aria-label="Open Friends"
               style={{
                 '--item-hover-bg': 'rgba(124, 149, 255, 0.08)',
@@ -354,7 +436,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               className={`${styles.navItem} ${activeView === 'settings' ? styles.navItemActive : ''}`}
-              onClick={() => navigate('settings', null as unknown as typeof activeCategory)}
+              onClick={() => handleFooterNav('settings')}
               aria-label="Open Settings"
               data-tour="nav-settings"
               style={{
@@ -369,7 +451,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               className={`${styles.navItem} ${activeView === 'help' ? styles.navItemActive : ''}`}
-              onClick={() => navigate('help', null as unknown as typeof activeCategory)}
+              onClick={() => handleFooterNav('help')}
               aria-label="Open Help and Feedback"
               style={{
                 '--item-hover-bg': 'rgba(124, 149, 255, 0.08)',

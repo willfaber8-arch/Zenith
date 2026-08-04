@@ -29,6 +29,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock'
 
 /* ── Public types ───────────────────────────────────────────── */
 
@@ -86,11 +87,12 @@ export function StudyModeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', handler)
   }, [isStudyModeActive, exitStudyWorkspace])
 
-  /* ── Prevent body scroll while cockpit is open ──────────────── */
-  useEffect(() => {
-    document.body.style.overflow = isStudyModeActive ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [isStudyModeActive])
+  /* ── Prevent body scroll while cockpit is open ──────────────────
+   * Reference-counted so the mobile nav drawer (AppShell) and the
+   * cockpit can hold the lock simultaneously without one release
+   * clobbering the other's.
+   * ───────────────────────────────────────────────────────────── */
+  useBodyScrollLock(isStudyModeActive)
 
   return (
     <StudyModeContext.Provider

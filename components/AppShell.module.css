@@ -32,6 +32,17 @@
   z-index: 100;
 }
 
+/*
+ * Desktop collapse. Lives in CSS — not in an inline style — so the
+ * mobile drawer rules below can override it. An inline `width: 0`
+ * outranks every media query, which used to leave a phone user with a
+ * hamburger that opened a zero-width drawer.
+ */
+.sidebar.sidebarCollapsed {
+  width: 0;
+  overflow: hidden;
+}
+
 .sidebarInner {
   display: flex;
   flex-direction: column;
