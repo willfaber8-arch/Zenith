@@ -13,18 +13,42 @@ import { db } from '@/lib/db'
 import type { Priority } from '@/lib/db'
 import type { BillingCycle } from '@/types/finance'
 import type { ReadingStatus, LibraryBook } from '@/types/bookTracker'
-import { isKnownAction, DASHBOARD_WIDGET_KEYS, type CopilotAction } from '@/lib/copilotTools'
+import {
+  isKnownAction, isDestructiveName,
+  DASHBOARD_WIDGET_KEYS, NAV_MODULE_KEYS, FREE_THEME_IDS,
+  type CopilotAction,
+} from '@/lib/copilotTools'
+import { NAV_HIDDEN_STORAGE_KEY, NAV_VISIBILITY_EVENT } from '@/lib/hooks/useHiddenNavItems'
 import { SANDBOX_STORAGE_KEY }                   from '@/lib/hooks/useSandboxConfig'
 import { savePreset, findPresetByName, applyPreset } from '@/lib/dashboardPresets'
 import { syncHabitSource, isHabitAutoSource }    from '@/lib/habitSync'
 import { colorForHabit }                          from '@/lib/habitColors'
 import type { VocabDeck, VocabCard }              from '@/types/vocabulary'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 const WIDGET_KEY_SET = new Set<string>(DASHBOARD_WIDGET_KEYS)
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
+/**
+ * Hard stop for anything whose name implies data loss.
+ *
+ * The Co-Pilot has no delete tool and this executor makes no Dexie
+ * `.delete()`, `.clear()` or `bulkDelete()` call — removing a habit, book
+ * or event is something the user does in that module's own UI, with the
+ * row in front of them. This guard exists so that stays true by accident
+ * as well as by design: it is checked before the switch, so a destructive
+ * tool added later fails loudly here instead of quietly working.
+ */
+function assertNonDestructive(name: string): void {
+  if (isDestructiveName(name)) {
+    throw new Error(
+      `Refused: "${name}" looks like a destructive action. The assistant cannot ` +
+      `delete your data — remove it yourself from that module if you want it gone.`,
+    )
+  }
 }
+const NAV_MODULE_SET = new Set<string>(NAV_MODULE_KEYS)
+const FREE_THEME_SET = new Set<string>(FREE_THEME_IDS)
+
 
 function str(v: unknown): string {
   return v === undefined || v === null ? '' : String(v).trim()
@@ -73,6 +97,17 @@ function awardVitalityPoints(vp: number): void {
  */
 export async function executeCopilotAction(action: CopilotAction): Promise<string> {
   if (!db) throw new Error('Local database is not available.')
+
+  /*
+   * Destructive-action tripwire. Independent of the tool catalogue on
+   * purpose: if someone later adds a `delete_habit` tool, this still
+   * refuses to run it until they deliberately come here and reckon with
+   * what deletion-by-chatbot means. Belt and braces beside
+   * isKnownAction — that one enforces "is this a tool we defined", this
+   * one enforces "is this a tool we are willing to run at all".
+   */
+  assertNonDestructive(action.name)
+
   if (!isKnownAction(action.name)) throw new Error(`Unknown action: ${action.name}`)
 
   const a = action.args ?? {}
@@ -523,6 +558,39 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         createdAt: Date.now(),
       })
       return `Added to-do "${title}"${dueDate ? ` (due ${dueDate})` : ''}.`
+    }
+
+    /* ── Sidebar module visibility ──────────────────────────────── */
+    case 'set_nav_visibility': {
+      const module = str(a.module)
+      if (!NAV_MODULE_SET.has(module)) throw new Error(`Unknown sidebar module: ${module}`)
+      const visible = a.visible === true || str(a.visible).toLowerCase() === 'true'
+      try {
+        const raw    = localStorage.getItem(NAV_HIDDEN_STORAGE_KEY)
+        const hidden = new Set<string>(raw ? JSON.parse(raw) as string[] : [])
+        if (visible) hidden.delete(module); else hidden.add(module)
+        localStorage.setItem(NAV_HIDDEN_STORAGE_KEY, JSON.stringify([...hidden]))
+        // useHiddenNavItems reads once on mount, so without this the sidebar
+        // would keep showing its stale snapshot until a reload.
+        window.dispatchEvent(new CustomEvent(NAV_VISIBILITY_EVENT))
+      } catch {
+        throw new Error('Could not update the sidebar.')
+      }
+      return `${visible ? 'Showed' : 'Hid'} ${module} in the sidebar.`
+    }
+
+    /* ── Free colour theme ──────────────────────────────────────── */
+    case 'set_theme': {
+      const theme = str(a.theme)
+      // The enum is the guard, not the model: setActiveTheme does not check
+      // ownership, so a hallucinated paid id would hand out a cosmetic the
+      // user never bought.
+      if (!FREE_THEME_SET.has(theme)) {
+        throw new Error(`"${theme}" is not a free theme — paid themes are bought with ✦ credits in the Arcade.`)
+      }
+      const { setActiveTheme } = await import('@/lib/gamesDb')
+      await setActiveTheme(theme)
+      return `Applied the ${theme} theme.`
     }
 
     default:
