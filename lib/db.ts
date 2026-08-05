@@ -51,6 +51,7 @@ export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 import type { LibraryBook, ReadingSession } from '@/types/bookTracker'
+import { toLocalDateStr } from '@/utils/localDate'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
 
@@ -1262,7 +1263,7 @@ export async function addTask(
   const now = Date.now()
   const id  = await getDb().assignments.add({
     title:     task.title,
-    dueDate:   task.dueDate ?? new Date().toISOString().slice(0, 10),
+    dueDate:   task.dueDate ?? toLocalDateStr(new Date()),
     courseId:  'general',
     status:    task.completed ? 'completed' : 'pending',
     priority:  task.urgent   ? 'high'      : 'medium',

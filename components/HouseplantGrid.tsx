@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import type { Houseplant } from '@/types/botany'
 import styles from './HouseplantGrid.module.css'
+import { todayISO } from '@/utils/localDate'
 
 /* ── Default seed collection ─────────────────────────────────────── */
 
@@ -48,7 +49,7 @@ function usePlantState(plant: Houseplant): PlantState {
 
 function PlantCard({ plant }: { plant: Houseplant }) {
   const { days, pct, isOverdue, isWarning } = usePlantState(plant)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   async function logWatering() {
     if (plant.id === undefined) return

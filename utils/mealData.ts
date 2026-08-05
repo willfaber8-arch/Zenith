@@ -1,3 +1,5 @@
+
+import { toLocalDateStr } from '@/utils/localDate'
 /**
  * utils/mealData.ts — Meal Planning Data
  * Ingredient prices + calories, college meals, equipment tiers,
@@ -427,7 +429,7 @@ export function getWeekStart(date: Date = new Date()): string {
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 export function getWeekDays(weekStart: string): string[] {
@@ -435,7 +437,7 @@ export function getWeekDays(weekStart: string): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start)
     d.setDate(d.getDate() + i)
-    return d.toISOString().slice(0, 10)
+    return toLocalDateStr(d)
   })
 }
 

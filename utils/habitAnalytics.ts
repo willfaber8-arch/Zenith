@@ -13,6 +13,7 @@
 import type { Habit, HabitCompletion } from '@/lib/db'
 import type { GritDataPoint } from '@/utils/gritScore'
 import { isHabitScheduledOn } from '@/utils/habitSchedule'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Date helpers (local ISO YYYY-MM-DD) ──────────────────────── */
 
@@ -20,7 +21,7 @@ function isoForOffset(offset: number): string {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   d.setDate(d.getDate() + offset)
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 function daysSince(iso: string | null): number {

@@ -12,6 +12,7 @@ import {
 } from '@/utils/botanyStats'
 import { useToast } from '@/lib/ToastContext'
 import styles from './BotanistView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Image downscaler ─────────────────────────────────────────
    Reads a user-selected image file, scales it to fit within MAX_DIM,
@@ -79,7 +80,7 @@ const PLANT_CATALOG: PlantCatalogEntry[] = [
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => toLocalDateStr(new Date())
 
 function daysSince(dateStr: string): number {
   const last = new Date(dateStr); last.setHours(0,0,0,0)

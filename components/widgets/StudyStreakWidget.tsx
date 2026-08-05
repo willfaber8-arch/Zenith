@@ -4,15 +4,16 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import styles from './Widget.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 export default function StudyStreakWidget() {
   const { navigate } = useNav()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateStr(new Date())
   const weekAgo = (() => {
     const d = new Date()
     d.setDate(d.getDate() - 6)
-    return d.toISOString().slice(0, 10)
+    return toLocalDateStr(d)
   })()
 
   const sessions = useLiveQuery(

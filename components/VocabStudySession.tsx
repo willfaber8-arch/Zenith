@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { db }                                        from '@/lib/db'
 import type { VocabCard }                            from '@/types/vocabulary'
 import styles                                        from './VocabStudySession.module.css'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ════════════════════════════════════════════════════════════════
    Constants
@@ -48,9 +49,6 @@ interface Props {
    Helpers
    ════════════════════════════════════════════════════════════════ */
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function getDailySetKey(deckId: string, mode: 'study' | 'review', namespace?: string): string {
   const ns = namespace ? `_${namespace}` : ''

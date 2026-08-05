@@ -31,6 +31,7 @@ import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import { ACTION_MARKER, type CopilotAction } from '@/lib/copilotTools'
 import { executeCopilotAction } from '@/lib/copilotActions'
 import styles from './BookTrackerDashboard.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -1340,7 +1341,7 @@ export default function BookTrackerDashboard() {
       const now = Date.now()
       await db.reading_sessions.add({
         bookId,
-        date: new Date().toISOString().slice(0, 10),
+        date: toLocalDateStr(new Date()),
         minutes,
         pagesRead,
         createdAt: now,

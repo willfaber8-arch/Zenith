@@ -4,6 +4,7 @@ import { type DayForecast } from '@/lib/weather'
 import { useWeather }       from '@/lib/hooks/useWeather'
 import { useNav } from '@/lib/NavContext'
 import styles from './WeatherWidget.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Weather icon map ─────────────────────────────────────── */
 const CONDITION_ICON: Record<string, string> = {
@@ -42,7 +43,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 function dayLabel(iso: string): string {
   const d = new Date(iso + 'T12:00:00')
   const today = new Date()
-  if (iso === today.toISOString().slice(0, 10)) return 'Today'
+  if (iso === toLocalDateStr(today)) return 'Today'
   return DAY_SHORT[d.getDay()]
 }
 

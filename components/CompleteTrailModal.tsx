@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import type { CompletedTrail } from '@/types/trailLog'
 import { fileToDownscaledDataUrl } from '@/utils/imageDownscale'
 import styles from './CompleteTrailModal.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 type ToastFn = (msg: string, type?: 'info' | 'success' | 'error') => void
 
@@ -18,7 +19,7 @@ interface Props {
 
 const DIFFICULTIES = ['', 'Easy', 'Moderate', 'Hard'] as const
 
-function todayISO() { return new Date().toISOString().slice(0, 10) }
+function todayISO() { return toLocalDateStr(new Date()) }
 
 export default function CompleteTrailModal({ existing, onClose, onToast }: Props) {
   const [mounted, setMounted] = useState(false)

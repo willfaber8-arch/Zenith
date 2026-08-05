@@ -17,6 +17,7 @@
 
 import type { Assignment, Habit }  from '@/lib/db'
 import type { MentalHealthLog }    from '@/utils/mentalHealthLog'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Token-safety constants ──────────────────────────────────── */
 
@@ -52,12 +53,9 @@ export interface UserContextPayload {
 function isoDateDaysAgo(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() - n)
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function truncate(s: string | undefined | null, max: number): string {
   if (!s) return ''
@@ -267,7 +265,7 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
     lines.push(`Personal events: ${upcomingPersonal.length} | subscribed-feed events: ${upcomingFeed}`)
     upcomingPersonal.slice(0, 6).forEach(e => {
       const d = new Date(e.startMs)
-      lines.push(`  ${d.toISOString().slice(0, 10)} — "${e.title}" [${e.category}]`)
+      lines.push(`  ${toLocalDateStr(d)} — "${e.title}" [${e.category}]`)
     })
   }
 

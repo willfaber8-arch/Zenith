@@ -9,6 +9,7 @@ import { useNav }       from '@/lib/NavContext'
 import { requestGamesTab } from '@/lib/gamesNavState'
 import EcosystemWrapped from '@/components/EcosystemWrapped'
 import styles from './StatsView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -59,7 +60,7 @@ export default function StatsView() {
   const goToShop = () => { requestGamesTab('shop'); navigate('games', 'creator') }
 
   /* ── Computed habit stats ─────────────────────────────────── */
-  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayISO = toLocalDateStr(new Date())
   const todayCompletions = completions.filter(c => c.date === todayISO)
   const habitsCompletedToday = habits.filter(h =>
     todayCompletions.find(c => c.habitId === h.id && c.count >= (h.targetCompletions ?? 1)),
