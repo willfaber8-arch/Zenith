@@ -1139,6 +1139,46 @@
   pointer-events: auto;
 }
 
+/* Jacket art bled into the spine itself.
+   Cropped to the spine's narrow strip and pushed well back so the title
+   stays the thing you read: the point is that a shelf of books with
+   artwork should look different from a shelf without, at a glance and
+   without hovering. Sits above the spine's own gradient (which paints at
+   z-index -1 inside .spineFace's isolate context) and below the text. */
+.spineArt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  opacity: 0.34;
+  /* Dropping saturation and lifting contrast keeps light covers from
+     washing out the cream lettering. */
+  filter: saturate(0.8) contrast(1.05) brightness(0.62);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 300ms var(--ease-smooth);
+}
+
+/* On hover the cover swings out and becomes the subject, so the spine
+   copy recedes rather than competing with it. */
+.spine:hover .spineArt,
+.spine:focus-visible .spineArt {
+  opacity: 0.20;
+}
+
+/* The title/author/bands share .spineFace with the art, so lift them out
+   of its stacking order explicitly. */
+.spineTitle,
+.spineAuthor,
+.spineRating,
+.spineBandTop,
+.spineBandBottom {
+  position: relative;
+  z-index: 1;
+}
+
 .coverImg {
   display: block;
   width: 100%;
