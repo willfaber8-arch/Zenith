@@ -185,14 +185,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen])
 
+  /*
+   * Collect the drawer's focusable elements, skipping anything the mobile
+   * media query has hidden. `.sidebarCollapseBtn` is `display:none` below
+   * 767px but still matches the selector and still sits first in the DOM,
+   * so an unfiltered query hands back an element that cannot take focus —
+   * `.focus()` silently no-ops and focus stays parked on the hamburger,
+   * outside the dialog. `offsetParent === null` is the cheap display:none
+   * test (correct here because nothing in the drawer is position:fixed).
+   */
+  const collectFocusables = (): HTMLElement[] => {
+    const nodes = sidebarRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    if (!nodes) return []
+    return Array.from(nodes).filter(el => el.offsetParent !== null)
+  }
+
   /* Move focus into the drawer on open, restore it on close */
   useEffect(() => {
     if (!drawerOpen) return
     previousFocus.current = document.activeElement as HTMLElement | null
-    const first = sidebarRef.current?.querySelector<HTMLElement>(
-      'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-    )
-    first?.focus()
+    collectFocusables()[0]?.focus()
     return () => {
       previousFocus.current?.focus?.()
       previousFocus.current = null
@@ -202,10 +216,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   /* Keep Tab inside the drawer while it is acting as a modal surface */
   const handleSidebarKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (!drawerOpen || e.key !== 'Tab') return
-    const focusables = sidebarRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    )
-    if (!focusables || focusables.length === 0) return
+    const focusables = collectFocusables()
+    if (focusables.length === 0) return
     const first = focusables[0]
     const last  = focusables[focusables.length - 1]
     if (e.shiftKey && document.activeElement === first) {

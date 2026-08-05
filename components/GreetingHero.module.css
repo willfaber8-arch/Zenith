@@ -93,3 +93,22 @@
   color: var(--text-dark);
   opacity: 0.5;
 }
+
+/* ── Mobile (≤767px) ──────────────────────────────────────── */
+/* Match the --sp-4 gutter the rest of the home column uses, and
+   drop the huge top inset so the greeting is above the fold. */
+
+@media (max-width: 767px) {
+  .hero {
+    padding: clamp(2rem, 8vh, 4rem) var(--sp-4) var(--sp-10);
+  }
+
+  .metaBar {
+    gap: var(--sp-2);
+    margin-top: var(--sp-5);
+  }
+
+  .clock {
+    font-size: 0.75rem;
+  }
+}

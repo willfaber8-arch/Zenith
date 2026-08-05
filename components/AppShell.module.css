@@ -475,14 +475,82 @@
     position: fixed;
     inset: 0 auto 0 0;
     height: 100%;
-    transform: translateX(calc(-1 * var(--sidebar-w)));
+    /* Never wider than the screen — on a 320px device --sidebar-w (248px)
+       still leaves a strip of the backdrop to tap on. */
+    width: min(var(--sidebar-w), 86vw);
+    transform: translateX(-100%);
     transition: transform 500ms var(--ease-spring-cozy);
     pointer-events: none;
+  }
+
+  /*
+   * Bug fix: a sidebar collapsed on desktop must NOT stay collapsed
+   * inside the mobile drawer. Two classes beat the single-class
+   * `.sidebar` rule above, so restore the drawer's full width here.
+   */
+  .sidebar.sidebarCollapsed {
+    width: min(var(--sidebar-w), 86vw);
+    overflow: visible;
   }
 
   .sidebarOpen {
     transform: translateX(0);
     pointer-events: auto;
+  }
+
+  /* The vertical pull-tab is redundant with the hamburger on a phone,
+     and it floats on top of content. */
+  .sidebarRevealBtn,
+  .sidebarCollapseBtn {
+    display: none;
+  }
+
+  /* ── Touch targets ──────────────────────────────────────────
+     Apple/Material both put the floor at 44px. Desktop density is
+     untouched — these rules only exist inside this media block. */
+  .navItem {
+    min-height: 44px;
+    padding: var(--sp-3) var(--sp-4);
+    gap: var(--sp-4);
+  }
+
+  .navItemIndented {
+    padding-left: var(--sp-5);
+  }
+
+  .navLabel {
+    font-size: 0.875rem;
+  }
+
+  .navIcon {
+    font-size: 1rem;
+  }
+
+  .navDot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .categoryLabelBtn {
+    min-height: 44px;
+    padding: var(--sp-2) var(--sp-4);
+    font-size: 0.68rem;
+  }
+
+  .subCatLabel {
+    padding: var(--sp-3) var(--sp-4) var(--sp-1) var(--sp-5);
+    font-size: 0.66rem;
+  }
+
+  .sidebarFooter {
+    padding: var(--sp-3) var(--sp-3) var(--sp-6);
+    gap: var(--sp-1);
+  }
+
+  .badge {
+    min-width: 20px;
+    height: 18px;
+    font-size: 0.68rem;
   }
 
   /* Content frame: let it flow naturally */
@@ -502,6 +570,7 @@
   .backdrop {
     display: block;
   }
+
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -716,4 +785,45 @@
 .customizeToggleOn::after {
   background: var(--accent-purple);
   transform:  translateX(16px);
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE OVERRIDES for the floating panels declared above.
+   These must live at the end of the file: `.ctxMenu`,
+   `.hiddenMgrPanel` and `.customizePanel` are all single-class
+   selectors declared after the main @media block, so an earlier
+   override of equal specificity would lose on source order.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* Both panels are anchored to `left: calc(var(--sidebar-w) + …)`,
+     which pushes them clean off a 390px screen. Re-anchor as
+     full-width bottom sheets. */
+  .hiddenMgrPanel,
+  .customizePanel {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    bottom: var(--sp-3);
+    width: auto;
+    max-width: none;
+    max-height: 70vh;
+  }
+
+  .hiddenMgrRow {
+    min-height: 44px;
+  }
+
+  .hiddenMgrShowBtn,
+  .hiddenMgrShowAll {
+    min-height: 36px;
+  }
+
+  .ctxMenu {
+    min-width: 200px;
+  }
+
+  .ctxMenuItem {
+    min-height: 44px;
+  }
 }

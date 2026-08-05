@@ -116,6 +116,19 @@
   align-items: center;
   gap: var(--sp-3);
   flex-shrink: 0;
+  min-width: 0;
+}
+
+/*
+ * Priority slot — pairs a cluster member with its trailing divider so
+ * hiding one at a narrow width never strands a dangling separator.
+ * `.slotLow` drops first, `.slotMedium` second; unclassed slots stay.
+ */
+.slot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
 }
 
 .weatherChip {
@@ -242,6 +255,22 @@
 
 /* ── Mobile responsive overrides ─────────────────────────── */
 
+/*
+ * Tablet portrait (768–900px) is the first width where the cluster stops
+ * fitting: the 248px sidebar is still on screen, leaving ~520px of content
+ * for ~600px of chips, which clipped the avatar and squeezed the breadcrumb
+ * out of existence. Low-priority telemetry goes here, not at 767px.
+ */
+@media (max-width: 900px) {
+  .slotLow {
+    display: none;
+  }
+
+  .weatherChip {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   .topbar {
     padding: 0 var(--sp-4);
@@ -250,11 +279,23 @@
 
   .menuToggle {
     display: flex;
+    /* 30px is below the 44px touch floor — widen the tap area without
+       changing the drawn box by growing the hit target only. */
+    width: 44px;
+    height: 44px;
+    margin-left: calc(-1 * var(--sp-2));
   }
 
-  /* Collapse lower-priority items on narrow screens */
-  .weatherChip {
-    display: none;
+  .cluster,
+  .slot {
+    gap: var(--sp-2);
+  }
+
+  /* Breadcrumb must keep a readable minimum rather than being crushed
+     to an ellipsis by the cluster. */
+  .breadcrumb {
+    flex: 1 1 auto;
+    min-width: 5rem;
   }
 }
 
@@ -263,8 +304,22 @@
     display: none;
   }
 
-  /* Reduce cluster gap when handle is hidden */
-  .cluster {
+  /* Only the essentials survive: notifications, AI, avatar. */
+  .slotMedium {
+    display: none;
+  }
+
+  /* AI button collapses to its glyph */
+  .copilotLabel {
+    display: none;
+  }
+
+  .copilotBtn {
+    padding: var(--sp-2);
+  }
+
+  .topbar {
+    padding: 0 var(--sp-3);
     gap: var(--sp-2);
   }
 }

@@ -617,6 +617,23 @@
   .arcadeViewport {
     padding: var(--sp-4) var(--sp-4);
   }
+
+  /* Six tabs never fit a phone. Give the strip its own horizontal
+     rail rather than clipping the last three off-screen. */
+  .paneTabBar {
+    padding: var(--sp-3) var(--sp-4);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .paneTabBar::-webkit-scrollbar { display: none; }
+
+  .paneTab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 44px;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════
