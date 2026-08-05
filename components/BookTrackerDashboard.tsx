@@ -801,7 +801,23 @@ export default function BookTrackerDashboard() {
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
   const [kindlePhase,  setKindlePhase]  = useState<'idle' | 'loading'>('idle')
-  const [enrichPhase,  setEnrichPhase]  = useState<'idle' | 'running'>('idle')
+  /*
+   * Librarian progress.
+   *
+   * The two stages report progress differently, and the UI is honest about
+   * which is which. `/api/chat` buffers the model's tool calls and flushes
+   * them in a single enqueue after the stream ends (see emitActions), so
+   * while the model is thinking there is genuinely nothing to count — that
+   * stage gets an indeterminate bar plus an elapsed clock, not a fake
+   * percentage that crawls to 90% and stalls. Once the calls land, writing
+   * them to IndexedDB is real countable work and the bar becomes determinate.
+   */
+  const [enrichPhase, setEnrichPhase] = useState<{
+    stage: 'idle' | 'researching' | 'applying'
+    done:  number
+    total: number
+  }>({ stage: 'idle', done: 0, total: 0 })
+  const [enrichElapsed, setEnrichElapsed] = useState(0)
   const [coverPhase,   setCoverPhase]   = useState<{ running: boolean; done: number; total: number }>(
     { running: false, done: 0, total: 0 },
   )
@@ -981,7 +997,7 @@ export default function BookTrackerDashboard() {
    * ACTION_MARKER payload and executes each update against IndexedDB.
    */
   const handleAiFill = async () => {
-    if (enrichPhase === 'running') return
+    if (enrichPhase.stage !== 'idle') return
     const candidates = booksNeedingDetails.slice(0, 20)
     if (candidates.length === 0) {
       toast('Every book already has a page count and genre.', 'info')
@@ -992,7 +1008,7 @@ export default function BookTrackerDashboard() {
       return
     }
 
-    setEnrichPhase('running')
+    setEnrichPhase({ stage: 'researching', done: 0, total: candidates.length })
     try {
       const list = candidates
         .map((b, i) => `${i + 1}. "${b.title}"${b.author ? ` by ${b.author}` : ''}`)
@@ -1040,9 +1056,16 @@ export default function BookTrackerDashboard() {
         return
       }
 
+      // Writing the results is real, countable work — switch the bar from
+      // indeterminate to a true done/total readout for this stage.
+      setEnrichPhase({ stage: 'applying', done: 0, total: updates.length })
+
       let filled = 0
+      let written = 0
       for (const a of updates) {
         try { await executeCopilotAction(a); filled++ } catch { /* skip failed row */ }
+        written++
+        setEnrichPhase({ stage: 'applying', done: written, total: updates.length })
       }
 
       toast(
@@ -1055,9 +1078,19 @@ export default function BookTrackerDashboard() {
       const msg = e instanceof Error ? e.message : 'The Librarian is unavailable.'
       toast(msg.length < 120 ? msg : 'The Librarian is unavailable. Check your AI key in Settings.', 'error')
     } finally {
-      setEnrichPhase('idle')
+      setEnrichPhase({ stage: 'idle', done: 0, total: 0 })
     }
   }
+
+  /* Elapsed clock for the Librarian. Only ticks while a pass is live, so an
+     idle dashboard schedules no timers at all. */
+  useEffect(() => {
+    if (enrichPhase.stage === 'idle') { setEnrichElapsed(0); return }
+    const startedAt = Date.now()
+    setEnrichElapsed(0)
+    const id = setInterval(() => setEnrichElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [enrichPhase.stage])
 
   /* ── Cover art ─────────────────────────────────────────────
      `coverUrl` is a three-state cache written straight onto the book row:
@@ -1393,13 +1426,14 @@ export default function BookTrackerDashboard() {
           <button
             className={styles.librarianBtn}
             onClick={handleAiFill}
-            disabled={enrichPhase === 'running' || booksNeedingDetails.length === 0}
+            disabled={enrichPhase.stage !== 'idle' || booksNeedingDetails.length === 0}
             title={booksNeedingDetails.length === 0
               ? 'Every book already has a page count and genre'
               : `Ask the AI Librarian to research ${Math.min(booksNeedingDetails.length, 20)} book${booksNeedingDetails.length === 1 ? '' : 's'} missing details`}
           >
-            {enrichPhase === 'running'
-              ? <><span className={styles.librarianSpinner} aria-hidden="true" />Researching…</>
+            {enrichPhase.stage !== 'idle'
+              ? <><span className={styles.librarianSpinner} aria-hidden="true" />
+                  {enrichPhase.stage === 'researching' ? 'Researching…' : 'Saving…'}</>
               : `✨ Ask AI to Fill Details${booksNeedingDetails.length > 0 ? ` (${Math.min(booksNeedingDetails.length, 20)})` : ''}`}
           </button>
           <button
@@ -1412,6 +1446,56 @@ export default function BookTrackerDashboard() {
           </button>
         </div>
       </div>
+
+      {/* ── Librarian progress ──────────────────────────────────────
+          A multi-second network round trip with no other on-screen sign
+          of life. `aria-valuenow` is deliberately omitted while
+          researching: the ARIA spec treats a progressbar without it as
+          indeterminate, which is exactly what that stage is. */}
+      {enrichPhase.stage !== 'idle' && (() => {
+        const determinate = enrichPhase.stage === 'applying' && enrichPhase.total > 0
+        const pct = determinate
+          ? Math.round((enrichPhase.done / enrichPhase.total) * 100)
+          : 0
+        const mins = Math.floor(enrichElapsed / 60)
+        const secs = enrichElapsed % 60
+        return (
+          <div className={styles.librarianProgress} role="status" aria-live="polite">
+            <div className={styles.librarianProgressHead}>
+              <span className={styles.librarianProgressLabel}>
+                {enrichPhase.stage === 'researching'
+                  ? `Researching ${enrichPhase.total} book${enrichPhase.total !== 1 ? 's' : ''}…`
+                  : `Saving details — ${enrichPhase.done} / ${enrichPhase.total}`}
+              </span>
+              <span className={styles.librarianProgressClock}>
+                {mins}:{String(secs).padStart(2, '0')}
+              </span>
+            </div>
+
+            <div
+              className={styles.librarianTrack}
+              role="progressbar"
+              aria-label={enrichPhase.stage === 'researching'
+                ? 'Researching book details'
+                : 'Saving book details'}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              {...(determinate ? { 'aria-valuenow': pct } : {})}
+            >
+              <div
+                className={determinate ? styles.librarianFill : styles.librarianFillIndet}
+                style={determinate ? ({ '--fill-pct': `${pct}%` } as React.CSSProperties) : undefined}
+              />
+            </div>
+
+            <p className={styles.librarianProgressHint}>
+              {enrichPhase.stage === 'researching'
+                ? 'The model answers in one pass, so this step has no per-book milestones — the clock is the honest signal that it is still working.'
+                : 'Writing to your library.'}
+            </p>
+          </div>
+        )
+      })()}
 
       {/* Kindle import hint */}
       <p className={styles.kindleHint}>

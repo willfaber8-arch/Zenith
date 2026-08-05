@@ -132,6 +132,109 @@
   animation: spin 700ms linear infinite;
 }
 
+/* ── Librarian progress panel ─────────────────────────────
+   Shown only while an enrichment pass is live. Two visual modes:
+   an indeterminate sweep while the model is thinking (there is
+   nothing countable to report until the stream ends), and a real
+   determinate fill while the returned rows are written to IndexedDB. */
+
+.librarianProgress {
+  /* The bottom margin is deliberately larger than it looks like it needs.
+     `.kindleHint` immediately below carries `margin-top: -var(--sp-4)` to
+     tuck itself under the actions row; this panel sits between the two, so
+     without the extra room that -16px pull drags the hint up through this
+     panel's lower border. --sp-5 (20px) leaves a real 4px gap after it. */
+  margin: var(--sp-3) 0 var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid rgba(212, 168, 83, 0.24);
+  border-radius: var(--r-md);
+  background: rgba(212, 168, 83, 0.06);
+  animation: slideIn var(--dur-base) var(--ease-expo) both;
+}
+
+.librarianProgressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 7px;
+}
+
+.librarianProgressLabel {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--lb-gold);
+}
+
+.librarianProgressClock {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;   /* no digit jitter as it ticks */
+  color: var(--text-dark);
+}
+
+.librarianTrack {
+  position: relative;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(212, 168, 83, 0.14);
+  overflow: hidden;
+}
+
+/* Determinate — width is driven by the --fill-pct custom property,
+   matching the convention used by the burn-rate and GPA gauges. */
+.librarianFill {
+  height: 100%;
+  width: var(--fill-pct, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(212, 168, 83, 0.55), var(--lb-gold));
+  transition: width 260ms var(--ease-smooth);
+}
+
+/* Indeterminate — a bounded segment sweeping the track. Transform only,
+   so it stays on the compositor and never triggers layout. */
+.librarianFillIndet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 38%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(212, 168, 83, 0.00),
+    var(--lb-gold),
+    rgba(212, 168, 83, 0.00)
+  );
+  will-change: transform;
+  animation: librarianSweep 1250ms var(--ease-smooth) infinite;
+}
+
+@keyframes librarianSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(363%); }   /* 100/38 ≈ 2.63 track-widths */
+}
+
+.librarianProgressHint {
+  margin-top: 7px;
+  font-size: 0.64rem;
+  line-height: 1.45;
+  color: var(--text-dark);
+}
+
+/* Respect a reduced-motion preference: hold the segment still and
+   pulse its opacity instead of sweeping it across the track. */
+@media (prefers-reduced-motion: reduce) {
+  .librarianFillIndet {
+    animation: none;
+    width: 100%;
+    opacity: 0.55;
+  }
+  .librarianFill { transition: none; }
+}
+
 /* ── Cover-art fetch button ──────────────────────────────── */
 .coverBtn {
   display: inline-flex;
