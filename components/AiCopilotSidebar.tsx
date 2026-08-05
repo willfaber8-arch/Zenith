@@ -22,6 +22,7 @@ import {
   useState, useEffect, useRef, useCallback,
   type JSX, type KeyboardEvent, type ChangeEvent,
 } from 'react'
+import { setupSystemNote } from '@/lib/copilotTools'
 import { useCopilot }     from '@/lib/CopilotContext'
 import { useAuth }        from '@/lib/AuthContext'
 import { useToast }       from '@/lib/ToastContext'
@@ -293,7 +294,7 @@ function MessageBubble({ msg, onConfirm, onCancel }: MessageBubbleProps) {
    ══════════════════════════════════════════════════════════════ */
 
 export default function AiCopilotSidebar() {
-  const { isOpen, close }   = useCopilot()
+  const { isOpen, close, setupMode, openSetup } = useCopilot()
   const { session }         = useAuth()
   const { toast }           = useToast()
   const { authHeaders, config, mounted: aiMounted } = useAiConfig()
@@ -545,8 +546,14 @@ export default function AiCopilotSidebar() {
    *   • Each streaming chunk is appended via a functional setState update
    *     so rapid chunk arrival never races with stale closures.
    */
-  const handleSubmit = useCallback(async () => {
-    const text = input.trim()
+  /* The send path takes its text as an argument rather than reading `input`,
+     so setup mode can start the interview itself without round-tripping
+     through state (setInput followed by submit would read a stale value). */
+  const sendMessage = useCallback(async (
+    rawText: string,
+    opts: { forceSetup?: boolean } = {},
+  ) => {
+    const text = rawText.trim()
     if (!text || isSubmitting) return
 
     // Reset input
@@ -590,7 +597,12 @@ export default function AiCopilotSidebar() {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({
           messages:       history,
-          contextPayload: contextPayload ?? undefined,
+          // Setup mode appends its interview instructions to the compiled
+          // workspace context rather than replacing it — the model still
+          // needs to see what the user already has before asking about it.
+          contextPayload: (setupMode || opts.forceSetup)
+            ? `${contextPayload ?? ''}${setupSystemNote()}`
+            : (contextPayload ?? undefined),
         }),
         signal: ctrl.signal,
       })
@@ -658,7 +670,30 @@ export default function AiCopilotSidebar() {
       setIsSubmitting(false)
       abortRef.current = null
     }
-  }, [input, isSubmitting, messages, contextPayload])
+  }, [isSubmitting, messages, contextPayload, setupMode])
+
+  const handleSubmit = useCallback(() => { void sendMessage(input) }, [sendMessage, input])
+
+  /*
+   * Kick off the personalisation interview.
+   *
+   * The opening turn is sent as the *user* so the model treats it as an
+   * instruction to act on rather than something it said and can ignore.
+   * setupMode is flipped first; sendMessage reads it from the closure it was
+   * rebuilt with, so the note lands on this very first request.
+   */
+  const startSetup = useCallback(() => {
+    openSetup()
+    // forceSetup is not belt-and-braces — it is required. openSetup() only
+    // schedules a state update, so the sendMessage closure we are holding
+    // right now still has setupMode === false and would send the very first
+    // turn WITHOUT the interview instructions, which is the one turn that
+    // most needs them.
+    void sendMessage(
+      'Help me set up Zenith. Ask me what you need to know, one question at a time.',
+      { forceSetup: true },
+    )
+  }, [openSetup, sendMessage])
 
   /* ── Keyboard: Enter to submit, Shift+Enter for newline ────── */
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -787,6 +822,35 @@ export default function AiCopilotSidebar() {
               onCancel={cancelActions}
             />
           ))}
+
+          {/*
+            Setup entry point.
+            Shown until the user has actually said something — which is a
+            different condition from "the thread is empty", because opening
+            the panel posts a context greeting first. Gating on message
+            count alone meant this never rendered at all.
+            Zenith has ~23 modules and a new user meets all of them at once;
+            this is the shortest path to a workspace that looks like theirs.
+          */}
+          {!setupMode
+            && !isSubmitting
+            && !messages.some(m => m.role === 'user')
+            && (!aiMounted || config.userApiKey) && (
+            <div className={styles.setupPrompt}>
+              <button
+                type="button"
+                className={styles.setupCta}
+                onClick={startSetup}
+              >
+                <span aria-hidden="true">✦</span> Set Zenith up with me
+              </button>
+              <p className={styles.setupCtaHint}>
+                A few quick questions, then I&rsquo;ll tailor your dashboard,
+                sidebar and theme. You approve every change before it happens,
+                and I can never delete anything.
+              </p>
+            </div>
+          )}
 
         </div>
 

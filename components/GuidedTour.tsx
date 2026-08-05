@@ -24,6 +24,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/lib/AuthContext'
 import { useNav }  from '@/lib/NavContext'
+import { useCopilot } from '@/lib/CopilotContext'
 import styles from './GuidedTour.module.css'
 
 const TOUR_KEY = 'zenith_tour_v2'
@@ -36,6 +37,9 @@ interface TourStep {
   /** data-tour attribute value; null → centered card, no spotlight */
   target: string | null
   title:  string
+  /** Optional inline action rendered beside Next — 'setup' launches the
+   *  Co-Pilot's personalisation interview and ends the tour. */
+  cta?:   'setup'
   body:   string
 }
 
@@ -76,6 +80,12 @@ const STEPS: TourStep[] = [
     body:   'Click ◎ to open the AI assistant. It reads your recent habits, tasks and schedule (locally) to give grounded answers. Bring your own API key in Settings → AI Provider.',
   },
   {
+    target: 'copilot',
+    title:  'Let it set Zenith up for you',
+    body:   'Zenith has a lot of modules, and you almost certainly do not want all of them. Open the Co-Pilot and pick “Set Zenith up with me” — it asks a handful of questions, then tailors your dashboard, trims the sidebar to what you actually use, and sets your theme. It shows you every change on one card before anything is saved, and it can never delete your data.',
+    cta:    'setup',
+  },
+  {
     target: 'credits',
     title:  '✦ Credits',
     body:   'Credits earned in the Arcade appear here. Click the badge to jump straight to the cosmetic Shop and spend them on themes.',
@@ -109,6 +119,7 @@ function measure(target: string | null): SpotRect | null {
 export default function GuidedTour() {
   const { session } = useAuth()
   const { navigate } = useNav()
+  const { openSetup } = useCopilot()
 
   const [mounted, setMounted] = useState(false)
   const [phase,   setPhase]   = useState<Phase>('idle')
@@ -337,6 +348,19 @@ export default function GuidedTour() {
             {!isFirst && (
               <button type="button" className={styles.backBtn} onClick={() => goTo(stepIdx, -1)}>
                 ← Back
+              </button>
+            )}
+            {step.cta === 'setup' && (
+              /* Ends the tour and hands straight over — the point of the
+                 step is the handoff, so making them read it, click Next,
+                 finish the tour and then find the button would lose most
+                 of the people it is meant to help. */
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                onClick={() => { dismiss(); openSetup() }}
+              >
+                ✦ Set me up
               </button>
             )}
             {isLast ? (
