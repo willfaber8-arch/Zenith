@@ -33,6 +33,30 @@ export const DASHBOARD_WIDGET_KEYS = [
   'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
 ] as const
 
+/**
+ * Sidebar modules the Co-Pilot may show/hide. Mirrors the optional entries
+ * in NAV_CONFIG. 'home' and 'settings' are deliberately absent — hiding
+ * either would strand the user with no way back.
+ */
+export const NAV_MODULE_KEYS = [
+  'outlook', 'uni-hub', 'study-shield', 'vocab-builder',
+  'calendar', 'habits', 'workouts', 'wellness', 'meal-planning',
+  'world-events', 'sports', 'personal-brand', 'subscriptions',
+  'game-finder', 'friends-network', 'book-tracker', 'tournament-hub',
+  'trail-hunter', 'botanist', 'games', 'cube-timer',
+  'custom-links', 'stats',
+] as const
+
+/**
+ * Themes the Co-Pilot may apply without spending anything. Every other
+ * entry in SHOP_CATALOG_STATIC costs ✦ credits, and setActiveTheme does
+ * not check ownership — so the enum, not the model, is what stops setup
+ * from handing out paid cosmetics for free.
+ */
+export const FREE_THEME_IDS = [
+  'zenith_default', 'light_clean', 'light_warm',
+] as const
+
 interface ParamDef {
   type:        ParamType
   description: string
@@ -242,11 +266,115 @@ export const COPILOT_TOOLS: ToolDef[] = [
       dueDate:  { type: 'string', description: 'Optional due date YYYY-MM-DD' },
     },
   },
+  {
+    name:        'set_nav_visibility',
+    description: 'Show or hide a module in the left sidebar. Use during setup to strip Zenith down to only the modules the user actually wants, so their sidebar is not a wall of unused features.',
+    required:    ['module', 'visible'],
+    params: {
+      module:  { type: 'string', description: 'Which sidebar module to toggle', enum: [...NAV_MODULE_KEYS] },
+      visible: { type: 'boolean', description: 'true to show the module in the sidebar, false to hide it' },
+    },
+  },
+  {
+    name:        'set_theme',
+    description: 'Apply one of the free built-in colour themes. Only these three are free; every other theme in the Arcade shop must be bought with ✦ credits, so never claim you can apply those.',
+    required:    ['theme'],
+    params: {
+      theme: {
+        type: 'string',
+        description: 'Theme id. "zenith_default" = lightish green on dark grey (dark), "light_clean" = clean white with sage accents (light), "light_warm" = warm cream with amber (light).',
+        enum: [...FREE_THEME_IDS],
+      },
+    },
+  },
 ]
 
 const TOOL_NAMES = new Set(COPILOT_TOOLS.map(t => t.name))
 export function isKnownAction(name: unknown): name is string {
   return typeof name === 'string' && TOOL_NAMES.has(name)
+}
+
+/* ── Safety classification ────────────────────────────────────────────────
+ *
+ * THE INVARIANT: the Co-Pilot cannot destroy user data.
+ *
+ * This is currently true by construction — the catalogue contains no
+ * delete/remove/clear tool, and `lib/copilotActions.ts` makes no Dexie
+ * `.delete()`, `.clear()` or `bulkDelete()` call. But "true by construction"
+ * decays the moment someone adds a convenient `delete_habit`. What follows
+ * turns the property into something enforced in three independent places:
+ *
+ *   1. this classification, which every tool must declare;
+ *   2. a hard refusal in the executor (`assertNonDestructive`), which fires
+ *      even if a destructive tool is added to the catalogue above;
+ *   3. `__tests__/copilot/ActionSafety.test.ts`, which fails the build if a
+ *      tool is added without a classification, if any name matches the
+ *      destructive pattern, or if a Dexie delete appears in the executor.
+ *
+ * Deleting a habit, book or event stays a deliberate act the user performs
+ * in that module's own UI, where the row is in front of them.
+ */
+
+export type MutationKind =
+  /** Creates a new row. Worst case is clutter the user can delete. */
+  | 'additive'
+  /** Replaces a value that already existed. Recoverable only if the user
+   *  remembers the old one, so it always needs an explicit confirmation. */
+  | 'overwrite'
+  /** Presentation only — hiding a widget or module, or a colour theme.
+   *  Touches no user data and is reversible from the UI in one click. */
+  | 'cosmetic'
+
+export const TOOL_MUTATION_KIND: Readonly<Record<string, MutationKind>> = {
+  create_habit:          'additive',
+  add_calendar_event:    'additive',
+  log_cardio:            'additive',
+  create_note:           'additive',
+  add_assignment:        'additive',
+  add_link:              'additive',
+  add_subscription:      'additive',
+  add_plant:             'additive',
+  log_mood:              'additive',
+  add_book:              'additive',
+  add_recipe:            'additive',
+  add_vocab_word:        'additive',
+  add_todo:              'additive',
+  save_dashboard_preset: 'additive',
+
+  // Fill-only: writes a field ONLY when it is currently empty, and never
+  // touches userRating or readingStatus. See the executor.
+  update_book:           'additive',
+
+  // The one tool that genuinely replaces existing values.
+  set_profile:           'overwrite',
+
+  set_dashboard_widget:  'cosmetic',
+  load_dashboard_preset: 'cosmetic',
+  set_nav_visibility:    'cosmetic',
+  set_theme:             'cosmetic',
+}
+
+/** Verb prefixes that would mean data loss. No tool may use one. */
+const DESTRUCTIVE_NAME_PATTERN =
+  /^(delete|remove|clear|wipe|drop|reset|purge|erase|destroy|truncate)[_-]?/i
+
+export function isDestructiveName(name: string): boolean {
+  return DESTRUCTIVE_NAME_PATTERN.test(name)
+}
+
+/**
+ * Actions that must ALWAYS show a confirmation card, even if the user has
+ * turned on some future "accept everything" mode.
+ *
+ * Auto-accept is a reasonable convenience for "add this to my calendar".
+ * It is not reasonable for anything that replaces or removes what is
+ * already there — that is precisely the case where the user needs to see
+ * what is about to happen. Any auto-accept implementation MUST route
+ * through this function rather than blanket-approving a batch.
+ */
+export function requiresExplicitConfirmation(name: string): boolean {
+  if (isDestructiveName(name)) return true
+  return TOOL_MUTATION_KIND[name] === 'overwrite'
 }
 
 /* ── Provider schema converters ───────────────────────────────────────── */
@@ -315,7 +443,97 @@ BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response wh
 
 PRESETS WORKFLOW: When setting up a named dashboard configuration, always end the batch with save_dashboard_preset so the user can re-apply it any time. When the user mentions a saved preset by name, use load_dashboard_preset to apply it instantly.
 
-The user always sees a confirmation card before anything is saved, so calling tools is safe. Today is ${todayIso}; resolve relative dates ("today", "tomorrow", "this Friday") to an absolute YYYY-MM-DD value. After your tool calls you may add one short sentence of text, but keep it brief.`
+The user always sees a confirmation card before anything is saved, so calling tools is safe. Today is ${todayIso}; resolve relative dates ("today", "tomorrow", "this Friday") to an absolute YYYY-MM-DD value. After your tool calls you may add one short sentence of text, but keep it brief.
+
+WHAT YOU CANNOT DO — READ THIS BEFORE PROMISING ANYTHING:
+You have NO ability to delete, remove, clear, reset or overwrite the user's
+existing data, and no tool above will do it. This is a deliberate product
+decision, not an oversight: Zenith is local-first, so there is no server
+backup — anything deleted is gone permanently. Removal is therefore always
+something the user does themselves, in that module's own interface, with the
+item in front of them.
+
+  · If asked to delete something ("remove that habit", "clear my calendar",
+    "start me over fresh"), say plainly that you cannot, and tell them where
+    to do it: the habit's ✎ Edit mode, the event's own row, Settings →
+    Privacy & Data for a full reset. Do NOT invent a tool call for it.
+  · Never fabricate a tool name. Anything outside the list above is refused
+    by the executor before it runs, so a guessed name only wastes the user's
+    turn and erodes their trust in the confirmation card.
+  · The additive tools only ever ADD. create_habit does not replace an
+    existing habit of the same name — it makes a second one. If the user
+    seems to want a change rather than an addition, ask which they mean.
+  · update_book only fills in fields that are currently EMPTY. It will never
+    overwrite a rating, review or reading status the user set themselves, so
+    do not promise to "fix" or "correct" an existing value.
+  · set_profile is the one tool that replaces existing values. Use it only
+    when the user has clearly stated the new value; never guess at a name,
+    university or major to "tidy up" a profile.
+  · When genuinely unsure whether an action is what the user wants, ask one
+    short question first. A wasted turn is cheap; a wrong write is not.`
+}
+
+/* ── Setup mode ───────────────────────────────────────────────────────── */
+
+/**
+ * Appended to the system prompt while the Co-Pilot is in setup mode.
+ *
+ * The default note tells the model to act immediately and never ask first.
+ * Setup inverts that: the whole point is the interview, and firing twenty
+ * tool calls at someone who has answered nothing would personalise Zenith
+ * to a guess. So this note overrides the "do not ask" instruction for the
+ * question phase only, then hands back to normal batching once there are
+ * real answers to act on.
+ *
+ * One question at a time is deliberate. A wall of six questions reads as a
+ * form, and forms get abandoned; a conversation gets answered.
+ */
+export function setupSystemNote(): string {
+  return `
+
+SETUP MODE — ACTIVE:
+You are walking a new user through personalising Zenith. This overrides the
+"do not ask for permission, act immediately" instruction ABOVE for the
+question phase only.
+
+HOW TO RUN IT:
+1. Ask ONE question at a time and wait for the answer. Never send a numbered
+   list of questions — this is a conversation, not a form.
+2. Keep every question short and concrete, and offer example answers so the
+   user can reply with a word or two instead of composing a paragraph.
+3. Aim for about five or six questions total, then stop asking and act.
+4. If the user says "just pick for me", "you decide", or similar — stop
+   asking immediately and set up a sensible general-purpose workspace.
+
+WHAT TO LEARN (adapt the order to what they tell you; skip what is already
+answered by the workspace context above):
+  · Who they are — name to greet them by, and whether they are a student
+    (if so: which university and what they study).
+  · What they actually want out of Zenith — studying, fitness, habits,
+    reading, finances, mental health, hobbies. This is the important one.
+  · What they want to see first on their home dashboard.
+  · Light or dark interface.
+  · Anything they know they do NOT want, so it can be hidden.
+
+THEN ACT — in a single batch:
+  · set_profile for their name / university / major.
+  · set_dashboard_widget for each widget to show or hide, then
+    save_dashboard_preset to lock the arrangement in under a name.
+  · set_nav_visibility to HIDE the modules they showed no interest in. A
+    trimmed sidebar is the single biggest thing that makes Zenith feel
+    like theirs rather than a demo.
+  · set_theme if they expressed a light/dark preference.
+  · create_habit / add_todo / add_book etc. for anything concrete they
+    mentioned wanting to track.
+
+RULES:
+  · Only the three themes in the set_theme enum are free. Every other theme
+    costs ✦ credits earned in the Arcade — never imply you can apply one.
+  · Never hide a module the user said they wanted.
+  · The user still approves the whole batch on one confirmation card, so
+    put everything in one batch rather than trickling changes out.
+  · After the batch, close with one or two sentences on what changed and
+    where to go first. Do not re-list every action — the card already did.`
 }
 
 /* ── Human-readable confirm-card label (pure formatter) ───────────────── */
@@ -375,6 +593,10 @@ export function describeAction(a: CopilotAction): string {
       return `Add vocab word "${g('word')}" (${g('language')}) → "${g('translation')}"`
     case 'add_todo':
       return `Add to-do "${g('title')}"${g('category') ? ` · ${g('category')}` : ''}${g('dueDate') ? ` · due ${g('dueDate')}` : ''}`
+    case 'set_nav_visibility':
+      return `${a.args?.visible === true ? 'Show' : 'Hide'} "${g('module')}" in the sidebar`
+    case 'set_theme':
+      return `Apply the ${g('theme')} theme`
     default:
       return a.name
   }

@@ -891,3 +891,96 @@
 .submitBtn:hover:not(:disabled) {
   opacity: 0.88;
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE  (≤767px)
+   The desktop body is a two-column flex row: an elastic habit
+   column beside a fixed 340px analytics panel. Below ~700px the
+   habit column's share goes negative and the panel lands on top
+   of the week grid — so the row becomes a stack, and the fixed
+   196px week-dot strip / 120px streak column shrink to fit.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .page {
+    padding: var(--sp-4) var(--sp-4) var(--sp-16);
+  }
+
+  .headingRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Stack analytics under the habit list instead of beside it */
+  .bodyRow {
+    flex-direction: column;
+    gap: var(--sp-4);
+  }
+
+  .chartPanel {
+    width: 100%;
+    position: static;
+  }
+
+  /* Week strip: let the seven dots share whatever room is left */
+  .weekDayLabels,
+  .weekDots {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: var(--sp-1);
+  }
+
+  .weekHeaderRight,
+  .habitRight {
+    width: auto;
+    min-width: 3.25rem;
+  }
+
+  .weekHeader,
+  .habitRow {
+    gap: var(--sp-3);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+
+  .habitRow {
+    padding-top: var(--sp-3);
+    padding-bottom: var(--sp-3);
+  }
+
+  /* Habit name column can't afford 48px of circle + a long label */
+  .habitLeft {
+    flex: 1 1 40%;
+    gap: var(--sp-2);
+  }
+
+  .habitName {
+    font-size: 0.82rem;
+  }
+
+  .analyticsStats {
+    gap: var(--sp-1);
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  /* Modal: full-bleed sheet with breathing room from the notch/home bar */
+  .modal {
+    width: calc(100vw - var(--sp-6));
+    max-height: calc(100vh - var(--sp-10));
+  }
+}
+
+@media (max-width: 420px) {
+  /* Below ~420px the seven 20px dots plus the streak column stop
+     fitting on one line — drop the dot strip and keep the row
+     legible. The full week remains available in the analytics panel. */
+  .weekDayLabels,
+  .weekDots {
+    display: none;
+  }
+}

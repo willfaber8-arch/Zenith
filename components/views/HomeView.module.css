@@ -337,3 +337,42 @@
   white-space:    nowrap;
   opacity:        0.6;
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE  (≤767px)
+   The home column is built around --sp-8 side padding, which
+   costs 64px of a 390px screen. Halve it so the hero, biome and
+   showcase all sit on the same narrower gutter.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .showcase,
+  .studyModeCta {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .showcase {
+    gap: var(--sp-10);
+    padding-bottom: var(--sp-12);
+  }
+
+  .typeRow {
+    padding: var(--sp-4);
+  }
+
+  .palette {
+    gap: var(--sp-4);
+  }
+
+  /* The floating Classic/Free switcher sits over the hero on a
+     phone — tuck it against the same gutter as the content. */
+  .modeSwitcher {
+    right: var(--sp-4);
+  }
+
+  .modeChip {
+    padding: var(--sp-2) var(--sp-3);
+  }
+}

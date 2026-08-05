@@ -1,3 +1,5 @@
+
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 /**
  * utils/mentalHealthLog.ts — Mental Health Log Schema & Evaluator
  * Phase 5 · Step 5.7 — Mental Health Mapping & Slope Day Hype Tracker
@@ -67,14 +69,11 @@ export const MOOD_MAP: Record<MoodKey, MoodVector> = Object.fromEntries(
    DATE UTILITIES
    ════════════════════════════════════════════════════════════════ */
 
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function dateISO(daysAgo: number): string {
   const d = new Date()
   d.setDate(d.getDate() - daysAgo)
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 /** Returns a friendly relative label: "Today", "Yesterday", or "Mon 31" */

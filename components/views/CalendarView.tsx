@@ -41,6 +41,7 @@ import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
 import { outlookComposeUrl, type ExternalCalendarEvent } from '@/lib/microsoftCalendar'
 import styles from './CalendarView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Personal event color presets (mirrors habits color picker) ── */
 const EVENT_COLORS = [
@@ -1185,7 +1186,7 @@ function TasksPanel() {
     await db.todo_items.delete(id)
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateStr(new Date())
 
   if (categories === undefined || items === undefined) return null
 
@@ -1831,8 +1832,8 @@ function NewEventModal({
   onAddToOutlook:  (e: ExternalCalendarEvent) => void
   onPushMicrosoft: (e: ExternalCalendarEvent) => void | Promise<void>
 }) {
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const initDate = initial ? new Date(initial.startMs).toISOString().slice(0, 10) : todayStr
+  const todayStr = toLocalDateStr(new Date())
+  const initDate = initial ? toLocalDateStr(new Date(initial.startMs)) : todayStr
   const initStart = initial && !initial.allDay
     ? new Date(initial.startMs).toTimeString().slice(0, 5)
     : '09:00'

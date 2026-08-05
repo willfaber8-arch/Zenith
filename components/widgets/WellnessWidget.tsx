@@ -5,6 +5,7 @@ import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import { MOOD_VECTORS } from '@/utils/mentalHealthLog'
 import wStyles from './Widget.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 export default function WellnessWidget() {
   const { navigate } = useNav()
@@ -14,7 +15,7 @@ export default function WellnessWidget() {
     [],
   )
 
-  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayISO = toLocalDateStr(new Date())
   const isToday  = latest?.logDate === todayISO
 
   const vector = latest?.moodVector

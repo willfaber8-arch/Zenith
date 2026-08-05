@@ -7,6 +7,7 @@ import type { CardioSession }    from '@/lib/db'
 import { syncHabitSource }       from '@/lib/habitSync'
 import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import styles                    from './WorkoutsView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Vitality Points localStorage helpers ───────────────────────── */
 
@@ -192,7 +193,7 @@ export default function WorkoutsView() {
       distanceUnit:    unit,
       vitalityEarned:  earned,
       notes:           notes.trim() || undefined,
-      logDate:         new Date().toISOString().slice(0, 10),
+      logDate:         toLocalDateStr(new Date()),
       completedAt:     Date.now(),
     }
 

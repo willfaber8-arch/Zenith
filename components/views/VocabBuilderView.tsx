@@ -8,6 +8,7 @@ import VocabStudySession                                    from '@/components/V
 import { useToast }                                         from '@/lib/ToastContext'
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
 import styles                                               from './VocabBuilderView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ════════════════════════════════════════════════════════════════
    English Vocabulary — static word bank (GRE / advanced level)
@@ -1297,9 +1298,9 @@ function readEngStreak(): EngStreak {
 }
 
 function bumpEngStreak(): number {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateStr(new Date())
   const cur   = readEngStreak()
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+  const yesterday = toLocalDateStr(new Date(Date.now() - 86_400_000))
   let streak = 1
   if (cur.lastStudiedDate === today)      streak = cur.streak
   else if (cur.lastStudiedDate === yesterday) streak = cur.streak + 1

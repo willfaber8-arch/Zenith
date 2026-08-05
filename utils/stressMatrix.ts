@@ -16,6 +16,7 @@ import type {
   LoadTier,
   StrainWarning,
 } from '@/types/academics'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Weighting constants ─────────────────────────────────────── */
 
@@ -96,7 +97,7 @@ export function buildWeeklyStrainMatrix(
     const dayEnd   = dayStart + 86_400_000
     const date     = new Date(dayStart)
     const dow      = date.getDay()
-    const dateISO  = date.toISOString().slice(0, 10)
+    const dateISO  = toLocalDateStr(date)
 
     // Collect events that fall on this day
     const dayEvents = events.filter(e =>

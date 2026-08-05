@@ -26,6 +26,7 @@ import {
   type GenConfig, type CalorieGoal,
 } from '@/utils/mealGenerator'
 import styles from './MealPlanningView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── localStorage keys ───────────────────────────────────────── */
 const LS_BUDGET   = 'zenith_meal_budget_v1'
@@ -819,7 +820,7 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
           <div className={styles.plannerMealCol} />
           {weekDays.map((iso, i) => {
             const d    = new Date(iso + 'T12:00:00')
-            const isToday = iso === new Date().toISOString().slice(0, 10)
+            const isToday = iso === toLocalDateStr(new Date())
             return (
               <div key={iso} className={`${styles.plannerDayCol} ${isToday ? styles.plannerDayColToday : ''}`}>
                 <span className={styles.plannerDayName}>{DAY_LABELS_SHORT[i]}</span>
@@ -1622,6 +1623,13 @@ function KitchenSetupTab({
     }, () => {
       toast('Location access denied.', 'error')
       setLocLoading(false)
+    }, {
+      // Explicit user gesture, but a recent cached fix is plenty for a
+      // 6 km supermarket search — avoids forcing a fresh hardware fix
+      // (and the OS location indicator) on every press.
+      enableHighAccuracy: false,
+      timeout:            10_000,
+      maximumAge:         10 * 60 * 1_000,
     })
   }
 

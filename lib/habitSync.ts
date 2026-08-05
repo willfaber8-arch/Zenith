@@ -29,6 +29,7 @@
 import { db, type Habit } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
 import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
@@ -67,9 +68,6 @@ export function habitSourceMeta(id?: string | null): HabitSourceMeta | undefined
 
 /* ── Date helpers (local, ISO YYYY-MM-DD) ─────────────────────── */
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 /* ── Core progress primitive ──────────────────────────────────── */
 

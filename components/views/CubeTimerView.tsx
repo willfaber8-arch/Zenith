@@ -54,6 +54,7 @@ import {
   type StatSolve,
 } from '@/utils/cubeStats'
 import styles from './CubeTimerView.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── constants ───────────────────────────────────────────────────── */
 
@@ -557,7 +558,7 @@ export default function CubeTimerView() {
       return cells.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
     })
     const csv = [header.join(','), ...lines].join('\r\n')
-    const stamp = new Date().toISOString().slice(0, 10)
+    const stamp = toLocalDateStr(new Date())
     triggerDownload(`zenith-cube-${scope}-${puzzle}-${stamp}.csv`, csv, 'text/csv;charset=utf-8')
     toast(`Exported ${exportRows.length} solves (CSV).`, 'success')
   }, [exportRows, precision, sessionNameOf, scope, puzzle, toast])
@@ -581,7 +582,7 @@ export default function CubeTimerView() {
         session:   sessionNameOf(s.sessionId),
       })),
     }
-    const stamp = new Date().toISOString().slice(0, 10)
+    const stamp = toLocalDateStr(new Date())
     triggerDownload(
       `zenith-cube-${scope}-${puzzle}-${stamp}.json`,
       JSON.stringify(payload, null, 2),

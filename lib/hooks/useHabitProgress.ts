@@ -11,6 +11,7 @@
 
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Habit } from '@/lib/db'
+import { toLocalDateStr } from '@/utils/localDate'
 
 export interface HabitProgressResult {
   /** All tracked habits, ordered by streak desc */
@@ -27,7 +28,7 @@ export interface HabitProgressResult {
 
 export function useHabitProgress(): HabitProgressResult {
   /* Compute once at call time — stays stable within a render */
-  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayISO = toLocalDateStr(new Date())
 
   const habits = useLiveQuery(
     async (): Promise<Habit[]> => {

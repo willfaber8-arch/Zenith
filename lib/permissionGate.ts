@@ -72,3 +72,45 @@ export function shouldAutoAskNotifications(): boolean {
   if (hasAskedFor('notifications')) return false
   return Notification.permission === 'default'
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Geolocation permission probe — shared policy
+   ----------------------------------------------------------------
+   The one-shot localStorage latch above is NOT the same thing as the
+   browser's own permission state, and the two can disagree:
+
+     • localStorage cleared, browser grant kept   → we'd ask again
+       even though the browser would never prompt (harmless).
+     • localStorage kept, browser grant LAPSED    → we'd call
+       getCurrentPosition() believing we already asked, and the
+       browser raises the prompt on EVERY launch.
+
+   The second case is the one that bites: an Edge "Allow this time"
+   grant, a second browser profile, or "clear site data on close" all
+   reset the browser grant while our localStorage cache survives.
+   Any code path that runs WITHOUT an explicit user gesture must
+   therefore check the real browser state — never the latch alone.
+   ════════════════════════════════════════════════════════════════ */
+
+export type GeoPermissionState = 'granted' | 'denied' | 'prompt' | 'unknown'
+
+/** Read the browser's real geolocation permission state. */
+export async function queryGeoPermission(): Promise<GeoPermissionState> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return 'denied'
+  if (!('permissions' in navigator)) return 'unknown'
+  try {
+    const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+    return result.state as GeoPermissionState
+  } catch {
+    return 'unknown'
+  }
+}
+
+/**
+ * True only when getCurrentPosition() is guaranteed NOT to raise a
+ * permission prompt. Every automatic (non-user-gesture) geolocation
+ * call must be gated behind this.
+ */
+export async function canAcquireLocationSilently(): Promise<boolean> {
+  return (await queryGeoPermission()) === 'granted'
+}

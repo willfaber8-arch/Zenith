@@ -8,12 +8,12 @@ import {
   MOOD_VECTORS,
   MOOD_MAP,
   relativeDateLabel,
-  todayISO,
   type MoodKey,
   type MoodVector,
 } from '@/utils/mentalHealthLog'
 import type { MentalHealthLog } from '@/lib/db'
 import styles from './SlopeDayHypeTracker.module.css'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -122,7 +122,7 @@ export default function WellnessTracker() {
   /* ── 3-day trend data ─────────────────────────────────────── */
   const last3Days = [0, 1, 2].map(dAgo => {
     const d = new Date(); d.setDate(d.getDate() - dAgo)
-    const dateStr = d.toISOString().slice(0, 10)
+    const dateStr = toLocalDateStr(d)
     return { dateStr, label: relativeDateLabel(dateStr), log: mh.logs.find(l => l.logDate === dateStr) ?? null }
   })
 

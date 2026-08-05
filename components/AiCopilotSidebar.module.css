@@ -276,6 +276,65 @@
   max-width: 220px;
 }
 
+/* ── Setup call-to-action ─────────────────────────────────────
+   The primary affordance in an otherwise empty panel, so it is the
+   one filled element here — everything around it is muted text. */
+
+.setupPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-3) var(--sp-2);
+  animation: fadeIn var(--dur-slow) var(--ease-expo) both;
+}
+
+.setupCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--accent-purple-dim);
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--accent-purple);
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth),
+    transform    var(--dur-fast) var(--ease-smooth);
+}
+
+.setupCta:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.22);
+  border-color: var(--accent-purple);
+  transform: translateY(-1px);
+}
+
+.setupCta:active:not(:disabled) { transform: translateY(0); }
+
+.setupCta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.setupCtaHint {
+  margin-top: var(--sp-3);
+  max-width: 250px;
+  text-align: center;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setupCta:hover:not(:disabled) { transform: none; }
+}
+
 /* ── Message row layout ───────────────────────────────────────── */
 
 .msgRow {

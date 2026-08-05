@@ -23,6 +23,7 @@ import { db }  from '@/lib/db'
 import type { CourseIntensityProfile, DailyStrainVector } from '@/types/academics'
 import { computeCognitiveLoad, buildWeeklyStrainMatrix } from '@/utils/stressMatrix'
 import styles from './CognitiveLoadMap.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Semantic colour constants ───────────────────────────────── */
 
@@ -448,7 +449,7 @@ export default function CognitiveLoadMap() {
 
   /* ── Render ────────────────────────────────────────────────── */
 
-  const todayISO = new Date(todayStart).toISOString().slice(0, 10)
+  const todayISO = toLocalDateStr(new Date(todayStart))
 
   if (!profiles) {
     return <div className={styles.loading}>Initializing database…</div>

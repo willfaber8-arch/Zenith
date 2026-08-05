@@ -72,7 +72,15 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
     ? NAV_CONFIG.find(c => c.id === activeCategory)
     : null
 
-  let viewLabel: string = 'Zenith OS'
+  /* Views reached from the sidebar footer carry no category, so they fell
+     through to the generic 'Zenith OS' label. On a phone the breadcrumb is
+     the only "you are here" signal, so name them explicitly. */
+  const SYSTEM_VIEW_LABELS: Record<string, string> = {
+    settings: 'Settings',
+    help:     'Help & Feedback',
+  }
+
+  let viewLabel: string = SYSTEM_VIEW_LABELS[activeView] ?? 'Zenith OS'
   if (activeView === 'home') {
     viewLabel = 'Home'
   } else if (catConfig) {
@@ -129,17 +137,26 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
       {/* ── Right status cluster ─────────────────────────────── */}
       <div className={styles.cluster} role="status" aria-label="System status">
 
+        {/*
+          Each cluster member is wrapped in a priority slot so the mobile
+          media queries can drop the low-value ones without leaving an
+          orphan divider behind. Priority order (last to survive first):
+            essential → avatar, notifications, AI
+            medium    → module search
+            low       → sync chip, clock, credits, weather
+        */}
+
         {/* Module finder — jump to any Zenith view by name or keyword */}
         {session && (
-          <>
+          <span className={`${styles.slot} ${styles.slotMedium}`}>
             <ModuleSearch />
             <span className={styles.divider} aria-hidden="true" />
-          </>
+          </span>
         )}
 
         {/* Weather — hidden when geolocation is denied */}
         {wStatus !== 'denied' && (
-          <>
+          <span className={`${styles.slot} ${styles.slotLow}`}>
             <span
               className={styles.weatherChip}
               aria-label="Current weather"
@@ -148,25 +165,26 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               {weatherStr}
             </span>
             <span className={styles.divider} aria-hidden="true" />
-          </>
+          </span>
         )}
 
         {/* Sync status micro-indicator */}
-        <SyncIndicator />
-
-        <span className={styles.divider} aria-hidden="true" />
+        <span className={`${styles.slot} ${styles.slotLow}`}>
+          <SyncIndicator />
+          <span className={styles.divider} aria-hidden="true" />
+        </span>
 
         {/* In-app notification bell — only shown when a session is active */}
         {session && (
-          <>
+          <span className={styles.slot}>
             <NotificationBell />
             <span className={styles.divider} aria-hidden="true" />
-          </>
+          </span>
         )}
 
         {/* AI Co-Pilot toggle — only shown when a session is active */}
         {session && (
-          <>
+          <span className={styles.slot}>
             <button
               type="button"
               className={`${styles.copilotBtn} ${copilotOpen ? styles.copilotBtnActive : ''}`}
@@ -180,26 +198,27 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               <span className={styles.copilotLabel}>AI</span>
             </button>
             <span className={styles.divider} aria-hidden="true" />
-          </>
+          </span>
         )}
 
         {/* Live clock */}
-        <time
-          className={styles.clock}
-          aria-label="System time"
-          suppressHydrationWarning
-        >
-          {now ? fmtTime(now) : '--:--'}
-        </time>
-
-        <span className={styles.divider} aria-hidden="true" />
+        <span className={`${styles.slot} ${styles.slotLow}`}>
+          <time
+            className={styles.clock}
+            aria-label="System time"
+            suppressHydrationWarning
+          >
+            {now ? fmtTime(now) : '--:--'}
+          </time>
+          <span className={styles.divider} aria-hidden="true" />
+        </span>
 
         {/* Cosmetic Points balance — only visible when authenticated */}
         {session && (
-          <>
+          <span className={`${styles.slot} ${styles.slotLow}`}>
             <CosmeticPointsIndicator />
             <span className={styles.divider} aria-hidden="true" />
-          </>
+          </span>
         )}
 
         {/* User profile chip */}

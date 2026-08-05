@@ -616,3 +616,28 @@
   background: color-mix(in srgb, var(--accent-purple) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent-purple) 60%, transparent);
 }
+
+/* ── Mobile (≤767px) ──────────────────────────────────────── */
+/* Grid items default to `min-width: auto`, so a card whose
+   min-content width exceeds the track widens the whole page.
+   Pin them to 0 and trim the --sp-8 gutter. */
+
+@media (max-width: 767px) {
+  .root {
+    padding: var(--sp-5) var(--sp-4) var(--sp-16);
+  }
+
+  .grid {
+    gap: var(--sp-4);
+  }
+
+  .grid > *,
+  .card {
+    min-width: 0;
+  }
+
+  .card {
+    padding: var(--sp-4);
+    overflow: hidden;
+  }
+}

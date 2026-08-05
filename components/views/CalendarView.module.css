@@ -931,10 +931,48 @@
     min-width: 130px;
   }
 
-  /* Hide Sat + Sun columns to prevent overflow on mobile */
-  .weekDayHeaderCell:nth-child(n+8),
-  .dayColumn:nth-child(n+8) {
-    display: none;
+  /*
+   * Previously Sunday was `display:none`d here to "prevent overflow".
+   * That did not actually reclaim any space — the grid still reserves
+   * `repeat(7, 1fr)` — so it just left a dead column and a missing day.
+   * Instead, narrow the time gutter and the per-day typography so all
+   * seven days genuinely fit.
+   */
+  .bannerRow,
+  .weekDayHeader,
+  .timeGrid {
+    grid-template-columns: 34px repeat(7, 1fr);
+  }
+
+  .weekDayHeaderCell {
+    padding: var(--sp-2) 2px;
+  }
+
+  .dayName {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+
+  .dayNumber {
+    font-size: 0.85rem;
+  }
+
+  .dayHeaderToday .dayNumber {
+    width: 22px;
+    height: 22px;
+  }
+
+  .hourLabel {
+    font-size: 0.55rem;
+    padding-right: var(--sp-1);
+  }
+
+  /* Day columns get ~45px each — trim the pill chrome so the title
+     still has room for a couple of characters. */
+  .eventPill {
+    left: 1px;
+    right: 1px;
+    padding: 2px 3px;
   }
 }
 
@@ -1208,6 +1246,14 @@
 
 .monthCell {
   position: relative;
+  /*
+   * Grid items default to `min-width: auto`, i.e. their min-content
+   * size. A cell holding a long event title reported a 177px minimum,
+   * which blew every `1fr` track past its share and pushed five of the
+   * seven day columns outside `.monthGrid`'s `overflow: hidden`.
+   * Pinning to 0 makes the seven tracks genuinely equal.
+   */
+  min-width: 0;
   border-right: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
   padding: var(--sp-2);
@@ -2232,4 +2278,43 @@
   font-size: 0.7rem;
   line-height: 1.45;
   color: var(--text-dark);
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE  (≤767px)
+   `.headerRight` is `flex-shrink: 0`, so the view-mode tabs plus
+   the "New Calendar" button forced the page 34px wider than a
+   320px screen. Let the header cluster wrap instead.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .wrap {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .headerRight {
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .calTabBar {
+    padding-left:  var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}
+
+@media (max-width: 420px) {
+  /* Month cells get very thin — trade the fixed 100px row height
+     for a compact one so a whole month still fits on screen. */
+  .monthCell {
+    min-height: 52px;
+    padding: 2px;
+  }
+
+  .monthCellNum,
+  .monthCellNumToday {
+    font-size: 0.62rem;
+  }
 }

@@ -29,6 +29,7 @@
  */
 
 import type { Habit } from '@/lib/db'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ════════════════════════════════════════════════════════════════
    PUBLIC TYPES
@@ -173,7 +174,7 @@ export function calculateMovingGritScore(habits: Habit[]): GritDataPoint[] {
     date.setHours(0, 0, 0, 0)
     date.setDate(date.getDate() - daysAgo)
 
-    const dateISO = date.toISOString().slice(0, 10)
+    const dateISO = toLocalDateStr(date)
     const label   = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
     /* Per-habit normalised contributions */

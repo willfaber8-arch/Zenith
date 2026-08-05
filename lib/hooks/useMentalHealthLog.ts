@@ -15,20 +15,20 @@ import { db }                             from '@/lib/db'
 import { syncHabitSource }                from '@/lib/habitSync'
 import {
   evaluateMentalState,
-  todayISO,
   MOOD_MAP,
   type MoodKey,
   type MoodVector,
   type MentalStateEvaluation,
 } from '@/utils/mentalHealthLog'
 import type { MentalHealthLog } from '@/lib/db'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Lookback window ─────────────────────────────────────────── */
 
 function sevenDaysAgo(): string {
   const d = new Date()
   d.setDate(d.getDate() - 7)
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 /* ── Hook return type ────────────────────────────────────────── */

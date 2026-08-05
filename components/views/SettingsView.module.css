@@ -1437,3 +1437,87 @@
   gap: var(--sp-3);
   margin-top: var(--sp-4);
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE  (≤767px)
+   Settings had no responsive rules at all: the page and every
+   section carried --sp-8 side padding, which eats 64px of a
+   390px screen, and several rows are horizontal flex pairs that
+   need to become stacks.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .root {
+    padding: var(--sp-5) var(--sp-4) var(--sp-16);
+  }
+
+  .grid {
+    gap: var(--sp-5);
+    margin-top: var(--sp-5);
+  }
+
+  .section {
+    padding: var(--sp-4);
+  }
+
+  /* Label/value pairs stack rather than fighting over one line */
+  .accountDetail,
+  .aboutRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-1);
+  }
+
+  .accountDetailLabel,
+  .aboutLabel {
+    min-width: 0;
+  }
+
+  /* Full-width primary controls — easier to hit, no wrapping */
+  .dataActions,
+  .aiKeyRow,
+  .presetSaveRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .presetInput {
+    min-width: 0;
+  }
+
+  .forgeCta,
+  .perkCard,
+  .presetRow,
+  .toggleRow {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  .forgeCtaDesc,
+  .perkCardDesc {
+    max-width: none;
+  }
+
+  .perkBuyGroup {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  /* Keep the floating preview pill inside a 320px screen */
+  .previewBar {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    transform: none;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Shortcut table is the one genuinely tabular block — let it
+     scroll inside its own box instead of widening the page. */
+  .shortcutsTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

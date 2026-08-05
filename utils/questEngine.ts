@@ -8,6 +8,7 @@
  */
 
 import type { Habit, Assignment } from '@/lib/db'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ════════════════════════════════════════════════════════════════
    TYPES
@@ -52,9 +53,6 @@ export const QUEST_REWARDS = {
    DATE UTILITIES
    ════════════════════════════════════════════════════════════════ */
 
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 /* ════════════════════════════════════════════════════════════════
    SEEDED RANDOMISATION

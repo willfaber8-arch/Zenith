@@ -31,12 +31,10 @@ import {
   type ChecklistItemDef,
 } from '@/lib/notificationCenter'
 import { wateringInfo } from '@/utils/botanyStats'
+import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Local date helpers ────────────────────────────────────────── */
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 function todayBounds(): [number, number] {
   const start = new Date(); start.setHours(0, 0, 0, 0)
   const end   = new Date(); end.setHours(23, 59, 59, 999)

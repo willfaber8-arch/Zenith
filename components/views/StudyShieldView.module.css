@@ -597,3 +597,22 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Mobile (≤767px) ──────────────────────────────────────── */
+/* `.tabBar` is `width: fit-content`, so three tabs at --sp-4
+   horizontal padding overran a 320px viewport. */
+
+@media (max-width: 767px) {
+  .tabBar {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .tab {
+    padding: var(--sp-2) var(--sp-3);
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+  }
+}

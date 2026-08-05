@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type KindleClipping } from '@/lib/db'
@@ -31,6 +31,7 @@ import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import { ACTION_MARKER, type CopilotAction } from '@/lib/copilotTools'
 import { executeCopilotAction } from '@/lib/copilotActions'
 import styles from './BookTrackerDashboard.module.css'
+import { toLocalDateStr } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -229,6 +230,26 @@ function ClippingsPanel({ clippings }: { clippings: KindleClipping[] }) {
 
 const SPINES_PER_SHELF = 7
 const BOOKS_PER_PAGE    = 21
+
+/* ── Cover-sweep budget ──────────────────────────────────────
+   Open Library and Google Books are free, un-keyed and rate-limited, and a
+   Goodreads export can be many hundreds of books. Two dials keep the
+   *automatic* sweep a good citizen:
+
+     · concurrency — the automatic pass runs half as wide as a deliberate
+       button press. The reader did not ask for it, so it should never be the
+       loudest thing on the network while the page is still settling.
+     · batch cap   — one automatic pass answers at most this many books. The
+       remainder is left for the next visit or the (now clearly labelled)
+       manual button, so importing 600 books never turns into 600+ background
+       requests in a single page load.
+
+   48 covers is roughly the first two-and-a-bit pages of the shelf, i.e. more
+   than the reader can see before they have scrolled — the library looks fully
+   illustrated straight away, and the backlog drains a page-load at a time. */
+const MANUAL_COVER_CONCURRENCY = 4
+const AUTO_COVER_CONCURRENCY   = 2
+const AUTO_COVER_BATCH         = 48
 
 type ViewTab = 'LIBRARY' | 'TBR' | 'READING' | 'ALL'
 
@@ -781,7 +802,23 @@ export default function BookTrackerDashboard() {
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
   const [kindlePhase,  setKindlePhase]  = useState<'idle' | 'loading'>('idle')
-  const [enrichPhase,  setEnrichPhase]  = useState<'idle' | 'running'>('idle')
+  /*
+   * Librarian progress.
+   *
+   * The two stages report progress differently, and the UI is honest about
+   * which is which. `/api/chat` buffers the model's tool calls and flushes
+   * them in a single enqueue after the stream ends (see emitActions), so
+   * while the model is thinking there is genuinely nothing to count — that
+   * stage gets an indeterminate bar plus an elapsed clock, not a fake
+   * percentage that crawls to 90% and stalls. Once the calls land, writing
+   * them to IndexedDB is real countable work and the bar becomes determinate.
+   */
+  const [enrichPhase, setEnrichPhase] = useState<{
+    stage: 'idle' | 'researching' | 'applying'
+    done:  number
+    total: number
+  }>({ stage: 'idle', done: 0, total: 0 })
+  const [enrichElapsed, setEnrichElapsed] = useState(0)
   const [coverPhase,   setCoverPhase]   = useState<{ running: boolean; done: number; total: number }>(
     { running: false, done: 0, total: 0 },
   )
@@ -808,13 +845,31 @@ export default function BookTrackerDashboard() {
   const fileInputRef   = useRef<HTMLInputElement>(null)
   const kindleInputRef = useRef<HTMLInputElement>(null)
   const coverAbortRef  = useRef<AbortController | null>(null)
+  // One shared busy latch for both sweep paths (automatic + button). A ref,
+  // not state, so it flips synchronously and two callers in the same tick
+  // cannot both read "idle" and start overlapping network passes.
+  const coverSweepBusyRef = useRef(false)
+  const coverMountedRef   = useRef(true)
 
   // Cover lookups are network work owned by this view — tear them down if the
   // user navigates away mid-sweep rather than leaving requests in flight.
-  useEffect(() => () => coverAbortRef.current?.abort(), [])
+  useEffect(() => {
+    coverMountedRef.current = true
+    return () => {
+      coverMountedRef.current = false
+      coverAbortRef.current?.abort()
+    }
+  }, [])
 
   /* ── Live data ────────────────────────── */
-  const allBooks = useLiveQuery(() => db.library_books.toArray(), []) ?? []
+  // `useLiveQuery` yields `undefined` for the boot frame before IndexedDB has
+  // answered. `booksLoaded` distinguishes "still loading" from "genuinely
+  // empty library" — the automatic cover sweep must not fire on the former.
+  // The `?? []` fallback is memoised so an empty library doesn't hand every
+  // downstream `useMemo` a brand-new array identity on every render.
+  const allBooksRaw = useLiveQuery(() => db.library_books.toArray(), [])
+  const booksLoaded = allBooksRaw !== undefined
+  const allBooks = useMemo(() => allBooksRaw ?? [], [allBooksRaw])
 
   /* Kindle clippings, bucketed by bookId for O(1) per-card lookup. */
   const allClippings = useLiveQuery(() => db.kindle_clippings.toArray(), []) ?? []
@@ -943,7 +998,7 @@ export default function BookTrackerDashboard() {
    * ACTION_MARKER payload and executes each update against IndexedDB.
    */
   const handleAiFill = async () => {
-    if (enrichPhase === 'running') return
+    if (enrichPhase.stage !== 'idle') return
     const candidates = booksNeedingDetails.slice(0, 20)
     if (candidates.length === 0) {
       toast('Every book already has a page count and genre.', 'info')
@@ -954,7 +1009,7 @@ export default function BookTrackerDashboard() {
       return
     }
 
-    setEnrichPhase('running')
+    setEnrichPhase({ stage: 'researching', done: 0, total: candidates.length })
     try {
       const list = candidates
         .map((b, i) => `${i + 1}. "${b.title}"${b.author ? ` by ${b.author}` : ''}`)
@@ -1002,9 +1057,16 @@ export default function BookTrackerDashboard() {
         return
       }
 
+      // Writing the results is real, countable work — switch the bar from
+      // indeterminate to a true done/total readout for this stage.
+      setEnrichPhase({ stage: 'applying', done: 0, total: updates.length })
+
       let filled = 0
+      let written = 0
       for (const a of updates) {
         try { await executeCopilotAction(a); filled++ } catch { /* skip failed row */ }
+        written++
+        setEnrichPhase({ stage: 'applying', done: written, total: updates.length })
       }
 
       toast(
@@ -1017,9 +1079,19 @@ export default function BookTrackerDashboard() {
       const msg = e instanceof Error ? e.message : 'The Librarian is unavailable.'
       toast(msg.length < 120 ? msg : 'The Librarian is unavailable. Check your AI key in Settings.', 'error')
     } finally {
-      setEnrichPhase('idle')
+      setEnrichPhase({ stage: 'idle', done: 0, total: 0 })
     }
   }
+
+  /* Elapsed clock for the Librarian. Only ticks while a pass is live, so an
+     idle dashboard schedules no timers at all. */
+  useEffect(() => {
+    if (enrichPhase.stage === 'idle') { setEnrichElapsed(0); return }
+    const startedAt = Date.now()
+    setEnrichElapsed(0)
+    const id = setInterval(() => setEnrichElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [enrichPhase.stage])
 
   /* ── Cover art ─────────────────────────────────────────────
      `coverUrl` is a three-state cache written straight onto the book row:
@@ -1044,15 +1116,28 @@ export default function BookTrackerDashboard() {
    * Resolve cover art for a batch of books, a few at a time.
    *
    * Open Library and Google Books are free and un-keyed, so the sweep runs a
-   * fixed pool of COVER_CONCURRENCY workers pulling from one shared cursor —
-   * steady, bounded pressure on both services instead of a burst of hundreds
-   * of parallel requests. Every answer (hit *or* miss) is written back
-   * immediately, so an interrupted run keeps everything it already resolved.
+   * fixed pool of workers pulling from one shared cursor — steady, bounded
+   * pressure on both services instead of a burst of hundreds of parallel
+   * requests. Every answer (hit *or* miss) is written back immediately, so an
+   * interrupted run keeps everything it already resolved.
+   *
+   * `silent` suppresses the closing toast: the automatic background sweep uses
+   * it so opening the Library never announces itself. The button still shows
+   * live progress either way — a disabled, counting button is honest feedback,
+   * and it is what stops a manual click landing on top of an automatic pass.
+   *
+   * The busy guard is a ref, not `coverPhase.running`: state is a render-time
+   * snapshot, so two callers in the same tick would both read `false` and start
+   * duplicate sweeps. The ref flips synchronously on entry.
    */
-  const runCoverSweep = async (queue: LibraryBook[]) => {
-    if (coverPhase.running || queue.length === 0) return
+  const runCoverSweep = useCallback(async (
+    queue: LibraryBook[],
+    opts: { silent?: boolean; concurrency?: number } = {},
+  ) => {
+    const { silent = false, concurrency = MANUAL_COVER_CONCURRENCY } = opts
+    if (coverSweepBusyRef.current || queue.length === 0) return
+    coverSweepBusyRef.current = true
 
-    const COVER_CONCURRENCY = 4
     const controller = new AbortController()
     coverAbortRef.current = controller
     setCoverPhase({ running: true, done: 0, total: queue.length })
@@ -1079,25 +1164,67 @@ export default function BookTrackerDashboard() {
         }
         if (url) found++
         done++
-        setCoverPhase(p => (p.running ? { ...p, done } : p))
+        if (coverMountedRef.current) setCoverPhase(p => (p.running ? { ...p, done } : p))
       }
     }
 
-    await Promise.all(
-      Array.from({ length: Math.min(COVER_CONCURRENCY, queue.length) }, () => worker()),
-    )
+    try {
+      await Promise.all(
+        Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()),
+      )
+    } finally {
+      coverSweepBusyRef.current = false
+      coverAbortRef.current = null
+    }
 
-    coverAbortRef.current = null
-    if (controller.signal.aborted) return
+    // Aborted → the component is gone (or navigating): touch no state.
+    if (controller.signal.aborted || !coverMountedRef.current) return
 
     setCoverPhase({ running: false, done: 0, total: 0 })
+    if (silent) return
     toast(
       found > 0
         ? `Found covers for ${found} of ${done} book${done !== 1 ? 's' : ''}.`
         : `No cover art found for ${done} book${done !== 1 ? 's' : ''}. Adding an ISBN or exact title helps.`,
       found > 0 ? 'success' : 'info',
     )
-  }
+  }, [toast])
+
+  /**
+   * Automatic background sweep — the reason a freshly imported library shows
+   * cover art without the reader ever discovering the button.
+   *
+   * Scope: only books that have *never* been looked up (`coverUrl === undefined`).
+   * Confirmed misses (`null`) are deliberately excluded, otherwise every visit
+   * would re-hammer both APIs for books that genuinely have no artwork; those
+   * stay behind the manual "Retry cover misses" button.
+   *
+   * Loop safety: the sweep writes to `library_books`, which re-fires
+   * `useLiveQuery`, which gives `booksNeedingCovers` a new identity, which
+   * re-runs this effect — every write. `autoAttemptedRef` is the fence: the
+   * whole current backlog is marked the instant a pass starts, so a re-entry
+   * sees an empty `pending` and returns immediately. Books imported *later*
+   * are not in the set, so an import still gets an automatic pass.
+   */
+  const autoAttemptedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!booksLoaded) return                    // IndexedDB has not answered yet
+    if (coverSweepBusyRef.current) return       // a sweep already owns the network
+
+    const seen = autoAttemptedRef.current
+    const pending = booksNeedingCovers.filter(b => !seen.has(b.id))
+    if (pending.length === 0) return
+
+    // Fence the entire backlog, then work only the head of it. The remainder is
+    // picked up on the next visit or by the manual button — an automatic pass
+    // stays a polite, finite amount of traffic no matter how big the import.
+    for (const b of pending) seen.add(b.id)
+
+    void runCoverSweep(pending.slice(0, AUTO_COVER_BATCH), {
+      silent: true,
+      concurrency: AUTO_COVER_CONCURRENCY,
+    })
+  }, [booksLoaded, booksNeedingCovers, runCoverSweep])
 
   const handleRate = async (bookId: string, rating: number) => {
     await db.library_books.update(bookId, { userRating: rating })
@@ -1214,7 +1341,7 @@ export default function BookTrackerDashboard() {
       const now = Date.now()
       await db.reading_sessions.add({
         bookId,
-        date: new Date().toISOString().slice(0, 10),
+        date: toLocalDateStr(new Date()),
         minutes,
         pagesRead,
         createdAt: now,
@@ -1300,13 +1427,14 @@ export default function BookTrackerDashboard() {
           <button
             className={styles.librarianBtn}
             onClick={handleAiFill}
-            disabled={enrichPhase === 'running' || booksNeedingDetails.length === 0}
+            disabled={enrichPhase.stage !== 'idle' || booksNeedingDetails.length === 0}
             title={booksNeedingDetails.length === 0
               ? 'Every book already has a page count and genre'
               : `Ask the AI Librarian to research ${Math.min(booksNeedingDetails.length, 20)} book${booksNeedingDetails.length === 1 ? '' : 's'} missing details`}
           >
-            {enrichPhase === 'running'
-              ? <><span className={styles.librarianSpinner} aria-hidden="true" />Researching…</>
+            {enrichPhase.stage !== 'idle'
+              ? <><span className={styles.librarianSpinner} aria-hidden="true" />
+                  {enrichPhase.stage === 'researching' ? 'Researching…' : 'Saving…'}</>
               : `✨ Ask AI to Fill Details${booksNeedingDetails.length > 0 ? ` (${Math.min(booksNeedingDetails.length, 20)})` : ''}`}
           </button>
           <button
@@ -1319,6 +1447,56 @@ export default function BookTrackerDashboard() {
           </button>
         </div>
       </div>
+
+      {/* ── Librarian progress ──────────────────────────────────────
+          A multi-second network round trip with no other on-screen sign
+          of life. `aria-valuenow` is deliberately omitted while
+          researching: the ARIA spec treats a progressbar without it as
+          indeterminate, which is exactly what that stage is. */}
+      {enrichPhase.stage !== 'idle' && (() => {
+        const determinate = enrichPhase.stage === 'applying' && enrichPhase.total > 0
+        const pct = determinate
+          ? Math.round((enrichPhase.done / enrichPhase.total) * 100)
+          : 0
+        const mins = Math.floor(enrichElapsed / 60)
+        const secs = enrichElapsed % 60
+        return (
+          <div className={styles.librarianProgress} role="status" aria-live="polite">
+            <div className={styles.librarianProgressHead}>
+              <span className={styles.librarianProgressLabel}>
+                {enrichPhase.stage === 'researching'
+                  ? `Researching ${enrichPhase.total} book${enrichPhase.total !== 1 ? 's' : ''}…`
+                  : `Saving details — ${enrichPhase.done} / ${enrichPhase.total}`}
+              </span>
+              <span className={styles.librarianProgressClock}>
+                {mins}:{String(secs).padStart(2, '0')}
+              </span>
+            </div>
+
+            <div
+              className={styles.librarianTrack}
+              role="progressbar"
+              aria-label={enrichPhase.stage === 'researching'
+                ? 'Researching book details'
+                : 'Saving book details'}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              {...(determinate ? { 'aria-valuenow': pct } : {})}
+            >
+              <div
+                className={determinate ? styles.librarianFill : styles.librarianFillIndet}
+                style={determinate ? ({ '--fill-pct': `${pct}%` } as React.CSSProperties) : undefined}
+              />
+            </div>
+
+            <p className={styles.librarianProgressHint}>
+              {enrichPhase.stage === 'researching'
+                ? 'The model answers in one pass, so this step has no per-book milestones — the clock is the honest signal that it is still working.'
+                : 'Writing to your library.'}
+            </p>
+          </div>
+        )
+      })()}
 
       {/* Kindle import hint */}
       <p className={styles.kindleHint}>
