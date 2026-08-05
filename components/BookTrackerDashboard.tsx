@@ -30,6 +30,7 @@ import { useToast } from '@/lib/ToastContext'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import { ACTION_MARKER, type CopilotAction } from '@/lib/copilotTools'
 import { executeCopilotAction } from '@/lib/copilotActions'
+import BookRecommendationFeed from './BookRecommendationFeed'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -1621,6 +1622,7 @@ export default function BookTrackerDashboard() {
       {/* ── TBR tab ── */}
       {activeTab === 'TBR' && (
         <>
+          <BookRecommendationFeed allBooks={allBooks} />
           <Bookshelf
             books={tbrPaged}
             onOpenBook={setSelectedId}

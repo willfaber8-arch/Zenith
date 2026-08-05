@@ -1,0 +1,200 @@
+/* ════════════════════════════════════════════════════════════
+   BookRecommendationFeed — "Because you read…" on the TBR shelf.
+
+   Sits above the shelf, so it is deliberately quieter than the
+   bookcase below it: flat card, no woodgrain, no 3D. It should
+   read as a suggestion strip, not a second library.
+   ════════════════════════════════════════════════════════════ */
+
+.feed {
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.sub {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+  max-width: 52ch;
+}
+
+.runBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--accent-purple-dim);
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--accent-purple);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background   var(--dur-base) var(--ease-smooth),
+    border-color var(--dur-base) var(--ease-smooth);
+}
+
+.runBtn:hover:not(:disabled) {
+  background: rgba(124, 149, 255, 0.22);
+  border-color: var(--accent-purple);
+}
+
+.runBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-purple-dim);
+  border-top-color: var(--accent-purple);
+  animation: recSpin 0.7s linear infinite;
+}
+
+@keyframes recSpin { to { transform: rotate(360deg); } }
+
+/* ── Notices ──────────────────────────────────────────────── */
+
+.notice {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.07);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* ── Suggestion cards ─────────────────────────────────────── */
+
+.cards {
+  list-style: none;
+  margin-top: var(--sp-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: var(--sp-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-hover);
+  animation: recCardIn 320ms var(--ease-expo) both;
+}
+
+@keyframes recCardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.cardAuthor {
+  margin-top: 2px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.cardGenre {
+  display: inline-block;
+  margin-top: var(--sp-2);
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(124, 149, 255, 0.10);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+/* The justification is the whole value of the feature — a bare list of
+   titles is a search result, not a recommendation. Given room to breathe. */
+.cardWhy {
+  margin-top: var(--sp-3);
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--text-dark);
+}
+
+.addBtn {
+  width: 100%;
+  padding: 6px 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background   var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth),
+    color        var(--dur-fast) var(--ease-smooth);
+}
+
+.addBtn:hover:not(:disabled) {
+  border-color: var(--accent-green);
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+}
+
+.addBtnDone {
+  border-color: rgba(82, 204, 163, 0.30);
+  color: var(--accent-green);
+  cursor: default;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .feed { padding: var(--sp-4); }
+
+  .head { flex-direction: column; align-items: stretch; }
+
+  .runBtn { justify-content: center; }
+
+  .cards { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card    { animation: none; }
+  .spinner { animation-duration: 2s; }
+}
