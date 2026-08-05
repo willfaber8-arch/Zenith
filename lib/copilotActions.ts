@@ -403,15 +403,13 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
          Librarian supplies it. Validated to 10 or 13 digits: a malformed
          value would be cached and then quietly fail every lookup. */
       const isbnRaw = str(a.isbn13).replace(/[^0-9Xx]/g, '')
+      let clearCoverCache = false
       if ((isbnRaw.length === 10 || isbnRaw.length === 13) && !target.isbn13) {
         updates.isbn13 = isbnRaw
-        /* Clearing the cover cache re-arms the automatic sweep for this
-           book. Without it the row keeps whatever it resolved (or failed
-           to resolve) before the ISBN existed, and the new ISBN is never
-           actually used. undefined = "never looked up", which is exactly
-           the state the sweep looks for. */
-        updates.coverUrl      = undefined
-        updates.coverCheckedAt = undefined
+        /* Re-arm the automatic cover sweep for this book. Without it the row
+           keeps the null it resolved before the ISBN existed, and the new
+           ISBN is never actually used for anything. */
+        clearCoverCache = true
       }
 
       const filled = Object.keys(updates)
@@ -419,6 +417,26 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         return `"${target.title}" already has those details — nothing to fill.`
       }
       await db.library_books.update(target.id, updates)
+
+      /*
+       * Deleting the cover-cache keys needs `modify`, not `update`.
+       *
+       * Dexie's update() IGNORES a property whose value is undefined — it
+       * does not delete the key. Passing { coverUrl: undefined } therefore
+       * left the old `null` in place, so the book kept its "checked, no
+       * artwork" verdict and the sweep (which only revisits rows where
+       * coverUrl is undefined) skipped it forever. The whole point of
+       * researching the ISBN was to get that book another attempt.
+       */
+      if (clearCoverCache) {
+        await db.library_books
+          .where('id').equals(target.id)
+          .modify(row => {
+            delete (row as Partial<LibraryBook>).coverUrl
+            delete (row as Partial<LibraryBook>).coverCheckedAt
+          })
+      }
+
       return `Filled in ${filled.length} detail${filled.length > 1 ? 's' : ''} for "${target.title}".`
     }
 

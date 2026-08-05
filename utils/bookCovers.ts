@@ -146,6 +146,29 @@ interface GoogleVolume {
   }
 }
 
+/* ── Lookup result ────────────────────────────────────────────────────
+ *
+ * Resolution returns a RESULT rather than a bare URL because the caller
+ * has to distinguish two very different kinds of "no cover":
+ *
+ *   · not_found    — genuinely no artwork. Cache it; never ask again.
+ *   · rate_limited — we were throttled and learned nothing. Caching this
+ *                    as a miss is what turned one bad afternoon into 19
+ *                    books permanently marked "no cover available".
+ *
+ * It also carries back any ISBN discovered along the way, so a title-only
+ * book gains a stable key for every future lookup.
+ */
+
+export type CoverFailure = 'not_found' | 'rate_limited' | 'offline'
+
+export interface CoverLookupResult {
+  url:      string | null
+  /** ISBN discovered during the search — worth persisting on the book. */
+  isbn13?:  string
+  failure?: CoverFailure
+}
+
 /** Upgrade a Google Books thumbnail to https + a larger, un-curled image. */
 function normaliseGoogleThumb(raw: string): string {
   return raw
@@ -154,30 +177,124 @@ function normaliseGoogleThumb(raw: string): string {
     .replace(/&zoom=\d+/g, '&zoom=2')
 }
 
-/** Run one Google Books query; returns the first usable thumbnail. */
-async function runGoogleQuery(q: string, signal?: AbortSignal): Promise<string | null> {
+/* ── Open Library search ──────────────────────────────────────────────
+ *
+ * The primary title-based lookup, and the reason the hit rate is not
+ * hostage to one provider's quota.
+ *
+ * search.json is far more permissive than the Google Books API and gives
+ * back two things at once: `cover_i` (an edition cover id, which builds a
+ * URL with no ISBN needed) and `isbn` (a list of editions). Caching that
+ * ISBN means the book has a stable, quota-free key for every future
+ * lookup — which is the thing the Librarian was being asked to guess at.
+ */
+interface OpenLibraryDoc {
+  title?:       string
+  author_name?: string[]
+  cover_i?:     number
+  isbn?:        string[]
+}
+
+export function openLibraryCoverIdUrl(coverId: number, size: 'S' | 'M' | 'L' = 'L'): string {
+  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`
+}
+
+/** Pick a 13-digit ISBN from an edition list, falling back to a 10. */
+function pickIsbn(list?: string[]): string | undefined {
+  if (!list?.length) return undefined
+  const clean = list.map(x => x.replace(/[^0-9Xx]/g, ''))
+  return clean.find(x => x.length === 13) ?? clean.find(x => x.length === 10)
+}
+
+async function searchOpenLibrary(
+  title: string,
+  author?: string,
+  signal?: AbortSignal,
+): Promise<CoverLookupResult> {
+  const t = cleanBookTitle(title)
+  const a = author ? cleanAuthor(author) : ''
+
+  const params = new URLSearchParams({
+    title: t,
+    limit: '3',
+    // Ask for only the four fields we use — the default response is enormous.
+    fields: 'title,author_name,cover_i,isbn',
+  })
+  if (a) params.set('author', a)
+
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?${params}`, { signal })
+    if (res.status === 429) return { url: null, failure: 'rate_limited' }
+    if (!res.ok) return { url: null, failure: 'not_found' }
+
+    const data = (await res.json()) as { docs?: OpenLibraryDoc[] }
+    for (const doc of data.docs ?? []) {
+      const isbn13 = pickIsbn(doc.isbn)
+      if (doc.cover_i) {
+        return { url: openLibraryCoverIdUrl(doc.cover_i), isbn13 }
+      }
+      // No cover on this edition, but an ISBN is still worth keeping — the
+      // covers CDN may have artwork filed under it even when search does not.
+      if (isbn13) {
+        const byIsbn = openLibraryCoverUrl(isbn13)
+        if (byIsbn && await probeImage(byIsbn, 6000, signal)) {
+          return { url: byIsbn, isbn13 }
+        }
+        return { url: null, isbn13, failure: 'not_found' }
+      }
+    }
+    return { url: null, failure: 'not_found' }
+  } catch {
+    return { url: null, failure: 'offline' }
+  }
+}
+
+/* ── Google Books ─────────────────────────────────────────────────── */
+
+interface GoogleQueryOutcome {
+  url:      string | null
+  failure?: CoverFailure
+}
+
+/**
+ * Run one Google Books query.
+ *
+ * 429 and 403 are reported rather than swallowed. The unauthenticated
+ * endpoint throttles aggressively per IP, and a throttled response used to
+ * be indistinguishable from "this book has no cover" — so a sweep that hit
+ * the limit quietly wrote a permanent null onto every remaining book.
+ */
+async function runGoogleQuery(q: string, signal?: AbortSignal): Promise<GoogleQueryOutcome> {
   const url = `https://www.googleapis.com/books/v1/volumes?maxResults=5&country=US&q=${encodeURIComponent(q)}`
   try {
     const res = await fetch(url, { signal })
-    if (!res.ok) return null
+    // 403 is what the API returns for a spent daily quota; 429 for a burst.
+    if (res.status === 429 || res.status === 403) {
+      return { url: null, failure: 'rate_limited' }
+    }
+    if (!res.ok) return { url: null, failure: 'not_found' }
+
     const data = (await res.json()) as { items?: GoogleVolume[] }
     for (const item of data.items ?? []) {
       const thumb = item.volumeInfo?.imageLinks?.thumbnail
         ?? item.volumeInfo?.imageLinks?.smallThumbnail
-      if (thumb) return normaliseGoogleThumb(thumb)
+      if (thumb) return { url: normaliseGoogleThumb(thumb) }
     }
-    return null
+    return { url: null, failure: 'not_found' }
   } catch {
-    return null   // offline / blocked / rate-limited — caller falls through
+    return { url: null, failure: 'offline' }
   }
 }
 
 /**
- * Build the query cascade for a book, strictest first.
+ * Query forms for a book, strictest first. Exported for testing.
  *
- * The strict phrase match runs first because it is most likely to be the
- * *right* book; the looser ones exist so an awkwardly-formatted title still
- * gets artwork instead of nothing. Exported for testing.
+ * DELIBERATELY SHORT. An earlier version tried five variations per book,
+ * which turned a 21-book shelf into ~100 requests and tripped Google's
+ * rate limiter — every book after the limit resolved to a cached null, so
+ * the "more thorough" cascade produced *fewer* covers than one query would
+ * have. Two attempts is the compromise: the strict one to get the right
+ * book, one loose one for an awkward title.
  *
  * Terms are separated by a SPACE. Joining with `+` yielded `%2B` after
  * encoding — a literal plus inside the phrase, which matched nothing.
@@ -187,34 +304,28 @@ export function buildGoogleQueries(title: string, author?: string): string[] {
   const tS = titleWithoutSubtitle(t)
   const a  = author ? cleanAuthor(author) : ''
 
-  const attempts: string[] = []
-  if (a) attempts.push(`intitle:"${t}" inauthor:"${a}"`)
-  attempts.push(`intitle:"${t}"`)
-  if (tS !== t) {
-    if (a) attempts.push(`intitle:"${tS}" inauthor:"${a}"`)
-    attempts.push(`intitle:"${tS}"`)
-  }
-  // Last resort: unquoted free text — loosest match, so it runs last.
-  attempts.push(a ? `${tS} ${a}` : tS)
+  const attempts = a
+    ? [`intitle:"${tS}" inauthor:"${a}"`, `${tS} ${a}`]
+    : [`intitle:"${tS}"`, tS]
 
   return [...new Set(attempts)]
 }
 
-/**
- * Look up a cover via Google Books (no key required for volume search).
- * Tries progressively looser queries and stops at the first hit.
- */
+/** Look up a cover via Google Books. Stops immediately on a rate limit. */
 export async function googleBooksCoverUrl(
   title: string,
   author?: string,
   signal?: AbortSignal,
-): Promise<string | null> {
+): Promise<CoverLookupResult> {
+  let lastFailure: CoverFailure = 'not_found'
   for (const q of buildGoogleQueries(title, author)) {
-    if (signal?.aborted) return null
-    const hit = await runGoogleQuery(q, signal)
-    if (hit) return hit
+    if (signal?.aborted) return { url: null, failure: 'offline' }
+    const out = await runGoogleQuery(q, signal)
+    if (out.url) return { url: out.url }
+    if (out.failure === 'rate_limited') return { url: null, failure: 'rate_limited' }
+    if (out.failure) lastFailure = out.failure
   }
-  return null
+  return { url: null, failure: lastFailure }
 }
 
 /* ── Resolution ───────────────────────────────────────────────── */
@@ -229,30 +340,52 @@ export function immediateCoverUrl(book: Pick<LibraryBook, 'isbn13'>): string | n
 }
 
 /**
- * Resolve a cover URL: Open Library by ISBN, then Google Books by
- * title + author. Returns null only when neither has one.
+ * Resolve a cover for one book.
  *
- * `verify` probes the Open Library URL with an image load so a 404 is not
- * cached as a hit. Pass false to skip the probe when the caller's own
- * `<img>` will validate it anyway.
+ * Order matters, and it is ordered by cost to the user rather than by
+ * likelihood of a hit:
+ *
+ *   1. Open Library by ISBN — a plain image load. No API, no quota.
+ *   2. Open Library search  — generous limits, and hands back an ISBN we
+ *                             can keep so step 1 works next time.
+ *   3. Google Books         — the strictest quota of the three, so it goes
+ *                             last and gets at most two queries.
+ */
+export async function resolveCover(
+  book: Pick<LibraryBook, 'isbn13' | 'title' | 'author'>,
+  opts: { verify?: boolean; signal?: AbortSignal } = {},
+): Promise<CoverLookupResult> {
+  const { verify = true, signal } = opts
+
+  // 1 — known ISBN, straight at the covers CDN.
+  const olUrl = book.isbn13 ? openLibraryCoverUrl(book.isbn13) : null
+  if (olUrl) {
+    if (!verify) return { url: olUrl }
+    if (await probeImage(olUrl, 8000, signal)) return { url: olUrl }
+  }
+
+  if (!book.title) return { url: null, failure: 'not_found' }
+
+  // 2 — Open Library search: cover id and/or a usable ISBN.
+  const ol = await searchOpenLibrary(book.title, book.author || undefined, signal)
+  if (ol.url) return ol
+  if (ol.failure === 'offline') return ol   // network down — do not cache
+
+  // 3 — Google Books, last and cheapest-to-exhaust.
+  const g = await googleBooksCoverUrl(book.title, book.author || undefined, signal)
+  // Carry forward any ISBN the Open Library search found even when neither
+  // provider had artwork: it still improves every future attempt.
+  return { ...g, isbn13: g.isbn13 ?? ol.isbn13 }
+}
+
+/**
+ * Back-compat wrapper returning just the URL.
+ * Prefer `resolveCover` — it reports *why* a lookup failed, which is what
+ * lets a caller avoid caching a rate-limited miss as a permanent answer.
  */
 export async function resolveCoverUrl(
   book: Pick<LibraryBook, 'isbn13' | 'title' | 'author'>,
   opts: { verify?: boolean; signal?: AbortSignal } = {},
 ): Promise<string | null> {
-  const { verify = true, signal } = opts
-
-  const olUrl = book.isbn13 ? openLibraryCoverUrl(book.isbn13) : null
-  if (olUrl) {
-    if (!verify) return olUrl
-    if (await probeImage(olUrl, 8000, signal)) return olUrl
-    // 404 or unreachable — fall through to Google Books.
-  }
-
-  if (book.title) {
-    const g = await googleBooksCoverUrl(book.title, book.author || undefined, signal)
-    if (g) return g
-  }
-
-  return null
+  return (await resolveCover(book, opts)).url
 }
