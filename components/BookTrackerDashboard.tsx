@@ -331,6 +331,21 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
       title={`${book.title}${book.author ? ' — ' + book.author : ''}${showCover ? ' — hover to see the cover' : ''}`}
     >
       <span className={styles.spineFace}>
+        {/* The jacket art, cropped to the spine and dimmed, sitting behind
+            the lettering. Without this a shelf of resolved covers looks
+            identical to a shelf of unresolved ones until you hover each
+            book in turn — the artwork may as well not have been fetched. */}
+        {showCover && (
+          <img
+            className={styles.spineArt}
+            src={src}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
+        )}
         <span className={styles.spineBandTop} />
         <span className={styles.spineTitle}>{label}</span>
         {book.userRating > 0 && (
