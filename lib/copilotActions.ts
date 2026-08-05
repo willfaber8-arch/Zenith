@@ -398,6 +398,22 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         updates.globalRating = Math.round(Math.min(5, Math.max(0, rating)) * 100) / 100
       }
 
+      /* ISBN — the key cover art is fetched by, so a Goodreads row that
+         imported without one can start resolving artwork once the
+         Librarian supplies it. Validated to 10 or 13 digits: a malformed
+         value would be cached and then quietly fail every lookup. */
+      const isbnRaw = str(a.isbn13).replace(/[^0-9Xx]/g, '')
+      if ((isbnRaw.length === 10 || isbnRaw.length === 13) && !target.isbn13) {
+        updates.isbn13 = isbnRaw
+        /* Clearing the cover cache re-arms the automatic sweep for this
+           book. Without it the row keeps whatever it resolved (or failed
+           to resolve) before the ISBN existed, and the new ISBN is never
+           actually used. undefined = "never looked up", which is exactly
+           the state the sweep looks for. */
+        updates.coverUrl      = undefined
+        updates.coverCheckedAt = undefined
+      }
+
       const filled = Object.keys(updates)
       if (filled.length === 0) {
         return `"${target.title}" already has those details — nothing to fill.`

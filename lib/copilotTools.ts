@@ -185,7 +185,7 @@ export const COPILOT_TOOLS: ToolDef[] = [
   },
   {
     name:        'update_book',
-    description: 'Enrich an EXISTING book already in the user\'s Library with researched details. Match the book by its title (case-insensitive). Only fills in fields that are currently missing — never overwrites the user\'s own rating or reading status. Use this to autofill genre, page count, publication year, series, a short synopsis, and the typical community rating for books the user owns.',
+    description: 'Enrich an EXISTING book already in the user\'s Library with researched details. Match the book by its title (case-insensitive). Only fills in fields that are currently missing — never overwrites the user\'s own rating or reading status. Use this to autofill genre, page count, publication year, series, a short synopsis, the typical community rating, and the ISBN-13 (which is what cover art is fetched by) for books the user owns.',
     required:    ['title'],
     params: {
       title:           { type: 'string', description: 'Exact title of the existing book to update (used to find it)' },
@@ -196,6 +196,8 @@ export const COPILOT_TOOLS: ToolDef[] = [
       series:          { type: 'string', description: 'Series name + number, e.g. "Mistborn #1"' },
       review:          { type: 'string', description: 'A short 1–2 sentence synopsis / description of the book' },
       rating:          { type: 'number', description: 'Typical community / average rating, 0–5 (stored as the global rating)' },
+      isbn13:          { type: 'string', description: 'ISBN-13 of a widely-printed edition, digits only, e.g. "9780441013593". This is what cover art is looked up by, so supply it whenever you are confident. Omit entirely rather than guessing — a wrong ISBN fetches the wrong book\'s cover.' },
+      canonicalTitle:  { type: 'string', description: 'The title as printed on the cover, without series or edition suffixes — e.g. "Dune" for a row stored as "Dune (Dune, #1)". Improves cover lookup when no ISBN is known.' },
     },
   },
   {

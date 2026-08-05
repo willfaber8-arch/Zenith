@@ -1000,9 +1000,13 @@ export default function BookTrackerDashboard() {
     e.target.value = ''
   }
 
-  /* Books the AI Librarian can enrich — missing a page count OR a genre. */
+  /* Books the AI Librarian can enrich — missing a page count, a genre, or
+     an ISBN. ISBN counts because it is the key cover art is fetched by: a
+     Goodreads row that imported without one can never resolve artwork from
+     Open Library, and asking the model for it is the cheapest way to
+     unblock that. */
   const booksNeedingDetails = useMemo(
-    () => allBooks.filter(b => !b.totalPages || !b.genre),
+    () => allBooks.filter(b => !b.totalPages || !b.genre || !b.isbn13),
     [allBooks],
   )
 
@@ -1027,7 +1031,15 @@ export default function BookTrackerDashboard() {
     setEnrichPhase({ stage: 'researching', done: 0, total: candidates.length })
     try {
       const list = candidates
-        .map((b, i) => `${i + 1}. "${b.title}"${b.author ? ` by ${b.author}` : ''}`)
+        .map((b, i) => {
+          const missing = [
+            !b.isbn13     ? 'isbn13' : null,
+            !b.totalPages ? 'pages'  : null,
+            !b.genre      ? 'genre'  : null,
+          ].filter(Boolean).join(', ')
+          return `${i + 1}. "${b.title}"${b.author ? ` by ${b.author}` : ''}`
+            + (missing ? `  [missing: ${missing}]` : '')
+        })
         .join('\n')
 
       const userMessage =
@@ -1035,7 +1047,14 @@ export default function BookTrackerDashboard() {
         'For EVERY book, call the update_book tool once, passing its title (and author) plus ' +
         'any details you know: genre, pages, publicationYear, series, review (a 1–2 sentence synopsis), ' +
         'and rating (the typical community average, 0–5). Research each title from your own knowledge and ' +
-        'be accurate. Do not ask questions — just emit the update_book tool calls.\n\n' + list
+        'be accurate.\n\n' +
+        'ALSO pass isbn13 — the ISBN-13 of a widely-printed edition, digits only. This is what cover ' +
+        'art is looked up by, so it is the single most useful field here. Only give one you are ' +
+        'confident of: a wrong ISBN silently fetches a different book\'s cover, which is worse than ' +
+        'no cover at all. If you are unsure, omit isbn13 and instead pass canonicalTitle — the title ' +
+        'exactly as printed on the jacket, without any series or edition suffix (so "Dune", not ' +
+        '"Dune (Dune, #1)") — which the cover search can use instead.\n\n' +
+        'Do not ask questions — just emit the update_book tool calls.\n\n' + list
 
       const res = await fetch('/api/chat', {
         method:  'POST',

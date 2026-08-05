@@ -161,7 +161,7 @@ describe('Co-Pilot safety — update_book is fill-only', () => {
     const assignments = body.match(/updates\.\w+\s*=/g) ?? []
     expect(assignments.length).toBeGreaterThan(0)
 
-    for (const field of ['genre', 'series', 'customReviewText', 'totalPages', 'publicationYear', 'globalRating']) {
+    for (const field of ['genre', 'series', 'customReviewText', 'totalPages', 'publicationYear', 'globalRating', 'isbn13']) {
       const guarded =
         new RegExp(`!\\s*target\\.${field}\\b`).test(body) ||
         new RegExp(`target\\.${field}\\s*===\\s*undefined`).test(body)
