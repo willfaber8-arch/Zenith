@@ -251,13 +251,11 @@ independently useful even if the rest slips.
 
 ## 10. Open questions
 
-1. **Does the general task list belong here?** Assignments with `kind='task'`
-   have no home today. Putting them in this tab fixes that but widens the
-   module past "study companion". The alternative is a separate Tasks module,
-   which reintroduces the two-lists problem.
+1. ~~Does the general task list belong here?~~ **Resolved:** yes — a single
+   "Work" tab with a Tasks / Problem Sets filter. One place for what's due.
 2. **Should the Co-Pilot get a `create_problem_set` tool**, or is
    `add_assignment` + a promote action enough? A new tool needs a
    `TOOL_MUTATION_KIND` entry and must stay additive.
-3. **Vocab backfill policy.** Mapping `consecutiveSuccesses` → an initial
-   interval is a guess. Spreading due dates over the next N days avoids a
-   400-card wall but is arbitrary — worth agreeing before implementing.
+3. ~~Vocab backfill policy.~~ **Resolved:** spread by mastery — derive the
+   initial interval from `consecutiveSuccesses`, so well-known cards land
+   further out and the due count immediately reflects what you know.
