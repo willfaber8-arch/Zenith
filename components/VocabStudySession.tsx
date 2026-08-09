@@ -5,6 +5,7 @@ import { db }                                        from '@/lib/db'
 import type { VocabCard }                            from '@/types/vocabulary'
 import styles                                        from './VocabStudySession.module.css'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { scheduleNext, type RecallGrade } from '@/lib/engines/ReviewScheduler'
 
 /* ════════════════════════════════════════════════════════════════
    Constants
@@ -284,6 +285,10 @@ export default function VocabStudySession({
   const completeSessionRef = useRef<(() => Promise<void>) | null>(null)
 
   completeSessionRef.current = async () => {
+    /* One instant for the whole batch, so cards graded together are
+       scheduled from the same origin rather than drifting apart. */
+    const now = Date.now()
+
     /* Write mastery updates */
     for (const [cardId, outcome] of outcomesRef.current.entries()) {
       const card = await db.vocab_cards.get(cardId)
@@ -319,10 +324,43 @@ export default function VocabStudySession({
         cs = MASTERED_THRESHOLD - 1
       }
 
+      /*
+       * Schedule the next appearance.
+       *
+       * This is the line whose absence made every card permanently due:
+       * the mastery numbers above were being written, but nothing ever
+       * moved nextReviewTimestamp off its creation value, while three
+       * separate surfaces read it to mean "due".
+       *
+       * The session's own outcome is mapped onto an SM-2 grade — both
+       * halves right is a confident pass, one half is a struggle-pass,
+       * neither is a failure — and ReviewScheduler owns the arithmetic
+       * from there, so vocabulary and problem sets share one engine.
+       */
+      const grade: RecallGrade =
+        mcOk && typeOk ? (outcome.typeResult === 'exact' ? 5 : 4)
+        : mcOk || typeOk ? 2
+        : 0
+
+      const sched = scheduleNext(
+        {
+          easeFactor:           ef,
+          reviewIntervalDays:   card.reviewIntervalDays ?? 0,
+          consecutiveSuccesses: cs,
+        },
+        grade,
+        now,
+      )
+
       await db.vocab_cards.update(cardId, {
+        // The mastery streak stays under this component's control — it
+        // drives the "mastered" UI and the review-mode demotion above,
+        // which are session concepts the scheduler has no opinion on.
         consecutiveSuccesses: cs,
-        easeFactor:           ef,
+        easeFactor:           sched.easeFactor,
         stabilityFactor:      Math.min(1, cs / MASTERED_THRESHOLD),
+        reviewIntervalDays:   sched.reviewIntervalDays,
+        nextReviewTimestamp:  sched.nextReviewAt,
       })
     }
 
