@@ -74,6 +74,7 @@ export type ViewId =
   | 'games'
   | 'cube-timer'
   // Personalized Vault
+  | 'notes'
   | 'custom-links'
   | 'stats'
   // System
@@ -297,17 +298,24 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
 
   /* ── Personalized Vault ──────────────────────────────────────────── */
   {
+    id: 'notes', label: 'Notes',
+    description: 'Somewhere to put a thought before you know what it is.',
+    icon: 'NotebookPen', color: '#eab308', enabled: true,
+    nav: { category: 'vault', order: 0 },
+    widgets: ['notesRecent'],
+  },
+  {
     id: 'custom-links', label: 'Custom Link Manager',
     description: 'Your own categorised bookmarks with fetched favicons.',
     icon: 'Link', color: '#94a3b8', enabled: true,
-    nav: { category: 'vault', order: 0 },
+    nav: { category: 'vault', order: 1 },
     widgets: ['customLinks'],
   },
   {
     id: 'stats', label: 'Stats & Analytics',
     description: 'Cross-module analytics and the arcade economy ledger.',
     icon: 'ChartLine', color: '#f59e0b', enabled: true,
-    nav: { category: 'vault', order: 1 },
+    nav: { category: 'vault', order: 2 },
     widgets: [],
   },
 ]

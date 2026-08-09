@@ -1,0 +1,224 @@
+/* ════════════════════════════════════════════════════════════
+   NotesView — Personalized Vault
+
+   Quieter than the rest of Zenith on purpose. This is a writing
+   surface: the editor should be the loudest thing on screen, and
+   everything around it should get out of the way.
+   ════════════════════════════════════════════════════════════ */
+
+.root { padding: var(--sp-5) var(--sp-8) var(--sp-10); }
+
+.layout {
+  margin-top: var(--sp-6);
+  display: grid;
+  grid-template-columns: minmax(210px, 280px) 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+/* ── List ─────────────────────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  position: sticky;
+  top: var(--sp-4);
+}
+
+.listBar { display: flex; gap: var(--sp-2); }
+
+.search {
+  flex: 1; min-width: 0;
+  padding: 7px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+}
+.search:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }
+
+.newBtn {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--cat-accent, var(--accent-purple));
+  background: var(--cat-surface, rgba(124,149,255,0.10));
+  color: var(--cat-accent, var(--accent-purple));
+  font-size: 0.74rem; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+.newBtn:hover { background: var(--cat-accent-dim, rgba(124,149,255,0.24)); }
+
+.archiveToggle {
+  align-self: flex-start;
+  background: none; border: none; padding: 2px 0;
+  color: var(--text-dark); font-size: 0.7rem; cursor: pointer;
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+}
+.archiveToggle:hover { color: var(--text-muted); }
+
+.rows { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+
+.row {
+  width: 100%;
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+.row:hover { background: var(--bg-hover); }
+
+.rowActive {
+  background: var(--cat-surface, rgba(124,149,255,0.06));
+  border-color: var(--cat-border, rgba(124,149,255,0.16));
+}
+
+.rowTitle {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.79rem; font-weight: 500; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.pin  { color: var(--cat-accent, var(--accent-purple)); font-size: 0.6rem; flex-shrink: 0; }
+.lock { color: var(--text-dark); font-size: 0.7rem; flex-shrink: 0; }
+
+.rowMeta {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dark);
+}
+
+.progress {
+  padding: 1px 6px; border-radius: 99px;
+  background: var(--bg-active); color: var(--text-muted);
+}
+
+.empty {
+  padding: var(--sp-4) var(--sp-2);
+  font-size: 0.75rem; line-height: 1.55; color: var(--text-dark);
+}
+
+/* ── Editor ───────────────────────────────────────────────── */
+
+.editor {
+  display: flex; flex-direction: column;
+  min-height: 460px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.blank {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--sp-3); color: var(--text-dark); font-size: 0.8rem;
+}
+.blankGlyph { font-size: 1.6rem; opacity: 0.5; }
+
+.editorBar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: 10px var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.editorTitle {
+  font-family: var(--font-display); font-size: 0.84rem; font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.editorActions { display: flex; gap: 2px; flex-shrink: 0; }
+
+.iconBtn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-dark); font-size: 0.8rem; cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.iconBtn:hover { background: var(--bg-hover); color: var(--text-muted); }
+.iconBtnOn { color: var(--cat-accent, var(--accent-purple)); background: var(--bg-active); }
+
+.textarea {
+  flex: 1; min-height: 300px;
+  padding: var(--sp-4);
+  border: none; background: transparent; resize: vertical;
+  color: var(--text-primary);
+  font-family: var(--font-body); font-size: 0.85rem; line-height: 1.7;
+}
+.textarea:focus-visible { outline: none; }
+.textarea::placeholder { color: var(--text-dark); }
+
+/* ── Checklist mirror ─────────────────────────────────────── */
+
+.checklist {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+}
+
+.check {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 0.79rem; color: var(--text-muted); cursor: pointer; line-height: 1.5;
+}
+.check input { margin-top: 3px; accent-color: var(--cat-accent, var(--accent-purple)); cursor: pointer; }
+.checkDone { text-decoration: line-through; color: var(--text-dark); }
+
+/* ── Consent strip ────────────────────────────────────────── */
+
+.consent {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-top: 1px solid var(--cat-border, rgba(124,149,255,0.16));
+  background: var(--cat-surface, rgba(124,149,255,0.05));
+  animation: fadeIn var(--dur-base) var(--ease-smooth) both;
+}
+
+.consentText { font-size: 0.79rem; color: var(--text-muted); }
+.consentText strong { color: var(--text-primary); }
+
+.consentBtns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.approve, .ghost, .deny {
+  padding: 6px 13px; border-radius: var(--r-md);
+  font-size: 0.73rem; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.approve {
+  border: 1px solid var(--accent-green);
+  background: rgba(82,204,163,0.14);
+  color: var(--accent-green);
+}
+.approve:hover { background: rgba(82,204,163,0.24); }
+
+.ghost {
+  border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-muted);
+}
+.ghost:hover { border-color: var(--cat-accent, var(--accent-purple)); color: var(--text-primary); }
+
+.deny {
+  border: 1px solid transparent; background: transparent; color: var(--text-dark);
+}
+.deny:hover { color: var(--text-muted); background: var(--bg-hover); }
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .root { padding: var(--sp-4); }
+  .layout { grid-template-columns: 1fr; }
+  .list { position: static; }
+  .rows { max-height: 240px; overflow-y: auto; }
+  .consentBtns > * { flex: 1 1 auto; }
+}

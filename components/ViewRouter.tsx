@@ -36,6 +36,7 @@ import StudyShieldView from '@/components/views/StudyShieldView'
 import BotanistView    from '@/components/views/BotanistView'
 import WellnessView    from '@/components/views/SlopeDayView'
 import CustomLinksView from '@/components/views/CustomLinksView'
+import NotesView       from '@/components/views/NotesView'
 import PlaceholderView from '@/components/views/PlaceholderView'
 import SettingsView    from '@/components/views/SettingsView'
 import HelpView        from '@/components/views/HelpView'
@@ -89,6 +90,7 @@ const MODULE_VIEWS: Record<ViewId, () => JSX.Element> = {
   'cube-timer':      () => <CubeTimerView />,
   'wellness':        () => <WellnessView />,
   'habits':          () => <HabitsView />,
+  'notes':           () => <NotesView />,
   'custom-links':    () => <CustomLinksView />,
   'meal-planning':   () => <MealPlanningView />,
   'workouts':        () => <WorkoutsView />,

@@ -31,6 +31,7 @@ export const DASHBOARD_WIDGET_KEYS = [
   'studyStreak', 'uniHub', 'cardioSummary', 'letterbox', 'distanceTracker',
   'timerWidget', 'stopwatch', 'readingTracker', 'customLinks', 'vocabTracker',
   'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
+  'notesRecent',
 ] as const
 
 /**
@@ -44,7 +45,7 @@ export const NAV_MODULE_KEYS = [
   'world-events', 'sports', 'personal-brand', 'subscriptions',
   'game-finder', 'friends-network', 'book-tracker', 'tournament-hub',
   'trail-hunter', 'botanist', 'games', 'cube-timer',
-  'custom-links', 'stats',
+  'notes', 'custom-links', 'stats',
 ] as const
 
 /**

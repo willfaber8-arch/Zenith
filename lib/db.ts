@@ -171,8 +171,27 @@ export interface QuickNote {
   updatedAt:  number   // * indexed — Unix timestamp ms; sort by recency
   category:   string   // * indexed — e.g. "lecture", "idea", "ref"
   body:        string   //   raw text or Markdown content
-  pinned?:    boolean  //   float to top of list
+  pinned?:    boolean  // * indexed (v36) — float to top of list
   createdAt:  number   //   Unix timestamp ms
+  /* ── Notes module (v36) ──────────────────────────────────────── */
+  /** Freeform user tags — distinct from `category`, which is a fixed set. */
+  tags?:      string[]
+  /** Soft archive. Deletion stays an explicit act in the note's own UI. */
+  archived?:  0 | 1    // * indexed — 0/1 rather than boolean; IndexedDB
+                       //   cannot index a JS boolean.
+  /**
+   * Withhold this note from the AI Co-Pilot's context.
+   *
+   * Notes are a general-purpose surface, so someone will eventually write
+   * something here they would not want sent to a provider. The wellness
+   * journal is protected by category; a note is protected by nothing
+   * unless the user says so.
+   */
+  privateFromAi?: boolean
+  /** Task text already filed from this note — prevents re-offering. */
+  createdTasks?: string[]
+  /** Per-note consent for to-do detection. Global policy in localStorage. */
+  noteTaskPolicy?: 'ask' | 'never' | 'auto'
 }
 
 /* ── Meal Planning (v17) ─────────────────────────────────────────── */
@@ -1114,6 +1133,19 @@ class ZenithDatabase extends Dexie {
      */
     this.version(35).stores({
       kindle_clippings: 'id, bookId, hash, addedAt',
+    })
+
+    /* v36 — Notes module.
+     *
+     * quickNotes already existed (v1) as a scratchpad buried in Study
+     * Shield. The Notes module gives it a home rather than adding a
+     * parallel table, so anything already captured there shows up.
+     *
+     * `archived` and `pinned` become indexed so the list can filter
+     * without a full scan; `tags` and `privateFromAi` are non-indexed
+     * additive fields needing no migration. */
+    this.version(36).stores({
+      quickNotes: '++id, title, updatedAt, category, archived, pinned',
     })
   }
 }
