@@ -1,43 +1,23 @@
 /* ════════════════════════════════════════════════════════════
    Zenith Navigation Taxonomy
-   Central source of truth for routes, categories, and
-   the background-morph tint palette.
+
+   The sidebar TREE (categories, sub-headings, tints) lives here.
+   The MODULES themselves live in lib/modules.ts — this file derives
+   NAV_CONFIG from that registry rather than re-declaring every label
+   and colour, so the two can no longer disagree.
+
+   ViewId / CategoryId are re-exported below because ~7 modules import
+   them from here; the definitions moved to lib/modules.ts to avoid a
+   circular import.
    ════════════════════════════════════════════════════════════ */
 
-export type CategoryId = 'essentials' | 'creator' | 'vault'
+import {
+  MODULE_REGISTRY,
+  type CategoryId,
+  type ViewId,
+} from '@/lib/modules'
 
-export type ViewId =
-  | 'home'
-  | 'outlook'
-  // Essentials → Scholastic
-  | 'uni-hub'
-  | 'study-shield'
-  | 'vocab-builder'
-  // Essentials → Life
-  | 'calendar'
-  | 'habits'
-  | 'workouts'
-  | 'wellness'
-  | 'meal-planning'
-  | 'world-events'
-  | 'sports'
-  | 'personal-brand'
-  | 'subscriptions'
-  | 'game-finder'
-  | 'friends-network'
-  | 'book-tracker'
-  | 'tournament-hub'
-  // Creator's Choice
-  | 'trail-hunter'
-  | 'botanist'
-  | 'games'
-  | 'cube-timer'
-  // Personalized Vault
-  | 'custom-links'
-  | 'stats'
-  // System
-  | 'settings'
-  | 'help'
+export type { CategoryId, ViewId }
 
 export interface NavLink {
   id:       ViewId
@@ -72,64 +52,40 @@ export interface NavCategory {
 /** Default background — matches --bg-main in globals.css */
 export const BG_HOME = '#0d0f12'
 
+/* ── Derivation ──────────────────────────────────────────────
+   Only ENABLED modules with a nav placement are listed, sorted by
+   their declared order. A disabled module disappears from the
+   sidebar without any change here. */
+
+function linksFor(category: CategoryId, group?: string): NavLink[] {
+  return MODULE_REGISTRY
+    .filter(m => m.enabled && m.nav?.category === category && m.nav?.group === group)
+    .sort((a, b) => (a.nav?.order ?? 0) - (b.nav?.order ?? 0))
+    .map(m => ({ id: m.id, label: m.label, category, color: m.color }))
+}
+
 export const NAV_CONFIG: NavCategory[] = [
   {
     id: 'essentials',
     label: 'Zenith Essentials',
     bgTint: '#0e1018',            // Warm Deep Slate-Indigo
     subcategories: [
-      {
-        id: 'overview',
-        label: 'Overview',
-        links: [
-          { id: 'outlook', label: 'Daily Outlook', category: 'essentials', color: '#7c95ff' },
-        ],
-      },
-      {
-        id: 'scholastic',
-        label: 'Scholastic',
-        links: [
-          { id: 'uni-hub',       label: 'University Hub',  category: 'essentials', color: '#6366f1' },
-          { id: 'study-shield',  label: 'Study Shield',    category: 'essentials', color: '#38bdf8' },
-          { id: 'vocab-builder', label: 'Vocab Builder',   category: 'essentials', color: '#06b6d4' },
-        ],
-      },
-      {
-        id: 'life',
-        label: 'Life',
-        links: [
-          { id: 'habits',        label: 'Habits',             category: 'essentials', color: '#f87171' },
-          { id: 'calendar',      label: 'Universal Calendar', category: 'essentials', color: '#60a5fa' },
-          { id: 'meal-planning', label: 'Meal Planning',      category: 'essentials', color: '#86efac' },
-          { id: 'wellness',      label: 'Mental Wellness',    category: 'essentials', color: '#f9a8d4' },
-          { id: 'book-tracker',  label: 'Library',    category: 'essentials', color: '#f97316' },
-        ],
-      },
+      { id: 'overview',   label: 'Overview',   links: linksFor('essentials', 'overview') },
+      { id: 'scholastic', label: 'Scholastic', links: linksFor('essentials', 'scholastic') },
+      { id: 'life',       label: 'Life',       links: linksFor('essentials', 'life') },
     ],
   },
   {
     id: 'creator',
     label: "Creator's Choice",
     bgTint: '#090f0b',            // Deep Obsidian-Green
-    links: [
-      { id: 'trail-hunter',  label: 'Trail Hunter',       category: 'creator', color: '#22c55e' },
-      { id: 'botanist',      label: 'Botanist Guide',     category: 'creator', color: '#4ade80' },
-      { id: 'games',         label: 'Arcade',             category: 'creator', color: '#a3e635' },
-      { id: 'sports',        label: 'Sports Tracker',     category: 'creator', color: '#34d399' },
-      { id: 'cube-timer',    label: 'Cube Timer',         category: 'creator', color: '#10b981' },
-      { id: 'world-events',  label: 'World Events',       category: 'creator', color: '#818cf8' },
-      { id: 'personal-brand',label: 'Personal Brand Hub', category: 'creator', color: '#fbbf24' },
-      { id: 'game-finder',   label: 'Game Hub',           category: 'creator', color: '#c084fc' },
-    ],
+    links: linksFor('creator'),
   },
   {
     id: 'vault',
     label: 'Personalized Vault',
     bgTint: '#0f1012',            // Warm Mineral Charcoal
-    links: [
-      { id: 'custom-links', label: 'Custom Link Manager', category: 'vault', color: '#94a3b8' },
-      { id: 'stats',        label: 'Stats & Analytics',   category: 'vault', color: '#f59e0b' },
-    ],
+    links: linksFor('vault'),
   },
 ]
 
