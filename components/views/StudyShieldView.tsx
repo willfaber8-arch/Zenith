@@ -11,8 +11,9 @@ import { markdownToHtml }           from '@/utils/markdownToHtml'
 import type { StudyAiResponse, StudySession, PracticeQuestion } from '@/types/studyAi'
 import RoadmapGeneratorButton       from '@/components/RoadmapGeneratorButton'
 import styles from './StudyShieldView.module.css'
+import StudyWorkPanel from '@/components/StudyWorkPanel'
 
-type Tab = 'ai-study' | 'focus-protocol' | 'focus-rooms' | 'roadmap'
+type Tab = 'work' | 'ai-study' | 'focus-protocol' | 'focus-rooms' | 'roadmap'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -140,7 +141,7 @@ function PracticeTestPanel({ questions }: { questions: PracticeQuestion[] }) {
    ════════════════════════════════════════════════════════════════ */
 
 export default function StudyShieldView() {
-  const [activeTab, setActiveTab] = useState<Tab>('ai-study')
+  const [activeTab, setActiveTab] = useState<Tab>('work')
   const [session, setSession]     = useState<StudySession | null>(null)
   const { enterStudyWorkspace }   = useStudyMode()
 
@@ -208,6 +209,7 @@ export default function StudyShieldView() {
   /* ── Render ────────────────────────────────────────────────── */
 
   const TAB_LABELS: Record<Tab, string> = {
+    'work':           'Work',
     'ai-study':       'AI Study',
     'focus-protocol': 'Focus Protocol',
     'focus-rooms':    'Focus Rooms',
@@ -215,6 +217,7 @@ export default function StudyShieldView() {
   }
 
   const subtitles: Record<Tab, string> = {
+    'work':           'Everything due — tasks and problem sets in one list.',
     'ai-study':       'Paste lecture notes — Zenith AI returns a structured summary and flashcard deck.',
     'focus-protocol': 'Enter deep work mode with a full-screen Pomodoro cockpit.',
     'focus-rooms':    'Create a P2P focus room and sync Pomodoro timers with peers via WebRTC.',
@@ -240,6 +243,14 @@ export default function StudyShieldView() {
       </div>
 
       {/* ── AI Study tab ─────────────────────────────────────── */}
+      {/* Work comes first: it is the thing with deadlines attached, and
+          it is the view the assignments table never had. */}
+      <div className={activeTab === 'work' ? styles.tabPane : styles.tabPaneHidden}>
+        <div className="anim-fade-in">
+          <StudyWorkPanel />
+        </div>
+      </div>
+
       <div className={activeTab === 'ai-study' ? styles.tabPane : styles.tabPaneHidden}>
 
       {/* Ingestion dock */}

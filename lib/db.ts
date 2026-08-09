@@ -81,6 +81,48 @@ export interface Assignment {
   createdAt:   number           //   Unix timestamp ms
   updatedAt:   number           //   Unix timestamp ms — update on every save
   supabaseId?: string           // * indexed — cloud UUID assigned on first sync
+  /* ── Study Companion (v37) ───────────────────────────────────── */
+  /** Absent means 'task'. Problem sets are a kind of assignment rather
+   *  than a parallel entity, so there stays one task list, one
+   *  notification stream and one badge count. */
+  kind?:       'task' | 'problem_set'   // * indexed
+  /** Markdown + LaTeX body, rendered when kind is 'problem_set'. */
+  body?:       string
+  /** Per-problem breakdown, so partial progress is real progress. */
+  problems?:   ProblemItem[]
+  /** FK → StudyReviewCard.id once the set enters the review rotation. */
+  reviewCardId?: string
+}
+
+/** One problem within a set. */
+export interface ProblemItem {
+  id:          string
+  label:       string          // "1(a)", "Q3"
+  done:        boolean
+  /** Worked answer or note — Markdown + LaTeX. */
+  note?:       string
+  /** Self-rated, feeds the review scheduler. */
+  difficulty?: 1 | 2 | 3 | 4 | 5
+}
+
+/**
+ * Scheduling state for anything reviewable.
+ *
+ * Deliberately domain-agnostic: `subjectType` lets vocabulary and problem
+ * sets share one ReviewScheduler rather than each growing a private
+ * half-implementation, which is how the vocab scheduler ended up never
+ * scheduling anything.
+ */
+export interface StudyReviewCard {
+  id:                   string   // UUID PK
+  subjectType:          'problem_set' | 'vocab'   // * indexed
+  subjectId:            string   // * indexed
+  easeFactor:           number
+  reviewIntervalDays:   number
+  consecutiveSuccesses: number
+  nextReviewAt:         number   // * indexed
+  lastReviewedAt?:      number
+  reviewCount:          number
 }
 
 /**
@@ -546,6 +588,7 @@ class ZenithDatabase extends Dexie {
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
+  study_review_cards!:          EntityTable<StudyReviewCard,          'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1146,6 +1189,20 @@ class ZenithDatabase extends Dexie {
      * additive fields needing no migration. */
     this.version(36).stores({
       quickNotes: '++id, title, updatedAt, category, archived, pinned',
+    })
+
+    /* v37 — Study Companion.
+     *
+     * `kind` is indexed so the Work tab can partition tasks from problem
+     * sets without a full-table scan. Everything else it adds (body,
+     * problems[], reviewCardId) is non-indexed and additive, so existing
+     * assignments stay valid and default to kind:'task'.
+     *
+     * study_review_cards generalises the scheduling fields away from
+     * vocabulary so ReviewScheduler serves both domains. */
+    this.version(37).stores({
+      assignments:        '++id, title, dueDate, courseId, status, priority, category, supabaseId, kind',
+      study_review_cards: 'id, subjectType, subjectId, nextReviewAt',
     })
   }
 }
