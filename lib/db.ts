@@ -117,6 +117,20 @@ export interface SavedArticle {
   archived:      0 | 1    // * indexed
 }
 
+/** A dining hall's weekly schedule. Hours are user-maintained. */
+export interface DiningHall {
+  id:            string   // UUID PK
+  universityId:  string   // * indexed — scopes to the active school
+  name:          string   // * indexed
+  location?:     string
+  /** Per-weekday windows. An empty array means closed that day. */
+  hours:         { day: 0|1|2|3|4|5|6; open: string; close: string }[]
+  mealPlanOnly?: boolean
+  notes?:        string
+  /** Surfaced in the UI so staleness is visible rather than invisible. */
+  updatedAt:     number
+}
+
 /** One problem within a set. */
 export interface ProblemItem {
   id:          string
@@ -613,6 +627,7 @@ class ZenithDatabase extends Dexie {
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
   study_review_cards!:          EntityTable<StudyReviewCard,          'id'>
   knowledge_saved_articles!:    EntityTable<SavedArticle,             'id'>
+  campus_dining_halls!:         EntityTable<DiningHall,               'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1237,6 +1252,17 @@ class ZenithDatabase extends Dexie {
      * duplicate row. */
     this.version(38).stores({
       knowledge_saved_articles: 'id, &url, savedAt, archived, source',
+    })
+
+    /* v39 — Campus Companion.
+     *
+     * User-maintained, not scraped. A scraper breaks silently when the
+     * source site changes and then shows stale hours, which is worse than
+     * showing none — you walk to a closed dining hall. It also would not
+     * generalise past one university, and uni-hub is multi-school by
+     * design. */
+    this.version(39).stores({
+      campus_dining_halls: 'id, universityId, name',
     })
   }
 }

@@ -30,6 +30,23 @@ the vocab scheduler never schedules, and `assignments` has no view.
 
 ---
 
+## Status
+
+| Phase | State |
+|---|---|
+| 0 · Registry + privacy | landed (#40, #41) |
+| 1 · Review scheduler + vocab fix | **built** |
+| 2 · Notes | **built** |
+| 3 · Study Companion — Work tab | **built** (KaTeX + review queue deferred) |
+| 4 · Engineering Toolkit | **built** |
+| 5 · Knowledge Consumer | **built** |
+| 6 · Campus Companion — dining | **built** (event feeds deferred) |
+
+Deferred, deliberately: KaTeX rendering and the problem-set review queue
+(Phase 3 steps 3 and 4) and one-click campus event-feed subscription
+(Phase 6 step 4). Each is additive on what shipped and none block the
+others.
+
 ## Phases
 
 ### Phase 0 — Foundations *(prerequisite for everything)*
