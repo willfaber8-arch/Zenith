@@ -29,6 +29,13 @@ export interface LibraryBook {
   // ── Cover art (resolved from Open Library / Google Books, cached here) ──
   coverUrl?: string | null      // null = looked up, none found
   coverCheckedAt?: number       // UTC ms of the last lookup (avoids retry loops)
+  // ── AI Librarian ────────────────────────────────────────────────────
+  /** UTC ms of the last enrichment attempt. Set whether or not the model
+   *  actually returned anything: some books simply have no ISBN or page
+   *  count the model can recall, and without this marker they sit in the
+   *  "needs details" count forever, so the button never counts down no
+   *  matter how many times it is pressed. */
+  detailsCheckedAt?: number
 }
 
 /** Common genres for the add-book dropdown (plus a free-text custom option). */

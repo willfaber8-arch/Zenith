@@ -68,7 +68,12 @@ const ContentSecurityPolicy = [
     `wss://0.peerjs.com`,
     `https://graph.microsoft.com`,
     `https://login.microsoftonline.com`,
-    // Book covers — Open Library (HEAD verify) + Google Books volume search.
+    // Book covers. openlibrary.org is the SEARCH api (title/author -> cover
+    // id + ISBN); covers.openlibrary.org is the image CDN. The search host
+    // must be listed separately — a CSP host source has no implicit
+    // subdomain relationship, so allowing covers.openlibrary.org does
+    // nothing for openlibrary.org and every search was refused outright.
+    `https://openlibrary.org`,
     `https://covers.openlibrary.org`,
     `https://www.googleapis.com`,
     // NOTE: no `stun:` entry — STUN/TURN traffic is WebRTC-internal and is

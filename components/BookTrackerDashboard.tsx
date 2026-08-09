@@ -22,7 +22,7 @@ import {
   type ReadingSession,
 } from '@/types/bookTracker'
 import ReadingTimer from '@/components/ReadingTimer'
-import { resolveCoverUrl } from '@/utils/bookCovers'
+import { resolveCover, type CoverLookupResult } from '@/utils/bookCovers'
 import { importGoodreadsCSV } from '@/utils/goodreadsParser'
 import { importKindleClippings, type KindleImportResult } from '@/utils/kindleClippings'
 import { syncHabitSource } from '@/lib/habitSync'
@@ -855,6 +855,7 @@ export default function BookTrackerDashboard() {
   const [editMode,     setEditMode]     = useState(false)
   const [libraryPage,  setLibraryPage]  = useState(0)
   const [tbrPage,      setTbrPage]      = useState(0)
+  const [readingPage, setReadingPage] = useState(0)
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [timerBookId,  setTimerBookId]  = useState<string | null>(null)  // reading-timer target
 
@@ -939,6 +940,9 @@ export default function BookTrackerDashboard() {
   const safeTbrPage      = Math.min(tbrPage, tbrPageCount - 1)
   const libraryPaged     = libraryBooks.slice(safeLibPage * BOOKS_PER_PAGE, safeLibPage * BOOKS_PER_PAGE + BOOKS_PER_PAGE)
   const tbrPaged         = tbrBooks.slice(safeTbrPage * BOOKS_PER_PAGE, safeTbrPage * BOOKS_PER_PAGE + BOOKS_PER_PAGE)
+  const readingPageCount = Math.max(1, Math.ceil(readingBooks.length / BOOKS_PER_PAGE))
+  const safeReadingPage  = Math.min(readingPage, readingPageCount - 1)
+  const readingPaged     = readingBooks.slice(safeReadingPage * BOOKS_PER_PAGE, safeReadingPage * BOOKS_PER_PAGE + BOOKS_PER_PAGE)
 
   /* ── Handlers ────────────────────────── */
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -1006,8 +1010,28 @@ export default function BookTrackerDashboard() {
      Goodreads row that imported without one can never resolve artwork from
      Open Library, and asking the model for it is the cheapest way to
      unblock that. */
+  /* Fence for the automatic cover sweep — declared here because the
+     Librarian clears entries from it after enrichment. */
+  const autoAttemptedRef = useRef<Set<string>>(new Set())
+
   const booksNeedingDetails = useMemo(
-    () => allBooks.filter(b => !b.totalPages || !b.genre || !b.isbn13),
+    () => allBooks.filter(b =>
+      // Never enriched before...
+      !b.detailsCheckedAt
+      // ...and still missing something worth asking for.
+      && (!b.totalPages || !b.genre || !b.isbn13),
+    ),
+    [allBooks],
+  )
+
+  /* Books that were enriched but still have gaps — the model simply did not
+     know. Offered as an explicit re-check rather than silently re-queued,
+     because re-asking costs a real API call and usually returns the same
+     answer. */
+  const booksStillIncomplete = useMemo(
+    () => allBooks.filter(b =>
+      b.detailsCheckedAt && (!b.totalPages || !b.genre || !b.isbn13),
+    ),
     [allBooks],
   )
 
@@ -1030,6 +1054,7 @@ export default function BookTrackerDashboard() {
     }
 
     setEnrichPhase({ stage: 'researching', done: 0, total: candidates.length })
+    let reachedModel = false
     try {
       const list = candidates
         .map((b, i) => {
@@ -1088,7 +1113,12 @@ export default function BookTrackerDashboard() {
 
       const updates = actions.filter(a => a.name === 'update_book')
       if (updates.length === 0) {
-        toast('The Librarian could not find details for those books. Try again.', 'info')
+        /* The model answered and had nothing to add. That still counts as
+           these books having had their turn — leaving reachedModel false
+           here is precisely what made the button read "Fill in 3" forever
+           for a shelf of titles the model does not know. */
+        reachedModel = true
+        toast('The Librarian had no extra details for those books.', 'info')
         return
       }
 
@@ -1104,6 +1134,13 @@ export default function BookTrackerDashboard() {
         setEnrichPhase({ stage: 'applying', done: written, total: updates.length })
       }
 
+      /* The model answered, so these books have genuinely had their turn —
+         even the ones it knew nothing about. Stamped here rather than in
+         `finally` on purpose: a run that died on a network error or a
+         missing API key learned nothing, and marking those books "tried"
+         would quietly retire them from the queue forever. */
+      reachedModel = true
+
       toast(
         filled > 0
           ? `Filled in details for ${filled} book${filled !== 1 ? 's' : ''}.`
@@ -1114,6 +1151,49 @@ export default function BookTrackerDashboard() {
       const msg = e instanceof Error ? e.message : 'The Librarian is unavailable.'
       toast(msg.length < 120 ? msg : 'The Librarian is unavailable. Check your AI key in Settings.', 'error')
     } finally {
+      /*
+       * Stamp every book we SENT, not just the ones the model answered for.
+       * The count is "books we have not tried yet"; without this a book the
+       * model has no ISBN for sits in the queue forever and the button reads
+       * "Fill in 3" no matter how many times it is pressed.
+       */
+      if (reachedModel) {
+        try {
+          const now = Date.now()
+          await db.transaction('rw', db.library_books, async () => {
+            for (const b of candidates) {
+              await db.library_books.update(b.id, { detailsCheckedAt: now })
+            }
+          })
+        } catch {
+          /* rows removed mid-run — nothing to stamp */
+        }
+
+        /*
+         * Kick a cover pass for anything that just gained an ISBN.
+         *
+         * The executor clears coverUrl for those rows, which is enough for
+         * the *automatic* effect to want them again — but un-fencing alone
+         * does not work: clearing a ref triggers no re-render, so the effect
+         * never re-runs and the fresh ISBN sits unused until a reload. So
+         * un-fence AND drive the sweep directly.
+         */
+        for (const b of candidates) autoAttemptedRef.current.delete(b.id)
+
+        try {
+          const refreshed = await db.library_books
+            .where('id').anyOf(candidates.map(b => b.id))
+            .toArray()
+          const needCovers = refreshed.filter(b => b.coverUrl === undefined)
+          if (needCovers.length > 0) {
+            for (const b of needCovers) autoAttemptedRef.current.add(b.id)
+            void runCoverSweep(needCovers, { silent: true, concurrency: AUTO_COVER_CONCURRENCY })
+          }
+        } catch {
+          /* the automatic sweep will catch these on the next visit */
+        }
+      }
+
       setEnrichPhase({ stage: 'idle', done: 0, total: 0 })
     }
   }
@@ -1180,24 +1260,71 @@ export default function BookTrackerDashboard() {
     let cursor = 0
     let done   = 0
     let found  = 0
+    /* Set the moment any provider reports a throttle. Every worker checks
+       it, so the sweep stops within one book of the limit instead of
+       marching through the rest of the shelf collecting failures. */
+    let throttled = false
 
     const worker = async () => {
-      while (cursor < queue.length && !controller.signal.aborted) {
-        const book = queue[cursor++]
-        let url: string | null = null
+      while (cursor < queue.length && !controller.signal.aborted && !throttled) {
+        const queued = queue[cursor++]
+
+        /*
+         * Re-read the row instead of trusting the queued snapshot.
+         *
+         * The queue is built from a `useLiveQuery` render, and the row can
+         * change before a worker reaches it — most importantly when the
+         * Librarian has just written an ISBN and cleared the cover cache to
+         * request another attempt. Resolving from the stale snapshot meant
+         * that attempt ran WITHOUT the ISBN, fell through to a title search,
+         * found nothing, and cached a fresh null — silently undoing the
+         * exact thing the enrichment pass had just set up.
+         */
+        const book = (await db.library_books.get(queued.id).catch(() => undefined)) ?? queued
+
+        let result: CoverLookupResult
         try {
-          url = await resolveCoverUrl(book, { verify: true, signal: controller.signal })
+          result = await resolveCover(book, { verify: true, signal: controller.signal })
         } catch {
-          url = null   // treat any failure as "no cover found this pass"
+          result = { url: null, failure: 'offline' }
         }
-        // An aborted request resolves as a miss — don't cache that as an answer.
         if (controller.signal.aborted) return
+
+        /*
+         * THE IMPORTANT BIT.
+         *
+         * A rate-limited or offline lookup learned NOTHING about this book.
+         * Writing coverUrl: null would record it as "checked, no artwork
+         * exists" — permanently, because the sweep only ever revisits rows
+         * where coverUrl is undefined. That is how a single throttled
+         * afternoon left 19 of 21 books with no cover and no way back
+         * short of the manual retry button.
+         *
+         * So: leave the row untouched and stop. It stays undefined and the
+         * next visit tries again.
+         */
+        if (result.failure === 'rate_limited' || result.failure === 'offline') {
+          if (result.failure === 'rate_limited') throttled = true
+          // An ISBN discovered before the throttle is still worth keeping.
+          if (result.isbn13 && !book.isbn13) {
+            try { await db.library_books.update(book.id, { isbn13: result.isbn13 }) } catch { /* gone */ }
+          }
+          return
+        }
+
         try {
-          await db.library_books.update(book.id, { coverUrl: url, coverCheckedAt: Date.now() })
+          await db.library_books.update(book.id, {
+            coverUrl:       result.url,
+            coverCheckedAt: Date.now(),
+            // Persist an ISBN the search turned up: it gives this book a
+            // quota-free lookup path for every future pass, and is exactly
+            // what the Librarian was otherwise being asked to guess.
+            ...(result.isbn13 && !book.isbn13 ? { isbn13: result.isbn13 } : {}),
+          })
         } catch {
           /* book removed mid-sweep — nothing to write */
         }
-        if (url) found++
+        if (result.url) found++
         done++
         if (coverMountedRef.current) setCoverPhase(p => (p.running ? { ...p, done } : p))
       }
@@ -1216,6 +1343,20 @@ export default function BookTrackerDashboard() {
     if (controller.signal.aborted || !coverMountedRef.current) return
 
     setCoverPhase({ running: false, done: 0, total: 0 })
+
+    /* Worth saying out loud even on a silent pass: the user is staring at a
+       shelf of blank spines and needs to know it is a temporary throttle
+       rather than "these books have no covers". */
+    if (throttled) {
+      toast(
+        found > 0
+          ? `Found ${found} cover${found === 1 ? '' : 's'}, then the cover service rate-limited us. The rest will resume next time you open the Library.`
+          : 'The cover service is rate-limiting right now — nothing was cached, so this will retry automatically next time you open the Library.',
+        'info',
+      )
+      return
+    }
+
     if (silent) return
     toast(
       found > 0
@@ -1241,7 +1382,6 @@ export default function BookTrackerDashboard() {
    * sees an empty `pending` and returns immediately. Books imported *later*
    * are not in the set, so an import still gets an automatic pass.
    */
-  const autoAttemptedRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!booksLoaded) return                    // IndexedDB has not answered yet
     if (coverSweepBusyRef.current) return       // a sweep already owns the network
@@ -1639,31 +1779,26 @@ export default function BookTrackerDashboard() {
       )}
 
       {/* ── READING tab ── */}
+      {/* Same bookcase as Library and TBR. A book in progress is still a
+          book on a shelf, and having one of the three tabs render a card
+          grid instead made the section feel like a different feature.
+          Per-book controls live in the detail modal, exactly as they do
+          for the other two shelves. */}
       {activeTab === 'READING' && (
-        readingBooks.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyGlyph}>◎</div>
-            <div className={styles.emptyLabel}>Nothing in progress</div>
-            <div className={styles.emptyHint}>Open a book from your TBR shelf and hit “Start Reading”.</div>
-          </div>
-        ) : (
-          <div className={styles.grid}>
-            {readingBooks.map((book, i) => (
-              <BookCard
-                key={book.id} book={book} index={i}
-                reviewDraft={reviewEdits[book.id]}
-                onReviewChange={t => setReviewEdits(p => ({ ...p, [book.id]: t }))}
-                onSaveReview={() => handleSaveReview(book.id)}
-                onRate={r => handleRate(book.id, r)}
-                onStatusChange={s => handleStatusChange(book, s)}
-                onDelete={() => handleDelete(book.id)}
-                editMode={editMode}
-                onStartReading={() => setTimerBookId(book.id)}
-                clippings={clippingsFor(book.id)}
-              />
-            ))}
-          </div>
-        )
+        <>
+          <Bookshelf
+            books={readingPaged}
+            onOpenBook={setSelectedId}
+            emptyGlyph="◎"
+            emptyLabel={readingBooks.length === 0 ? 'Nothing in progress' : 'No matches on this shelf'}
+            emptyHint={readingBooks.length === 0
+              ? 'Open a book from your TBR shelf and hit “Start Reading”.'
+              : 'Try a different search query.'}
+          />
+          {readingPageCount > 1 && (
+            <Pager page={safeReadingPage} pageCount={readingPageCount} onChange={setReadingPage} />
+          )}
+        </>
       )}
 
       {/* ── ALL BOOKS tab ── */}
