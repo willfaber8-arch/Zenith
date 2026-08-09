@@ -24,6 +24,9 @@
 import { useState, useEffect, type JSX } from 'react'
 import { useNav }       from '@/lib/NavContext'
 import type { ViewId }  from '@/lib/nav-config'
+import {
+  MODULE_REGISTRY, MODULE_MAP, isModuleEnabled,
+} from '@/lib/modules'
 
 /* ── Synchronous imports (small, used frequently) ──────────── */
 import HomeView        from '@/components/views/HomeView'
@@ -64,51 +67,78 @@ import GameFinderView from '@/components/views/GameFinderView'
 
 /* ── View resolver ────────────────────────────────────────────── */
 
-function resolveView(id: ViewId): JSX.Element {
-  if (id === 'home')            return <HomeView />
-  if (id === 'outlook')         return <OutlookView />
-  if (id === 'uni-hub')         return <UniHubView />
-  if (id === 'calendar')        return <CalendarView />
-  if (id === 'study-shield')    return <StudyShieldView />
-  if (id === 'trail-hunter')    return <TrailHunterView />
-  if (id === 'botanist')        return <BotanistView />
-  if (id === 'cube-timer')      return <CubeTimerView />
-  if (id === 'wellness')        return <WellnessView />
-  if (id === 'habits')          return <HabitsView />
-  if (id === 'custom-links')    return <CustomLinksView />
-  if (id === 'meal-planning')   return <MealPlanningView />
-  if (id === 'workouts')        return <WorkoutsView />
-  if (id === 'world-events')    return <WorldEventsView />
-  if (id === 'sports')          return <SportsView />
-  if (id === 'personal-brand')  return <PersonalBrandView />
-  if (id === 'vocab-builder')   return <VocabBuilderView />
-  if (id === 'subscriptions')   return <SubscriptionPackagesView />
-  if (id === 'game-finder')     return <GameFinderView />
-  if (id === 'friends-network') return <FriendsNetworkView />
-  if (id === 'book-tracker')    return <BookTrackerView />
-  if (id === 'tournament-hub')  return <TournamentHubView />
-  if (id === 'stats')           return <StatsView />
-  if (id === 'settings')        return <SettingsView />
-  if (id === 'help')            return <HelpView />
+/**
+ * ViewId → element factory.
+ *
+ * A map rather than a switch so it can be checked against the module
+ * registry: every enabled module must have an entry here, and every entry
+ * must name a real module. A typo or a half-added module now shows up as
+ * a dev-time warning instead of silently falling through to the home view.
+ *
+ * Factories (not elements) so a lazy chunk is only constructed when the
+ * view is actually rendered.
+ */
+const MODULE_VIEWS: Record<ViewId, () => JSX.Element> = {
+  'home':            () => <HomeView />,
+  'outlook':         () => <OutlookView />,
+  'uni-hub':         () => <UniHubView />,
+  'calendar':        () => <CalendarView />,
+  'study-shield':    () => <StudyShieldView />,
+  'trail-hunter':    () => <TrailHunterView />,
+  'botanist':        () => <BotanistView />,
+  'cube-timer':      () => <CubeTimerView />,
+  'wellness':        () => <WellnessView />,
+  'habits':          () => <HabitsView />,
+  'custom-links':    () => <CustomLinksView />,
+  'meal-planning':   () => <MealPlanningView />,
+  'workouts':        () => <WorkoutsView />,
+  'world-events':    () => <WorldEventsView />,
+  'sports':          () => <SportsView />,
+  'personal-brand':  () => <PersonalBrandView />,
+  'vocab-builder':   () => <VocabBuilderView />,
+  'subscriptions':   () => <SubscriptionPackagesView />,
+  'game-finder':     () => <GameFinderView />,
+  'friends-network': () => <FriendsNetworkView />,
+  'book-tracker':    () => <BookTrackerView />,
+  'tournament-hub':  () => <TournamentHubView />,
+  'stats':           () => <StatsView />,
+  'settings':        () => <SettingsView />,
+  'help':            () => <HelpView />,
 
-  if (id === 'games') {
-    /**
-     * GamesTabShell accepts an `arcadeContent` slot prop.
-     * By passing LazyGamesArcade as the slot, the six canvas games are
-     * split into a *second* separate chunk that only downloads when the
-     * user navigates to the Arcade tab — not on initial Games Hub mount.
-     *
-     * Load order:
-     *   1. User clicks "Arcade Hub" → GamesTabShell chunk downloads
-     *      (shell, BiosphereRenderer, SkillTree, Crucible, economy hooks)
-     *   2. GamesTabShell renders with shimmer in arcadeContent slot
-     *   3. User clicks "Arcade ⬡" tab → GamesArcade chunk downloads
-     *      (Minesweeper, ScriptingMatrix, ShiftMatrix, 2048, BioSynth, ZenSnake)
-     */
-    return <GamesTabShell arcadeContent={<GamesArcade />} puzzleContent={<PuzzleLounge />} />
+  /**
+   * GamesTabShell accepts an `arcadeContent` slot prop.
+   * By passing LazyGamesArcade as the slot, the six canvas games are
+   * split into a *second* separate chunk that only downloads when the
+   * user navigates to the Arcade tab — not on initial Games Hub mount.
+   */
+  'games': () => (
+    <GamesTabShell arcadeContent={<GamesArcade />} puzzleContent={<PuzzleLounge />} />
+  ),
+}
+
+/* Registry ↔ router agreement check. Dev-only: a mismatch is a wiring
+   mistake, not a user-facing error, and the cost of finding it at the
+   moment you add a module is far lower than finding it in production. */
+if (process.env.NODE_ENV !== 'production') {
+  for (const m of MODULE_REGISTRY) {
+    if (m.enabled && !MODULE_VIEWS[m.id]) {
+      console.warn(`[modules] "${m.id}" is enabled in the registry but has no view in ViewRouter.`)
+    }
   }
+  for (const id of Object.keys(MODULE_VIEWS) as ViewId[]) {
+    if (!MODULE_MAP.has(id)) {
+      console.warn(`[modules] ViewRouter renders "${id}", which is not in the module registry.`)
+    }
+  }
+}
 
-  return <HomeView />
+function resolveView(id: ViewId): JSX.Element {
+  /* A module turned off in the registry must not be reachable, even via a
+     stale localStorage view id or a hand-edited deep link. */
+  if (!isModuleEnabled(id)) return <HomeView />
+
+  const factory = MODULE_VIEWS[id]
+  return factory ? factory() : <HomeView />
 }
 
 /* ── ViewRouter ───────────────────────────────────────────────── */

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { WIDGET_OWNER } from '@/lib/modules'
 
 /* ── Widget visibility dictionary ─────────────────────────────── */
 
@@ -83,29 +84,23 @@ export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
   arcadeEconomy:   'Arcade Economy',
 }
 
-export const WIDGET_VIEWS: Record<keyof SandboxConfig, string> = {
-  habitSummary:    'habits',
-  pomodoroPreview: 'study-shield',
-  calendarToday:   'calendar',
-  localWeather:    'calendar',
-  studyStreak:     'study-shield',
-  uniHub:          'uni-hub',
-  cardioSummary:   'workouts',
-  letterbox:       'friends-network',
-  distanceTracker: 'friends-network',
-  timerWidget:     'home',
-  stopwatch:       'home',
-  counter:         'home',
-  sportsTeams:     'sports',
-  readingTracker:  'book-tracker',
-  customLinks:     'custom-links',
-  vocabTracker:    'vocab-builder',
-  gpaWidget:       'uni-hub',
-  wellnessCheck:   'wellness',
-  mealToday:       'meal-planning',
-  newsHeadline:    'world-events',
-  arcadeEconomy:   'games',
-}
+/**
+ * widget key → the module it belongs to (drives click-through from the
+ * dashboard). Derived from the module registry rather than hand-written:
+ * this used to be a parallel map with no link to the nav, so a widget
+ * could point at a module that no longer existed — or at one that was
+ * never in the sidebar at all, which is how four modules ended up
+ * reachable only by clicking their own widget.
+ *
+ * Kept as a `keyof SandboxConfig` record so every widget is still
+ * accounted for; WIDGET_OWNER supplies the value, and anything a module
+ * has not claimed falls back to 'home'.
+ */
+export const WIDGET_VIEWS: Record<keyof SandboxConfig, string> =
+  Object.fromEntries(
+    (Object.keys(SANDBOX_DEFAULTS) as (keyof SandboxConfig)[])
+      .map(k => [k, WIDGET_OWNER[k] ?? 'home']),
+  ) as Record<keyof SandboxConfig, string>
 
 /* Widget size hints — 'wide' spans full width on desktop */
 export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
