@@ -1,0 +1,124 @@
+/* ════════════════════════════════════════════════════════════
+   SavedArticles — the keeping half of the news feed.
+   Denser than the feed: this is a reading list, scanned for
+   what to open next rather than browsed.
+   ════════════════════════════════════════════════════════════ */
+
+.wrap { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.head { display: flex; align-items: center; gap: var(--sp-3); }
+
+.search {
+  flex: 1; min-width: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card); color: var(--text-primary);
+  font-size: 0.8rem; font-family: var(--font-body);
+}
+.search:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }
+
+.count {
+  font-family: var(--font-mono); font-size: 0.65rem;
+  color: var(--text-dark); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.notice {
+  padding: 9px 12px; border-radius: var(--r-md);
+  border: 1px solid rgba(245,158,11,0.22);
+  background: rgba(245,158,11,0.07);
+  font-size: 0.74rem; color: var(--text-muted);
+}
+
+.list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.item {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+.itemTop { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+
+.source {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.savedAt { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-dark); }
+
+.title {
+  font-family: var(--font-display); font-size: 0.92rem; font-weight: 600;
+  line-height: 1.35; color: var(--text-primary);
+  text-decoration: none;
+}
+.title:hover { color: var(--cat-accent, var(--accent-purple)); }
+
+.excerpt {
+  font-size: 0.76rem; line-height: 1.55; color: var(--text-dark);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.summary {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--cat-accent, var(--accent-purple));
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--cat-surface, rgba(124,149,255,0.05));
+}
+.summary p { font-size: 0.78rem; line-height: 1.6; color: var(--text-muted); }
+
+.summaryLabel {
+  font-family: var(--font-mono); font-size: 0.58rem;
+  letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* The caveat is load-bearing, not decoration: the model saw a headline
+   and an excerpt. Saying so is the difference between a summary and a
+   claim the reader cannot check. */
+.summaryCaveat {
+  font-size: 0.64rem; color: var(--text-dark); font-style: italic;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: 2px; }
+
+.action, .actionQuiet {
+  padding: 5px 11px; border-radius: var(--r-md);
+  font-size: 0.7rem; font-weight: 600; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+}
+
+.action {
+  border: 1px solid var(--border-subtle); background: transparent; color: var(--text-muted);
+}
+.action:hover:not(:disabled) {
+  border-color: var(--cat-accent, var(--accent-purple));
+  color: var(--cat-accent, var(--accent-purple));
+}
+.action:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.actionQuiet {
+  border: 1px solid transparent; background: transparent; color: var(--text-dark);
+}
+.actionQuiet:hover { color: #f87171; background: rgba(248,113,113,0.08); }
+
+/* ── Empty ────────────────────────────────────────────────── */
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-12) var(--sp-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.emptyGlyph { font-size: 1.6rem; color: var(--text-dark); opacity: 0.55; }
+.emptyLabel { font-family: var(--font-display); font-size: 0.95rem; color: var(--text-muted); }
+.emptyHint  { font-size: 0.78rem; color: var(--text-dark); text-align: center; max-width: 42ch; }
+
+@media (max-width: 767px) {
+  .actions > * { flex: 1 1 auto; }
+}

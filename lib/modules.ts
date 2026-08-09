@@ -283,7 +283,7 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     description: 'Headlines from BBC World, NPR and The Guardian.',
     icon: 'Newspaper', color: '#818cf8', enabled: true,
     nav: { category: 'creator', order: 5 },
-    widgets: ['newsHeadline'],
+    widgets: ['newsHeadline', 'savedReading'],
   },
   {
     id: 'personal-brand', label: 'Personal Brand Hub',

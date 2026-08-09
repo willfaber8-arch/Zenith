@@ -16,6 +16,7 @@ export interface SandboxConfig {
   letterbox:         boolean
   distanceTracker:   boolean
   notesRecent:       boolean
+  savedReading:      boolean
   // Utility widgets
   timerWidget:       boolean
   stopwatch:         boolean
@@ -48,6 +49,7 @@ export const SANDBOX_DEFAULTS: SandboxConfig = {
   letterbox:       true,
   distanceTracker: true,
   notesRecent:     true,
+  savedReading:    true,
   timerWidget:     true,
   stopwatch:       false,
   counter:         false,
@@ -73,6 +75,7 @@ export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
   letterbox:       'Letterbox',
   distanceTracker: 'Distance Tracker',
   notesRecent:     'Recent Note',
+  savedReading:    'Saved Reading',
   timerWidget:     'Timer',
   stopwatch:       'Stopwatch',
   counter:         'Counter',
@@ -117,6 +120,7 @@ export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
   letterbox:       'normal',
   distanceTracker: 'normal',
   notesRecent:     'normal',
+  savedReading:    'normal',
   timerWidget:     'normal',
   stopwatch:       'normal',
   counter:         'normal',

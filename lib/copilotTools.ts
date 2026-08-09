@@ -31,7 +31,7 @@ export const DASHBOARD_WIDGET_KEYS = [
   'studyStreak', 'uniHub', 'cardioSummary', 'letterbox', 'distanceTracker',
   'timerWidget', 'stopwatch', 'readingTracker', 'customLinks', 'vocabTracker',
   'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
-  'notesRecent',
+  'notesRecent', 'savedReading',
 ] as const
 
 /**

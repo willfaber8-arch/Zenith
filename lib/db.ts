@@ -94,6 +94,29 @@ export interface Assignment {
   reviewCardId?: string
 }
 
+/**
+ * An article kept from the news feed.
+ *
+ * Full article text is deliberately NOT stored: the RSS excerpt is all
+ * the feed gives us, and fetching and warehousing whole articles is a
+ * copyright question we have no need to answer — the summary covers the
+ * actual need.
+ */
+export interface SavedArticle {
+  id:            string   // UUID PK
+  title:         string
+  url:           string   // * unique index — dedup key
+  source:        string
+  publishedAt:   number
+  savedAt:       number   // * indexed
+  description:   string   // RSS excerpt, as fetched
+  /** LLM-generated, only when explicitly asked for. */
+  summary?:      string
+  summarisedAt?: number
+  tags:          string[]
+  archived:      0 | 1    // * indexed
+}
+
 /** One problem within a set. */
 export interface ProblemItem {
   id:          string
@@ -589,6 +612,7 @@ class ZenithDatabase extends Dexie {
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
   study_review_cards!:          EntityTable<StudyReviewCard,          'id'>
+  knowledge_saved_articles!:    EntityTable<SavedArticle,             'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1203,6 +1227,16 @@ class ZenithDatabase extends Dexie {
     this.version(37).stores({
       assignments:        '++id, title, dueDate, courseId, status, priority, category, supabaseId, kind',
       study_review_cards: 'id, subjectType, subjectId, nextReviewAt',
+    })
+
+    /* v38 — Knowledge Consumer.
+     *
+     * world-events already fetched three RSS feeds and saved nothing, so
+     * closing the tab lost everything. `url` is indexed because it is the
+     * dedup key: saving the same article twice is a no-op, not a
+     * duplicate row. */
+    this.version(38).stores({
+      knowledge_saved_articles: 'id, &url, savedAt, archived, source',
     })
   }
 }

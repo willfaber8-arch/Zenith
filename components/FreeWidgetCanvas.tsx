@@ -24,6 +24,7 @@ import CardioWidget            from './widgets/CardioWidget'
 import RelationshipNotesWidget from './widgets/RelationshipNotesWidget'
 import DistanceTrackerWidget   from './widgets/DistanceTrackerWidget'
 import NotesWidget             from './widgets/NotesWidget'
+import SavedReadingWidget      from './widgets/SavedReadingWidget'
 import FriendsWidget           from './widgets/FriendsWidget'
 import LeaderboardWidget       from './widgets/LeaderboardWidget'
 import TimerWidget             from './widgets/TimerWidget'
@@ -102,6 +103,7 @@ const DEFAULT_BACKGROUNDS: Partial<Record<FreeKey, string>> = {
   leaderboard:     '#1b1508',   // warm amber-dark (matches amber widget-accent)
   distanceTracker: '#090e0a',   // dark moss (matches widget card bg)
   notesRecent:     '#14130c',   // warm ink
+  savedReading:    '#0d0e16',   // deep indigo
   // Letterbox — parchment warmth
   letterbox:       '#141219',
   // Audio Atmosphere — coal mineral-dark (Phase 14.1)
@@ -131,6 +133,7 @@ const DEFAULT_BORDER_COLORS: Partial<Record<FreeKey, string>> = {
   friends:         'rgba(155, 163, 196, 0.18)',   // slate
   distanceTracker: 'rgba( 82, 204, 163, 0.18)',   // moss green
   notesRecent:     'rgba(234, 179,   8, 0.18)',   // amber ink
+  savedReading:    'rgba(129, 140, 248, 0.18)',   // indigo
   atmosphere:      'rgba(194, 169, 128, 0.15)',   // parchment (audio widget)
 }
 
@@ -138,6 +141,7 @@ const WIDGET_KEYS: WidgetKey[] = [
   'localWeather', 'habitSummary', 'calendarToday', 'pomodoroPreview',
   'studyStreak', 'uniHub', 'cardioSummary', 'letterbox', 'distanceTracker',
   'notesRecent',
+  'savedReading',
   'timerWidget', 'stopwatch', 'readingTracker', 'customLinks',
   'vocabTracker', 'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
 ]
@@ -176,6 +180,7 @@ const DEFAULT_POSITIONS: Record<FreeKey, Pos> = {
   letterbox:       { x: 984, y: 580 },
   distanceTracker: { x: 24,  y: 840 },
   notesRecent:     { x: 360, y: 840 },
+  savedReading:    { x: 696, y: 840 },
   friends:         { x: 344, y: 840 },
   leaderboard:     { x: 664, y: 840 },
   atmosphere:      { x: 984, y: 840 },
@@ -209,6 +214,7 @@ const DEFAULT_VISIBILITY: FreeVisibility = {
   letterbox:       true,
   distanceTracker: true,
   notesRecent:     true,
+  savedReading:    true,
   timerWidget:     false,
   stopwatch:       false,
   readingTracker:  false,
@@ -483,6 +489,7 @@ function renderWidget(key: FreeKey): ReactNode {
     case 'letterbox':        return w(<RelationshipNotesWidget />)
     case 'distanceTracker':  return w(<DistanceTrackerWidget />)
     case 'notesRecent':      return w(<NotesWidget />)
+    case 'savedReading':     return w(<SavedReadingWidget />)
     case 'friends':          return w(<FriendsWidget />)
     case 'leaderboard':      return w(<LeaderboardWidget />)
     case 'counter':          return w(<CounterWidget />)

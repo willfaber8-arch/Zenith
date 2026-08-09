@@ -26,6 +26,7 @@ const WIDGET_ACCENT: Record<keyof SandboxConfig, string> = {
   letterbox:       '#2dd4bf',
   distanceTracker: '#2dd4bf',
   notesRecent: '#eab308',
+  savedReading: '#818cf8',
   timerWidget:     '#7c95ff',
   stopwatch:       '#52cca3',
   counter:         '#38bdf8',
@@ -50,6 +51,7 @@ import CardioWidget            from './widgets/CardioWidget'
 import RelationshipNotesWidget from './widgets/RelationshipNotesWidget'
 import DistanceTrackerWidget   from './widgets/DistanceTrackerWidget'
 import NotesWidget             from './widgets/NotesWidget'
+import SavedReadingWidget      from './widgets/SavedReadingWidget'
 import TimerWidget             from './widgets/TimerWidget'
 import StopwatchWidget         from './widgets/StopwatchWidget'
 import ReadingTrackerWidget    from './widgets/ReadingTrackerWidget'
@@ -104,6 +106,7 @@ const DEFAULT_ORDER: (keyof SandboxConfig)[] = [
   'letterbox',
   'distanceTracker',
   'notesRecent',
+  'savedReading',
   'timerWidget',
   'stopwatch',
   'counter',
@@ -154,6 +157,7 @@ function renderWidget(key: keyof SandboxConfig): ReactNode {
     case 'letterbox':       return w(<RelationshipNotesWidget />)
     case 'distanceTracker': return w(<DistanceTrackerWidget />)
     case 'notesRecent':     return w(<NotesWidget />)
+    case 'savedReading':    return w(<SavedReadingWidget />)
     case 'timerWidget':     return w(<TimerWidget />)
     case 'stopwatch':       return w(<StopwatchWidget />)
     case 'counter':         return w(<CounterWidget />)
