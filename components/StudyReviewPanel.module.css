@@ -1,0 +1,165 @@
+/* ════════════════════════════════════════════════════════════
+   StudyReviewPanel — the spaced-repetition queue for problem sets.
+   ════════════════════════════════════════════════════════════ */
+
+.root { display: flex; flex-direction: column; gap: var(--sp-6); }
+
+.section { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.heading {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--font-display); font-size: 0.95rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.headingCount {
+  padding: 1px 8px; border-radius: 99px;
+  background: var(--cat-surface, rgba(124,149,255,0.12));
+  color: var(--cat-accent, var(--accent-purple));
+  font-family: var(--font-mono); font-size: 0.66rem;
+}
+
+.sectionHint { font-size: 0.74rem; color: var(--text-dark); }
+
+.list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.card {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+.cardTop {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.cardTitle {
+  font-family: var(--font-display); font-size: 0.88rem; font-weight: 600;
+  color: var(--text-primary);
+}
+.cardMeta {
+  margin-top: 2px;
+  font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dark);
+}
+
+.workBtn {
+  flex-shrink: 0;
+  padding: 6px 14px; border-radius: var(--r-md);
+  border: 1px solid var(--cat-accent, var(--accent-purple));
+  background: var(--cat-surface, rgba(124,149,255,0.12));
+  color: var(--cat-accent, var(--accent-purple));
+  font-size: 0.73rem; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+.workBtn:hover { background: var(--cat-accent-dim, rgba(124,149,255,0.24)); }
+
+.body {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--bg-hover);
+  font-size: 0.82rem; line-height: 1.75; color: var(--text-muted);
+  overflow-x: auto;
+}
+
+.noBody {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--bg-hover);
+  font-size: 0.76rem; color: var(--text-dark); line-height: 1.55;
+}
+
+/* ── Grading ──────────────────────────────────────────────── */
+
+.grades {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 4px;
+}
+
+.grade {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent; cursor: pointer; text-align: left;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+
+/* Pass and fail read differently at a glance — the scheduler treats them
+   as categorically different, and the UI should too. */
+.gradeFail:hover { border-color: #f87171; background: rgba(248,113,113,0.07); }
+.gradePass:hover { border-color: var(--accent-green); background: rgba(82,204,163,0.08); }
+
+.gradeLabel { font-size: 0.76rem; font-weight: 600; color: var(--text-primary); }
+.gradeHint  { font-size: 0.62rem; color: var(--text-dark); line-height: 1.35; }
+
+.dropBtn {
+  align-self: flex-start;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 0.7rem; color: var(--text-dark);
+}
+.dropBtn:hover { color: #f87171; }
+
+/* ── Enrollment chips ─────────────────────────────────────── */
+
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; }
+
+.chip {
+  padding: 5px 12px; border-radius: 99px;
+  border: 1px dashed var(--border-subtle);
+  background: transparent; color: var(--text-muted);
+  font-size: 0.73rem; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.chip:hover {
+  border-style: solid;
+  border-color: var(--cat-accent, var(--accent-purple));
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Scheduled ────────────────────────────────────────────── */
+
+.upcoming { list-style: none; display: flex; flex-direction: column; gap: 1px; }
+
+.upcomingRow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+}
+
+.upcomingTitle {
+  font-size: 0.78rem; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.upcomingWhen {
+  flex-shrink: 0;
+  font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-dark);
+}
+
+.allClear {
+  padding: var(--sp-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+  font-size: 0.79rem; color: var(--text-dark); text-align: center;
+}
+
+/* ── Empty ────────────────────────────────────────────────── */
+
+.empty { padding: var(--sp-4); font-size: 0.78rem; color: var(--text-dark); }
+
+.emptyState {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-10) var(--sp-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.emptyGlyph { font-size: 1.6rem; color: var(--text-dark); opacity: 0.55; }
+.emptyLabel { font-family: var(--font-display); font-size: 0.95rem; color: var(--text-muted); }
+.emptyHint  { font-size: 0.77rem; line-height: 1.6; color: var(--text-dark); text-align: center; max-width: 48ch; }
+
+@media (max-width: 767px) {
+  .cardTop { flex-direction: column; }
+  .grades { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
+}

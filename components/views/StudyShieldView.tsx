@@ -12,8 +12,9 @@ import type { StudyAiResponse, StudySession, PracticeQuestion } from '@/types/st
 import RoadmapGeneratorButton       from '@/components/RoadmapGeneratorButton'
 import styles from './StudyShieldView.module.css'
 import StudyWorkPanel from '@/components/StudyWorkPanel'
+import StudyReviewPanel from '@/components/StudyReviewPanel'
 
-type Tab = 'work' | 'ai-study' | 'focus-protocol' | 'focus-rooms' | 'roadmap'
+type Tab = 'work' | 'review' | 'ai-study' | 'focus-protocol' | 'focus-rooms' | 'roadmap'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -210,6 +211,7 @@ export default function StudyShieldView() {
 
   const TAB_LABELS: Record<Tab, string> = {
     'work':           'Work',
+    'review':         'Review',
     'ai-study':       'AI Study',
     'focus-protocol': 'Focus Protocol',
     'focus-rooms':    'Focus Rooms',
@@ -218,6 +220,7 @@ export default function StudyShieldView() {
 
   const subtitles: Record<Tab, string> = {
     'work':           'Everything due — tasks and problem sets in one list.',
+    'review':         'Finished problem sets, returning on a spaced schedule.',
     'ai-study':       'Paste lecture notes — Zenith AI returns a structured summary and flashcard deck.',
     'focus-protocol': 'Enter deep work mode with a full-screen Pomodoro cockpit.',
     'focus-rooms':    'Create a P2P focus room and sync Pomodoro timers with peers via WebRTC.',
@@ -248,6 +251,12 @@ export default function StudyShieldView() {
       <div className={activeTab === 'work' ? styles.tabPane : styles.tabPaneHidden}>
         <div className="anim-fade-in">
           <StudyWorkPanel />
+        </div>
+      </div>
+
+      <div className={activeTab === 'review' ? styles.tabPane : styles.tabPaneHidden}>
+        <div className="anim-fade-in">
+          <StudyReviewPanel />
         </div>
       </div>
 

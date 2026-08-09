@@ -226,3 +226,26 @@
   .composerRow { flex-direction: column; }
   .problems { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); padding-left: var(--sp-4); }
 }
+
+
+/* ── LaTeX body ───────────────────────────────────────────── */
+
+.body {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4) 44px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  font-size: 0.8rem; line-height: 1.7; color: var(--text-muted);
+  /* Long display equations get their own scroll rather than widening
+     the page. */
+  overflow-x: auto;
+}
+
+.bodyInput {
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card); color: var(--text-primary);
+  font-family: var(--font-mono); font-size: 0.76rem; line-height: 1.6;
+  resize: vertical;
+}
+.bodyInput:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }

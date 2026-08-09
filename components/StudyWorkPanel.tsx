@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/lib/ToastContext'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
 import styles from './StudyWorkPanel.module.css'
+import MathText from '@/components/MathText'
 
 type Filter = 'all' | 'task' | 'problem_set'
 
@@ -120,7 +121,7 @@ export default function StudyWorkPanel() {
 
   const create = useCallback(async (input: {
     title: string; dueDate: string; kind: 'task' | 'problem_set'
-    priority: Priority; courseId: string; problemCount: number
+    priority: Priority; courseId: string; problemCount: number; body: string
   }) => {
     if (!db) return
     const now = Date.now()
@@ -138,6 +139,7 @@ export default function StudyWorkPanel() {
       priority: input.priority,
       category: 'scholastic',
       kind:     input.kind,
+      ...(input.body ? { body: input.body } : {}),
       ...(problems.length ? { problems } : {}),
       createdAt: now,
       updatedAt: now,
@@ -265,12 +267,18 @@ export default function StudyWorkPanel() {
                           onChange={() => toggleProblem(a, p.id)}
                         />
                         <span className={p.done ? styles.problemDone : ''}>
-                          {p.label}
+                          <MathText text={p.label} />
                         </span>
                       </label>
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {open && a.body && (
+                <div className={styles.body}>
+                  <MathText text={a.body} />
+                </div>
               )}
 
               {open && !prog && a.notes && (
@@ -289,7 +297,7 @@ export default function StudyWorkPanel() {
 function Composer({ onCreate }: {
   onCreate: (i: {
     title: string; dueDate: string; kind: 'task' | 'problem_set'
-    priority: Priority; courseId: string; problemCount: number
+    priority: Priority; courseId: string; problemCount: number; body: string
   }) => void
 }) {
   const [title, setTitle]   = useState('')
@@ -298,6 +306,7 @@ function Composer({ onCreate }: {
   const [prio,  setPrio]    = useState<Priority>('medium')
   const [course, setCourse] = useState('')
   const [count, setCount]   = useState(6)
+  const [body,  setBody]    = useState('')
 
   const valid = title.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(due)
 
@@ -307,7 +316,7 @@ function Composer({ onCreate }: {
       onSubmit={e => {
         e.preventDefault()
         if (!valid) return
-        onCreate({ title: title.trim(), dueDate: due, kind, priority: prio, courseId: course.trim(), problemCount: count })
+        onCreate({ title: title.trim(), dueDate: due, kind, priority: prio, courseId: course.trim(), problemCount: count, body: body.trim() })
       }}
     >
       <div className={styles.kindToggle} role="group" aria-label="Kind">
@@ -331,6 +340,17 @@ function Composer({ onCreate }: {
         aria-label="Title"
         autoFocus
       />
+
+      {kind === 'problem_set' && (
+        <textarea
+          className={styles.bodyInput}
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder={'Optional — the questions themselves.\nLaTeX works: $\\int_0^1 x^2 dx$ or $$F = ma$$'}
+          aria-label="Problem set body"
+          rows={3}
+        />
+      )}
 
       <div className={styles.composerRow}>
         <label className={styles.field}>

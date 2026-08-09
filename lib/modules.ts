@@ -152,14 +152,14 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     description: 'Campus resources, GPA, cognitive load and campus finances.',
     icon: 'GraduationCap', color: '#6366f1', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 0 },
-    widgets: ['uniHub', 'gpaWidget'],
+    widgets: ['uniHub', 'gpaWidget', 'diningNow'],
   },
   {
     id: 'study-shield', label: 'Study Shield',
     description: 'Focus sessions, AI study tools and shared focus rooms.',
     icon: 'ShieldCheck', color: '#38bdf8', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 1 },
-    widgets: ['pomodoroPreview', 'studyStreak'],
+    widgets: ['pomodoroPreview', 'studyStreak', 'problemSets'],
   },
   {
     id: 'vocab-builder', label: 'Vocab Builder',

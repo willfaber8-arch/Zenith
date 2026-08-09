@@ -29,6 +29,8 @@ const MAX_OVERDUE_IN_PROMPT  = 6
 const MAX_PENDING_IN_PROMPT  = 8
 const MAX_HABITS_IN_PROMPT   = 6
 const MAX_MOOD_LOGS_IN_PROMPT = 5
+const MAX_NOTES_IN_PROMPT     = 12
+const MAX_ARTICLES_IN_PROMPT  = 10
 
 /**
  * Invariant: the Mental Wellness free-text journal (`qualitativeNotes`)
@@ -256,6 +258,7 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   const [
     books, personalEvents, feedEvents, cardio, recipes, mealSlots,
     subs, vocabCards, vocabDecks, bookmarks, plants, profile,
+    notes, savedArticles,
   ] = await Promise.all([
     safe(db.library_books.toArray(),    []),
     safe(db.personalEvents.toArray(),   []),
@@ -269,6 +272,8 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
     safe(db.customBookmarks.toArray(),  []),
     safe(db.houseplants.toArray(),      []),
     safe(db.userProfile.get(1),         undefined),
+    safe(db.quickNotes.toArray(),       []),
+    safe(db.knowledge_saved_articles.toArray(), []),
   ])
 
   // — Library —
@@ -337,6 +342,63 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   }
 
   // — Custom links —
+  // — Notes —
+  /*
+   * Notes are where preferences show up in the user's own words, which is
+   * exactly what makes them worth sharing — an assistant working only
+   * from structured fields knows what you track, not how you think.
+   *
+   * Two exclusions, both deliberate:
+   *   · `privateFromAi` — the per-note lock. Notes are a general-purpose
+   *     surface, so eventually someone writes something here they would
+   *     not want sent. Without this the toggle in the editor would be
+   *     decoration.
+   *   · archived notes — set aside on purpose; including them would
+   *     resurface things the user has already dismissed.
+   */
+  const liveNotes = notes
+    .filter(n => n.archived !== 1 && n.privateFromAi !== true)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+
+  const privateCount = notes.filter(n => n.privateFromAi === true).length
+
+  if (liveNotes.length > 0 || privateCount > 0) {
+    lines.push('')
+    lines.push('── NOTES ──')
+    lines.push(`${liveNotes.length} note(s) readable.`)
+    if (privateCount > 0) {
+      lines.push(
+        `${privateCount} further note(s) are marked private and are NOT shared with you — ` +
+        'do not ask the user to paste them.',
+      )
+    }
+    liveNotes.slice(0, MAX_NOTES_IN_PROMPT).forEach(n => {
+      const body = truncate(n.body.replace(/\s+/g, ' ').trim(), MAX_NOTE_CHARS)
+      lines.push(
+        `  "${n.title}"${n.tags?.length ? ` [${n.tags.join(', ')}]` : ''}` +
+        (body ? ` — ${body}` : ''),
+      )
+    })
+  }
+
+  // — Saved reading —
+  const liveSaved = savedArticles
+    .filter(a => a.archived !== 1)
+    .sort((a, b) => b.savedAt - a.savedAt)
+
+  if (liveSaved.length > 0) {
+    lines.push('')
+    lines.push('── SAVED READING ──')
+    lines.push(`${liveSaved.length} article(s) kept. What someone saves says a lot about their interests.`)
+    liveSaved.slice(0, MAX_ARTICLES_IN_PROMPT).forEach(a => {
+      lines.push(
+        `  "${a.title}" (${a.source})` +
+        (a.tags.length ? ` [${a.tags.join(', ')}]` : '') +
+        (a.summary ? ` — ${truncate(a.summary, MAX_NOTE_CHARS)}` : ''),
+      )
+    })
+  }
+
   if (bookmarks.length > 0) {
     const folders = [...new Set(bookmarks.map(b => b.folderName).filter(Boolean))]
     lines.push('')

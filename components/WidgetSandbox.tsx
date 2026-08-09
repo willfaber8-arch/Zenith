@@ -27,6 +27,8 @@ const WIDGET_ACCENT: Record<keyof SandboxConfig, string> = {
   distanceTracker: '#2dd4bf',
   notesRecent: '#eab308',
   savedReading: '#818cf8',
+  diningNow: '#f59e0b',
+  problemSets: '#38bdf8',
   timerWidget:     '#7c95ff',
   stopwatch:       '#52cca3',
   counter:         '#38bdf8',
@@ -52,6 +54,8 @@ import RelationshipNotesWidget from './widgets/RelationshipNotesWidget'
 import DistanceTrackerWidget   from './widgets/DistanceTrackerWidget'
 import NotesWidget             from './widgets/NotesWidget'
 import SavedReadingWidget      from './widgets/SavedReadingWidget'
+import DiningNowWidget         from './widgets/DiningNowWidget'
+import ProblemSetsWidget       from './widgets/ProblemSetsWidget'
 import TimerWidget             from './widgets/TimerWidget'
 import StopwatchWidget         from './widgets/StopwatchWidget'
 import ReadingTrackerWidget    from './widgets/ReadingTrackerWidget'
@@ -107,6 +111,8 @@ const DEFAULT_ORDER: (keyof SandboxConfig)[] = [
   'distanceTracker',
   'notesRecent',
   'savedReading',
+  'diningNow',
+  'problemSets',
   'timerWidget',
   'stopwatch',
   'counter',
@@ -158,6 +164,8 @@ function renderWidget(key: keyof SandboxConfig): ReactNode {
     case 'distanceTracker': return w(<DistanceTrackerWidget />)
     case 'notesRecent':     return w(<NotesWidget />)
     case 'savedReading':    return w(<SavedReadingWidget />)
+    case 'diningNow':       return w(<DiningNowWidget />)
+    case 'problemSets':     return w(<ProblemSetsWidget />)
     case 'timerWidget':     return w(<TimerWidget />)
     case 'stopwatch':       return w(<StopwatchWidget />)
     case 'counter':         return w(<CounterWidget />)
