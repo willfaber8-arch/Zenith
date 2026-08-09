@@ -199,8 +199,9 @@ export default function NotesView() {
         courseId:  '',
         status:    'pending',
         priority:  'medium',
-        category:  'notes',
-        notes:     `From note: ${selected.title}`,
+        category:     'notes',
+        sourceNoteId: selected.id,
+        notes:        `From note: ${selected.title}`,
         createdAt: now,
         updatedAt: now,
       } as never)

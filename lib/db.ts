@@ -92,6 +92,10 @@ export interface Assignment {
   problems?:   ProblemItem[]
   /** FK → StudyReviewCard.id once the set enters the review rotation. */
   reviewCardId?: string
+  /** FK → QuickNote.id when this task was filed from a note. Lets the
+   *  note and the task stay linked rather than inferring the connection
+   *  from a category string. */
+  sourceNoteId?: number
 }
 
 /**

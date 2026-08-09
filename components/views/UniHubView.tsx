@@ -32,6 +32,7 @@ import {
 import type { GpaScale } from '@/config/universities'
 import styles from './UniHubView.module.css'
 import CampusDining from '@/components/CampusDining'
+import CampusEventFeeds from '@/components/CampusEventFeeds'
 
 type TopTab = 'uni-resources' | 'major-resources' | 'gpa' | 'finances' | 'campus'
 
@@ -367,6 +368,16 @@ export default function UniHubView() {
       <div className={activeTab === 'campus' ? styles.tabPane : styles.tabPaneHidden}>
         <div className={styles.tabPadded}>
           <CampusDining universityId={uniEntry.id} />
+          <div style={{ marginTop: 'var(--sp-8)' }}>
+            <h3 style={{
+              fontFamily: 'var(--font-display)', fontSize: '0.95rem',
+              fontWeight: 700, color: 'var(--text-primary)',
+              marginBottom: 'var(--sp-3)',
+            }}>
+              Event calendars
+            </h3>
+            <CampusEventFeeds feeds={uniConfig.eventFeeds ?? []} />
+          </div>
         </div>
       </div>
 
