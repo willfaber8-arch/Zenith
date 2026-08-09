@@ -37,6 +37,7 @@ import BotanistView    from '@/components/views/BotanistView'
 import WellnessView    from '@/components/views/SlopeDayView'
 import CustomLinksView from '@/components/views/CustomLinksView'
 import NotesView       from '@/components/views/NotesView'
+import ToolkitView     from '@/components/views/ToolkitView'
 import PlaceholderView from '@/components/views/PlaceholderView'
 import SettingsView    from '@/components/views/SettingsView'
 import HelpView        from '@/components/views/HelpView'
@@ -98,6 +99,7 @@ const MODULE_VIEWS: Record<ViewId, () => JSX.Element> = {
   'sports':          () => <SportsView />,
   'personal-brand':  () => <PersonalBrandView />,
   'vocab-builder':   () => <VocabBuilderView />,
+  'toolkit':         () => <ToolkitView />,
   'subscriptions':   () => <SubscriptionPackagesView />,
   'game-finder':     () => <GameFinderView />,
   'friends-network': () => <FriendsNetworkView />,

@@ -40,7 +40,7 @@ export const DASHBOARD_WIDGET_KEYS = [
  * either would strand the user with no way back.
  */
 export const NAV_MODULE_KEYS = [
-  'outlook', 'uni-hub', 'study-shield', 'vocab-builder',
+  'outlook', 'uni-hub', 'study-shield', 'vocab-builder', 'toolkit',
   'calendar', 'habits', 'workouts', 'wellness', 'meal-planning',
   'world-events', 'sports', 'personal-brand', 'subscriptions',
   'game-finder', 'friends-network', 'book-tracker', 'tournament-hub',

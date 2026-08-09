@@ -54,6 +54,7 @@ export type ViewId =
   | 'uni-hub'
   | 'study-shield'
   | 'vocab-builder'
+  | 'toolkit'
   // Essentials → Life
   | 'calendar'
   | 'habits'
@@ -166,6 +167,16 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     icon: 'Languages', color: '#06b6d4', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 2 },
     widgets: ['vocabTracker'],
+  },
+
+  {
+    id: 'toolkit', label: 'Engineering Toolkit',
+    description: 'Unit conversion and a searchable formula reference.',
+    icon: 'Wrench', color: '#0ea5e9', enabled: true,
+    nav: { category: 'essentials', group: 'scholastic', order: 3 },
+    // No widget: there is no state to summarise, and a widget that only
+    // links somewhere is clutter.
+    widgets: [],
   },
 
   /* ── Essentials · Life ───────────────────────────────────────────── */
