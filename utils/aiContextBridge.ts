@@ -9,7 +9,9 @@
  *
  * Token budget strategy:
  *   • Task/habit rows are capped at MAX_* constants to bound payload size.
- *   • Qualitative text fields (notes, journal entries) are truncated at
+ *   • THE MENTAL WELLNESS JOURNAL IS NEVER INCLUDED. See
+ *     WELLNESS_JOURNAL_IS_PRIVATE below.
+ *   • Other qualitative text fields (task notes) are truncated at
  *     MAX_NOTE_CHARS so free-form prose can't overflow the context window.
  *   • The compiled block targets ≈ 600–900 tokens — large enough for full
  *     situational awareness, well inside the 200 k claude-haiku context limit.
@@ -27,6 +29,21 @@ const MAX_OVERDUE_IN_PROMPT  = 6
 const MAX_PENDING_IN_PROMPT  = 8
 const MAX_HABITS_IN_PROMPT   = 6
 const MAX_MOOD_LOGS_IN_PROMPT = 5
+
+/**
+ * Invariant: the Mental Wellness free-text journal (`qualitativeNotes`)
+ * is NEVER compiled into the AI context.
+ *
+ * The Co-Pilot deliberately reads broadly across the workspace so it can
+ * learn how someone actually works. The journal is the one exception —
+ * it is where a user writes about their own mental state, and sending it
+ * to a third-party provider is not a trade anyone opted into by turning
+ * on an assistant. Aggregate stress/energy scalars are shared instead:
+ * enough for the assistant to be considerate, none of the content.
+ *
+ * Guarded by __tests__/privacy/AiContextPrivacy.test.ts.
+ */
+export const WELLNESS_JOURNAL_IS_PRIVATE = true
 
 /* ── Return types ────────────────────────────────────────────── */
 
@@ -199,15 +216,30 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   lines.push(`14-day avg energy:  ${avgEnergy}/10`)
   lines.push(`Burnout risk:       ${burnoutRisk.toUpperCase()}`)
 
+  /*
+   * THE JOURNAL IS NEVER SENT.
+   *
+   * `qualitativeNotes` is the free-text micro-journal from Mental
+   * Wellness — the one place in Zenith a user writes about how they are
+   * actually doing. It used to be truncated to 110 chars and injected
+   * here as `journal: "…"`, which meant every Co-Pilot open shipped it
+   * to a third-party AI provider.
+   *
+   * The scalars stay: average stress, average energy and burnout risk are
+   * what let the assistant notice someone is running on empty and ease
+   * off, and they carry no confessional content. The mood label stays for
+   * the same reason. The sentence the user wrote does not leave the
+   * device — read WELLNESS_JOURNAL_IS_PRIVATE below before changing this.
+   */
   if (mentalLogs.length > 0) {
-    lines.push(`Recent mood entries (newest first):`)
+    lines.push(`Recent mood entries (newest first, journal text withheld):`)
     mentalLogs.slice(0, MAX_MOOD_LOGS_IN_PROMPT).forEach(l => {
-      const note = truncate(l.qualitativeNotes, MAX_NOTE_CHARS)
       lines.push(
-        `  ${l.logDate}: mood=${capitalize(l.moodVector)} | stress=${l.stressLevel}/10 | energy=${l.energyLevel}/10` +
-        (note ? ` | journal: "${note}"` : ''),
+        `  ${l.logDate}: mood=${capitalize(l.moodVector)} | stress=${l.stressLevel}/10 | energy=${l.energyLevel}/10`,
       )
     })
+    lines.push('  (The user\'s written journal entries are private and are not shared with you.')
+    lines.push('   Do not ask the user to paste them, and do not imply you can see them.)')
   } else {
     lines.push('  No mood logs recorded in the lookback window.')
   }
