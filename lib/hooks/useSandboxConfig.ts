@@ -15,6 +15,10 @@ export interface SandboxConfig {
   cardioSummary:     boolean
   letterbox:         boolean
   distanceTracker:   boolean
+  notesRecent:       boolean
+  savedReading:      boolean
+  diningNow:         boolean
+  problemSets:       boolean
   // Utility widgets
   timerWidget:       boolean
   stopwatch:         boolean
@@ -46,6 +50,10 @@ export const SANDBOX_DEFAULTS: SandboxConfig = {
   cardioSummary:   true,
   letterbox:       true,
   distanceTracker: true,
+  notesRecent:     true,
+  savedReading:    true,
+  diningNow:       false,
+  problemSets:     true,
   timerWidget:     true,
   stopwatch:       false,
   counter:         false,
@@ -70,6 +78,10 @@ export const WIDGET_LABELS: Record<keyof SandboxConfig, string> = {
   cardioSummary:   'Cardio Activity',
   letterbox:       'Letterbox',
   distanceTracker: 'Distance Tracker',
+  notesRecent:     'Recent Note',
+  savedReading:    'Saved Reading',
+  diningNow:       'Dining Now',
+  problemSets:     'Work Due',
   timerWidget:     'Timer',
   stopwatch:       'Stopwatch',
   counter:         'Counter',
@@ -113,6 +125,10 @@ export const WIDGET_SIZE: Record<keyof SandboxConfig, 'normal' | 'wide'> = {
   cardioSummary:   'normal',
   letterbox:       'normal',
   distanceTracker: 'normal',
+  notesRecent:     'normal',
+  savedReading:    'normal',
+  diningNow:       'normal',
+  problemSets:     'normal',
   timerWidget:     'normal',
   stopwatch:       'normal',
   counter:         'normal',

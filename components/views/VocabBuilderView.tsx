@@ -9,6 +9,7 @@ import { useToast }                                         from '@/lib/ToastCon
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
 import styles                                               from './VocabBuilderView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
+import { runVocabScheduleBackfill } from '@/lib/vocabBackfill'
 
 /* ════════════════════════════════════════════════════════════════
    English Vocabulary — static word bank (GRE / advanced level)
@@ -2331,6 +2332,21 @@ function ProgressTab({ cards }: { cards: VocabCard[] }) {
 
 export default function VocabBuilderView() {
   const [mainTab, setMainTab] = useState<'language' | 'english'>('language')
+
+  /*
+   * One-time repair of scheduling state.
+   *
+   * Cards created before ReviewScheduler existed all carry a
+   * nextReviewTimestamp of 0 or their creation time, so every one of them
+   * reads as due — here, in Stats, and on the dashboard widget. Fixing
+   * the write path stops it recurring but leaves those rows stuck, so
+   * they get a first due-date derived from the mastery they already have.
+   *
+   * Self-guarding via localStorage; safe to call on every mount.
+   */
+  useEffect(() => {
+    void runVocabScheduleBackfill()
+  }, [])
 
   return (
     <div className={styles.outerWrap}>

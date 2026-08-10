@@ -8,6 +8,14 @@ export const CORNELL: UniversityConfig = {
   gpaScale:     '4.3',
   currencyName: 'Big Red Bucks',
 
+  eventFeeds: [
+    { id: 'cornell-events', label: 'Cornell Events Calendar',
+      url: 'https://events.cornell.edu/calendar.ics',
+      color: '#b31b1b', description: 'University-wide events and lectures.' },
+    { id: 'cornell-athletics', label: 'Cornell Athletics',
+      url: 'https://cornellbigred.com/calendar.ashx/calendar.ics',
+      color: '#e8734a', description: 'Home and away fixtures.' },
+  ],
   categories: [
 
     // ── ACADEMICS & REGISTRATION ─────────────────────────────

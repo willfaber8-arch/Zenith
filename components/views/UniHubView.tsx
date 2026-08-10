@@ -31,8 +31,10 @@ import {
 } from '@/config/majors'
 import type { GpaScale } from '@/config/universities'
 import styles from './UniHubView.module.css'
+import CampusDining from '@/components/CampusDining'
+import CampusEventFeeds from '@/components/CampusEventFeeds'
 
-type TopTab = 'uni-resources' | 'major-resources' | 'gpa' | 'finances'
+type TopTab = 'uni-resources' | 'major-resources' | 'gpa' | 'finances' | 'campus'
 
 /* ── Setup state machine ──────────────────────────────────────
    Onboarding has three mini-steps shown on the start screen:
@@ -249,6 +251,7 @@ export default function UniHubView() {
     'major-resources': 'Major Resources',
     'gpa':             'GPA Calculator',
     'finances':        'Finances',
+    'campus':          'Campus',
   }
 
   /* Scoped brand CSS vars — override accent without affecting rest of app */
@@ -358,6 +361,23 @@ export default function UniHubView() {
             </p>
           </div>
           <GpaSimulator gpaScale={gpaScale} />
+        </div>
+      </div>
+
+      {/* ── Campus ──────────────────────────────────────────── */}
+      <div className={activeTab === 'campus' ? styles.tabPane : styles.tabPaneHidden}>
+        <div className={styles.tabPadded}>
+          <CampusDining universityId={uniEntry.id} />
+          <div style={{ marginTop: 'var(--sp-8)' }}>
+            <h3 style={{
+              fontFamily: 'var(--font-display)', fontSize: '0.95rem',
+              fontWeight: 700, color: 'var(--text-primary)',
+              marginBottom: 'var(--sp-3)',
+            }}>
+              Event calendars
+            </h3>
+            <CampusEventFeeds feeds={uniConfig.eventFeeds ?? []} />
+          </div>
         </div>
       </div>
 

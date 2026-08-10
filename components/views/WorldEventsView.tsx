@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { NewsArticle } from '@/app/api/world-news/route'
 import styles from './WorldEventsView.module.css'
+import { useSavedArticles } from '@/lib/hooks/useSavedArticles'
+import SavedArticles from '@/components/SavedArticles'
 
 /**
  * RSS feed content is untrusted. A malicious or compromised feed could supply a
@@ -20,11 +22,16 @@ function safeHref(url: string): string {
 
 const BRIEFING_COUNT = 5
 
+type Tab = 'feed' | 'saved' | 'archive'
+
 export default function WorldEventsView() {
+  const [tab,         setTab]         = useState<Tab>('feed')
   const [news,        setNews]        = useState<NewsArticle[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError,   setNewsError]   = useState<string | null>(null)
   const [newsFilter,  setNewsFilter]  = useState<string>('All')
+
+  const lib = useSavedArticles()
 
   const fetchNews = useCallback(async () => {
     setNewsLoading(true)
@@ -76,6 +83,34 @@ export default function WorldEventsView() {
 
   return (
     <div className={styles.root}>
+
+      <div className={styles.tabBar} role="tablist" aria-label="News sections">
+        {([
+          ['feed',    'Feed'],
+          ['saved',   `Saved${lib.saved.length ? ` · ${lib.saved.length}` : ''}`],
+          ['archive', `Archive${lib.archived.length ? ` · ${lib.archived.length}` : ''}`],
+        ] as [Tab, string][]).map(([id, label]) => (
+          <button
+            key={id} role="tab" aria-selected={tab === id}
+            className={`${styles.newsTab} ${tab === id ? styles.newsTabOn : ''}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab !== 'feed' && (
+        <SavedArticles
+          articles={tab === 'saved' ? lib.saved : lib.archived}
+          isArchive={tab === 'archive'}
+          onArchive={lib.setArchived}
+          onSummarise={lib.setSummary}
+          onRemove={lib.unsave}
+        />
+      )}
+
+      {tab === 'feed' && <>
       <div className={styles.controls}>
         <div className={styles.sourceFilter}>
           {newsSources.map(src => (
@@ -174,12 +209,36 @@ export default function WorldEventsView() {
                 {article.description && (
                   <p className={styles.desc}>{article.description}</p>
                 )}
-                <span className={styles.readMore}>Read →</span>
+                <div className={styles.cardFoot}>
+                  <span className={styles.readMore}>Read →</span>
+                  <button
+                    type="button"
+                    className={`${styles.saveBtn} ${lib.savedUrls.has(article.url) ? styles.saveBtnOn : ''}`}
+                    onClick={e => {
+                      /* The whole card is a link — without this, saving
+                         opens the article instead. */
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (lib.savedUrls.has(article.url)) {
+                        void lib.unsave(article.url)
+                      } else {
+                        void lib.save({
+                          title: article.title, url: article.url, source: article.source,
+                          description: article.description ?? '', publishedAt: article.pubMs,
+                        })
+                      }
+                    }}
+                    aria-pressed={lib.savedUrls.has(article.url)}
+                  >
+                    {lib.savedUrls.has(article.url) ? '✓ Saved' : '+ Save'}
+                  </button>
+                </div>
               </a>
             ))}
           </div>
         </>
       )}
+      </>}
     </div>
   )
 }

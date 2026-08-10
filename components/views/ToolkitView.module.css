@@ -1,0 +1,258 @@
+/* ════════════════════════════════════════════════════════════
+   ToolkitView — reference tools, reached for mid-problem.
+
+   Optimised for read speed, not browsing: the converter result is
+   the largest thing on screen, and a formula's expression is set
+   in mono at display size so it is legible at a glance.
+   ════════════════════════════════════════════════════════════ */
+
+.root { padding: var(--sp-5) var(--sp-8) var(--sp-10); }
+
+.tabBar {
+  display: flex; gap: 2px;
+  margin: var(--sp-5) 0 var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tab {
+  padding: 8px 16px;
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dark);
+  font-size: 0.79rem; font-weight: 600; cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.tab:hover { color: var(--text-muted); }
+.tabOn {
+  color: var(--cat-accent, var(--accent-purple));
+  border-bottom-color: var(--cat-accent, var(--accent-purple));
+}
+
+.pane {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  animation: fadeIn var(--dur-base) var(--ease-smooth) both;
+}
+
+/* ── Dimension / category chips ───────────────────────────── */
+
+.dimBar { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.dimChip {
+  padding: 5px 12px; border-radius: 99px;
+  border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-dark);
+  font-size: 0.72rem; font-weight: 500; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+}
+.dimChip:hover { color: var(--text-muted); border-color: var(--text-dark); }
+.dimChipOn {
+  border-color: var(--cat-accent, var(--accent-purple));
+  background: var(--cat-surface, rgba(124,149,255,0.10));
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* ── Converter ────────────────────────────────────────────── */
+
+.convertGrid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--sp-4);
+  align-items: end;
+  padding: var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+.side { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+
+.sideLabel {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.11em; text-transform: uppercase; color: var(--text-dark);
+}
+
+.value, .result {
+  width: 100%;
+  padding: 10px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+.value:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }
+.valueBad { border-color: #f87171; color: #f87171; }
+
+.result {
+  display: block;
+  border-color: var(--cat-border, rgba(124,149,255,0.20));
+  background: var(--cat-surface, rgba(124,149,255,0.06));
+  color: var(--cat-accent, var(--accent-purple));
+  overflow-x: auto; white-space: nowrap;
+}
+
+.unit {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card); color: var(--text-muted);
+  font-size: 0.76rem; font-family: var(--font-body);
+  color-scheme: dark; cursor: pointer;
+}
+
+.swap {
+  width: 38px; height: 38px; margin-bottom: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-muted); font-size: 0.95rem; cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+}
+.swap:hover {
+  color: var(--cat-accent, var(--accent-purple));
+  border-color: var(--cat-accent, var(--accent-purple));
+  transform: rotate(180deg);
+}
+
+.convertFoot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-4); flex-wrap: wrap;
+}
+
+.equation {
+  font-family: var(--font-mono); font-size: 0.76rem;
+  color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+
+.copyBtn {
+  padding: 6px 13px; border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle); background: transparent;
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.copyBtn:hover:not(:disabled) {
+  border-color: var(--cat-accent, var(--accent-purple));
+  color: var(--cat-accent, var(--accent-purple));
+}
+.copyBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Formula reference ────────────────────────────────────── */
+
+.searchRow { display: flex; align-items: center; gap: var(--sp-3); }
+
+.search {
+  flex: 1; min-width: 0;
+  padding: 9px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card); color: var(--text-primary);
+  font-size: 0.82rem; font-family: var(--font-body);
+}
+.search:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }
+
+.count {
+  font-family: var(--font-mono); font-size: 0.66rem;
+  color: var(--text-dark); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.noResults { padding: var(--sp-6) 0; font-size: 0.8rem; color: var(--text-dark); }
+
+.formulaList { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+
+.formula {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.formulaHead {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 1.4fr) auto;
+  align-items: center; gap: var(--sp-4);
+  padding: 11px var(--sp-4);
+  background: transparent; border: none; text-align: left; cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.formulaHead:hover { background: var(--bg-hover); }
+
+.formulaName {
+  font-size: 0.82rem; font-weight: 600; color: var(--text-primary);
+}
+
+.formulaExpr {
+  font-family: var(--font-mono); font-size: 0.82rem;
+  color: var(--cat-accent, var(--accent-purple));
+  overflow-x: auto; white-space: nowrap;
+}
+
+.formulaCat {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dark); white-space: nowrap;
+}
+
+.formulaBody {
+  padding: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  animation: fadeIn var(--dur-fast) ease both;
+}
+
+.vars { display: flex; flex-direction: column; gap: 6px; }
+
+.var {
+  display: grid; grid-template-columns: 84px 1fr; gap: var(--sp-3);
+  align-items: baseline;
+}
+.var dt {
+  font-family: var(--font-mono); font-size: 0.76rem;
+  color: var(--text-primary); font-weight: 600;
+}
+.var dd {
+  margin: 0; font-size: 0.76rem; color: var(--text-muted); line-height: 1.5;
+}
+
+.varUnit {
+  margin-left: 8px; padding: 1px 6px; border-radius: 3px;
+  background: var(--bg-active); color: var(--text-dark);
+  font-family: var(--font-mono); font-size: 0.64rem;
+}
+
+/* Assumptions get their own treatment: a formula without them is a
+   trap, so they must not read as small print. */
+.note {
+  padding: 9px 12px;
+  border-left: 2px solid #f59e0b;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: rgba(245,158,11,0.07);
+  font-size: 0.74rem; line-height: 1.55; color: var(--text-muted);
+}
+
+.noteLabel {
+  display: block;
+  font-family: var(--font-mono); font-size: 0.58rem;
+  letter-spacing: 0.11em; text-transform: uppercase;
+  color: #f59e0b; margin-bottom: 3px;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .root { padding: var(--sp-4); }
+  .tabBar { overflow-x: auto; }
+  .tab { white-space: nowrap; flex-shrink: 0; }
+  .convertGrid { grid-template-columns: 1fr; gap: var(--sp-3); }
+  .swap { margin: 0 auto; transform: rotate(90deg); }
+  .swap:hover { transform: rotate(270deg); }
+  .formulaHead { grid-template-columns: 1fr; gap: 5px; }
+  .formulaCat { justify-self: start; }
+  .var { grid-template-columns: 64px 1fr; }
+}

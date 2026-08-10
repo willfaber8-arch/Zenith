@@ -357,3 +357,48 @@
   .feed,
   .skelFeed { grid-template-columns: 1fr; }
 }
+
+
+/* ── Saved / Archive tabs (Knowledge Consumer) ─────────────── */
+
+.tabBar {
+  display: flex; gap: 2px;
+  margin-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.newsTab {
+  padding: 8px 16px;
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dark);
+  font-size: 0.79rem; font-weight: 600; cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.newsTab:hover { color: var(--text-muted); }
+.newsTabOn {
+  color: var(--cat-accent, var(--accent-purple));
+  border-bottom-color: var(--cat-accent, var(--accent-purple));
+}
+
+.cardFoot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3); margin-top: auto;
+}
+
+.saveBtn {
+  padding: 4px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-dark);
+  font-size: 0.66rem; font-weight: 600; cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+}
+.saveBtn:hover {
+  border-color: var(--cat-accent, var(--accent-purple));
+  color: var(--cat-accent, var(--accent-purple));
+}
+.saveBtnOn {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  background: rgba(82,204,163,0.10);
+}

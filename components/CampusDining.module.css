@@ -1,0 +1,169 @@
+/* ════════════════════════════════════════════════════════════
+   CampusDining — open/closed at a glance.
+
+   The status chip is the whole feature, so it carries colour as
+   well as text: "is anywhere open right now" has to be readable
+   without parsing a sentence.
+   ════════════════════════════════════════════════════════════ */
+
+.root { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-4); flex-wrap: wrap;
+}
+.headNote { font-size: 0.73rem; color: var(--text-dark); line-height: 1.5; }
+
+.primaryBtn, .ghostBtn {
+  padding: 7px 14px; border-radius: var(--r-md);
+  font-size: 0.74rem; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+.primaryBtn {
+  border: 1px solid var(--cat-accent, var(--accent-purple));
+  background: var(--cat-surface, rgba(124,149,255,0.12));
+  color: var(--cat-accent, var(--accent-purple));
+}
+.primaryBtn:hover { background: var(--cat-accent-dim, rgba(124,149,255,0.24)); }
+.ghostBtn {
+  border: 1px solid var(--border-subtle); background: transparent; color: var(--text-dark);
+}
+.ghostBtn:hover { border-color: var(--cat-accent, var(--accent-purple)); color: var(--text-muted); }
+
+.list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.hall {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--state, var(--text-dark));
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+/* Semantic state, separate from the category accent. */
+.hall[data-state="open"]         { --state: var(--accent-green); }
+.hall[data-state="opens_later"]  { --state: #f59e0b; }
+.hall[data-state="opens_next"]   { --state: var(--text-dark); }
+.hall[data-state="closed_today"] { --state: var(--text-dark); }
+.hall[data-state="no_hours"]     { --state: var(--border-subtle); }
+
+.hallTop {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.hallId { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.hallName {
+  font-family: var(--font-display); font-size: 0.9rem; font-weight: 600;
+  color: var(--text-primary);
+}
+.hallLoc { font-size: 0.7rem; color: var(--text-dark); }
+
+.status {
+  flex-shrink: 0;
+  padding: 3px 10px; border-radius: 99px;
+  border: 1px solid var(--state, var(--text-dark));
+  color: var(--state, var(--text-dark));
+  font-family: var(--font-mono); font-size: 0.63rem;
+  letter-spacing: 0.03em; white-space: nowrap;
+}
+
+/* ── Week strip ───────────────────────────────────────────── */
+
+.week { display: flex; gap: 3px; }
+
+.day {
+  flex: 1;
+  padding: 3px 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-dark);
+  font-family: var(--font-mono); font-size: 0.58rem;
+  text-align: center; letter-spacing: 0.04em;
+}
+.dayOpen {
+  border-color: var(--cat-border, rgba(124,149,255,0.20));
+  background: var(--cat-surface, rgba(124,149,255,0.07));
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+.hallFoot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+/* Visible staleness — the honest counterweight to hand-maintained data. */
+.updated {
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-dark);
+}
+
+.hallActions { display: flex; gap: var(--sp-3); }
+
+.linkBtn, .linkQuiet {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 0.71rem; font-weight: 600;
+}
+.linkBtn  { color: var(--cat-accent, var(--accent-purple)); }
+.linkQuiet { color: var(--text-dark); }
+.linkQuiet:hover { color: #f87171; }
+
+/* ── Editor ───────────────────────────────────────────────── */
+
+.editor {
+  display: flex; flex-direction: column; gap: 5px;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+  animation: fadeIn var(--dur-fast) ease both;
+}
+
+.editRow { display: flex; align-items: center; gap: var(--sp-2); }
+
+.editDay {
+  width: 34px;
+  font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-dark);
+}
+
+.editRow input[type="time"] {
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-hover); color: var(--text-primary);
+  font-family: var(--font-mono); font-size: 0.7rem;
+  color-scheme: dark;
+}
+
+.editDash { color: var(--text-dark); font-size: 0.7rem; }
+
+.clearDay {
+  width: 20px; height: 20px;
+  border-radius: var(--r-sm); border: 1px solid transparent;
+  background: transparent; color: var(--text-dark);
+  font-size: 0.8rem; line-height: 1; cursor: pointer;
+}
+.clearDay:hover { color: #f87171; background: rgba(248,113,113,0.08); }
+
+.editHint {
+  margin-top: 4px;
+  font-size: 0.66rem; line-height: 1.5; color: var(--text-dark);
+}
+
+/* ── Empty ────────────────────────────────────────────────── */
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-10) var(--sp-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.emptyGlyph { font-size: 1.6rem; color: var(--text-dark); opacity: 0.55; }
+.emptyLabel { font-family: var(--font-display); font-size: 0.95rem; color: var(--text-muted); }
+.emptyHint  { font-size: 0.76rem; line-height: 1.6; color: var(--text-dark); text-align: center; max-width: 52ch; }
+
+@media (max-width: 767px) {
+  .hallTop { flex-direction: column; }
+  .status { align-self: flex-start; }
+  .editRow input[type="time"] { flex: 1; min-width: 0; }
+}

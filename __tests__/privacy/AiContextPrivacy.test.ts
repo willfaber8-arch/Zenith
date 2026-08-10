@@ -72,6 +72,90 @@ describe('AI context — the wellness journal is private', () => {
   })
 })
 
+describe('AI context — the per-note privacy lock', () => {
+
+  it('excludes a note marked privateFromAi', async () => {
+    jest.resetModules()
+    const PRIVATE = 'ZZ_PRIVATE_NOTE_SENTINEL_ZZ'
+    const PUBLIC  = 'ZZ_PUBLIC_NOTE_SENTINEL_ZZ'
+
+    jest.doMock('@/lib/db', () => {
+      const table = (rows: unknown[]) => ({
+        toArray:  async () => rows,
+        where:    () => ({
+          aboveOrEqual: () => ({ toArray: async () => rows }),
+          above:        () => ({ toArray: async () => rows }),
+          equals:       () => ({ toArray: async () => rows }),
+        }),
+        orderBy:  () => ({ reverse: () => ({ limit: () => ({ toArray: async () => rows }) }) }),
+        get:      async () => undefined,
+        count:    async () => rows.length,
+      })
+      const fakeDb = new Proxy({}, {
+        get: (_t, prop: string) => {
+          if (prop === 'quickNotes') {
+            return table([
+              { id: 1, title: 'Private thoughts', body: PRIVATE, category: 'idea',
+                updatedAt: Date.now(), createdAt: Date.now(), privateFromAi: true },
+              { id: 2, title: 'Shopping', body: PUBLIC, category: 'idea',
+                updatedAt: Date.now(), createdAt: Date.now() },
+            ])
+          }
+          return table([])
+        },
+      })
+      return { db: fakeDb, getDb: () => fakeDb }
+    })
+
+    const { compileUserContextPayload } = await import('@/utils/aiContextBridge')
+    const { systemPrompt } = await compileUserContextPayload()
+
+    // The locked note must not appear in any form.
+    expect(systemPrompt).not.toContain(PRIVATE)
+    expect(systemPrompt).not.toContain('Private thoughts')
+    // …while the unlocked one does, or the feature is pointless.
+    expect(systemPrompt).toContain(PUBLIC)
+    // And the model is told the locked note exists, so it cannot ask for it.
+    expect(systemPrompt).toMatch(/marked private and are NOT shared/i)
+  })
+
+  it('excludes archived notes', async () => {
+    jest.resetModules()
+    const ARCHIVED = 'ZZ_ARCHIVED_SENTINEL_ZZ'
+
+    jest.doMock('@/lib/db', () => {
+      const table = (rows: unknown[]) => ({
+        toArray:  async () => rows,
+        where:    () => ({
+          aboveOrEqual: () => ({ toArray: async () => rows }),
+          above:        () => ({ toArray: async () => rows }),
+          equals:       () => ({ toArray: async () => rows }),
+        }),
+        orderBy:  () => ({ reverse: () => ({ limit: () => ({ toArray: async () => rows }) }) }),
+        get:      async () => undefined,
+        count:    async () => rows.length,
+      })
+      const fakeDb = new Proxy({}, {
+        get: (_t, prop: string) => {
+          if (prop === 'quickNotes') {
+            return table([{
+              id: 1, title: 'Old note', body: ARCHIVED, category: 'idea',
+              updatedAt: Date.now(), createdAt: Date.now(), archived: 1,
+            }])
+          }
+          return table([])
+        },
+      })
+      return { db: fakeDb, getDb: () => fakeDb }
+    })
+
+    const { compileUserContextPayload } = await import('@/utils/aiContextBridge')
+    const { systemPrompt } = await compileUserContextPayload()
+    // Archived is a deliberate dismissal — resurfacing it would undo that.
+    expect(systemPrompt).not.toContain(ARCHIVED)
+  })
+})
+
 describe('AI context — compiled payload', () => {
 
   it('contains no journal text for a log that has some', async () => {

@@ -23,6 +23,10 @@ import UniHubWidget            from './widgets/UniHubWidget'
 import CardioWidget            from './widgets/CardioWidget'
 import RelationshipNotesWidget from './widgets/RelationshipNotesWidget'
 import DistanceTrackerWidget   from './widgets/DistanceTrackerWidget'
+import NotesWidget             from './widgets/NotesWidget'
+import SavedReadingWidget      from './widgets/SavedReadingWidget'
+import DiningNowWidget         from './widgets/DiningNowWidget'
+import ProblemSetsWidget       from './widgets/ProblemSetsWidget'
 import FriendsWidget           from './widgets/FriendsWidget'
 import LeaderboardWidget       from './widgets/LeaderboardWidget'
 import TimerWidget             from './widgets/TimerWidget'
@@ -100,6 +104,10 @@ const DEFAULT_BACKGROUNDS: Partial<Record<FreeKey, string>> = {
   friends:         '#13161f',   // muted slate-dark
   leaderboard:     '#1b1508',   // warm amber-dark (matches amber widget-accent)
   distanceTracker: '#090e0a',   // dark moss (matches widget card bg)
+  notesRecent:     '#14130c',   // warm ink
+  savedReading:    '#0d0e16',   // deep indigo
+  diningNow:       '#151005',   // warm amber ground
+  problemSets:     '#08121a',   // deep sky
   // Letterbox — parchment warmth
   letterbox:       '#141219',
   // Audio Atmosphere — coal mineral-dark (Phase 14.1)
@@ -128,12 +136,20 @@ const DEFAULT_BORDER_COLORS: Partial<Record<FreeKey, string>> = {
   leaderboard:     'rgba(245, 158,  11, 0.22)',   // amber
   friends:         'rgba(155, 163, 196, 0.18)',   // slate
   distanceTracker: 'rgba( 82, 204, 163, 0.18)',   // moss green
+  notesRecent:     'rgba(234, 179,   8, 0.18)',   // amber ink
+  savedReading:    'rgba(129, 140, 248, 0.18)',   // indigo
+  diningNow:       'rgba(245, 158,  11, 0.18)',   // amber
+  problemSets:     'rgba( 56, 189, 248, 0.18)',   // sky
   atmosphere:      'rgba(194, 169, 128, 0.15)',   // parchment (audio widget)
 }
 
 const WIDGET_KEYS: WidgetKey[] = [
   'localWeather', 'habitSummary', 'calendarToday', 'pomodoroPreview',
   'studyStreak', 'uniHub', 'cardioSummary', 'letterbox', 'distanceTracker',
+  'notesRecent',
+  'savedReading',
+  'diningNow',
+  'problemSets',
   'timerWidget', 'stopwatch', 'readingTracker', 'customLinks',
   'vocabTracker', 'gpaWidget', 'wellnessCheck', 'mealToday', 'newsHeadline', 'arcadeEconomy',
 ]
@@ -171,6 +187,10 @@ const DEFAULT_POSITIONS: Record<FreeKey, Pos> = {
   uniHub:          { x: 664, y: 580 },
   letterbox:       { x: 984, y: 580 },
   distanceTracker: { x: 24,  y: 840 },
+  notesRecent:     { x: 360, y: 840 },
+  savedReading:    { x: 696, y: 840 },
+  diningNow:       { x: 24,  y: 1060 },
+  problemSets:     { x: 360, y: 1060 },
   friends:         { x: 344, y: 840 },
   leaderboard:     { x: 664, y: 840 },
   atmosphere:      { x: 984, y: 840 },
@@ -203,6 +223,10 @@ const DEFAULT_VISIBILITY: FreeVisibility = {
   cardioSummary:   true,
   letterbox:       true,
   distanceTracker: true,
+  notesRecent:     true,
+  savedReading:    true,
+  diningNow:       false,
+  problemSets:     true,
   timerWidget:     false,
   stopwatch:       false,
   readingTracker:  false,
@@ -476,6 +500,10 @@ function renderWidget(key: FreeKey): ReactNode {
     case 'cardioSummary':    return w(<CardioWidget />)
     case 'letterbox':        return w(<RelationshipNotesWidget />)
     case 'distanceTracker':  return w(<DistanceTrackerWidget />)
+    case 'notesRecent':      return w(<NotesWidget />)
+    case 'savedReading':     return w(<SavedReadingWidget />)
+    case 'diningNow':        return w(<DiningNowWidget />)
+    case 'problemSets':      return w(<ProblemSetsWidget />)
     case 'friends':          return w(<FriendsWidget />)
     case 'leaderboard':      return w(<LeaderboardWidget />)
     case 'counter':          return w(<CounterWidget />)

@@ -81,6 +81,89 @@ export interface Assignment {
   createdAt:   number           //   Unix timestamp ms
   updatedAt:   number           //   Unix timestamp ms — update on every save
   supabaseId?: string           // * indexed — cloud UUID assigned on first sync
+  /* ── Study Companion (v37) ───────────────────────────────────── */
+  /** Absent means 'task'. Problem sets are a kind of assignment rather
+   *  than a parallel entity, so there stays one task list, one
+   *  notification stream and one badge count. */
+  kind?:       'task' | 'problem_set'   // * indexed
+  /** Markdown + LaTeX body, rendered when kind is 'problem_set'. */
+  body?:       string
+  /** Per-problem breakdown, so partial progress is real progress. */
+  problems?:   ProblemItem[]
+  /** FK → StudyReviewCard.id once the set enters the review rotation. */
+  reviewCardId?: string
+  /** FK → QuickNote.id when this task was filed from a note. Lets the
+   *  note and the task stay linked rather than inferring the connection
+   *  from a category string. */
+  sourceNoteId?: number
+}
+
+/**
+ * An article kept from the news feed.
+ *
+ * Full article text is deliberately NOT stored: the RSS excerpt is all
+ * the feed gives us, and fetching and warehousing whole articles is a
+ * copyright question we have no need to answer — the summary covers the
+ * actual need.
+ */
+export interface SavedArticle {
+  id:            string   // UUID PK
+  title:         string
+  url:           string   // * unique index — dedup key
+  source:        string
+  publishedAt:   number
+  savedAt:       number   // * indexed
+  description:   string   // RSS excerpt, as fetched
+  /** LLM-generated, only when explicitly asked for. */
+  summary?:      string
+  summarisedAt?: number
+  tags:          string[]
+  archived:      0 | 1    // * indexed
+}
+
+/** A dining hall's weekly schedule. Hours are user-maintained. */
+export interface DiningHall {
+  id:            string   // UUID PK
+  universityId:  string   // * indexed — scopes to the active school
+  name:          string   // * indexed
+  location?:     string
+  /** Per-weekday windows. An empty array means closed that day. */
+  hours:         { day: 0|1|2|3|4|5|6; open: string; close: string }[]
+  mealPlanOnly?: boolean
+  notes?:        string
+  /** Surfaced in the UI so staleness is visible rather than invisible. */
+  updatedAt:     number
+}
+
+/** One problem within a set. */
+export interface ProblemItem {
+  id:          string
+  label:       string          // "1(a)", "Q3"
+  done:        boolean
+  /** Worked answer or note — Markdown + LaTeX. */
+  note?:       string
+  /** Self-rated, feeds the review scheduler. */
+  difficulty?: 1 | 2 | 3 | 4 | 5
+}
+
+/**
+ * Scheduling state for anything reviewable.
+ *
+ * Deliberately domain-agnostic: `subjectType` lets vocabulary and problem
+ * sets share one ReviewScheduler rather than each growing a private
+ * half-implementation, which is how the vocab scheduler ended up never
+ * scheduling anything.
+ */
+export interface StudyReviewCard {
+  id:                   string   // UUID PK
+  subjectType:          'problem_set' | 'vocab'   // * indexed
+  subjectId:            string   // * indexed
+  easeFactor:           number
+  reviewIntervalDays:   number
+  consecutiveSuccesses: number
+  nextReviewAt:         number   // * indexed
+  lastReviewedAt?:      number
+  reviewCount:          number
 }
 
 /**
@@ -171,8 +254,27 @@ export interface QuickNote {
   updatedAt:  number   // * indexed — Unix timestamp ms; sort by recency
   category:   string   // * indexed — e.g. "lecture", "idea", "ref"
   body:        string   //   raw text or Markdown content
-  pinned?:    boolean  //   float to top of list
+  pinned?:    boolean  // * indexed (v36) — float to top of list
   createdAt:  number   //   Unix timestamp ms
+  /* ── Notes module (v36) ──────────────────────────────────────── */
+  /** Freeform user tags — distinct from `category`, which is a fixed set. */
+  tags?:      string[]
+  /** Soft archive. Deletion stays an explicit act in the note's own UI. */
+  archived?:  0 | 1    // * indexed — 0/1 rather than boolean; IndexedDB
+                       //   cannot index a JS boolean.
+  /**
+   * Withhold this note from the AI Co-Pilot's context.
+   *
+   * Notes are a general-purpose surface, so someone will eventually write
+   * something here they would not want sent to a provider. The wellness
+   * journal is protected by category; a note is protected by nothing
+   * unless the user says so.
+   */
+  privateFromAi?: boolean
+  /** Task text already filed from this note — prevents re-offering. */
+  createdTasks?: string[]
+  /** Per-note consent for to-do detection. Global policy in localStorage. */
+  noteTaskPolicy?: 'ask' | 'never' | 'auto'
 }
 
 /* ── Meal Planning (v17) ─────────────────────────────────────────── */
@@ -527,6 +629,9 @@ class ZenithDatabase extends Dexie {
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
+  study_review_cards!:          EntityTable<StudyReviewCard,          'id'>
+  knowledge_saved_articles!:    EntityTable<SavedArticle,             'id'>
+  campus_dining_halls!:         EntityTable<DiningHall,               'id'>
 
   constructor() {
     super('ZenithOS')
@@ -1114,6 +1219,54 @@ class ZenithDatabase extends Dexie {
      */
     this.version(35).stores({
       kindle_clippings: 'id, bookId, hash, addedAt',
+    })
+
+    /* v36 — Notes module.
+     *
+     * quickNotes already existed (v1) as a scratchpad buried in Study
+     * Shield. The Notes module gives it a home rather than adding a
+     * parallel table, so anything already captured there shows up.
+     *
+     * `archived` and `pinned` become indexed so the list can filter
+     * without a full scan; `tags` and `privateFromAi` are non-indexed
+     * additive fields needing no migration. */
+    this.version(36).stores({
+      quickNotes: '++id, title, updatedAt, category, archived, pinned',
+    })
+
+    /* v37 — Study Companion.
+     *
+     * `kind` is indexed so the Work tab can partition tasks from problem
+     * sets without a full-table scan. Everything else it adds (body,
+     * problems[], reviewCardId) is non-indexed and additive, so existing
+     * assignments stay valid and default to kind:'task'.
+     *
+     * study_review_cards generalises the scheduling fields away from
+     * vocabulary so ReviewScheduler serves both domains. */
+    this.version(37).stores({
+      assignments:        '++id, title, dueDate, courseId, status, priority, category, supabaseId, kind',
+      study_review_cards: 'id, subjectType, subjectId, nextReviewAt',
+    })
+
+    /* v38 — Knowledge Consumer.
+     *
+     * world-events already fetched three RSS feeds and saved nothing, so
+     * closing the tab lost everything. `url` is indexed because it is the
+     * dedup key: saving the same article twice is a no-op, not a
+     * duplicate row. */
+    this.version(38).stores({
+      knowledge_saved_articles: 'id, &url, savedAt, archived, source',
+    })
+
+    /* v39 — Campus Companion.
+     *
+     * User-maintained, not scraped. A scraper breaks silently when the
+     * source site changes and then shows stale hours, which is worse than
+     * showing none — you walk to a closed dining hall. It also would not
+     * generalise past one university, and uni-hub is multi-school by
+     * design. */
+    this.version(39).stores({
+      campus_dining_halls: 'id, universityId, name',
     })
   }
 }

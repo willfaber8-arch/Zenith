@@ -54,6 +54,7 @@ export type ViewId =
   | 'uni-hub'
   | 'study-shield'
   | 'vocab-builder'
+  | 'toolkit'
   // Essentials → Life
   | 'calendar'
   | 'habits'
@@ -74,6 +75,7 @@ export type ViewId =
   | 'games'
   | 'cube-timer'
   // Personalized Vault
+  | 'notes'
   | 'custom-links'
   | 'stats'
   // System
@@ -150,14 +152,14 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     description: 'Campus resources, GPA, cognitive load and campus finances.',
     icon: 'GraduationCap', color: '#6366f1', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 0 },
-    widgets: ['uniHub', 'gpaWidget'],
+    widgets: ['uniHub', 'gpaWidget', 'diningNow'],
   },
   {
     id: 'study-shield', label: 'Study Shield',
     description: 'Focus sessions, AI study tools and shared focus rooms.',
     icon: 'ShieldCheck', color: '#38bdf8', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 1 },
-    widgets: ['pomodoroPreview', 'studyStreak'],
+    widgets: ['pomodoroPreview', 'studyStreak', 'problemSets'],
   },
   {
     id: 'vocab-builder', label: 'Vocab Builder',
@@ -165,6 +167,16 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     icon: 'Languages', color: '#06b6d4', enabled: true,
     nav: { category: 'essentials', group: 'scholastic', order: 2 },
     widgets: ['vocabTracker'],
+  },
+
+  {
+    id: 'toolkit', label: 'Engineering Toolkit',
+    description: 'Unit conversion and a searchable formula reference.',
+    icon: 'Wrench', color: '#0ea5e9', enabled: true,
+    nav: { category: 'essentials', group: 'scholastic', order: 3 },
+    // No widget: there is no state to summarise, and a widget that only
+    // links somewhere is clutter.
+    widgets: [],
   },
 
   /* ── Essentials · Life ───────────────────────────────────────────── */
@@ -271,7 +283,7 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
     description: 'Headlines from BBC World, NPR and The Guardian.',
     icon: 'Newspaper', color: '#818cf8', enabled: true,
     nav: { category: 'creator', order: 5 },
-    widgets: ['newsHeadline'],
+    widgets: ['newsHeadline', 'savedReading'],
   },
   {
     id: 'personal-brand', label: 'Personal Brand Hub',
@@ -297,17 +309,24 @@ export const MODULE_REGISTRY: readonly ZenithModule[] = [
 
   /* ── Personalized Vault ──────────────────────────────────────────── */
   {
+    id: 'notes', label: 'Notes',
+    description: 'Somewhere to put a thought before you know what it is.',
+    icon: 'NotebookPen', color: '#eab308', enabled: true,
+    nav: { category: 'vault', order: 0 },
+    widgets: ['notesRecent'],
+  },
+  {
     id: 'custom-links', label: 'Custom Link Manager',
     description: 'Your own categorised bookmarks with fetched favicons.',
     icon: 'Link', color: '#94a3b8', enabled: true,
-    nav: { category: 'vault', order: 0 },
+    nav: { category: 'vault', order: 1 },
     widgets: ['customLinks'],
   },
   {
     id: 'stats', label: 'Stats & Analytics',
     description: 'Cross-module analytics and the arcade economy ledger.',
     icon: 'ChartLine', color: '#f59e0b', enabled: true,
-    nav: { category: 'vault', order: 1 },
+    nav: { category: 'vault', order: 2 },
     widgets: [],
   },
 ]

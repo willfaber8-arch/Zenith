@@ -198,8 +198,9 @@ additive.
 
 ## 8. Open questions
 
-1. **Per-note "hide from AI"?** Recommended above; worth confirming before
-   the schema settles.
+1. ~~Per-note "hide from AI"?~~ **Resolved:** yes — `privateFromAi?: boolean`
+   with a lock control in the editor. Excluded notes never reach the context
+   bridge.
 2. **Should `always approve` be reachable in one step**, or only after a
    user has approved a few times individually? Offering it immediately is
    honest about the option; gating it makes accidental blanket consent

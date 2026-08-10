@@ -66,7 +66,29 @@ export interface UniversityConfig {
   gpaScale:     GpaScale
   /** University campus currency name, e.g. "Big Red Bucks" */
   currencyName?: string
+  /**
+   * Campus event calendars offered for one-click subscription.
+   *
+   * Deliberately iCal rather than a bespoke aggregator: Zenith already
+   * has a complete pipeline for these (/api/cal-proxy for CORS,
+   * utils/calendarParser for VEVENTs with real timezone handling,
+   * useCalendarData for storage and refresh). Subscribing drops the
+   * events into the Universal Calendar the user already reads, with the
+   * existing week/month/agenda views — strictly better than a second
+   * surface with its own refresh mechanism to maintain.
+   */
+  eventFeeds?: CampusEventFeed[]
   categories:   UniCategory[]
+}
+
+export interface CampusEventFeed {
+  id:    string
+  label: string
+  /** Public .ics endpoint. */
+  url:   string
+  /** Feed colour in the calendar. */
+  color: string
+  description?: string
 }
 
 /** Lightweight entry used in the autocomplete registry. */
