@@ -1,10 +1,42 @@
 /* ════════════════════════════════════════════════════════════
    OutlookView — Daily + Weekly combined dashboard
+
+   ── OPAQUE SURFACES ─────────────────────────────────────────
+   Every panel here used to be a white wash — rgba(255,255,255,
+   0.015–0.06) — layered over whatever happened to be behind.
+   Behind this view is the cosmos star canvas and the category
+   background tint, so the stars showed straight through the
+   cards and the text sat on a moving, unpredictable ground.
+   Washed out, and genuinely harder to read.
+
+   Every surface below is now an explicit solid colour. Cards
+   that carry an accent get a real tinted surface — a dark
+   colour with the hue mixed in — rather than a translucent
+   film, so the tint is the same whatever is painted behind it.
    ════════════════════════════════════════════════════════════ */
 
 .root {
   padding: var(--sp-6) var(--sp-8) var(--sp-8);
   max-width: 760px;
+  margin: 0 auto;
+
+  /* Solid ground: one step lighter than the page so panels read
+     as raised, and dense enough that nothing shows through. */
+  --o-surface:      #161a24;
+  --o-surface-soft: #1b2030;
+  --o-surface-deep: #11141d;
+  --o-line:         rgba(148, 163, 210, 0.16);
+  --o-line-strong:  rgba(148, 163, 210, 0.28);
+
+  /* Accent-tinted solids. Pre-mixed against the ground so they
+     stay identical over the stars, the tint, or a theme swap. */
+  --o-periwinkle:   #1c2340;
+  --o-periwinkle-hi:#243057;
+  --o-sage:         #14261f;
+  --o-sage-hi:      #19342a;
+  --o-rose:         #2a1a1e;
+  --o-rose-hi:      #3a2126;
+  --o-amber:        #2a2113;
 }
 
 /* ── Tab bar ─────────────────────────────────────────────── */
@@ -12,8 +44,8 @@
 .tabBar {
   display: flex;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-subtle);
+  background: var(--o-surface-deep);
+  border: 1px solid var(--o-line);
   border-radius: var(--r-md);
   padding: 3px;
   width: fit-content;
@@ -75,18 +107,23 @@
   padding: var(--sp-4) var(--sp-4);
   border-radius: var(--r-lg);
   border: 1px solid var(--border-subtle);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  background: var(--card-bg, var(--o-surface));
   overflow: hidden;
-  transition: transform 0.18s var(--ease-smooth), border-color 0.18s ease;
+  transition:
+    transform 0.18s var(--ease-smooth),
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
 
 .statCard::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 120% at 100% 0%, var(--glow, rgba(124,149,255,0.14)) 0%, transparent 55%);
-  opacity: 0.9;
+  /* A single bright edge along the top instead of a whole-card
+     film — enough to identify the card, no loss of contrast. */
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--edge, var(--accent-purple));
   pointer-events: none;
 }
 
@@ -94,14 +131,14 @@
   transform: translateY(-2px);
 }
 
-.statCalendar     { --glow: rgba(124,149,255,0.18); }
-.statCalendar:hover { border-color: rgba(124,149,255,0.35); }
-.statHabits       { --glow: rgba(82,204,163,0.18); }
-.statHabits:hover { border-color: rgba(82,204,163,0.35); }
-.statTasks        { --glow: rgba(82,204,163,0.14); }
-.statTasks:hover  { border-color: rgba(82,204,163,0.30); }
-.statTasksAlert   { --glow: rgba(248,113,113,0.20); }
-.statTasksAlert:hover { border-color: rgba(248,113,113,0.40); }
+.statCalendar   { --card-bg: var(--o-periwinkle); --edge: #7c95ff; }
+.statCalendar:hover   { --card-bg: var(--o-periwinkle-hi); border-color: rgba(124,149,255,0.45); }
+.statHabits     { --card-bg: var(--o-sage);       --edge: #52cca3; }
+.statHabits:hover     { --card-bg: var(--o-sage-hi); border-color: rgba(82,204,163,0.45); }
+.statTasks      { --card-bg: var(--o-sage);       --edge: #52cca3; }
+.statTasks:hover      { --card-bg: var(--o-sage-hi); border-color: rgba(82,204,163,0.40); }
+.statTasksAlert { --card-bg: var(--o-rose);       --edge: #f87171; }
+.statTasksAlert:hover { --card-bg: var(--o-rose-hi); border-color: rgba(248,113,113,0.50); }
 
 .statIcon {
   position: relative;
@@ -114,7 +151,7 @@
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
   margin-bottom: var(--sp-1);
 }
 
@@ -125,7 +162,7 @@
 .statNum {
   position: relative;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.1;
   color: var(--text-primary);
@@ -139,11 +176,11 @@
 
 .statLabel {
   position: relative;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: var(--text-dark);
+  color: var(--text-muted);
 }
 
 /* ── Section ─────────────────────────────────────────────── */
@@ -157,8 +194,8 @@
 .sectionCard {
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
   border-radius: var(--r-lg);
-  border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--o-line);
+  background: var(--o-surface);
 }
 
 .sectionLabel {
@@ -170,8 +207,16 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-dark);
+  color: var(--text-muted);
   margin: 0;
+}
+
+/* Inside a card the label is a header, so it gets a rule under it —
+   the panels each carried three unrelated things with nothing marking
+   where the heading stopped and the content started. */
+.sectionCard .sectionLabel {
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--o-line);
 }
 
 .sectionGlyph {
@@ -185,24 +230,23 @@
   letter-spacing: 0;
 }
 
-.glyphCalendar { color: var(--accent-purple); background: rgba(124,149,255,0.12); }
-.glyphHabits   { color: var(--accent-green);  background: rgba(82,204,163,0.12); }
-.glyphTasks    { color: var(--accent-green);  background: rgba(82,204,163,0.12); }
+.glyphCalendar { color: var(--accent-purple); background: rgba(124, 149, 255, 0.14); }
+.glyphHabits   { color: var(--accent-green);  background: rgba(82, 204, 163, 0.14); }
+.glyphTasks    { color: var(--accent-green);  background: rgba(82, 204, 163, 0.14); }
 
 .count {
   font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--accent-purple);
-  background: rgba(124, 149, 255, 0.10);
+  background: rgba(124, 149, 255, 0.14);
   border-radius: 999px;
   padding: 1px 7px;
 }
 
 .empty {
   font-size: 0.8125rem;
-  color: var(--text-dark);
-  opacity: 0.65;
+  color: var(--text-muted);
   margin: 0;
   padding: var(--sp-2) 0;
 }
@@ -225,14 +269,15 @@
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--o-surface-soft);
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   transition: border-color 0.15s ease;
 }
 
 .eventRow:hover {
-  border-color: var(--border-subtle);
+  border-color: var(--o-line-strong);
+  background: rgba(124, 149, 255, 0.14);
 }
 
 .eventDot {
@@ -245,13 +290,13 @@
 .eventTime {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--text-dark);
+  color: var(--text-muted);
   min-width: 56px;
 }
 
 .eventTitle {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: var(--text-primary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -265,7 +310,7 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--o-surface-soft);
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   transition: opacity 0.2s ease, border-color 0.15s ease;
@@ -285,14 +330,14 @@
 
 .habitName {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: var(--text-primary);
   flex: 1;
 }
 
 .habitMeta {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--text-dark);
+  color: var(--text-muted);
 }
 
 .habitBtn {
@@ -312,7 +357,7 @@
 }
 
 .habitBtn:hover {
-  background: rgba(124, 149, 255, 0.12);
+  background: rgba(124, 149, 255, 0.14);
   border-color: rgba(124, 149, 255, 0.55);
 }
 
@@ -337,7 +382,7 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--o-surface-soft);
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   transition: border-color 0.15s ease;
@@ -351,7 +396,7 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border: 1.5px solid var(--o-line-strong);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
@@ -360,12 +405,12 @@
 
 .taskCheck:hover {
   border-color: var(--accent-green);
-  background: rgba(82, 204, 163, 0.08);
+  background: rgba(82, 204, 163, 0.14);
 }
 
 .taskTitle {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: var(--text-primary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -385,7 +430,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #f87171;
-  background: rgba(248, 113, 113, 0.10);
+  background: rgba(248, 113, 113, 0.14);
   border-radius: 999px;
   padding: 1px 6px;
   flex-shrink: 0;
@@ -439,7 +484,7 @@
 /* ── Day cards (week view) ───────────────────────────────── */
 
 .dayCard {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--o-surface-soft);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-md);
   padding: var(--sp-3) var(--sp-4);
@@ -450,7 +495,7 @@
 
 .dayCardToday {
   border-color: rgba(124, 149, 255, 0.22);
-  background: rgba(124, 149, 255, 0.03);
+  background: var(--o-periwinkle);
 }
 
 .dayCardEmpty {
@@ -479,14 +524,14 @@
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--accent-purple);
-  background: rgba(124, 149, 255, 0.12);
+  background: rgba(124, 149, 255, 0.14);
   border-radius: 999px;
   padding: 1px 6px;
 }
 
 .emptyDay {
   font-size: 0.6875rem;
-  color: var(--text-dark);
+  color: var(--text-muted);
 }
 
 /* ── Week event / task rows ──────────────────────────────── */
@@ -508,12 +553,12 @@
 .weekEventTime {
   font-family: var(--font-mono);
   font-size: 0.625rem;
-  color: var(--text-dark);
+  color: var(--text-muted);
   min-width: 50px;
 }
 
 .weekEventTitle {
-  color: var(--text-muted);
+  color: var(--text-primary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -528,7 +573,7 @@
 }
 
 .weekTaskTitle {
-  color: var(--text-muted);
+  color: var(--text-primary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -573,7 +618,79 @@
   border-color: color-mix(in srgb, var(--text-primary) 30%, transparent);
 }
 
+/* The accent hues are tuned for a dark ground; on white the same
+   values land near 2.8:1. Darken the ones carrying meaning — an
+   OVERDUE badge you have to squint at is not doing its job. */
+:global(html[data-color-scheme='light']) .overdueBadge,
+:global(html[data-light-mode]) .overdueBadge {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.10);
+}
+
+:global(html[data-color-scheme='light']) .statTasksAlert .statIcon,
+:global(html[data-light-mode]) .statTasksAlert .statIcon { color: #b91c1c; }
+
+:global(html[data-color-scheme='light']) .statCalendar .statIcon,
+:global(html[data-light-mode]) .statCalendar .statIcon { color: #3b52c4; }
+
+:global(html[data-color-scheme='light']) .statTasks .statIcon,
+:global(html[data-light-mode]) .statTasks .statIcon { color: #12775a; }
+
+:global(html[data-color-scheme='light']) .count,
+:global(html[data-light-mode]) .count,
+:global(html[data-color-scheme='light']) .todayBadge,
+:global(html[data-light-mode]) .todayBadge {
+  color: #3b52c4;
+  background: rgba(59, 82, 196, 0.10);
+}
+
+:global(html[data-color-scheme='light']) .glyphCalendar,
+:global(html[data-light-mode]) .glyphCalendar { color: #3b52c4; }
+
+:global(html[data-color-scheme='light']) .glyphHabits,
+:global(html[data-light-mode]) .glyphHabits,
+:global(html[data-color-scheme='light']) .glyphTasks,
+:global(html[data-light-mode]) .glyphTasks { color: #12775a; }
+
 /* ── Responsive ──────────────────────────────────────────── */
+
+/* On a wide screen a single 760px column left two thirds of the
+   viewport empty and pushed Tasks below the fold, so the panels flow
+   into two columns instead. Multicol rather than grid because the
+   sections are different heights — grid would align them into rows
+   and reintroduce the gaps. */
+@media (min-width: 1120px) {
+  .root { max-width: 1160px; }
+
+  .panel {
+    display: block;
+    columns: 2;
+    column-gap: var(--sp-4);
+  }
+
+  .panel > * {
+    break-inside: avoid;
+    margin-bottom: var(--sp-4);
+  }
+
+  /* The hero strip stays full width above both columns. */
+  .summaryRow {
+    column-span: all;
+    margin-bottom: var(--sp-4);
+  }
+
+  .statNum  { font-size: 2rem; }
+  .statCard { padding: var(--sp-5); }
+
+  .panelWeek {
+    display: flex;
+    flex-direction: column;
+    columns: auto;
+    max-width: 860px;
+  }
+
+  .panelWeek > * { margin-bottom: 0; }
+}
 
 @media (max-width: 540px) {
   .summaryRow {
