@@ -33,6 +33,9 @@ import { executeCopilotAction } from '@/lib/copilotActions'
 import BookRecommendationFeed from './BookRecommendationFeed'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
+import {
+  currentProviderState, startCooldown, longestCooldown, formatCooldown,
+} from '@/lib/coverCooldown'
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -1236,9 +1239,34 @@ export default function BookTrackerDashboard() {
     [allBooks],
   )
 
-  /** Once every fresh book is resolved the button turns into a misses retry. */
-  const coverIsRetry   = booksNeedingCovers.length === 0 && booksWithCoverMisses.length > 0
-  const coverQueue     = coverIsRetry ? booksWithCoverMisses : booksNeedingCovers
+  /*
+   * The MANUAL button targets every book without a cover — never-checked
+   * and previously-missed together.
+   *
+   * It used to offer one group or the other, and only offered the misses
+   * once the fresh queue was completely empty. With 3 unchecked books and
+   * 12 cached misses the button read "3", and if those 3 kept failing on
+   * a rate limit the other 12 were unreachable forever. Pressing a button
+   * labelled 3 when 15 books have no cover is also just wrong.
+   *
+   * The AUTOMATIC sweep keeps the narrower scope (undefined only) — it
+   * must not re-hammer confirmed misses on every visit.
+   */
+  const coverQueue = useMemo(
+    () => [...booksNeedingCovers, ...booksWithCoverMisses],
+    [booksNeedingCovers, booksWithCoverMisses],
+  )
+  const coverIsRetry = booksNeedingCovers.length === 0 && booksWithCoverMisses.length > 0
+
+  /* Cooldown countdown. Ticks only while a hold is active, so an idle
+     Library schedules no timers. */
+  const [coolMs, setCoolMs] = useState(0)
+  useEffect(() => {
+    const read = () => setCoolMs(longestCooldown())
+    read()
+    const t = setInterval(read, 15_000)
+    return () => clearInterval(t)
+  }, [coverPhase.running])
 
   /**
    * Resolve cover art for a batch of books, a few at a time.
@@ -1285,8 +1313,11 @@ export default function BookTrackerDashboard() {
      * Now a throttled provider is simply taken out of rotation; the pass
      * continues on whatever is left, and only stops when both are gone.
      */
+    /* Seeded from the persisted cooldown so a provider we already know is
+       limited is skipped outright, rather than spending more of a quota
+       that is already gone. */
     const throttled: { openlibrary: boolean; google: boolean } =
-      { openlibrary: false, google: false }
+      currentProviderState()
     const allThrottled = () => throttled.openlibrary && throttled.google
 
     const worker = async () => {
@@ -1317,8 +1348,12 @@ export default function BookTrackerDashboard() {
           result = { url: null, failure: 'offline' }
         }
 
-        /* Take the offending provider out of rotation for this pass. */
-        if (result.throttledProvider) throttled[result.throttledProvider] = true
+        /* Take the offending provider out of rotation — for this pass and,
+           via the cooldown, for subsequent ones until it is worth retrying. */
+        if (result.throttledProvider) {
+          throttled[result.throttledProvider] = true
+          startCooldown(result.throttledProvider)
+        }
         if (controller.signal.aborted) return
 
         /*
@@ -1391,10 +1426,11 @@ export default function BookTrackerDashboard() {
       const which = throttled.openlibrary && throttled.google
         ? 'Both cover services are'
         : throttled.openlibrary ? 'Open Library is' : 'Google Books is'
+      const wait = formatCooldown(longestCooldown())
       toast(
         found > 0
-          ? `Found ${found} cover${found === 1 ? '' : 's'}. ${which} rate-limiting — the rest are still queued and nothing was marked as "no cover".`
-          : `${which} rate-limiting right now. Nothing was cached as a miss, so these stay queued — try again in a few minutes.`,
+          ? `Found ${found} cover${found === 1 ? '' : 's'}. ${which} rate-limiting — the rest stay queued, nothing was marked "no cover". Try again in ${wait}.`
+          : `${which} rate-limiting. Nothing was cached as a miss, so these stay queued — try again in ${wait}.`,
         'info',
       )
       return
@@ -1622,7 +1658,7 @@ export default function BookTrackerDashboard() {
           <button
             className={`${styles.coverBtn} ${coverPhase.running ? styles.coverBtnRunning : ''}`}
             onClick={() => void runCoverSweep(coverQueue)}
-            disabled={coverPhase.running || coverQueue.length === 0}
+            disabled={coverPhase.running || coverQueue.length === 0 || coolMs > 0}
             title={
               coverPhase.running
                 ? 'Looking up cover art — you can keep using the library'
@@ -1637,9 +1673,13 @@ export default function BookTrackerDashboard() {
               ? <><span className={styles.coverSpinner} aria-hidden="true" />Fetching covers… {coverPhase.done}/{coverPhase.total}</>
               : coverQueue.length === 0
                 ? '◲ Covers up to date'
-                : coverIsRetry
-                  ? `◲ Retry cover misses (${coverQueue.length})`
-                  : `◲ Fetch covers (${coverQueue.length})`}
+                : coolMs > 0
+                  /* Say when, not just "later" — the user has no other way
+                     to tell whether waiting is seconds or hours. */
+                  ? `◲ Cooling down · retry in ${formatCooldown(coolMs)}`
+                  : coverIsRetry
+                    ? `◲ Retry cover misses (${coverQueue.length})`
+                    : `◲ Fetch covers (${coverQueue.length})`}
           </button>
           <button className={styles.addBtn} onClick={() => { resetAddForm(); setShowAddModal(true) }}>+ Add Book</button>
           <button
