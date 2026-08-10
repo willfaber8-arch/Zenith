@@ -162,12 +162,75 @@ interface GoogleVolume {
 
 export type CoverFailure = 'not_found' | 'rate_limited' | 'offline'
 
+/** Which service throttled us — a limit on one must not disable the other. */
+export type Provider = 'openlibrary' | 'google'
+
+const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>(res => {
+  const t = setTimeout(res, ms)
+  signal?.addEventListener('abort', () => { clearTimeout(t); res() }, { once: true })
+})
+
+/**
+ * Fetch with real backoff on a throttle.
+ *
+ * The previous version treated a 429 as terminal: one throttled request
+ * aborted the whole sweep, and pressing retry hit the same limit on the
+ * same first book, so the user could never get out. A rate limit is a
+ * "wait", not a "never" — so wait.
+ *
+ * `Retry-After` is honoured when the server sends it (both the seconds
+ * and HTTP-date forms), capped so a hostile value cannot hang the pass.
+ */
+const MAX_RETRY_WAIT_MS = 8_000
+const RETRY_ATTEMPTS    = 2
+
+function retryAfterMs(res: Response): number | null {
+  const raw = res.headers.get('retry-after')
+  if (!raw) return null
+  const secs = Number(raw)
+  if (Number.isFinite(secs)) return Math.min(secs * 1000, MAX_RETRY_WAIT_MS)
+  const when = Date.parse(raw)
+  if (!Number.isNaN(when)) return Math.min(Math.max(0, when - Date.now()), MAX_RETRY_WAIT_MS)
+  return null
+}
+
+async function fetchWithBackoff(
+  url: string,
+  signal?: AbortSignal,
+): Promise<Response | 'throttled' | 'offline'> {
+  for (let attempt = 0; attempt <= RETRY_ATTEMPTS; attempt++) {
+    if (signal?.aborted) return 'offline'
+    let res: Response
+    try {
+      res = await fetch(url, { signal })
+    } catch {
+      return 'offline'
+    }
+
+    if (res.status !== 429 && res.status !== 403) return res
+
+    // Throttled. Wait and try again rather than giving up on the provider.
+    if (attempt === RETRY_ATTEMPTS) return 'throttled'
+    const wait = retryAfterMs(res) ?? Math.min(1000 * 2 ** attempt, MAX_RETRY_WAIT_MS)
+    await sleep(wait, signal)
+  }
+  return 'throttled'
+}
+
 export interface CoverLookupResult {
   url:      string | null
   /** ISBN discovered during the search — worth persisting on the book. */
   isbn13?:  string
   failure?: CoverFailure
+  /** Set only on a throttle, so the caller can disable that provider
+   *  alone rather than abandoning every source at once. */
+  throttledProvider?: Provider
 }
+
+/** Providers a caller has already been throttled by this pass. */
+export type ProviderState = { openlibrary: boolean; google: boolean }
+
+export const NO_THROTTLE: ProviderState = { openlibrary: false, google: false }
 
 /** Upgrade a Google Books thumbnail to https + a larger, un-curled image. */
 function normaliseGoogleThumb(raw: string): string {
@@ -222,11 +285,14 @@ async function searchOpenLibrary(
   })
   if (a) params.set('author', a)
 
-  try {
-    const res = await fetch(`https://openlibrary.org/search.json?${params}`, { signal })
-    if (res.status === 429) return { url: null, failure: 'rate_limited' }
-    if (!res.ok) return { url: null, failure: 'not_found' }
+  const res = await fetchWithBackoff(`https://openlibrary.org/search.json?${params}`, signal)
+  if (res === 'throttled') {
+    return { url: null, failure: 'rate_limited', throttledProvider: 'openlibrary' }
+  }
+  if (res === 'offline') return { url: null, failure: 'offline' }
+  if (!res.ok) return { url: null, failure: 'not_found' }
 
+  try {
     const data = (await res.json()) as { docs?: OpenLibraryDoc[] }
     for (const doc of data.docs ?? []) {
       const isbn13 = pickIsbn(doc.isbn)
@@ -254,6 +320,7 @@ async function searchOpenLibrary(
 interface GoogleQueryOutcome {
   url:      string | null
   failure?: CoverFailure
+  throttledProvider?: Provider
 }
 
 /**
@@ -266,14 +333,15 @@ interface GoogleQueryOutcome {
  */
 async function runGoogleQuery(q: string, signal?: AbortSignal): Promise<GoogleQueryOutcome> {
   const url = `https://www.googleapis.com/books/v1/volumes?maxResults=5&country=US&q=${encodeURIComponent(q)}`
-  try {
-    const res = await fetch(url, { signal })
-    // 403 is what the API returns for a spent daily quota; 429 for a burst.
-    if (res.status === 429 || res.status === 403) {
-      return { url: null, failure: 'rate_limited' }
-    }
-    if (!res.ok) return { url: null, failure: 'not_found' }
+  const res = await fetchWithBackoff(url, signal)
+  // 403 is a spent daily quota, 429 a burst limit — both are "wait".
+  if (res === 'throttled') {
+    return { url: null, failure: 'rate_limited', throttledProvider: 'google' }
+  }
+  if (res === 'offline') return { url: null, failure: 'offline' }
+  if (!res.ok) return { url: null, failure: 'not_found' }
 
+  try {
     const data = (await res.json()) as { items?: GoogleVolume[] }
     for (const item of data.items ?? []) {
       const thumb = item.volumeInfo?.imageLinks?.thumbnail
@@ -322,7 +390,9 @@ export async function googleBooksCoverUrl(
     if (signal?.aborted) return { url: null, failure: 'offline' }
     const out = await runGoogleQuery(q, signal)
     if (out.url) return { url: out.url }
-    if (out.failure === 'rate_limited') return { url: null, failure: 'rate_limited' }
+    if (out.failure === 'rate_limited') {
+      return { url: null, failure: 'rate_limited', throttledProvider: 'google' }
+    }
     if (out.failure) lastFailure = out.failure
   }
   return { url: null, failure: lastFailure }
@@ -353,9 +423,9 @@ export function immediateCoverUrl(book: Pick<LibraryBook, 'isbn13'>): string | n
  */
 export async function resolveCover(
   book: Pick<LibraryBook, 'isbn13' | 'title' | 'author'>,
-  opts: { verify?: boolean; signal?: AbortSignal } = {},
+  opts: { verify?: boolean; signal?: AbortSignal; throttled?: ProviderState } = {},
 ): Promise<CoverLookupResult> {
-  const { verify = true, signal } = opts
+  const { verify = true, signal, throttled = NO_THROTTLE } = opts
 
   // 1 — known ISBN, straight at the covers CDN.
   const olUrl = book.isbn13 ? openLibraryCoverUrl(book.isbn13) : null
@@ -366,16 +436,40 @@ export async function resolveCover(
 
   if (!book.title) return { url: null, failure: 'not_found' }
 
-  // 2 — Open Library search: cover id and/or a usable ISBN.
-  const ol = await searchOpenLibrary(book.title, book.author || undefined, signal)
-  if (ol.url) return ol
-  if (ol.failure === 'offline') return ol   // network down — do not cache
+  /*
+   * Steps 2 and 3 are attempted independently. A limit on one provider
+   * must not disable the other — previously a single 429 from Open
+   * Library also skipped Google Books, so a shelf could not make progress
+   * through either.
+   */
+  let ol: CoverLookupResult = { url: null, failure: 'not_found' }
+  if (!throttled.openlibrary) {
+    ol = await searchOpenLibrary(book.title, book.author || undefined, signal)
+    if (ol.url) return ol
+    if (ol.failure === 'offline') return ol   // network down — do not cache
+  }
 
-  // 3 — Google Books, last and cheapest-to-exhaust.
-  const g = await googleBooksCoverUrl(book.title, book.author || undefined, signal)
-  // Carry forward any ISBN the Open Library search found even when neither
-  // provider had artwork: it still improves every future attempt.
-  return { ...g, isbn13: g.isbn13 ?? ol.isbn13 }
+  if (!throttled.google) {
+    const g = await googleBooksCoverUrl(book.title, book.author || undefined, signal)
+    if (g.url) {
+      /* Report the throttle even on success. Without this the caller never
+         learns Open Library is limited, and re-attempts it (with its full
+         backoff) for every remaining book — 3 wasted requests each. */
+      return {
+        ...g,
+        isbn13: g.isbn13 ?? ol.isbn13,
+        ...(ol.throttledProvider ? { throttledProvider: ol.throttledProvider } : {}),
+      }
+    }
+    // Carry forward any ISBN Open Library found even when neither had art.
+    return {
+      ...g,
+      isbn13: g.isbn13 ?? ol.isbn13,
+      throttledProvider: g.throttledProvider ?? ol.throttledProvider,
+    }
+  }
+
+  return ol
 }
 
 /**

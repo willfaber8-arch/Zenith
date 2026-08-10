@@ -251,6 +251,8 @@ const BOOKS_PER_PAGE    = 21
 const MANUAL_COVER_CONCURRENCY = 4
 const AUTO_COVER_CONCURRENCY   = 2
 const AUTO_COVER_BATCH         = 48
+/** Gap between books, to stay under burst limits rather than hit them. */
+const REQUEST_GAP_MS           = 220
 
 type ViewTab = 'LIBRARY' | 'TBR' | 'READING' | 'ALL'
 
@@ -1024,10 +1026,17 @@ export default function BookTrackerDashboard() {
     [allBooks],
   )
 
-  /* Books that were enriched but still have gaps — the model simply did not
-     know. Offered as an explicit re-check rather than silently re-queued,
-     because re-asking costs a real API call and usually returns the same
-     answer. */
+  /*
+   * Books enriched before but still missing something — the model did not
+   * know them. Offered as an explicit re-check.
+   *
+   * This is the counterpart to stamping detailsCheckedAt. Stamping stops
+   * the button counting the same books forever, but without a way back
+   * it also means a book the model failed on ONCE can never be asked
+   * about again — the same dead end the cover retry had. So the button
+   * falls back to re-checking these once the fresh queue is empty,
+   * exactly as the cover button falls back to retrying misses.
+   */
   const booksStillIncomplete = useMemo(
     () => allBooks.filter(b =>
       b.detailsCheckedAt && (!b.totalPages || !b.genre || !b.isbn13),
@@ -1041,11 +1050,15 @@ export default function BookTrackerDashboard() {
    * Streams the response exactly like AiCopilotSidebar, then parses the
    * ACTION_MARKER payload and executes each update against IndexedDB.
    */
+  /** True when the fresh queue is empty but previously-failed books remain. */
+  const enrichIsRecheck = booksNeedingDetails.length === 0 && booksStillIncomplete.length > 0
+  const enrichQueue     = enrichIsRecheck ? booksStillIncomplete : booksNeedingDetails
+
   const handleAiFill = async () => {
     if (enrichPhase.stage !== 'idle') return
-    const candidates = booksNeedingDetails.slice(0, 20)
+    const candidates = enrichQueue.slice(0, 20)
     if (candidates.length === 0) {
-      toast('Every book already has a page count and genre.', 'info')
+      toast('Every book already has its details.', 'info')
       return
     }
     if (!config.userApiKey) {
@@ -1263,10 +1276,21 @@ export default function BookTrackerDashboard() {
     /* Set the moment any provider reports a throttle. Every worker checks
        it, so the sweep stops within one book of the limit instead of
        marching through the rest of the shelf collecting failures. */
-    let throttled = false
+    /*
+     * Throttle state is PER PROVIDER. Previously one 429 set a single
+     * global flag and aborted the whole sweep — so a limit on Open
+     * Library also skipped Google Books, and pressing retry hit the same
+     * limit on the same first book every time. There was no way out.
+     *
+     * Now a throttled provider is simply taken out of rotation; the pass
+     * continues on whatever is left, and only stops when both are gone.
+     */
+    const throttled: { openlibrary: boolean; google: boolean } =
+      { openlibrary: false, google: false }
+    const allThrottled = () => throttled.openlibrary && throttled.google
 
     const worker = async () => {
-      while (cursor < queue.length && !controller.signal.aborted && !throttled) {
+      while (cursor < queue.length && !controller.signal.aborted && !allThrottled()) {
         const queued = queue[cursor++]
 
         /*
@@ -1284,10 +1308,17 @@ export default function BookTrackerDashboard() {
 
         let result: CoverLookupResult
         try {
-          result = await resolveCover(book, { verify: true, signal: controller.signal })
+          result = await resolveCover(book, {
+            verify: true,
+            signal: controller.signal,
+            throttled,
+          })
         } catch {
           result = { url: null, failure: 'offline' }
         }
+
+        /* Take the offending provider out of rotation for this pass. */
+        if (result.throttledProvider) throttled[result.throttledProvider] = true
         if (controller.signal.aborted) return
 
         /*
@@ -1304,12 +1335,15 @@ export default function BookTrackerDashboard() {
          * next visit tries again.
          */
         if (result.failure === 'rate_limited' || result.failure === 'offline') {
-          if (result.failure === 'rate_limited') throttled = true
           // An ISBN discovered before the throttle is still worth keeping.
           if (result.isbn13 && !book.isbn13) {
             try { await db.library_books.update(book.id, { isbn13: result.isbn13 }) } catch { /* gone */ }
           }
-          return
+          /* Offline means the network is gone — stop. A throttle on one
+             provider does not: put this book back and carry on, so the
+             pass makes progress through whatever is still answering. */
+          if (result.failure === 'offline' || allThrottled()) return
+          continue
         }
 
         try {
@@ -1327,6 +1361,11 @@ export default function BookTrackerDashboard() {
         if (result.url) found++
         done++
         if (coverMountedRef.current) setCoverPhase(p => (p.running ? { ...p, done } : p))
+
+        /* Pace the pass. Free, un-keyed endpoints throttle on burst rate
+           as much as on volume, and a short gap between books is far
+           cheaper than tripping a limit and losing the rest of the run. */
+        if (cursor < queue.length) await new Promise(r => setTimeout(r, REQUEST_GAP_MS))
       }
     }
 
@@ -1347,11 +1386,15 @@ export default function BookTrackerDashboard() {
     /* Worth saying out loud even on a silent pass: the user is staring at a
        shelf of blank spines and needs to know it is a temporary throttle
        rather than "these books have no covers". */
-    if (throttled) {
+    const anyThrottled = throttled.openlibrary || throttled.google
+    if (anyThrottled) {
+      const which = throttled.openlibrary && throttled.google
+        ? 'Both cover services are'
+        : throttled.openlibrary ? 'Open Library is' : 'Google Books is'
       toast(
         found > 0
-          ? `Found ${found} cover${found === 1 ? '' : 's'}, then the cover service rate-limited us. The rest will resume next time you open the Library.`
-          : 'The cover service is rate-limiting right now — nothing was cached, so this will retry automatically next time you open the Library.',
+          ? `Found ${found} cover${found === 1 ? '' : 's'}. ${which} rate-limiting — the rest are still queued and nothing was marked as "no cover".`
+          : `${which} rate-limiting right now. Nothing was cached as a miss, so these stay queued — try again in a few minutes.`,
         'info',
       )
       return
@@ -1602,15 +1645,21 @@ export default function BookTrackerDashboard() {
           <button
             className={styles.librarianBtn}
             onClick={handleAiFill}
-            disabled={enrichPhase.stage !== 'idle' || booksNeedingDetails.length === 0}
-            title={booksNeedingDetails.length === 0
-              ? 'Every book already has a page count and genre'
-              : `Ask the AI Librarian to research ${Math.min(booksNeedingDetails.length, 20)} book${booksNeedingDetails.length === 1 ? '' : 's'} missing details`}
+            disabled={enrichPhase.stage !== 'idle' || enrichQueue.length === 0}
+            title={enrichQueue.length === 0
+              ? 'Every book already has its details'
+              : enrichIsRecheck
+                ? `Ask again about ${Math.min(enrichQueue.length, 20)} book${enrichQueue.length === 1 ? '' : 's'} the Librarian could not place last time`
+                : `Ask the AI Librarian to research ${Math.min(enrichQueue.length, 20)} book${enrichQueue.length === 1 ? '' : 's'} missing details`}
           >
             {enrichPhase.stage !== 'idle'
               ? <><span className={styles.librarianSpinner} aria-hidden="true" />
                   {enrichPhase.stage === 'researching' ? 'Researching…' : 'Saving…'}</>
-              : `✨ Ask AI to Fill Details${booksNeedingDetails.length > 0 ? ` (${Math.min(booksNeedingDetails.length, 20)})` : ''}`}
+              : enrichQueue.length === 0
+                ? '✨ Details complete'
+                : enrichIsRecheck
+                  ? `✨ Re-check details (${Math.min(enrichQueue.length, 20)})`
+                  : `✨ Ask AI to Fill Details (${Math.min(enrichQueue.length, 20)})`}
           </button>
           <button
             className={`${styles.editModeBtn} ${editMode ? styles.editModeBtnOn : ''}`}
