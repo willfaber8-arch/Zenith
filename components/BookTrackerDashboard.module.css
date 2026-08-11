@@ -265,6 +265,28 @@
   cursor: not-allowed;
 }
 
+/* Deliberately quiet: waiting out the cooldown is the right default, so
+   the override reads as a link rather than a second primary action. */
+.coverOverrideBtn {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--text-dark);
+  padding: 0 1px 1px;
+  margin-left: -6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 200ms var(--ease-smooth), border-color 200ms var(--ease-smooth);
+}
+
+.coverOverrideBtn:hover {
+  color: var(--accent-purple);
+  border-bottom-color: var(--accent-purple);
+}
+
 .coverBtnRunning:disabled {
   opacity: 0.85;
   cursor: wait;
