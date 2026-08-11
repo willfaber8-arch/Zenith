@@ -31,6 +31,9 @@ import { useAiConfig } from '@/lib/hooks/useAiConfig'
 import { ACTION_MARKER, type CopilotAction } from '@/lib/copilotTools'
 import { executeCopilotAction } from '@/lib/copilotActions'
 import BookRecommendationFeed from './BookRecommendationFeed'
+import { useShelves } from '@/lib/hooks/useShelves'
+import { repairBrokenCovers } from '@/lib/coverRepair'
+import type { LibraryShelf } from '@/types/bookTracker'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 import {
@@ -298,6 +301,34 @@ function StarRow({
 /** Front-cover proportions (width ÷ height) — a standard trade paperback. */
 const COVER_ASPECT = 0.66
 
+/**
+ * A stored cover URL that will not render is worse than no cover at all.
+ *
+ * The row still holds a *string* `coverUrl`, which is neither `undefined`
+ * (never looked up) nor `null` (looked up, nothing found) — so the book
+ * sits in neither retry queue and can never be fixed. It shows nothing,
+ * forever, and the button cheerfully reports "Covers up to date".
+ *
+ * So the failure is recorded rather than swallowed: demote the row to a
+ * recorded miss, which is exactly the state the retry button is built to
+ * pick up. That heals the existing broken rows on sight, and keeps
+ * working for causes nobody has thought of yet — a CDN retiring a host,
+ * ordinary link rot, a cover that 200s today and 403s next month.
+ *
+ * Guarded so a transient offline blip does not wipe good artwork: only a
+ * genuine load failure while the network is up demotes the row.
+ */
+async function demoteBrokenCover(book: LibraryBook): Promise<void> {
+  if (!db || !book.id) return
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  try {
+    const row = await db.library_books.get(book.id)
+    // Re-read: a sweep may have replaced the URL since this <img> started.
+    if (!row || row.coverUrl !== book.coverUrl) return
+    await db.library_books.update(book.id, { coverUrl: null, coverCheckedAt: Date.now() })
+  } catch { /* row gone — nothing to demote */ }
+}
+
 /* ── A single book spine on the shelf ────────────────────── */
 /**
  * A book on the shelf. At rest it is purely a spine; the front cover is folded
@@ -319,6 +350,11 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
   const [imgState, setImgState] = useState<'loading' | 'ok' | 'error'>('loading')
   useEffect(() => { setImgState('loading') }, [src])
   const showCover = src !== null && imgState !== 'error'
+
+  const onCoverError = () => {
+    setImgState('error')
+    void demoteBrokenCover(book)
+  }
 
   return (
     <button
@@ -375,7 +411,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
             decoding="async"
             referrerPolicy="no-referrer"
             onLoad={() => setImgState('ok')}
-            onError={() => setImgState('error')}
+            onError={onCoverError}
           />
         </span>
       )}
@@ -391,6 +427,11 @@ function DetailCoverArt({ book, color }: { book: LibraryBook; color: string }) {
   const [failed, setFailed] = useState(false)
   const src = book.coverUrl || null
 
+  const onCoverError = () => {
+    setFailed(true)
+    void demoteBrokenCover(book)
+  }
+
   if (src !== null && !failed) {
     return (
       <div className={styles.detailCoverWrap}>
@@ -401,7 +442,7 @@ function DetailCoverArt({ book, color }: { book: LibraryBook; color: string }) {
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
+          onError={onCoverError}
         />
       </div>
     )
@@ -503,10 +544,183 @@ function FullContextTable({ books }: { books: LibraryBook[] }) {
 }
 
 /* ── Book detail modal (opened from a spine) ─────────────── */
+
+
+/* ── Shelf manager ────────────────────────────────────────────
+   Create, rename, exclude, delete. Deletion unfiles the books rather
+   than removing them — a shelf is a label, and losing a label should
+   never lose a book. */
+
+function ShelfManager({
+  shelves, counts, onCreate, onRename, onDelete, onSetExcluded, onClose,
+}: {
+  shelves: LibraryShelf[]
+  counts: Record<string, number>
+  onCreate: (name: string) => void
+  onRename: (id: string, name: string) => void
+  onDelete: (id: string) => void
+  onSetExcluded: (id: string, v: boolean) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState('')
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  const submit = () => {
+    const clean = draft.trim()
+    if (!clean) return
+    onCreate(clean)
+    setDraft('')
+  }
+
+  return (
+    <ModalPortal>
+      <div className={styles.modalBackdrop} onClick={onClose} />
+      <div className={styles.shelfMgr} role="dialog" aria-modal="true" aria-labelledby="shelf-mgr-title">
+        <div className={styles.shelfMgrHead}>
+          <h3 id="shelf-mgr-title" className={styles.shelfMgrTitle}>Shelves</h3>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <p className={styles.shelfMgrHint}>
+          Shelves sit alongside Library / TBR / Reading — a book keeps its
+          reading status and can be on as many shelves as you like.
+        </p>
+
+        <div className={styles.shelfNewRow}>
+          <input
+            className={styles.shelfNewInput}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
+            placeholder="New shelf name…"
+            aria-label="New shelf name"
+          />
+          <button className={styles.shelfNewBtn} onClick={submit} disabled={!draft.trim()}>
+            Add
+          </button>
+        </div>
+
+        {shelves.length === 0 ? (
+          <p className={styles.shelfMgrEmpty}>
+            No shelves yet. Try “Sci-fi”, “Textbooks”, or “Did not finish”.
+          </p>
+        ) : (
+          <ul className={styles.shelfMgrList}>
+            {shelves.map(sh => (
+              <li key={sh.id} className={styles.shelfMgrRow}>
+                <span
+                  className={styles.shelfDot}
+                  style={{ '--shelf-color': sh.color ?? 'var(--accent-purple)' } as React.CSSProperties}
+                  aria-hidden="true"
+                />
+                <input
+                  className={styles.shelfRename}
+                  defaultValue={sh.name}
+                  onBlur={e => {
+                    const v = e.target.value.trim()
+                    if (v && v !== sh.name) onRename(sh.id, v)
+                    else e.target.value = sh.name
+                  }}
+                  aria-label={`Rename ${sh.name}`}
+                />
+                <span className={styles.shelfMgrCount}>{counts[sh.id] ?? 0}</span>
+
+                <label className={styles.shelfExclude} title="Ignore this shelf when suggesting new books">
+                  <input
+                    type="checkbox"
+                    checked={!!sh.excludeFromRecs}
+                    onChange={e => onSetExcluded(sh.id, e.target.checked)}
+                  />
+                  <span>No recs</span>
+                </label>
+
+                {confirmId === sh.id ? (
+                  <span className={styles.shelfConfirm}>
+                    <button
+                      className={styles.shelfConfirmYes}
+                      onClick={() => { onDelete(sh.id); setConfirmId(null) }}
+                    >
+                      Delete shelf
+                    </button>
+                    <button className={styles.shelfConfirmNo} onClick={() => setConfirmId(null)}>
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className={styles.shelfDel}
+                    onClick={() => setConfirmId(sh.id)}
+                    aria-label={`Delete shelf ${sh.name}`}
+                  >
+                    ✕
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className={styles.shelfMgrFoot}>
+          Deleting a shelf only removes the label — every book stays in your library.
+        </p>
+      </div>
+    </ModalPortal>
+  )
+}
+
+/* ── Shelf bar ────────────────────────────────────────────────
+   Shelves are a filter over whatever tab you are already on, not a
+   fourth tab. "Sci-fi" means the sci-fi books on this shelf, so it
+   composes with Library / TBR / Reading instead of competing. */
+
+function ShelfBar({
+  shelves, activeShelfId, onPick, onManage, counts,
+}: {
+  shelves: LibraryShelf[]
+  activeShelfId: string | null
+  onPick: (id: string | null) => void
+  onManage: () => void
+  counts: Record<string, number>
+}) {
+  return (
+    <div className={styles.shelfBar} role="group" aria-label="Shelves">
+      <button
+        className={`${styles.shelfChip} ${activeShelfId === null ? styles.shelfChipOn : ''}`}
+        onClick={() => onPick(null)}
+        aria-pressed={activeShelfId === null}
+      >
+        All books
+      </button>
+      {shelves.map(sh => (
+        <button
+          key={sh.id}
+          className={`${styles.shelfChip} ${activeShelfId === sh.id ? styles.shelfChipOn : ''}`}
+          style={{ '--shelf-color': sh.color ?? 'var(--accent-purple)' } as React.CSSProperties}
+          onClick={() => onPick(sh.id)}
+          aria-pressed={activeShelfId === sh.id}
+          title={sh.excludeFromRecs ? `${sh.name} — excluded from recommendations` : sh.name}
+        >
+          <span className={styles.shelfDot} aria-hidden="true" />
+          {sh.name}
+          {counts[sh.id] > 0 && <span className={styles.shelfCount}>{counts[sh.id]}</span>}
+          {sh.excludeFromRecs && (
+            <>
+              <span className={styles.shelfMuted} aria-hidden="true">⊘</span>
+              <span className="sr-only">Excluded from recommendations.</span>
+            </>
+          )}
+        </button>
+      ))}
+      <button className={styles.shelfManage} onClick={onManage}>+ Shelves</button>
+    </div>
+  )
+}
+
 function BookDetailModal({
   book, reviewDraft, onReviewChange, onSaveReview,
   onRate, onSetColor, onStatusChange, onDelete, onClose,
   editMode, onEditDetails, onStartReading,
+  shelves, onToggleShelf, onToggleExcluded,
 }: {
   book: LibraryBook
   reviewDraft: string | undefined
@@ -520,6 +734,9 @@ function BookDetailModal({
   editMode: boolean
   onEditDetails: () => void
   onStartReading: () => void
+  shelves: LibraryShelf[]
+  onToggleShelf: (shelfId: string) => void
+  onToggleExcluded: (next: boolean) => void
 }) {
   const color = spineColorFor(book)
   const currentText = reviewDraft !== undefined ? reviewDraft : (book.customReviewText ?? '')
@@ -663,6 +880,51 @@ function BookDetailModal({
               ))}
             </ul>
           )}
+        </div>
+
+        {/* ── Shelves ──────────────────────────────────────────
+            Filing is a toggle per shelf rather than a single picker,
+            because a book genuinely can be on two at once. */}
+        <div className={styles.detailShelves}>
+          <p className={styles.detailShelvesHead}>Shelves</p>
+          {shelves.length === 0 ? (
+            <p className={styles.detailShelvesEmpty}>
+              No shelves yet — make one with <strong>+ Shelves</strong> above.
+            </p>
+          ) : (
+            <div className={styles.shelfPickRow}>
+              {shelves.map(sh => {
+                const on = (book.shelfIds ?? []).includes(sh.id)
+                return (
+                  <button
+                    key={sh.id}
+                    className={`${styles.shelfPick} ${on ? styles.shelfPickOn : ''}`}
+                    style={{ '--shelf-color': sh.color ?? 'var(--accent-purple)' } as React.CSSProperties}
+                    onClick={() => onToggleShelf(sh.id)}
+                    aria-pressed={on}
+                  >
+                    <span className={styles.shelfDot} aria-hidden="true" />
+                    {sh.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <label className={styles.excludeRow}>
+            <input
+              type="checkbox"
+              checked={!!book.excludeFromRecs}
+              onChange={e => onToggleExcluded(e.target.checked)}
+            />
+            <span>
+              Don&rsquo;t use this book for recommendations
+              <span className={styles.excludeHint}>
+                For set texts, gifts and anything abandoned — things that would
+                skew what gets suggested.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className={styles.detailActions}>
@@ -820,6 +1082,13 @@ export default function BookTrackerDashboard() {
   const { authHeaders, config } = useAiConfig()
 
   const [activeTab,    setActiveTab]    = useState<ViewTab>('LIBRARY')
+  const [activeShelfId, setActiveShelfId] = useState<string | null>(null)
+  const [showShelfMgr,  setShowShelfMgr]  = useState(false)
+  const {
+    shelves, createShelf, renameShelf, deleteShelf,
+    setShelfExcluded, toggleBookShelf,
+  } = useShelves()
+  const repairFiredRef = useRef(false)
   const [searchQuery,  setSearchQuery]  = useState('')
   const [importPhase,  setImportPhase]  = useState<'idle' | 'loading' | 'done'>('idle')
   const [kindlePhase,  setKindlePhase]  = useState<'idle' | 'loading'>('idle')
@@ -907,6 +1176,27 @@ export default function BookTrackerDashboard() {
   }, [allClippings])
   const clippingsFor = (bookId: string): KindleClipping[] => clippingsByBook.get(bookId) ?? []
 
+  /*
+   * One-off repair for libraries poisoned by the old cover bug.
+   *
+   * Costs no API quota — verifying a cover is an image load, not an API
+   * call — so it can afford to check every book at once. Anything that
+   * will not render is demoted to a recorded miss, which is the state the
+   * retry button already knows how to pick up.
+   */
+  useEffect(() => {
+    if (repairFiredRef.current || !booksLoaded || allBooks.length === 0) return
+    repairFiredRef.current = true
+    void repairBrokenCovers().then(r => {
+      if (r.skipped || r.demoted === 0) return
+      toast(
+        `Found ${r.demoted} cover${r.demoted === 1 ? '' : 's'} that could not load — `
+        + 'press Fetch covers to look for replacements.',
+        'info',
+      )
+    })
+  }, [booksLoaded, allBooks.length, toast])
+
   const counts = useMemo(() => ({
     total:     allBooks.length,
     completed: allBooks.filter(b => b.readingStatus === 'COMPLETED').length,
@@ -920,21 +1210,36 @@ export default function BookTrackerDashboard() {
     return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
   }
 
+  /* The shelf narrows whichever tab you are on rather than replacing it,
+     so "Sci-fi" on the Library tab means the sci-fi books you've read. */
+  const matchesShelf = (b: LibraryBook) =>
+    activeShelfId === null || (b.shelfIds ?? []).includes(activeShelfId)
+
+  const keep = (b: LibraryBook) => matchesSearch(b) && matchesShelf(b)
+
+  const shelfCounts = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const b of allBooks) {
+      for (const id of b.shelfIds ?? []) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+  }, [allBooks])
+
   const libraryBooks = useMemo(() =>
-    sortBooks(allBooks.filter(b => b.readingStatus === 'COMPLETED' && matchesSearch(b)), sortKey),
-  [allBooks, searchQuery, sortKey])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'COMPLETED' && keep(b)), sortKey),
+  [allBooks, searchQuery, sortKey, activeShelfId])
 
   const tbrBooks = useMemo(() =>
-    sortBooks(allBooks.filter(b => b.readingStatus === 'TO_READ' && matchesSearch(b)), sortKey),
-  [allBooks, searchQuery, sortKey])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'TO_READ' && keep(b)), sortKey),
+  [allBooks, searchQuery, sortKey, activeShelfId])
 
   const readingBooks = useMemo(() =>
-    sortBooks(allBooks.filter(b => b.readingStatus === 'CURRENTLY_READING' && matchesSearch(b)), sortKey),
-  [allBooks, searchQuery, sortKey])
+    sortBooks(allBooks.filter(b => b.readingStatus === 'CURRENTLY_READING' && keep(b)), sortKey),
+  [allBooks, searchQuery, sortKey, activeShelfId])
 
   const allFiltered = useMemo(() =>
-    sortBooks(allBooks.filter(matchesSearch), sortKey),
-  [allBooks, searchQuery, sortKey])
+    sortBooks(allBooks.filter(keep), sortKey),
+  [allBooks, searchQuery, sortKey, activeShelfId])
 
   const selectedBook = selectedId ? allBooks.find(b => b.id === selectedId) ?? null : null
 
@@ -1054,12 +1359,34 @@ export default function BookTrackerDashboard() {
    * ACTION_MARKER payload and executes each update against IndexedDB.
    */
   /** True when the fresh queue is empty but previously-failed books remain. */
+  /*
+   * The union, for the same reason the cover queue is one.
+   *
+   * Offering one group *or* the other means a handful of never-asked
+   * books hide every previously-incomplete one behind them, and the
+   * button reports a number that is not the number of books missing
+   * details. Books already asked about go last, so a fresh press spends
+   * the model's attention on the ones it has never seen.
+   */
+  const enrichQueue = useMemo(
+    () => [...booksNeedingDetails, ...booksStillIncomplete],
+    [booksNeedingDetails, booksStillIncomplete],
+  )
   const enrichIsRecheck = booksNeedingDetails.length === 0 && booksStillIncomplete.length > 0
-  const enrichQueue     = enrichIsRecheck ? booksStillIncomplete : booksNeedingDetails
 
   const handleAiFill = async () => {
     if (enrichPhase.stage !== 'idle') return
-    const candidates = enrichQueue.slice(0, 20)
+    /*
+     * ISBN-less books first.
+     *
+     * An ISBN is worth more than any other field here: it unlocks the
+     * Open Library cover path, which needs no API key and has no quota
+     * worth worrying about. Filling one in turns a book that competes
+     * for Google's daily allowance into one that never touches it again.
+     */
+    const candidates = [...enrichQueue]
+      .sort((a, b) => (a.isbn13 ? 1 : 0) - (b.isbn13 ? 1 : 0))
+      .slice(0, 20)
     if (candidates.length === 0) {
       toast('Every book already has its details.', 'info')
       return
@@ -1812,6 +2139,14 @@ export default function BookTrackerDashboard() {
         ))}
       </div>
 
+      <ShelfBar
+        shelves={shelves}
+        activeShelfId={activeShelfId}
+        onPick={setActiveShelfId}
+        onManage={() => setShowShelfMgr(true)}
+        counts={shelfCounts}
+      />
+
       {/* Search + sort + (library) view toggle */}
       <div className={styles.searchRow}>
         <input
@@ -1962,6 +2297,24 @@ export default function BookTrackerDashboard() {
           editMode={editMode}
           onEditDetails={() => openEditBook(selectedBook)}
           onStartReading={() => setTimerBookId(selectedBook.id)}
+          shelves={shelves}
+          onToggleShelf={id => void toggleBookShelf(selectedBook, id)}
+          onToggleExcluded={next => void db?.library_books.update(selectedBook.id, { excludeFromRecs: next })}
+        />
+      )}
+
+      {showShelfMgr && (
+        <ShelfManager
+          shelves={shelves}
+          counts={shelfCounts}
+          onCreate={n => void createShelf(n)}
+          onRename={(id, n) => void renameShelf(id, n)}
+          onDelete={id => {
+            void deleteShelf(id)
+            if (activeShelfId === id) setActiveShelfId(null)
+          }}
+          onSetExcluded={(id, v) => void setShelfExcluded(id, v)}
+          onClose={() => setShowShelfMgr(false)}
         />
       )}
 

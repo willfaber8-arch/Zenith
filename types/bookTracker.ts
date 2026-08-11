@@ -30,6 +30,24 @@ export interface LibraryBook {
   coverUrl?: string | null      // null = looked up, none found
   coverCheckedAt?: number       // UTC ms of the last lookup (avoids retry loops)
   // ── AI Librarian ────────────────────────────────────────────────────
+  /* ── Shelves & recommendations (v40) ─────────────────────────────── */
+  /**
+   * Shelf ids this book sits on. Absent means "no shelves", which is
+   * every pre-existing book — shelves are additive and nothing has to be
+   * filed to keep working.
+   *
+   * Deliberately alongside `readingStatus`, not instead of it: a book can
+   * be COMPLETED and also on "Sci-fi" and "Uni reading" at the same time.
+   */
+  shelfIds?: string[]
+  /**
+   * Never use this book to suggest others.
+   *
+   * For the ones that would skew everything — a textbook, something
+   * abandoned, a gift you did not choose. Distinct from the shelf-level
+   * flag: this is the per-book override.
+   */
+  excludeFromRecs?: boolean
   /** UTC ms of the last enrichment attempt. Set whether or not the model
    *  actually returned anything: some books simply have no ISBN or page
    *  count the model can recall, and without this marker they sit in the
@@ -184,4 +202,30 @@ export function spineColorFor(book: { id: string; spineColor?: string }): string
     h = (h * 31 + book.id.charCodeAt(i)) >>> 0
   }
   return SPINE_COLORS[h % SPINE_COLORS.length]
+}
+
+
+/* ── Shelves ───────────────────────────────────────────────────────── */
+
+/**
+ * A user-defined shelf.
+ *
+ * Just an identity and a couple of settings; membership lives on the
+ * book, so adding or removing a shelf never has to rewrite the library.
+ */
+export interface LibraryShelf {
+  id:        string          // * PK — uuid
+  name:      string          // * indexed — display name
+  sortOrder: number          // * indexed — position in the shelf bar
+  /** Accent colour for the shelf chip. */
+  color?:    string
+  /**
+   * Ignore everything on this shelf when suggesting new books.
+   *
+   * The shelf-level counterpart to `LibraryBook.excludeFromRecs` — one
+   * toggle for a whole "Textbooks" or "Did not finish" shelf rather than
+   * setting it book by book.
+   */
+  excludeFromRecs?: boolean
+  createdAt: number
 }

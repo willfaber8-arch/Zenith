@@ -50,7 +50,7 @@ import type { VocabDeck, VocabCard } from '@/types/vocabulary'
 export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
-import type { LibraryBook, ReadingSession } from '@/types/bookTracker'
+import type { LibraryBook, LibraryShelf, ReadingSession } from '@/types/bookTracker'
 import { toLocalDateStr } from '@/utils/localDate'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
@@ -632,6 +632,7 @@ class ZenithDatabase extends Dexie {
   relationship_notes!:          EntityTable<RelationshipNote,         'id'>
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
   library_books!:               EntityTable<LibraryBook,              'id'>
+  library_shelves!:             EntityTable<LibraryShelf,             'id'>
   reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
@@ -1276,6 +1277,19 @@ class ZenithDatabase extends Dexie {
      * design. */
     this.version(39).stores({
       campus_dining_halls: 'id, universityId, name',
+    })
+
+    /*
+     * v40 — user-defined shelves.
+     *
+     * Shelves sit ALONGSIDE readingStatus rather than replacing it: a
+     * book can be Completed and also live on "Sci-fi" and "Uni reading"
+     * at once. Membership is a plain array on the book (non-indexed, so
+     * existing rows need no migration and simply have none); this table
+     * only holds each shelf's identity and settings.
+     */
+    this.version(40).stores({
+      library_shelves: 'id, name, sortOrder',
     })
   }
 }
