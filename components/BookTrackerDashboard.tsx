@@ -33,6 +33,7 @@ import { executeCopilotAction } from '@/lib/copilotActions'
 import BookRecommendationFeed from './BookRecommendationFeed'
 import { useShelves } from '@/lib/hooks/useShelves'
 import { repairBrokenCovers } from '@/lib/coverRepair'
+import { coverSrc, verifyCover } from '@/lib/coverProxy'
 import type { LibraryShelf } from '@/types/bookTracker'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -306,21 +307,26 @@ const COVER_ASPECT = 0.66
  *
  * The row still holds a *string* `coverUrl`, which is neither `undefined`
  * (never looked up) nor `null` (looked up, nothing found) — so the book
- * sits in neither retry queue and can never be fixed. It shows nothing,
- * forever, and the button cheerfully reports "Covers up to date".
+ * sits in neither retry queue and can never be fixed.
  *
- * So the failure is recorded rather than swallowed: demote the row to a
- * recorded miss, which is exactly the state the retry button is built to
- * pick up. That heals the existing broken rows on sight, and keeps
- * working for causes nobody has thought of yet — a CDN retiring a host,
- * ordinary link rot, a cover that 200s today and 403s next month.
+ * But an <img> that fails tells you nothing about WHY. A dead URL and a
+ * rate-limited burst produce the identical event, and the shelf mounting
+ * twenty covers at once is exactly the sort of burst that gets throttled.
+ * Demoting on that signal alone would take a shelf of perfectly good
+ * covers and record every one of them as a permanent miss — the same
+ * mistake as the bug this was written to fix, pointed the other way.
  *
- * Guarded so a transient offline blip does not wipe good artwork: only a
- * genuine load failure while the network is up demotes the row.
+ * So the image error is only a prompt to go and ask properly. The proxy
+ * runs on our own origin, so the real status code is readable: a 404 is
+ * an answer and gets recorded, a 503 or a timeout is not and is left
+ * alone for the next attempt.
  */
 async function demoteBrokenCover(book: LibraryBook): Promise<void> {
-  if (!db || !book.id) return
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  if (!db || !book.id || !book.coverUrl) return
+
+  const verdict = await verifyCover(book.coverUrl)
+  if (verdict !== 'missing') return          // 'ok' or inconclusive — keep it
+
   try {
     const row = await db.library_books.get(book.id)
     // Re-read: a sweep may have replaced the URL since this <img> started.
@@ -346,7 +352,10 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
   // `coverUrl` points at an arbitrary remote host, so the <img> itself is the
   // only reliable validator. A 404 / blocked host flips this to 'error' and the
   // cover face is dropped entirely — never an empty white rectangle.
-  const src = book.coverUrl || null
+  // Served from our own origin: the shelf mounting every cover at once
+  // is a burst that upstream image hosts throttle, and a cached same-origin
+  // response never reaches them.
+  const src = coverSrc(book.coverUrl)
   const [imgState, setImgState] = useState<'loading' | 'ok' | 'error'>('loading')
   useEffect(() => { setImgState('loading') }, [src])
   const showCover = src !== null && imgState !== 'error'
@@ -356,9 +365,27 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
     void demoteBrokenCover(book)
   }
 
+  /*
+   * The swing-out jacket is only fetched once the book has actually been
+   * pointed at.
+   *
+   * It renders the same image as the spine art, and being transformed and
+   * transparent does not stop the browser fetching it — so every book on
+   * the shelf was requesting its cover twice, doubling a burst that image
+   * hosts already throttle. Verified: sixteen books, thirty-two requests.
+   *
+   * Once revealed it stays mounted, and by then the spine art has already
+   * put the identical URL in the browser cache, so the first hover is a
+   * cache hit rather than a visible delay.
+   */
+  const [revealed, setRevealed] = useState(false)
+  const reveal = () => { if (!revealed) setRevealed(true) }
+
   return (
     <button
       className={`${styles.spine} ${showCover ? styles.spineWithCover : ''}`}
+      onMouseEnter={reveal}
+      onFocus={reveal}
       style={{
         // The colour drives layered gradients in CSS (sheen, rounded-spine
         // shading, page edge) rather than a flat inline background.
@@ -386,6 +413,8 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
+            onLoad={() => setImgState('ok')}
+            onError={onCoverError}
           />
         )}
         <span className={styles.spineBandTop} />
@@ -398,7 +427,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         {showCover && <span className={styles.coverPip} aria-hidden="true" />}
       </span>
 
-      {showCover && (
+      {showCover && revealed && (
         <span
           className={`${styles.coverFace} ${imgState === 'loading' ? styles.coverFaceLoading : ''}`}
           aria-hidden="true"
@@ -407,11 +436,8 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
             className={styles.coverImg}
             src={src}
             alt=""
-            loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            onLoad={() => setImgState('ok')}
-            onError={onCoverError}
           />
         </span>
       )}
@@ -425,7 +451,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
  */
 function DetailCoverArt({ book, color }: { book: LibraryBook; color: string }) {
   const [failed, setFailed] = useState(false)
-  const src = book.coverUrl || null
+  const src = coverSrc(book.coverUrl)
 
   const onCoverError = () => {
     setFailed(true)
