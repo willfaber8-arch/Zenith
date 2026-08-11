@@ -1179,9 +1179,33 @@
   top: -3%;
   left: -1px;
   height: 106%;
-  width: calc(var(--cover-w, 150px) + 2px);
+  /*
+   * Scaled on BOTH axes by the same 6%.
+   *
+   * `--cover-w` is derived from the jacket's aspect against the spine's
+   * full height, so growing only the height changed the face's aspect
+   * ratio and `object-fit: contain` letterboxed it — dark bands across
+   * the top and bottom of every cover, which read as the artwork being
+   * cut off.
+   */
+  width: calc(var(--cover-w, 150px) * 1.06 + 2px);
   transform-origin: left center;
-  transform: rotateY(90deg);
+  /*
+   * Lifted off the spine's plane before it hinges.
+   *
+   * The jacket is hinged along the spine's left edge, so the two planes
+   * meet there and the renderer depth-sorts them per pixel. Where the
+   * book is pivoted the spine's page-edge won that sort along the
+   * jacket's right side and drew over the artwork — the cover looked set
+   * back behind the edge, with a strip of it cut off.
+   *
+   * A few pixels toward the viewer, applied before the rotation so it is
+   * a translation in the book's own space, makes the jacket unambiguously
+   * the frontmost surface. It is not physically how a book works, but the
+   * whole reveal is a stylisation and a cover that is not occluded by its
+   * own book is the point of it.
+   */
+  transform: translateZ(8px) rotateY(90deg);
   transform-style: flat;
   backface-visibility: hidden;
   border-radius: 2px 3px 3px 2px;
