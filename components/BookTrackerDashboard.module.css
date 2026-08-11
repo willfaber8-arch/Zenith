@@ -1182,24 +1182,30 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /*
-   * The cover's LEFT EDGE, not its middle.
-   *
-   * On a printed book that edge is the part that wraps around onto the
-   * spine, so it is the only strip of a front cover that has any business
-   * being there. Cropping to the centre put half a face and a chunk of
-   * title down each spine, which is what made a shelf look like smeared
-   * thumbnails rather than books.
-   */
   object-position: left center;
   border-radius: inherit;
+
   /*
-   * Quieter than it was. The spine's base colour is now sampled from this
-   * same cover, so the artwork no longer has to carry the book's identity
-   * on its own — it just has to stop the spine looking like flat paint.
+   * Blurred past legibility, deliberately.
+   *
+   * A front cover squeezed into a 60px strip put half a face and a
+   * fragment of the title down every spine — you could read "SAN" and
+   * "BRA ND" on the shelf, which looks like a rendering fault rather
+   * than a book. Real spines do not carry the cover image at all.
+   *
+   * What the artwork is still good for is tone: a band of colour where
+   * the cover is dark, a lift where it is bright. Blurring hard keeps
+   * that and throws away the shapes. The image is still loaded, which
+   * matters twice over — it is what the spine colour is sampled from,
+   * and it primes the browser cache for the jacket that swings out on
+   * hover.
    */
-  opacity: 0.22;
-  filter: saturate(0.75) contrast(1.02) brightness(0.55);
+  filter: blur(9px) saturate(0.7) brightness(0.55);
+  /* Scaled up so the blur's soft edges fall outside the spine instead of
+     leaving a pale halo around the border. */
+  transform: scale(1.3);
+  opacity: 0.30;
+
   pointer-events: none;
   z-index: 0;
   transition: opacity 300ms var(--ease-smooth);
