@@ -356,7 +356,9 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
   }, [plants, plantLogs])
 
   return (
-    <div className={styles.panel}>
+    /* Single column even on a wide screen: the days are a sequence, and
+       flowing them into two columns puts Thursday next to Monday. */
+    <div className={`${styles.panel} ${styles.panelWeek}`}>
 
       {/* ── Weekly plant-care summary ────────────────────────── */}
       {plants.length > 0 && (
