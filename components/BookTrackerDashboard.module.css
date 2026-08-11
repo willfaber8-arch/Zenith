@@ -2127,3 +2127,290 @@
     align-items: center;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Shelves
+
+   A filter over whatever tab is open, not a fourth tab — so the
+   bar reads as secondary to the tabs above it, and an active
+   shelf is tinted with that shelf's own colour rather than the
+   category accent.
+   ════════════════════════════════════════════════════════════ */
+
+.shelfBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: var(--sp-3) 0 var(--sp-2);
+}
+
+.shelfChip {
+  --shelf-color: var(--accent-purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth),
+              background var(--dur-fast) var(--ease-smooth);
+}
+
+.shelfChip:hover { color: var(--text-primary); border-color: var(--shelf-color); }
+
+.shelfChip:focus-visible {
+  outline: 2px solid var(--shelf-color);
+  outline-offset: 1px;
+}
+
+.shelfChipOn {
+  color: var(--text-primary);
+  border-color: var(--shelf-color);
+  /* Tint from the shelf's own colour so the bar stays readable when
+     several shelves are in play. */
+  background: color-mix(in srgb, var(--shelf-color) 16%, var(--surface-card));
+}
+
+.shelfDot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--shelf-color, var(--accent-purple));
+  flex-shrink: 0;
+}
+
+.shelfCount {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dark);
+}
+
+.shelfMuted { color: var(--text-dark); font-size: 0.7rem; }
+
+.shelfManage {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-subtle);
+  background: none;
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.shelfManage:hover { color: var(--text-muted); border-color: var(--text-dark); }
+
+/* ── Shelf picker inside the book detail modal ─────────────── */
+
+.detailShelves {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.detailShelvesHead {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.detailShelvesEmpty { margin: 0; font-size: 0.75rem; color: var(--text-dark); }
+
+.shelfPickRow { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.shelfPick {
+  --shelf-color: var(--accent-purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.shelfPick:hover  { border-color: var(--shelf-color); color: var(--text-primary); }
+.shelfPickOn {
+  border-color: var(--shelf-color);
+  background: color-mix(in srgb, var(--shelf-color) 18%, transparent);
+  color: var(--text-primary);
+}
+
+.excludeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.excludeRow input { margin-top: 3px; accent-color: var(--accent-purple); cursor: pointer; }
+
+.excludeHint {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-dark);
+  line-height: 1.45;
+}
+
+/* ── Shelf manager modal ───────────────────────────────────── */
+
+.shelfMgr {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 401;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  animation: scaleIn var(--dur-base) var(--ease-expo) both;
+}
+
+.shelfMgrHead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.shelfMgrTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.shelfMgrHint,
+.shelfMgrFoot {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--text-dark);
+}
+.shelfMgrFoot { margin-top: var(--sp-3); }
+
+.shelfNewRow { display: flex; gap: var(--sp-2); margin: var(--sp-4) 0 var(--sp-3); }
+
+.shelfNewInput {
+  flex: 1; min-width: 0;
+  padding: 7px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+.shelfNewInput:focus-visible { outline: none; border-color: var(--accent-purple); }
+
+.shelfNewBtn {
+  padding: 7px 15px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-purple);
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--accent-purple);
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.shelfNewBtn:disabled { opacity: 0.45; cursor: default; }
+
+.shelfMgrEmpty { font-size: 0.78rem; color: var(--text-dark); padding: var(--sp-3) 0; }
+
+.shelfMgrList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.shelfMgrRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  background: var(--bg-hover);
+}
+
+.shelfRename {
+  flex: 1; min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+.shelfRename:hover { background: var(--bg-active); }
+.shelfRename:focus-visible {
+  outline: none;
+  background: var(--bg-active);
+  border-color: var(--accent-purple);
+}
+
+.shelfMgrCount {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dark);
+  min-width: 22px;
+  text-align: right;
+}
+
+.shelfExclude {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.shelfExclude input { accent-color: var(--accent-purple); cursor: pointer; }
+
+.shelfDel {
+  width: 24px; height: 24px;
+  border: none; background: none;
+  color: var(--text-dark);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.shelfDel:hover { color: #f87171; background: rgba(248, 113, 113, 0.12); }
+
+/* Deleting is one click away from a label that took work to file, so it
+   asks first — inline rather than as a second modal. */
+.shelfConfirm { display: inline-flex; gap: 6px; align-items: center; }
+
+.shelfConfirmYes {
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  font-size: 0.68rem; cursor: pointer; white-space: nowrap;
+}
+
+.shelfConfirmNo {
+  padding: 3px 7px;
+  border: none; background: none;
+  color: var(--text-dark);
+  font-size: 0.68rem; cursor: pointer;
+}
+.shelfConfirmNo:hover { color: var(--text-muted); }
+
+@media (max-width: 560px) {
+  .shelfMgrRow { flex-wrap: wrap; }
+  .shelfRename { flex-basis: 100%; }
+}

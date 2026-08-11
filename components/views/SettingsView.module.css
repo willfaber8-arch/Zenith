@@ -1521,3 +1521,124 @@
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ── Google Books key ─────────────────────────────────────────
+   A second, unrelated key living in the AI section because it has
+   the same shape and the same privacy story: local only, sent to
+   one upstream service, never to us. */
+
+.googleBooksBlock {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subHeading {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.keyRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+.keyInput {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.keyInput:focus-visible { outline: none; border-color: var(--accent-purple); }
+
+.keySaveBtn {
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-purple);
+  background: rgba(124, 149, 255, 0.12);
+  color: var(--accent-purple);
+  font-size: 0.76rem; font-weight: 600; cursor: pointer;
+}
+.keySaveBtn:disabled { opacity: 0.45; cursor: default; }
+
+.keyClearBtn {
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem; cursor: pointer;
+}
+.keyClearBtn:hover { color: var(--text-primary); border-color: var(--text-dark); }
+
+/* ── Library reset ────────────────────────────────────────────
+   Destructive and irreversible, so it arms before it fires and
+   states the count out loud rather than saying "are you sure?". */
+
+.resetBlock {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.resetArm {
+  margin-top: var(--sp-3);
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.resetArm:hover:not(:disabled) { color: #f87171; border-color: rgba(248, 113, 113, 0.5); }
+.resetArm:disabled { opacity: 0.45; cursor: default; }
+
+.resetConfirmRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.07);
+}
+
+.resetWarn {
+  flex: 1 1 260px;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.resetGo {
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap;
+}
+.resetGo:hover { background: rgba(248, 113, 113, 0.26); }
+
+.resetCancel {
+  padding: 7px 12px;
+  border: none; background: none;
+  color: var(--text-muted);
+  font-size: 0.75rem; cursor: pointer;
+}
+.resetCancel:hover { color: var(--text-primary); }

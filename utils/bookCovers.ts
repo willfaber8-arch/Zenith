@@ -38,6 +38,7 @@
  */
 
 import type { LibraryBook } from '@/types/bookTracker'
+import { getGoogleBooksKey } from '@/lib/googleBooksKey'
 
 /* ── Open Library ─────────────────────────────────────────────── */
 
@@ -87,6 +88,18 @@ function probeImage(url: string, timeoutMs = 8000, signal?: AbortSignal): Promis
     img.referrerPolicy = 'no-referrer'
     img.src = url
   })
+}
+
+/**
+ * Public wrapper over the same probe the resolver uses.
+ *
+ * Exported so the repair pass validates covers by exactly the test the
+ * UI applies, rather than a second implementation that could disagree
+ * with it — the whole defect being repaired came from one code path not
+ * running this check.
+ */
+export function probeCoverUrl(url: string, timeoutMs = 8000): Promise<boolean> {
+  return probeImage(url, timeoutMs)
 }
 
 /* ── Title / author normalisation ─────────────────────────────── */
@@ -332,7 +345,15 @@ interface GoogleQueryOutcome {
  * the limit quietly wrote a permanent null onto every remaining book.
  */
 async function runGoogleQuery(q: string, signal?: AbortSignal): Promise<GoogleQueryOutcome> {
-  const url = `https://www.googleapis.com/books/v1/volumes?maxResults=5&country=US&q=${encodeURIComponent(q)}`
+  /*
+   * A user-supplied key raises the daily ceiling from the shared per-IP
+   * allowance to a per-project one. Blank is fine and is the default —
+   * it simply keeps the old, lower limit.
+   */
+  const key = getGoogleBooksKey()
+  const url = `https://www.googleapis.com/books/v1/volumes?maxResults=5&country=US`
+    + `&q=${encodeURIComponent(q)}`
+    + (key ? `&key=${encodeURIComponent(key)}` : '')
   const res = await fetchWithBackoff(url, signal)
   // 403 is a spent daily quota, 429 a burst limit — both are "wait".
   if (res === 'throttled') {
@@ -346,7 +367,27 @@ async function runGoogleQuery(q: string, signal?: AbortSignal): Promise<GoogleQu
     for (const item of data.items ?? []) {
       const thumb = item.volumeInfo?.imageLinks?.thumbnail
         ?? item.volumeInfo?.imageLinks?.smallThumbnail
-      if (thumb) return { url: normaliseGoogleThumb(thumb) }
+      if (!thumb) continue
+
+      /*
+       * VERIFY BEFORE RETURNING.
+       *
+       * This was the one path of three that handed back a URL nobody had
+       * loaded. Both Open Library paths probe; Google's did not, so a
+       * thumbnail that answers the API but refuses to render — hotlink
+       * protection, a dead volume id, a 403 — was written onto the book
+       * as a successful cover.
+       *
+       * The consequence was invisible and unrecoverable: the shelf drops
+       * an image that errors, so the book showed nothing, while the row
+       * held a *string* coverUrl. That is neither `undefined` (never
+       * looked up) nor `null` (looked up, none found), so the book fell
+       * out of both retry queues for good. Every "Fetch covers" press
+       * then spent quota on the shrinking remainder until Google started
+       * refusing outright — which is what the rate limiting actually was.
+       */
+      const url = normaliseGoogleThumb(thumb)
+      if (await probeImage(url, 8000, signal)) return { url }
     }
     return { url: null, failure: 'not_found' }
   } catch {

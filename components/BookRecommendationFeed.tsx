@@ -25,6 +25,7 @@ import { db } from '@/lib/db'
 import type { LibraryBook } from '@/types/bookTracker'
 import { useToast } from '@/lib/ToastContext'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
+import { useShelves, isRecommendationSource } from '@/lib/hooks/useShelves'
 import styles from './BookRecommendationFeed.module.css'
 
 /* ── Shape the model is asked to return ───────────────────────── */
@@ -151,10 +152,18 @@ export default function BookRecommendationFeed({ allBooks }: { allBooks: Library
   }, [])
 
   /* Finished books are the taste signal. Currently-reading and TBR say
-     nothing about whether the reader actually liked anything. */
+     nothing about whether the reader actually liked anything.
+
+     Books the user has excluded are dropped here too — either
+     individually or by sitting on an excluded shelf. A shelf of set
+     texts or abandoned books would otherwise drag every suggestion
+     toward things nobody chose to read. */
+  const { excludedShelfIds } = useShelves()
+
   const readBooks = useMemo(
-    () => allBooks.filter(b => b.readingStatus === 'COMPLETED'),
-    [allBooks],
+    () => allBooks.filter(b =>
+      b.readingStatus === 'COMPLETED' && isRecommendationSource(b, excludedShelfIds)),
+    [allBooks, excludedShelfIds],
   )
 
   /* Every book already known to the library, in any status — the exclusion
@@ -163,6 +172,12 @@ export default function BookRecommendationFeed({ allBooks }: { allBooks: Library
   const ownedKeys = useMemo(
     () => new Set(allBooks.map(b => bookKey(b.title, b.author || ''))),
     [allBooks],
+  )
+
+  const excludedCount = useMemo(
+    () => allBooks.filter(b =>
+      b.readingStatus === 'COMPLETED' && !isRecommendationSource(b, excludedShelfIds)).length,
+    [allBooks, excludedShelfIds],
   )
 
   const ratedCount = useMemo(

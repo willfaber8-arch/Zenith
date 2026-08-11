@@ -42,6 +42,10 @@ import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import CloudSnapshotManager       from '@/components/CloudSnapshotManager'
 import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
+import {
+  getGoogleBooksKey, setGoogleBooksKey, maskGoogleBooksKey,
+} from '@/lib/googleBooksKey'
+import { resetCoverRepairFlag } from '@/lib/coverRepair'
 import styles from './SettingsView.module.css'
 
 /* ── Section wrapper ──────────────────────────────────────────── */
@@ -554,6 +558,59 @@ export default function SettingsView() {
     }
   }, [])
 
+  /* ── Library reset ─────────────────────────────────────────── */
+  const [libResetArmed, setLibResetArmed] = useState(false)
+  const libBookCount = useLiveQuery(
+    async () => (db ? db.library_books.count() : 0),
+    [],
+  ) ?? 0
+
+  const handleResetLibrary = useCallback(async () => {
+    if (!db) return
+    try {
+      /*
+       * One transaction over every table that references a book, so a
+       * failure part-way cannot leave sessions and highlights pointing at
+       * books that no longer exist.
+       */
+      await db.transaction('rw',
+        db.library_books, db.library_shelves, db.reading_sessions, db.kindle_clippings,
+        async () => {
+          await db.library_books.clear()
+          await db.library_shelves.clear()
+          await db.reading_sessions.clear()
+          await db.kindle_clippings.clear()
+        })
+      // The cover repair is keyed to a library that no longer exists.
+      resetCoverRepairFlag()
+      setLibResetArmed(false)
+      toast('Library cleared. Import a Goodreads CSV to start again.', 'success')
+    } catch {
+      toast('Could not clear the library — nothing was deleted.', 'error')
+    }
+  }, [toast])
+
+  /* ── Google Books key ──────────────────────────────────────── */
+  const [gbInput,    setGbInput]    = useState('')
+  const [gbSavedKey, setGbSavedKey] = useState('')
+  useEffect(() => { setGbSavedKey(getGoogleBooksKey()) }, [])
+
+  const handleSaveGbKey = useCallback(() => {
+    const k = gbInput.trim()
+    if (!k) return
+    setGoogleBooksKey(k)
+    setGbSavedKey(k)
+    setGbInput('')
+    toast('Google Books key saved locally. Cover lookups now use your own quota.', 'success')
+  }, [gbInput, toast])
+
+  const handleClearGbKey = useCallback(() => {
+    setGoogleBooksKey('')
+    setGbSavedKey('')
+    setGbInput('')
+    toast('Google Books key cleared — back to the shared allowance.', 'info')
+  }, [toast])
+
   /* ── AI Provider config ────────────────────────────────────── */
   const { config: aiConfig, saveKey: saveAiKey, clearKey: clearAiKey, maskedKey, mounted: aiMounted } = useAiConfig()
   const [aiKeyInput,  setAiKeyInput]  = useState('')
@@ -1001,6 +1058,55 @@ export default function SettingsView() {
             as an HTTPS header for forwarding to the AI provider — never logged or persisted.
             Gemini free tier is the easiest starting point; OpenAI has no permanent free tier.
           </p>
+
+          {/* ── Google Books ────────────────────────────────────────
+              A different key for a different service, but it belongs
+              next to the other one: same storage, same privacy story,
+              and the same "paste a key here" shape. */}
+          <div className={styles.googleBooksBlock}>
+            <h3 className={styles.subHeading}>Google Books (optional)</h3>
+            <p className={styles.sectionSubtitle}>
+              Book cover art comes from Open Library first, then Google Books.
+              Google&apos;s key-free endpoint shares one small daily allowance across
+              everyone on your network, which is the &ldquo;rate limited&rdquo; message you
+              hit on a big library. A free key of your own removes that ceiling.
+              Leaving this blank is fine — covers still resolve, just more slowly
+              on busy days.
+            </p>
+
+            <div className={styles.keyRow}>
+              <input
+                className={styles.keyInput}
+                type="password"
+                value={gbInput}
+                onChange={e => setGbInput(e.target.value)}
+                placeholder={gbSavedKey ? maskGoogleBooksKey(gbSavedKey) : 'AIza…'}
+                aria-label="Google Books API key"
+                spellCheck={false}
+              />
+              <button
+                className={styles.keySaveBtn}
+                onClick={handleSaveGbKey}
+                disabled={!gbInput.trim()}
+              >
+                Save
+              </button>
+              {gbSavedKey && (
+                <button className={styles.keyClearBtn} onClick={handleClearGbKey}>
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.aiProviderLink}
+            >
+              Google Cloud Console → create an API key, enable &ldquo;Books API&rdquo; →
+            </a>
+          </div>
         </Section>
 
         {/* ── Help & Tour ─────────────────────────────────────── */}
@@ -1090,6 +1196,45 @@ export default function SettingsView() {
             Use the archive system below to back up or restore your entire workspace.
           </p>
           <BackupRestoreManager />
+
+          {/* ── Reset the library ───────────────────────────────────
+              Shelves and cover art are additive, so an existing library
+              keeps working untouched. This is here for the other case:
+              an import that went wrong, or a shelf you would rather
+              rebuild from a clean Goodreads export than repair. */}
+          <div className={styles.resetBlock}>
+            <h3 className={styles.subHeading}>Reset the book library</h3>
+            <p className={styles.sectionSubtitle}>
+              Removes every book, shelf, reading session and highlight. Nothing
+              else in Zenith is touched — habits, notes and the calendar stay as
+              they are. Export an archive first if you might want any of it back.
+            </p>
+
+            {libResetArmed ? (
+              <div className={styles.resetConfirmRow}>
+                <span className={styles.resetWarn}>
+                  Delete {libBookCount} book{libBookCount === 1 ? '' : 's'} and all
+                  their shelves, sessions and highlights? This cannot be undone.
+                </span>
+                <button className={styles.resetGo} onClick={handleResetLibrary}>
+                  Yes, delete the library
+                </button>
+                <button className={styles.resetCancel} onClick={() => setLibResetArmed(false)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className={styles.resetArm}
+                onClick={() => setLibResetArmed(true)}
+                disabled={libBookCount === 0}
+              >
+                {libBookCount === 0
+                  ? 'Library is already empty'
+                  : `Remove all ${libBookCount} books…`}
+              </button>
+            )}
+          </div>
 
           <div className={styles.legalLinks}>
             <button className={styles.dataBtn} onClick={() => setLegalDoc('privacy')}>
