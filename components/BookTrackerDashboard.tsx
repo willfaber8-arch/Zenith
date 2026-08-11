@@ -402,10 +402,35 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
   const [revealed, setRevealed] = useState(false)
   const reveal = () => { if (!revealed) setRevealed(true) }
 
+  /*
+   * The slot is the book's hit area, and it never moves.
+   *
+   * Hovering used to be read off the button, which is the element that
+   * pivots — so the moment it swung out from under the pointer the hover
+   * was lost, it swung back, and it was under the pointer again. That
+   * loop is the open/close flicker.
+   *
+   * It also owns the perspective. A single `perspective` on the shelf
+   * gives every book one shared vanishing point, so a book near the end
+   * of the row is viewed further off-axis and shows progressively more of
+   * its spine as it opens. One camera per book makes every book open
+   * identically wherever it sits.
+   *
+   * And because the slot keeps the spine's resting footprint, the book
+   * beside it is still reachable at the position it appears to occupy,
+   * rather than behind a jacket that has swung across it.
+   */
   return (
+    <span
+      className={styles.spineSlot}
+      style={{
+        height,
+        width: spineWidth(book),
+      } as React.CSSProperties}
+      onMouseEnter={reveal}
+    >
     <button
       className={`${styles.spine} ${showCover ? styles.spineWithCover : ''}`}
-      onMouseEnter={reveal}
       onFocus={reveal}
       style={{
         // The colour drives layered gradients in CSS (sheen, rounded-spine
@@ -414,8 +439,6 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         // Cover width is derived from this book's height so every jacket keeps
         // real book proportions regardless of how thick the spine is.
         '--cover-w': `${Math.round(height * (coverAspect ?? COVER_ASPECT))}px`,
-        height,
-        width:  spineWidth(book),
       } as React.CSSProperties}
       onClick={onOpen}
       title={`${book.title}${book.author ? ' — ' + book.author : ''}${showCover ? ' — hover to see the cover' : ''}`}
@@ -469,6 +492,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         </span>
       )}
     </button>
+    </span>
   )
 }
 

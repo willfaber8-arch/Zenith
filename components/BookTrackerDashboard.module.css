@@ -941,12 +941,40 @@
   padding: 0 40px;
   overflow-x: auto;
   scrollbar-width: thin;
-  /* Camera for the pull-off-the-shelf reveal. Lives on the direct parent of
-     the books so each spine rotates in its own vanishing-point space. */
-  perspective: 1500px;
-  perspective-origin: 50% 62%;
+  /*
+   * No `perspective` here, deliberately.
+   *
+   * One camera on the shelf is one vanishing point for every book, so a
+   * book near the end of the row is viewed further off-axis than one in
+   * the middle and shows progressively more of its spine as it opens.
+   * Each book carries its own camera on `.spineSlot` instead, which makes
+   * the reveal identical wherever the book sits.
+   */
   position: relative;
   z-index: 1;
+}
+
+/*
+ * The book's slot: its resting footprint, and the only thing that hover
+ * is read from.
+ *
+ * Hover used to be read off the button, which is the element that pivots
+ * — so the instant it swung out from under the pointer the hover was
+ * lost, it swung back, and it was under the pointer again. That loop is
+ * the open/close flicker. The slot never moves, so the state cannot
+ * oscillate.
+ *
+ * Keeping the footprint also means the next book along stays reachable
+ * where it looks like it is, instead of behind a jacket that has swung
+ * across it.
+ */
+.spineSlot {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  /* One camera per book — see the note on .shelfBooks above. */
+  perspective: 1500px;
+  perspective-origin: 50% 62%;
 }
 
 .shelfLedge {
@@ -997,17 +1025,21 @@
  * `.coverFace`, hinged 90° back into the page like a real book.
  */
 .spine {
-  flex-shrink: 0;
+  position: absolute;
+  inset: 0;
   border: none;
   padding: 0;
   background: none;
   /* Explicit: the cover face has to be able to swing outside the button box. */
   overflow: visible;
   cursor: pointer;
-  position: relative;
   z-index: 1;
   transition: transform 300ms var(--ease-expo), filter 300ms var(--ease-smooth);
   will-change: transform;
+  /* The slot is the hit area; this element only paints. Without this the
+     pivoted book and its jacket would still swallow pointer events over
+     the books beside them. */
+  pointer-events: none;
 }
 
 /* The painted spine — everything that used to live on the button itself. */
@@ -1093,13 +1125,12 @@
 /* Baseline interaction for every book: lift it clear of the shelf. This is
    also the graceful fallback whenever a book has no cover art (or its cover
    404s), so a missing image never leaves an empty white rectangle behind. */
-.spine:hover,
+.spineSlot:hover .spine,
 .spine:focus-visible {
   transform: translateY(-12px);
-  z-index: 30;
 }
 
-.spine:hover .spineFace,
+.spineSlot:hover .spineFace,
 .spine:focus-visible .spineFace {
   box-shadow:
     inset -3px 0 8px rgba(0, 0, 0, 0.34),
@@ -1123,7 +1154,9 @@
   transform-origin: left center;
 }
 
-.spineWithCover:hover,
+.spineSlot:hover { z-index: 3; }
+
+.spineSlot:hover .spineWithCover,
 .spineWithCover:focus-visible {
   /* Hinged on the left edge: the book swings out of the row, the spine turns
      edge-on and the cover face rotates around to read almost flat-on. */
@@ -1154,6 +1187,9 @@
   border-radius: 2px 3px 3px 2px;
   overflow: hidden;
   opacity: 0;
+  /* Never clickable, even when open: a jacket 160px wide swung across the
+     books beside it is what made you walk the cursor right off a cover to
+     reach the next spine. */
   pointer-events: none;
   background: linear-gradient(145deg, #221a12 0%, #17110b 60%, #100c07 100%);
   box-shadow:
@@ -1162,12 +1198,9 @@
   transition: opacity 300ms var(--ease-smooth);
 }
 
-.spineWithCover:hover .coverFace,
+.spineSlot:hover .spineWithCover .coverFace,
 .spineWithCover:focus-visible .coverFace {
   opacity: 1;
-  /* Keeps the pointer inside the button once it travels onto the cover, so
-     the reveal doesn't flicker when the cursor leaves the thin spine strip. */
-  pointer-events: auto;
 }
 
 /* Jacket art bled into the spine itself.
@@ -1213,7 +1246,7 @@
 
 /* On hover the cover swings out and becomes the subject, so the spine
    copy recedes rather than competing with it. */
-.spine:hover .spineArt,
+.spineSlot:hover .spineArt,
 .spine:focus-visible .spineArt {
   opacity: 0.20;
 }
@@ -1292,7 +1325,7 @@
   transition: opacity 200ms var(--ease-smooth);
 }
 
-.spine:hover .coverPip,
+.spineSlot:hover .coverPip,
 .spine:focus-visible .coverPip {
   opacity: 0;
 }
@@ -1369,13 +1402,13 @@
   .spine {
     transition: none;
   }
-  .spine:hover,
+  .spineSlot:hover .spine,
   .spine:focus-visible,
-  .spineWithCover:hover,
+  .spineSlot:hover .spineWithCover,
   .spineWithCover:focus-visible {
     transform: none;
   }
-  .spineWithCover:hover .coverFace,
+  .spineSlot:hover .spineWithCover .coverFace,
   .spineWithCover:focus-visible .coverFace {
     transform: none;
   }
