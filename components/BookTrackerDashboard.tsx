@@ -34,6 +34,7 @@ import BookRecommendationFeed from './BookRecommendationFeed'
 import { useShelves } from '@/lib/hooks/useShelves'
 import { repairBrokenCovers } from '@/lib/coverRepair'
 import { coverSrc, verifyCover } from '@/lib/coverProxy'
+import { spineColorFromCover } from '@/lib/spinePalette'
 import type { LibraryShelf } from '@/types/bookTracker'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -366,6 +367,26 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
   }
 
   /*
+   * Take the book's spine colour from its own cover the first time that
+   * cover loads. Spine colours were hashed off the book id, so two
+   * volumes of the same series sat side by side in unrelated colours and
+   * the shelf looked arbitrary rather than like a library.
+   *
+   * Only possible because covers come through our own origin now —
+   * reading pixels off a cross-origin image taints the canvas.
+   */
+  const onCoverLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    setImgState('ok')
+    if (book.spineColor || !db || !book.id) return
+    const hex = spineColorFromCover(e.currentTarget)
+    if (hex) void db.library_books.update(book.id, { spineColor: hex }).catch(() => {})
+  }
+
+  /* The jacket's own proportions, so the whole cover shows without being
+     cropped to a guessed aspect ratio or letterboxed inside one. */
+  const [coverAspect, setCoverAspect] = useState<number | null>(null)
+
+  /*
    * The swing-out jacket is only fetched once the book has actually been
    * pointed at.
    *
@@ -392,7 +413,7 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         '--spine-color': color,
         // Cover width is derived from this book's height so every jacket keeps
         // real book proportions regardless of how thick the spine is.
-        '--cover-w': `${Math.round(height * COVER_ASPECT)}px`,
+        '--cover-w': `${Math.round(height * (coverAspect ?? COVER_ASPECT))}px`,
         height,
         width:  spineWidth(book),
       } as React.CSSProperties}
@@ -413,7 +434,13 @@ function Spine({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            onLoad={() => setImgState('ok')}
+            onLoad={e => {
+              onCoverLoad(e)
+              const el = e.currentTarget
+              if (el.naturalWidth && el.naturalHeight) {
+                setCoverAspect(el.naturalWidth / el.naturalHeight)
+              }
+            }}
             onError={onCoverError}
           />
         )}
