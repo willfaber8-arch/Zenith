@@ -1,0 +1,119 @@
+/* ════════════════════════════════════════════════════════════
+   NoteToolbar — formatting strip above the note body.
+
+   Sits between the title and the writing surface, so it has to
+   be legible without being loud. One row, no labels except on
+   the checklist button, and it recedes until you look at it.
+   ════════════════════════════════════════════════════════════ */
+
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 5px var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+}
+
+.group { display: flex; align-items: center; gap: 2px; }
+
+.sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 5px;
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.btn {
+  min-width: 27px;
+  height: 27px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+/* A visible focus ring is not optional here — the whole strip is one tab
+   stop, so the ring is the only thing telling you where the arrow keys
+   have got to. */
+.btn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 1px;
+  color: var(--text-primary);
+}
+
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Mark is present at the cursor. */
+.btnOn {
+  background: var(--cat-surface, rgba(124, 149, 255, 0.14));
+  border-color: var(--cat-border, rgba(124, 149, 255, 0.30));
+  color: var(--cat-accent, var(--accent-purple));
+}
+
+/* The checklist button carries a word and a border so it reads as the
+   one deliberate action in the strip rather than another glyph. */
+.btnPrimary {
+  padding: 0 9px 0 7px;
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+.btnPrimary:hover:not(:disabled) {
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+.btnWord {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ── Letterform buttons ───────────────────────────────────────────
+   These say what they do by being what they do. */
+
+.glyph_bold   span[aria-hidden] { font-weight: 800; }
+.glyph_italic span[aria-hidden] { font-style: italic; font-family: var(--font-display); }
+.glyph_strike span[aria-hidden] { text-decoration: line-through; }
+.glyph_code   span[aria-hidden] { font-family: var(--font-mono); font-size: 0.8rem; }
+.glyph_h1     span[aria-hidden],
+.glyph_h2     span[aria-hidden] {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: -0.02em;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────
+   The strip wraps rather than scrolling: a horizontally scrolling
+   toolbar hides controls behind a gesture with no affordance. */
+
+@media (max-width: 520px) {
+  .bar { padding: 5px var(--sp-2); }
+  .sep { margin: 0 2px; }
+  .btnWord { display: none; }
+  .btnPrimary { padding: 0 5px; }
+}
+
+/* Someone who has asked for less motion still needs the state change,
+   so only the easing goes — never the colour. */
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}

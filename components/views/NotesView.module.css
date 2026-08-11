@@ -83,8 +83,9 @@
 .rowTitle {
   display: flex; align-items: center; gap: 6px;
   font-size: 0.79rem; font-weight: 500; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden; white-space: nowrap;
 }
+.rowTitleText { overflow: hidden; text-overflow: ellipsis; }
 
 .pin  { color: var(--cat-accent, var(--accent-purple)); font-size: 0.6rem; flex-shrink: 0; }
 .lock { color: var(--text-dark); font-size: 0.7rem; flex-shrink: 0; }
@@ -128,11 +129,27 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.editorTitle {
-  font-family: var(--font-display); font-size: 0.84rem; font-weight: 600;
+.titleInput {
+  flex: 1; min-width: 0;
+  padding: 3px 6px;
+  margin-left: -6px;            /* optical: text lines up with the body below */
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-display); font-size: 0.92rem; font-weight: 600;
   color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
 }
+/* Looks like a heading until you touch it, then looks like a field.
+   Without the hover cue there is nothing saying the title is editable. */
+.titleInput:hover { background: var(--bg-hover); }
+.titleInput:focus {
+  outline: none;
+  background: var(--bg-hover);
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+.titleInput::placeholder { color: var(--text-muted); font-weight: 600; }
 
 .editorActions { display: flex; gap: 2px; flex-shrink: 0; }
 
@@ -146,6 +163,7 @@
 }
 .iconBtn:hover { background: var(--bg-hover); color: var(--text-muted); }
 .iconBtnOn { color: var(--cat-accent, var(--accent-purple)); background: var(--bg-active); }
+.iconBtnDanger:hover { color: #f87171; background: rgba(248, 113, 113, 0.12); }
 
 .textarea {
   flex: 1; min-height: 300px;
@@ -166,8 +184,22 @@
   background: var(--bg-hover);
 }
 
+.checklistHead {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin: 0 0 2px;
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--text-dark);
+}
+.checklistCount {
+  padding: 1px 6px; border-radius: 99px;
+  background: var(--bg-active); color: var(--text-muted);
+  letter-spacing: 0;
+}
+
 .check {
   display: flex; align-items: flex-start; gap: 9px;
+  padding: 2px 0;
   font-size: 0.79rem; color: var(--text-muted); cursor: pointer; line-height: 1.5;
 }
 .check input { margin-top: 3px; accent-color: var(--cat-accent, var(--accent-purple)); cursor: pointer; }
@@ -222,3 +254,88 @@
   .rows { max-height: 240px; overflow-y: auto; }
   .consentBtns > * { flex: 1 1 auto; }
 }
+
+
+/* ── Status bar ───────────────────────────────────────────── */
+
+.statusBar {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 6px var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono); font-size: 0.62rem;
+  color: var(--text-dark);
+}
+
+.stat { white-space: nowrap; }
+.statDot { opacity: 0.5; }
+
+/* Fixed width so the row does not jump between "Saving…" and "Saved"
+   and back to nothing every time you stop typing. */
+.saveState {
+  margin-left: auto;
+  min-width: 58px;
+  text-align: right;
+  color: var(--accent-green);
+}
+
+.keysBtn {
+  background: none; border: none; padding: 2px 4px;
+  color: var(--text-dark); cursor: pointer;
+  font-family: var(--font-mono); font-size: 0.62rem;
+  border-radius: var(--r-sm);
+}
+.keysBtn:hover { color: var(--text-muted); background: var(--bg-hover); }
+.keysBtn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 1px;
+}
+
+/* ── Shortcut list ────────────────────────────────────────── */
+
+.keys {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  animation: fadeIn var(--dur-fast) var(--ease-smooth) both;
+}
+
+.keyList {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 2px var(--sp-5);
+}
+
+.keyRow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: 3px 0;
+  font-size: 0.73rem; color: var(--text-muted);
+}
+
+.kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  font-family: var(--font-mono); font-size: 0.65rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+/* ── Focus visibility ─────────────────────────────────────── */
+/* The list is a column of buttons; without a ring, keyboard users have
+   no idea which note they are about to open. */
+
+.row:focus-visible,
+.newBtn:focus-visible,
+.archiveToggle:focus-visible,
+.iconBtn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 1px;
+}
+
+.textarea:focus-visible { outline: none; }
+
+/* The writing surface has no visible border, so its focus state is the
+   panel edge lighting up rather than a ring around the text. */
+.editor:focus-within { border-color: var(--cat-border, rgba(124, 149, 255, 0.28)); }
