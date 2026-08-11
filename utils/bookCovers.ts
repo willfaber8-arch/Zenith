@@ -39,6 +39,7 @@
 
 import type { LibraryBook } from '@/types/bookTracker'
 import { getGoogleBooksKey } from '@/lib/googleBooksKey'
+import { coverSrc } from '@/lib/coverSrc'
 
 /* ── Open Library ─────────────────────────────────────────────── */
 
@@ -86,7 +87,16 @@ function probeImage(url: string, timeoutMs = 8000, signal?: AbortSignal): Promis
     img.onload  = () => done(img.naturalWidth > 1)
     img.onerror = () => done(false)
     img.referrerPolicy = 'no-referrer'
-    img.src = url
+    /*
+     * Through the proxy, which is the same path the <img> on the shelf
+     * will take. Probing one address and rendering another is how a
+     * cover came to be "verified" and then fail to appear.
+     *
+     * It also means the probe leaves the image cached at our own origin,
+     * so the shelf mounting twenty covers at once is twenty cache hits
+     * rather than a burst upstream hosts will throttle.
+     */
+    img.src = coverSrc(url) ?? url
   })
 }
 

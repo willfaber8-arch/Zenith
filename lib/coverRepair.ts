@@ -13,15 +13,17 @@
  * for books that actually get rendered, and the shelf paginates. This
  * sweeps the whole table once instead.
  *
- * It costs no API quota at all: verifying a cover is an image load, not
- * an API call. The providers' rate limits are irrelevant here, which is
- * why this can afford to check every book in one go.
+ * It costs no API quota at all: verifying a cover goes through our own
+ * proxy, not the Books API. It does still touch the upstream image hosts,
+ * so a check that comes back throttled is treated as no answer rather
+ * than as a miss — otherwise this pass would be the single most effective
+ * way to erase a working shelf.
  */
 
 'use client'
 
 import { db } from '@/lib/db'
-import { probeCoverUrl } from '@/utils/bookCovers'
+import { verifyCover } from '@/lib/coverProxy'
 
 /** Bumped if a future defect needs the same sweep to run again. */
 const DONE_KEY = 'zenith_cover_repair_v1'
@@ -79,9 +81,15 @@ export async function repairBrokenCovers(
       const book = suspects[i]
       const url  = book.coverUrl as string
 
-      const ok = await probeCoverUrl(url)
+      /*
+       * Only a definite "this does not exist" is acted on. A throttled or
+       * timed-out check says nothing about the cover, and this pass looks
+       * at every book at once — precisely the burst most likely to be
+       * throttled. Demoting on that would clear the whole shelf.
+       */
+      const verdict = await verifyCover(url)
       checked++
-      if (ok) continue
+      if (verdict !== 'missing') continue
 
       try {
         // Re-read: a sweep may have replaced this URL since we started.
