@@ -275,6 +275,15 @@ export interface QuickNote {
   createdTasks?: string[]
   /** Per-note consent for to-do detection. Global policy in localStorage. */
   noteTaskPolicy?: 'ask' | 'never' | 'auto'
+  /**
+   * The user typed this title, so stop deriving one from the first line.
+   *
+   * Without the flag, every autosave would overwrite a hand-written title
+   * with the opening words of the body — which is the correct default
+   * for a note nobody has named, and infuriating for one you just did.
+   * Clearing the field hands naming back to the derivation.
+   */
+  titleManual?: boolean
 }
 
 /* ── Meal Planning (v17) ─────────────────────────────────────────── */

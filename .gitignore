@@ -6,3 +6,7 @@ out/
 .vercel
 tsconfig.tsbuildinfo
 .claude/worktrees/
+
+# Playwright run artefacts (traces, videos, screenshots, junit)
+/tests/playwright-results/
+/tests/playwright-report/
