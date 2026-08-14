@@ -112,6 +112,14 @@
 
 /* ── Cardio layout ───────────────────────────────────────────────── */
 
+/* The cardio tab stacks a full-width watch-import panel above the
+   two-column form/history grid. */
+.cardioWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
 .cardioLayout {
   display: grid;
   grid-template-columns: 400px 1fr;

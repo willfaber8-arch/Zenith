@@ -8,6 +8,8 @@ import { syncHabitSource }       from '@/lib/habitSync'
 import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import Icon, { type IconName }   from '@/components/ui/Icon'
 import WeightroomPanel           from '@/components/WeightroomPanel'
+import StravaPanel               from '@/components/StravaPanel'
+import type { ImportSummary }    from '@/lib/hooks/useStrava'
 import styles                    from './WorkoutsView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -224,6 +226,26 @@ export default function WorkoutsView() {
     setSaving(false)
   }, [activity, duration, distance, unit, notes, vp])
 
+  /* ── Imported sessions ────────────────────────────────────────
+     The rows are already written by the import; what is left is the
+     Vitality balance, which lives in localStorage and is mirrored in
+     this component's state. Banking it here rather than inside the
+     import keeps one writer, so the chip cannot go stale. */
+  const handleImported = useCallback((summary: ImportSummary) => {
+    // Only today's activity advances a linked habit — see todayMinutes.
+    if (summary.todayMinutes > 0) void syncHabitSource('cardio', summary.todayMinutes)
+
+    if (summary.vitalityEarned <= 0) return
+    setVp(prev => {
+      const next: VitalityStore = {
+        balance:  prev.balance  + summary.vitalityEarned,
+        lifetime: prev.lifetime + summary.vitalityEarned,
+      }
+      saveVP(next)
+      return next
+    })
+  }, [])
+
   /* ── Buy biome item ──────────────────────────────────────────── */
   const handleBuy = useCallback((item: BiomeItem) => {
     if (vp.balance < item.cost) return
@@ -341,6 +363,11 @@ export default function WorkoutsView() {
 
       {/* ── CARDIO TAB ───────────────────────────────────────────── */}
       {activeTab === 'cardio' && (
+        <div className={styles.cardioWrap}>
+          {/* Watch import sits above both columns rather than inside the
+              form card — it acts on the whole log, not on the form. */}
+          <StravaPanel onImported={handleImported} />
+
         <div className={styles.cardioLayout}>
           {/* Log form */}
           <div className={styles.logCard}>
@@ -455,6 +482,7 @@ export default function WorkoutsView() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 

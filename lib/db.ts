@@ -476,6 +476,15 @@ export interface CardioSession {
   notes?:         string
   logDate:        string   // * indexed — ISO "YYYY-MM-DD"
   completedAt:    number   // * indexed — UTC ms
+  /**
+   * Strava's own activity id, when the session came from a watch.
+   *
+   * Indexed (v42) so an import can ask "which of these have I already
+   * got" without reading the whole log. Absent on hand-logged sessions,
+   * and Dexie leaves rows out of an index when the field is undefined,
+   * so nothing needs migrating.
+   */
+  stravaActivityId?: number   // * indexed (v42)
 }
 
 /**
@@ -1313,6 +1322,22 @@ class ZenithDatabase extends Dexie {
     this.version(41).stores({
       strength_sessions: 'id, scheduledFor, splitDay, planId, completedAt',
       workout_plans:     'id, name, createdAt, archived',
+    })
+
+    /*
+     * v42 — Strava dedupe.
+     *
+     * Adds `stravaActivityId` to the existing cardio index set. Every
+     * import asks the same question — "which of these am I already
+     * holding" — and answering it by reading the whole log would get
+     * slower every year the log grows.
+     *
+     * Hand-logged sessions have no such id, and Dexie omits a row from
+     * an index when the field is undefined, so existing rows are
+     * untouched and simply never match.
+     */
+    this.version(42).stores({
+      cardioSessions: '++id, activityType, durationMinutes, logDate, completedAt, stravaActivityId',
     })
   }
 }
