@@ -51,6 +51,7 @@ export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 import type { LibraryBook, LibraryShelf, ReadingSession } from '@/types/bookTracker'
+import type { StrengthSession, WorkoutPlan } from '@/types/weightroom'
 import { toLocalDateStr } from '@/utils/localDate'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
@@ -633,6 +634,8 @@ class ZenithDatabase extends Dexie {
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
   library_books!:               EntityTable<LibraryBook,              'id'>
   library_shelves!:             EntityTable<LibraryShelf,             'id'>
+  strength_sessions!:           EntityTable<StrengthSession,          'id'>
+  workout_plans!:               EntityTable<WorkoutPlan,             'id'>
   reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
@@ -1290,6 +1293,26 @@ class ZenithDatabase extends Dexie {
      */
     this.version(40).stores({
       library_shelves: 'id, name, sortOrder',
+    })
+
+    /*
+     * v41 — strength training.
+     *
+     * Separate from `cardioSessions`, which records one number: how long
+     * you moved. A strength session is nested — exercises, and sets
+     * inside them — and the sets live inline on the session row rather
+     * than in a table of their own. A session is always read whole and
+     * never queried across, so logging a set stays one write to one row
+     * instead of a transaction over two, which matters when it happens
+     * forty times in an hour on a phone.
+     *
+     * `scheduledFor` is indexed because the common read is "what am I
+     * doing today"; `splitDay` because the second one is "show me every
+     * leg day".
+     */
+    this.version(41).stores({
+      strength_sessions: 'id, scheduledFor, splitDay, planId, completedAt',
+      workout_plans:     'id, name, createdAt, archived',
     })
   }
 }
