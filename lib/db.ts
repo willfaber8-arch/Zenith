@@ -51,6 +51,7 @@ export type { VocabDeck, VocabCard } from '@/types/vocabulary'
 import type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 import type { LibraryBook, LibraryShelf, ReadingSession } from '@/types/bookTracker'
+import type { StrengthSession, WorkoutPlan } from '@/types/weightroom'
 import { toLocalDateStr } from '@/utils/localDate'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
@@ -475,6 +476,15 @@ export interface CardioSession {
   notes?:         string
   logDate:        string   // * indexed — ISO "YYYY-MM-DD"
   completedAt:    number   // * indexed — UTC ms
+  /**
+   * Strava's own activity id, when the session came from a watch.
+   *
+   * Indexed (v42) so an import can ask "which of these have I already
+   * got" without reading the whole log. Absent on hand-logged sessions,
+   * and Dexie leaves rows out of an index when the field is undefined,
+   * so nothing needs migrating.
+   */
+  stravaActivityId?: number   // * indexed (v42)
 }
 
 /**
@@ -633,6 +643,8 @@ class ZenithDatabase extends Dexie {
   peer_locations!:              EntityTable<PeerLocation,             'peerIdString'>
   library_books!:               EntityTable<LibraryBook,              'id'>
   library_shelves!:             EntityTable<LibraryShelf,             'id'>
+  strength_sessions!:           EntityTable<StrengthSession,          'id'>
+  workout_plans!:               EntityTable<WorkoutPlan,             'id'>
   reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
@@ -1290,6 +1302,42 @@ class ZenithDatabase extends Dexie {
      */
     this.version(40).stores({
       library_shelves: 'id, name, sortOrder',
+    })
+
+    /*
+     * v41 — strength training.
+     *
+     * Separate from `cardioSessions`, which records one number: how long
+     * you moved. A strength session is nested — exercises, and sets
+     * inside them — and the sets live inline on the session row rather
+     * than in a table of their own. A session is always read whole and
+     * never queried across, so logging a set stays one write to one row
+     * instead of a transaction over two, which matters when it happens
+     * forty times in an hour on a phone.
+     *
+     * `scheduledFor` is indexed because the common read is "what am I
+     * doing today"; `splitDay` because the second one is "show me every
+     * leg day".
+     */
+    this.version(41).stores({
+      strength_sessions: 'id, scheduledFor, splitDay, planId, completedAt',
+      workout_plans:     'id, name, createdAt, archived',
+    })
+
+    /*
+     * v42 — Strava dedupe.
+     *
+     * Adds `stravaActivityId` to the existing cardio index set. Every
+     * import asks the same question — "which of these am I already
+     * holding" — and answering it by reading the whole log would get
+     * slower every year the log grows.
+     *
+     * Hand-logged sessions have no such id, and Dexie omits a row from
+     * an index when the field is undefined, so existing rows are
+     * untouched and simply never match.
+     */
+    this.version(42).stores({
+      cardioSessions: '++id, activityType, durationMinutes, logDate, completedAt, stravaActivityId',
     })
   }
 }

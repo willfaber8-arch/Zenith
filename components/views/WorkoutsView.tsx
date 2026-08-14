@@ -6,6 +6,10 @@ import { db }                    from '@/lib/db'
 import type { CardioSession }    from '@/lib/db'
 import { syncHabitSource }       from '@/lib/habitSync'
 import CardioGameDashboard       from '@/components/CardioGameDashboard'
+import Icon, { type IconName }   from '@/components/ui/Icon'
+import WeightroomPanel           from '@/components/WeightroomPanel'
+import StravaPanel               from '@/components/StravaPanel'
+import type { ImportSummary }    from '@/lib/hooks/useStrava'
 import styles                    from './WorkoutsView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -43,17 +47,22 @@ function saveBiome(b: BiomeStore) {
 
 /* ── Cardio activity types ──────────────────────────────────────── */
 
+/*
+ * Icon names, not emoji. Emoji are drawn differently on every platform,
+ * cannot be recoloured to match the theme, and carry a text baseline
+ * that never sits straight beside a label.
+ */
 const ACTIVITY_TYPES = [
-  { id: 'run',       label: 'Run',       icon: '🏃' },
-  { id: 'walk',      label: 'Walk',      icon: '🚶' },
-  { id: 'bike',      label: 'Bike',      icon: '🚴' },
-  { id: 'swim',      label: 'Swim',      icon: '🏊' },
-  { id: 'row',       label: 'Row',       icon: '🚣' },
-  { id: 'hike',      label: 'Hike',      icon: '🥾' },
-  { id: 'yoga',      label: 'Yoga',      icon: '🧘' },
-  { id: 'elliptical',label: 'Elliptical',icon: '⚡' },
-  { id: 'other',     label: 'Other',     icon: '💪' },
-] as const
+  { id: 'run',       label: 'Run',        icon: 'run' },
+  { id: 'walk',      label: 'Walk',       icon: 'walk' },
+  { id: 'bike',      label: 'Bike',       icon: 'bike' },
+  { id: 'swim',      label: 'Swim',       icon: 'swim' },
+  { id: 'row',       label: 'Row',        icon: 'row' },
+  { id: 'hike',      label: 'Hike',       icon: 'hike' },
+  { id: 'yoga',      label: 'Yoga',       icon: 'yoga' },
+  { id: 'elliptical',label: 'Elliptical', icon: 'elliptical' },
+  { id: 'other',     label: 'Other',      icon: 'dumbbell' },
+] as const satisfies readonly { id: string; label: string; icon: IconName }[]
 
 /* ── Cozy biome catalog ─────────────────────────────────────────── */
 
@@ -146,7 +155,7 @@ function BiomeDisplay({ purchased, biome }: { purchased: string[]; biome: 'aquar
    ════════════════════════════════════════════════════════════════ */
 
 export default function WorkoutsView() {
-  const [activeTab, setActiveTab] = useState<'cardio' | 'biome' | 'trail'>('cardio')
+  const [activeTab, setActiveTab] = useState<'weights' | 'cardio' | 'biome' | 'trail'>('weights')
 
   /* ── Vitality + biome state (localStorage) ───────────────── */
   const [vp,    setVp]    = useState<VitalityStore>({ balance: 0, lifetime: 0 })
@@ -217,6 +226,26 @@ export default function WorkoutsView() {
     setSaving(false)
   }, [activity, duration, distance, unit, notes, vp])
 
+  /* ── Imported sessions ────────────────────────────────────────
+     The rows are already written by the import; what is left is the
+     Vitality balance, which lives in localStorage and is mirrored in
+     this component's state. Banking it here rather than inside the
+     import keeps one writer, so the chip cannot go stale. */
+  const handleImported = useCallback((summary: ImportSummary) => {
+    // Only today's activity advances a linked habit — see todayMinutes.
+    if (summary.todayMinutes > 0) void syncHabitSource('cardio', summary.todayMinutes)
+
+    if (summary.vitalityEarned <= 0) return
+    setVp(prev => {
+      const next: VitalityStore = {
+        balance:  prev.balance  + summary.vitalityEarned,
+        lifetime: prev.lifetime + summary.vitalityEarned,
+      }
+      saveVP(next)
+      return next
+    })
+  }, [])
+
   /* ── Buy biome item ──────────────────────────────────────────── */
   const handleBuy = useCallback((item: BiomeItem) => {
     if (vp.balance < item.cost) return
@@ -263,8 +292,8 @@ export default function WorkoutsView() {
     })
   }
 
-  const activityIcon = (type: string) =>
-    ACTIVITY_TYPES.find(a => a.id === type)?.icon ?? '💪'
+  const activityIcon = (type: string): IconName =>
+    ACTIVITY_TYPES.find(a => a.id === type)?.icon ?? 'dumbbell'
 
   if (!mounted) return null
 
@@ -273,7 +302,7 @@ export default function WorkoutsView() {
       {/* VP Balance chip */}
       <div className={styles.vpBar}>
         <div className={styles.vpChip}>
-          <span className={styles.vpIcon}>⚡</span>
+          <span className={styles.vpIcon}><Icon name="flame" size={16} /></span>
           <span className={styles.vpBalance}>{vp.balance.toLocaleString()}</span>
           <span className={styles.vpLabel}>Vitality Points</span>
         </div>
@@ -285,34 +314,60 @@ export default function WorkoutsView() {
           <span>{sessions.length} sessions</span>
         </div>
         {lastVP !== null && (
-          <div className={styles.vpToast}>+{lastVP} ⚡ VP earned!</div>
+          <div className={styles.vpToast}>+{lastVP} VP earned</div>
         )}
       </div>
 
       {/* Tab bar */}
-      <div className={styles.tabBar}>
+      <div className={styles.tabBar} role="tablist" aria-label="Workout sections">
         <button
+          role="tab"
+          aria-selected={activeTab === 'weights'}
+          className={`${styles.tab} ${activeTab === 'weights' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('weights')}
+        >
+          <Icon name="barbell" size={15} />
+          Weightroom
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'cardio'}
           className={`${styles.tab} ${activeTab === 'cardio' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('cardio')}
         >
-          🏃 Cardio Log
+          <Icon name="run" size={15} />
+          Cardio Log
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'biome'}
           className={`${styles.tab} ${activeTab === 'biome' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('biome')}
         >
-          🌿 Cozy Biome
+          <Icon name="sparkle" size={15} />
+          Cozy Biome
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'trail'}
           className={`${styles.tab} ${activeTab === 'trail' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('trail')}
         >
-          🏕 Trail Explorer
+          <Icon name="hike" size={15} />
+          Trail Explorer
         </button>
       </div>
 
+      {/* ── WEIGHTROOM TAB ───────────────────────────────────────── */}
+      {activeTab === 'weights' && <WeightroomPanel />}
+
       {/* ── CARDIO TAB ───────────────────────────────────────────── */}
       {activeTab === 'cardio' && (
+        <div className={styles.cardioWrap}>
+          {/* Watch import sits above both columns rather than inside the
+              form card — it acts on the whole log, not on the form. */}
+          <StravaPanel onImported={handleImported} />
+
         <div className={styles.cardioLayout}>
           {/* Log form */}
           <div className={styles.logCard}>
@@ -326,7 +381,7 @@ export default function WorkoutsView() {
                   onClick={() => setActivity(a.id)}
                   title={a.label}
                 >
-                  <span className={styles.activityIcon}>{a.icon}</span>
+                  <span className={styles.activityIcon}><Icon name={a.icon} size={20} /></span>
                   <span className={styles.activityLabel}>{a.label}</span>
                 </button>
               ))}
@@ -380,7 +435,7 @@ export default function WorkoutsView() {
 
             {duration && parseInt(duration) > 0 && (
               <div className={styles.vpPreview}>
-                <span className={styles.vpPreviewIcon}>⚡</span>
+                <span className={styles.vpPreviewIcon}><Icon name="flame" size={15} /></span>
                 <span>You&apos;ll earn <strong>{calcVP(parseInt(duration))} VP</strong>
                   {parseInt(duration) >= 30 ? ' (+5 bonus for 30+ min!)' : ''}
                 </span>
@@ -405,7 +460,9 @@ export default function WorkoutsView() {
               <div className={styles.historyList}>
                 {sessions.map(s => (
                   <div key={s.id} className={styles.historyRow}>
-                    <span className={styles.historyIcon}>{activityIcon(s.activityType)}</span>
+                    <span className={styles.historyIcon}>
+                      <Icon name={activityIcon(s.activityType)} size={16} />
+                    </span>
                     <div className={styles.historyInfo}>
                       <span className={styles.historyActivity}>
                         {ACTIVITY_TYPES.find(a => a.id === s.activityType)?.label ?? s.activityType}
@@ -418,13 +475,14 @@ export default function WorkoutsView() {
                     </div>
                     <div className={styles.historyRight}>
                       <span className={styles.historyDate}>{fmtDate(s.completedAt)}</span>
-                      <span className={styles.historyVP}>+{s.vitalityEarned} ⚡</span>
+                      <span className={styles.historyVP}>+{s.vitalityEarned} VP</span>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 
@@ -462,7 +520,7 @@ export default function WorkoutsView() {
                 {biome.activeBiome === 'aquarium' ? 'Aquarium Shop' : 'Zoo Shop'}
               </h2>
               <div className={styles.vpChipSmall}>
-                <span>⚡</span>
+                <span><Icon name="flame" size={15} /></span>
                 <span className={styles.vpSmallNum}>{vp.balance}</span>
                 <span className={styles.vpSmallLabel}>VP</span>
               </div>
@@ -487,14 +545,16 @@ export default function WorkoutsView() {
                     </div>
                     <div className={styles.shopAction}>
                       {owned ? (
-                        <span className={styles.ownedBadge}>✓ Owned</span>
+                        <span className={styles.ownedBadge}>
+                          <Icon name="check" size={13} /> Owned
+                        </span>
                       ) : (
                         <button
                           className={`${styles.buyBtn} ${!canAfford ? styles.buyBtnDisabled : ''}`}
                           onClick={() => handleBuy(item)}
                           disabled={!canAfford}
                         >
-                          ⚡ {item.cost}
+                          <Icon name="flame" size={13} /> {item.cost}
                         </button>
                       )}
                     </div>

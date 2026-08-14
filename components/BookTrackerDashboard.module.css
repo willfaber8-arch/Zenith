@@ -941,12 +941,40 @@
   padding: 0 40px;
   overflow-x: auto;
   scrollbar-width: thin;
-  /* Camera for the pull-off-the-shelf reveal. Lives on the direct parent of
-     the books so each spine rotates in its own vanishing-point space. */
-  perspective: 1500px;
-  perspective-origin: 50% 62%;
+  /*
+   * No `perspective` here, deliberately.
+   *
+   * One camera on the shelf is one vanishing point for every book, so a
+   * book near the end of the row is viewed further off-axis than one in
+   * the middle and shows progressively more of its spine as it opens.
+   * Each book carries its own camera on `.spineSlot` instead, which makes
+   * the reveal identical wherever the book sits.
+   */
   position: relative;
   z-index: 1;
+}
+
+/*
+ * The book's slot: its resting footprint, and the only thing that hover
+ * is read from.
+ *
+ * Hover used to be read off the button, which is the element that pivots
+ * — so the instant it swung out from under the pointer the hover was
+ * lost, it swung back, and it was under the pointer again. That loop is
+ * the open/close flicker. The slot never moves, so the state cannot
+ * oscillate.
+ *
+ * Keeping the footprint also means the next book along stays reachable
+ * where it looks like it is, instead of behind a jacket that has swung
+ * across it.
+ */
+.spineSlot {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  /* One camera per book — see the note on .shelfBooks above. */
+  perspective: 1500px;
+  perspective-origin: 50% 62%;
 }
 
 .shelfLedge {
@@ -997,17 +1025,21 @@
  * `.coverFace`, hinged 90° back into the page like a real book.
  */
 .spine {
-  flex-shrink: 0;
+  position: absolute;
+  inset: 0;
   border: none;
   padding: 0;
   background: none;
   /* Explicit: the cover face has to be able to swing outside the button box. */
   overflow: visible;
   cursor: pointer;
-  position: relative;
   z-index: 1;
   transition: transform 300ms var(--ease-expo), filter 300ms var(--ease-smooth);
   will-change: transform;
+  /* The slot is the hit area; this element only paints. Without this the
+     pivoted book and its jacket would still swallow pointer events over
+     the books beside them. */
+  pointer-events: none;
 }
 
 /* The painted spine — everything that used to live on the button itself. */
@@ -1025,6 +1057,9 @@
   /* Guarantees the z-index:-1 sheen/page-edge layers stay inside the spine,
      above its own background but behind the title and author. */
   isolation: isolate;
+  /* Matches the book's own swing so the spine is gone by the time the
+     jacket is square to the viewer, and back by the time it is closed. */
+  transition: opacity 240ms var(--ease-smooth);
   color: #f4eede;
   /* Rounded-spine shading painted over the book's own colour: a sheen down
      the left edge falling away to a darkened right side. */
@@ -1093,13 +1128,12 @@
 /* Baseline interaction for every book: lift it clear of the shelf. This is
    also the graceful fallback whenever a book has no cover art (or its cover
    404s), so a missing image never leaves an empty white rectangle behind. */
-.spine:hover,
+.spineSlot:hover .spine,
 .spine:focus-visible {
   transform: translateY(-12px);
-  z-index: 30;
 }
 
-.spine:hover .spineFace,
+.spineSlot:hover .spineFace,
 .spine:focus-visible .spineFace {
   box-shadow:
     inset -3px 0 8px rgba(0, 0, 0, 0.34),
@@ -1123,7 +1157,9 @@
   transform-origin: left center;
 }
 
-.spineWithCover:hover,
+.spineSlot:hover { z-index: 3; }
+
+.spineSlot:hover .spineWithCover,
 .spineWithCover:focus-visible {
   /* Hinged on the left edge: the book swings out of the row, the spine turns
      edge-on and the cover face rotates around to read almost flat-on. */
@@ -1134,17 +1170,53 @@
    the page, so at rest it is exactly edge-on and occupies no visible area. */
 .coverFace {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: var(--cover-w, 150px);
+  /*
+   * Slightly taller and a hair wider than the spine it hides.
+   *
+   * The book pivots to -72deg while the cover sits at +18deg, so the two
+   * are at different angles in 3D and perspective projects them to
+   * different heights — the spine ends up about 5% taller and its far
+   * edge peeks out above and below the jacket. A proportional overhang
+   * closes that at every book height rather than at one.
+   */
+  top: -3%;
+  left: -1px;
+  height: 106%;
+  /*
+   * Scaled on BOTH axes by the same 6%.
+   *
+   * `--cover-w` is derived from the jacket's aspect against the spine's
+   * full height, so growing only the height changed the face's aspect
+   * ratio and `object-fit: contain` letterboxed it — dark bands across
+   * the top and bottom of every cover, which read as the artwork being
+   * cut off.
+   */
+  width: calc(var(--cover-w, 150px) * 1.06 + 2px);
   transform-origin: left center;
-  transform: rotateY(90deg);
+  /*
+   * Lifted off the spine's plane before it hinges.
+   *
+   * The jacket is hinged along the spine's left edge, so the two planes
+   * meet there and the renderer depth-sorts them per pixel. Where the
+   * book is pivoted the spine's page-edge won that sort along the
+   * jacket's right side and drew over the artwork — the cover looked set
+   * back behind the edge, with a strip of it cut off.
+   *
+   * A few pixels toward the viewer, applied before the rotation so it is
+   * a translation in the book's own space, makes the jacket unambiguously
+   * the frontmost surface. It is not physically how a book works, but the
+   * whole reveal is a stylisation and a cover that is not occluded by its
+   * own book is the point of it.
+   */
+  transform: translateZ(8px) rotateY(90deg);
   transform-style: flat;
   backface-visibility: hidden;
   border-radius: 2px 3px 3px 2px;
   overflow: hidden;
   opacity: 0;
+  /* Never clickable, even when open: a jacket 160px wide swung across the
+     books beside it is what made you walk the cursor right off a cover to
+     reach the next spine. */
   pointer-events: none;
   background: linear-gradient(145deg, #221a12 0%, #17110b 60%, #100c07 100%);
   box-shadow:
@@ -1153,12 +1225,30 @@
   transition: opacity 300ms var(--ease-smooth);
 }
 
-.spineWithCover:hover .coverFace,
+.spineSlot:hover .spineWithCover .coverFace,
 .spineWithCover:focus-visible .coverFace {
   opacity: 1;
-  /* Keeps the pointer inside the button once it travels onto the cover, so
-     the reveal doesn't flicker when the cursor leaves the thin spine strip. */
-  pointer-events: auto;
+}
+
+/*
+ * The spine face steps aside once the jacket is up.
+ *
+ * `.spine` is a `preserve-3d` context, so the spine and the jacket are two
+ * planes that MEET along the hinge — and the GPU resolves an intersection
+ * per pixel, not per element. That is what showed the spine's page-edge
+ * through and beside the artwork, and no amount of `translateZ` fixes it:
+ * pushing one plane forward moves the crossing line, it does not remove
+ * it. Two intersecting planes always fight somewhere.
+ *
+ * So while the book is open there is only one plane to draw. The jacket
+ * already covers the spine's entire footprint — it is wider and 6% taller
+ * — so fading the spine out costs nothing visible and removes the
+ * intersection altogether. It fades back in as the book closes, on the
+ * same curve, so the transition still reads as a book turning.
+ */
+.spineSlot:hover .spineWithCover .spineFace,
+.spineWithCover:focus-visible .spineFace {
+  opacity: 0;
 }
 
 /* Jacket art bled into the spine itself.
@@ -1173,11 +1263,30 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: left center;
   border-radius: inherit;
-  opacity: 0.34;
-  /* Dropping saturation and lifting contrast keeps light covers from
-     washing out the cream lettering. */
-  filter: saturate(0.8) contrast(1.05) brightness(0.62);
+
+  /*
+   * Blurred past legibility, deliberately.
+   *
+   * A front cover squeezed into a 60px strip put half a face and a
+   * fragment of the title down every spine — you could read "SAN" and
+   * "BRA ND" on the shelf, which looks like a rendering fault rather
+   * than a book. Real spines do not carry the cover image at all.
+   *
+   * What the artwork is still good for is tone: a band of colour where
+   * the cover is dark, a lift where it is bright. Blurring hard keeps
+   * that and throws away the shapes. The image is still loaded, which
+   * matters twice over — it is what the spine colour is sampled from,
+   * and it primes the browser cache for the jacket that swings out on
+   * hover.
+   */
+  filter: blur(9px) saturate(0.7) brightness(0.55);
+  /* Scaled up so the blur's soft edges fall outside the spine instead of
+     leaving a pale halo around the border. */
+  transform: scale(1.3);
+  opacity: 0.30;
+
   pointer-events: none;
   z-index: 0;
   transition: opacity 300ms var(--ease-smooth);
@@ -1185,7 +1294,7 @@
 
 /* On hover the cover swings out and becomes the subject, so the spine
    copy recedes rather than competing with it. */
-.spine:hover .spineArt,
+.spineSlot:hover .spineArt,
 .spine:focus-visible .spineArt {
   opacity: 0.20;
 }
@@ -1205,7 +1314,11 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* `contain`, not `cover`: the jacket is the thing you opened the book to
+     look at, so none of it gets cropped away. The face is sized from the
+     image's own proportions once it loads, so in practice there is nothing
+     to letterbox — this is the guard for the frame before that happens. */
+  object-fit: contain;
   border-radius: inherit;
 }
 
@@ -1260,7 +1373,7 @@
   transition: opacity 200ms var(--ease-smooth);
 }
 
-.spine:hover .coverPip,
+.spineSlot:hover .coverPip,
 .spine:focus-visible .coverPip {
   opacity: 0;
 }
@@ -1337,13 +1450,13 @@
   .spine {
     transition: none;
   }
-  .spine:hover,
+  .spineSlot:hover .spine,
   .spine:focus-visible,
-  .spineWithCover:hover,
+  .spineSlot:hover .spineWithCover,
   .spineWithCover:focus-visible {
     transform: none;
   }
-  .spineWithCover:hover .coverFace,
+  .spineSlot:hover .spineWithCover .coverFace,
   .spineWithCover:focus-visible .coverFace {
     transform: none;
   }

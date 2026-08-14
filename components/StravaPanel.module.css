@@ -1,0 +1,166 @@
+/* ════════════════════════════════════════════════════════════
+   StravaPanel — sits above the manual cardio form.
+
+   Opaque surfaces, like the rest of the Workouts module: this
+   card carries status text that has to stay readable over
+   whatever the category tint is doing behind it.
+   ════════════════════════════════════════════════════════════ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.icon {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.iconOn {
+  border-color: rgba(82, 204, 163, 0.35);
+  background: rgba(82, 204, 163, 0.10);
+  color: var(--accent-green);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem; font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sub {
+  margin: 2px 0 0;
+  font-size: 0.76rem; line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.74rem; line-height: 1.55;
+  color: var(--text-dark);
+}
+
+.code {
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: var(--bg-active);
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  color: var(--text-muted);
+}
+
+.warn {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid var(--accent-purple);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: rgba(124, 149, 255, 0.08);
+  font-size: 0.74rem; line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ── Actions ─────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* 44px floor throughout — this panel is used standing up with a phone
+   in one hand as often as it is at a desk. */
+.primaryBtn {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  /* Hug the label. The panel is a full-width column, and a stretched
+     button on a 1200px screen reads as a banner rather than a control. */
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-green);
+  background: rgba(82, 204, 163, 0.14);
+  color: var(--accent-green);
+  font-family: var(--font-body);
+  font-size: 0.85rem; font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+.primaryBtn:hover:not(:disabled) { background: rgba(82, 204, 163, 0.22); }
+.primaryBtn:disabled { opacity: 0.55; cursor: default; }
+.primaryBtn:focus-visible { outline: 2px solid var(--accent-green); outline-offset: 2px; }
+
+.quietBtn {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: none;
+  background: none;
+  color: var(--text-dark);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+}
+.quietBtn:hover:not(:disabled) { color: var(--text-muted); }
+.quietBtn:disabled { opacity: 0.5; cursor: default; }
+.quietBtn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.dangerBtn {
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 92, 92, 0.35);
+  background: rgba(255, 92, 92, 0.10);
+  color: #ff8a8a;
+  font-size: 0.78rem; font-weight: 600;
+  cursor: pointer;
+}
+.dangerBtn:hover { background: rgba(255, 92, 92, 0.18); }
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.confirmText {
+  flex: 1 1 200px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ── Sync spinner ────────────────────────────────────────────── */
+
+.spin {
+  display: inline-flex;
+  animation: stravaSpin 900ms linear infinite;
+}
+
+@keyframes stravaSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; opacity: 0.6; }
+}
