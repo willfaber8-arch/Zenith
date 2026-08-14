@@ -129,9 +129,14 @@
   color: var(--text-dark);
 }
 
+/* 44px like everything else here. It was 28px, which reads as a label
+   rather than a control and is under the floor this screen is built to —
+   and switching units mid-session is exactly the kind of thing done in a
+   hurry with one hand. */
 .unitBtn {
-  padding: 3px 8px;
-  min-height: 28px;
+  padding: 3px 12px;
+  min-width: 48px;
+  min-height: 44px;
   border-radius: 99px;
   border: 1px solid var(--border-subtle);
   background: transparent;
