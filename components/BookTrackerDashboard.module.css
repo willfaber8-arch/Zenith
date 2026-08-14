@@ -1057,6 +1057,9 @@
   /* Guarantees the z-index:-1 sheen/page-edge layers stay inside the spine,
      above its own background but behind the title and author. */
   isolation: isolate;
+  /* Matches the book's own swing so the spine is gone by the time the
+     jacket is square to the viewer, and back by the time it is closed. */
+  transition: opacity 240ms var(--ease-smooth);
   color: #f4eede;
   /* Rounded-spine shading painted over the book's own colour: a sheen down
      the left edge falling away to a darkened right side. */
@@ -1225,6 +1228,27 @@
 .spineSlot:hover .spineWithCover .coverFace,
 .spineWithCover:focus-visible .coverFace {
   opacity: 1;
+}
+
+/*
+ * The spine face steps aside once the jacket is up.
+ *
+ * `.spine` is a `preserve-3d` context, so the spine and the jacket are two
+ * planes that MEET along the hinge — and the GPU resolves an intersection
+ * per pixel, not per element. That is what showed the spine's page-edge
+ * through and beside the artwork, and no amount of `translateZ` fixes it:
+ * pushing one plane forward moves the crossing line, it does not remove
+ * it. Two intersecting planes always fight somewhere.
+ *
+ * So while the book is open there is only one plane to draw. The jacket
+ * already covers the spine's entire footprint — it is wider and 6% taller
+ * — so fading the spine out costs nothing visible and removes the
+ * intersection altogether. It fades back in as the book closes, on the
+ * same curve, so the transition still reads as a book turning.
+ */
+.spineSlot:hover .spineWithCover .spineFace,
+.spineWithCover:focus-visible .spineFace {
+  opacity: 0;
 }
 
 /* Jacket art bled into the spine itself.
