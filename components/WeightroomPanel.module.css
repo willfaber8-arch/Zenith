@@ -1,0 +1,306 @@
+/* ════════════════════════════════════════════════════════════
+   WeightroomPanel — plans, sessions and the log.
+
+   Sized for a phone first: every control clears 44px, and the
+   layout is a single column at any width. The desktop version is
+   the same column with more air, not a different design.
+   ════════════════════════════════════════════════════════════ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Stats ───────────────────────────────────────────────────── */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.statIcon { color: var(--accent-green); }
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Today ───────────────────────────────────────────────────── */
+
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(82, 204, 163, 0.28);
+  background: rgba(82, 204, 163, 0.05);
+}
+
+.todayEyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-green);
+}
+
+.todayTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 700;
+  color: var(--text-primary);
+}
+
+.todayMeta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dark);
+}
+
+.exList {
+  list-style: none;
+  margin: var(--sp-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  background: var(--bg-hover);
+  font-size: 0.8rem;
+}
+
+.exName  { color: var(--text-primary); }
+.exSets  { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dark); }
+
+.startBtn {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-green);
+  background: rgba(82, 204, 163, 0.16);
+  color: var(--accent-green);
+  font-family: var(--font-body);
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer;
+}
+.startBtn:active { background: rgba(82, 204, 163, 0.26); }
+.startBtn:focus-visible { outline: 2px solid var(--accent-green); outline-offset: 2px; }
+
+.emptyToday {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-6) var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.emptyTitle { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+.emptyHint  { margin: 0; font-size: 0.76rem; line-height: 1.5; color: var(--text-dark); }
+
+/* ── Panels ──────────────────────────────────────────────────── */
+
+.panel {
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.panelHead {
+  display: flex; align-items: center; gap: var(--sp-2);
+  width: 100%;
+  min-height: 44px;
+  border: none; background: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.88rem; font-weight: 600;
+  cursor: pointer;
+}
+.panelHead:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 2px;
+}
+
+.sectionLabel {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* ── Generator ───────────────────────────────────────────────── */
+
+.genBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-top: var(--sp-3);
+  animation: fadeIn var(--dur-fast) var(--ease-smooth) both;
+}
+
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.textarea {
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+.textarea:focus-visible { outline: none; border-color: var(--accent-green); }
+
+.dayPicker { display: flex; gap: var(--sp-2); }
+
+.dayBtn {
+  width: 48px; height: 48px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 600;
+  cursor: pointer;
+}
+.dayBtnOn {
+  border-color: var(--accent-green);
+  background: rgba(82, 204, 163, 0.14);
+  color: var(--accent-green);
+}
+
+.splitRow { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.splitChip {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.splitChipOn {
+  border-color: var(--accent-green);
+  background: rgba(82, 204, 163, 0.14);
+  color: var(--accent-green);
+}
+
+/* The one thing about the generator worth reading before pressing it. */
+.genNote {
+  margin: 0;
+  padding: var(--sp-3);
+  border-left: 2px solid var(--border-subtle);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--text-dark);
+}
+
+.genBtn {
+  min-height: 50px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-green);
+  background: rgba(82, 204, 163, 0.16);
+  color: var(--accent-green);
+  font-family: var(--font-body);
+  font-size: 0.88rem; font-weight: 600;
+  cursor: pointer;
+}
+.genBtn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Lists ───────────────────────────────────────────────────── */
+
+.planList {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  background: var(--bg-hover);
+}
+
+.planText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.planName {
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.planMeta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dark);
+}
+
+.rowBtn {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none;
+  border-radius: var(--r-sm);
+  color: var(--text-dark);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.rowBtn:hover { color: var(--text-primary); background: var(--bg-active); }
+.rowBtn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: -2px;
+}
