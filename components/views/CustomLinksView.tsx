@@ -6,6 +6,7 @@ import { safeExternalHref, normalizeExternalUrl } from '@/lib/safeUrl'
 import { useLiveQuery }  from 'dexie-react-hooks'
 import { db }            from '@/lib/db'
 import type { CustomBookmark } from '@/lib/db'
+import Icon from '@/components/ui/Icon'
 import styles from './CustomLinksView.module.css'
 
 /* ── Favicon helper ──────────────────────────────────────────── */
@@ -371,7 +372,7 @@ export default function CustomLinksView() {
           </div>
         ) : (
           <div className={styles.emptyState}>
-            <p className={styles.emptyIcon}>🔗</p>
+            <p className={styles.emptyIcon}><Icon name="link" size={34} /></p>
             <p className={styles.emptyTitle}>No links yet</p>
             <p className={styles.emptyBody}>
               {activeCategory === 'All'

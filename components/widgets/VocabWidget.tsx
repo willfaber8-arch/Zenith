@@ -3,6 +3,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
+import Icon from '@/components/ui/Icon'
 import wStyles from './Widget.module.css'
 
 export default function VocabWidget() {
@@ -38,7 +39,7 @@ export default function VocabWidget() {
           <div className={wStyles.dataHeroSub}>cards due for review</div>
           <div className={wStyles.dataStack}>
             <div className={wStyles.dataRow}>
-              <div className={wStyles.dataIcon}>📚</div>
+              <div className={wStyles.dataIcon}><Icon name="book" size={18} /></div>
               <div className={wStyles.dataMeta}>
                 <div className={wStyles.dataLabel}>Total Cards</div>
                 <div className={wStyles.dataSub}>in your deck</div>

@@ -111,7 +111,7 @@ function PracticeTestPanel({ questions }: { questions: PracticeQuestion[] }) {
         {score !== null && (
           <span className={styles.practiceScore}>
             Score: {score}/{questions.length}
-            {score === questions.length ? ' — Perfect! 🎉' : ''}
+            {score === questions.length ? ' — Perfect' : ''}
           </span>
         )}
         {!revealed ? (

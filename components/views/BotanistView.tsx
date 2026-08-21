@@ -11,6 +11,7 @@ import {
   wateringInfo, healthTrendFromEntries, computeGardenStats,
 } from '@/utils/botanyStats'
 import { useToast } from '@/lib/ToastContext'
+import Icon, { type IconName } from '@/components/ui/Icon'
 import styles from './BotanistView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -88,19 +89,26 @@ function daysSince(dateStr: string): number {
   return Math.floor((now.getTime() - last.getTime()) / 86_400_000)
 }
 
-const LIGHT_LABEL: Record<LightRequirement, string> = {
-  'full-sun':       '☀ Full Sun',
-  'partial-sun':    '⛅ Partial Sun',
-  'indirect-light': '🌤 Indirect Light',
-  'shade':          '🌑 Shade',
+const LIGHT_LABEL: Record<LightRequirement, { icon: IconName; text: string }> = {
+  'full-sun':       { icon: 'sun',      text: 'Full Sun' },
+  'partial-sun':    { icon: 'cloudSun', text: 'Partial Sun' },
+  'indirect-light': { icon: 'cloud',    text: 'Indirect Light' },
+  'shade':          { icon: 'moon',     text: 'Shade' },
 }
 const POSITION_LABEL: Record<LightPosition, string> = {
   indoors: 'Indoors', outdoors: 'Outdoors', both: 'In/Outdoors',
 }
-const HUMIDITY_LABEL: Record<HumidityLevel, string> = {
-  low: '💧 Low',  medium: '💧💧 Medium', high: '💧💧💧 High',
+/* The repeated droplet is the whole point of this scale — one, two or
+   three reads as a quantity at a glance in a way a word does not. */
+const HUMIDITY_LABEL: Record<HumidityLevel, { drops: number; text: string }> = {
+  low:    { drops: 1, text: 'Low' },
+  medium: { drops: 2, text: 'Medium' },
+  high:   { drops: 3, text: 'High' },
 }
-const HEALTH_EMOJI = ['', '🤒', '😟', '😐', '😊', '🌿']
+/* Index 0 is unused so a 1-5 rating indexes directly. */
+const HEALTH_ICON: readonly IconName[] = [
+  'moodNeutral', 'moodStressed', 'moodDrained', 'moodNeutral', 'moodRelaxed', 'moodThriving',
+]
 
 /* ── Add/Edit Plant Modal ─────────────────────────────────── */
 
@@ -317,13 +325,13 @@ function HealthPicker({ plantId, current }: { plantId: number; current?: number 
   return (
     <div className={styles.healthWrap}>
       <button type="button" className={styles.healthBtn} onClick={() => setOpen(v => !v)} title="Record health">
-        {current ? HEALTH_EMOJI[current] : '♥'} Health
+        <Icon name={current ? HEALTH_ICON[current] : 'heart'} size={15} /> Health
       </button>
       {open && (
         <div className={styles.healthPicker}>
           {[1,2,3,4,5].map(v => (
-            <button key={v} type="button" className={`${styles.healthRating} ${current === v ? styles.healthRatingActive : ''}`} onClick={() => rate(v)}>
-              {HEALTH_EMOJI[v]}
+            <button key={v} type="button" className={`${styles.healthRating} ${current === v ? styles.healthRatingActive : ''}`} onClick={() => rate(v)} aria-label={`Health ${v} of 5`}>
+              <Icon name={HEALTH_ICON[v]} size={20} />
             </button>
           ))}
         </div>
@@ -371,13 +379,20 @@ function PlantCard({
       {/* Care badges */}
       <div className={styles.careBadges}>
         {ext.lightRequirement && (
-          <span className={styles.badge}>{LIGHT_LABEL[ext.lightRequirement as LightRequirement]}</span>
+          <span className={styles.badge}>
+            <Icon name={LIGHT_LABEL[ext.lightRequirement as LightRequirement].icon} size={12} />
+            {LIGHT_LABEL[ext.lightRequirement as LightRequirement].text}
+          </span>
         )}
         {ext.lightPosition && (
           <span className={styles.badge}>{POSITION_LABEL[ext.lightPosition as LightPosition]}</span>
         )}
         {ext.humidity && (
-          <span className={styles.badge}>{HUMIDITY_LABEL[ext.humidity as HumidityLevel]}</span>
+          <span className={styles.badge}>
+            {Array.from({ length: HUMIDITY_LABEL[ext.humidity as HumidityLevel].drops },
+                        (_, i) => <Icon key={i} name="droplet" size={11} />)}
+            {HUMIDITY_LABEL[ext.humidity as HumidityLevel].text}
+          </span>
         )}
       </div>
 
@@ -405,10 +420,10 @@ function PlantCard({
       {/* Actions */}
       <div className={styles.cardActions}>
         <button type="button" className={styles.waterBtn} data-urgency={urgency} onClick={logWatering}>
-          💧 Water Now
+          <Icon name="droplet" size={14} /> Water Now
         </button>
         <HealthPicker plantId={plant.id!} current={ext.healthRating} />
-        <button type="button" className={styles.journalBtn} onClick={() => onOpenLog(plant)}>📖 Journal</button>
+        <button type="button" className={styles.journalBtn} onClick={() => onOpenLog(plant)}><Icon name="bookOpen" size={13} /> Journal</button>
         <button type="button" className={styles.editBtn} onClick={() => onEdit(plant)}>Edit</button>
       </div>
 
@@ -558,7 +573,7 @@ function PlantLogModal({ plant, onClose }: { plant: Houseplant; onClose: () => v
                   aria-pressed={rating === v}
                   title={`Health ${v}/5`}
                 >
-                  {HEALTH_EMOJI[v]}
+                  <Icon name={HEALTH_ICON[v]} size={18} />
                 </button>
               ))}
             </div>
@@ -570,7 +585,7 @@ function PlantLogModal({ plant, onClose }: { plant: Houseplant; onClose: () => v
               onChange={e => void pickPhoto(e.target.files?.[0])}
             />
             <button type="button" className={styles.logPhotoBtn} onClick={() => fileRef.current?.click()} disabled={busy}>
-              {busy ? '…' : photo ? '✓ Photo' : '📷 Add Photo'}
+              {busy ? '…' : photo ? <><Icon name="check" size={13} /> Photo</> : <><Icon name="camera" size={13} /> Add Photo</>}
             </button>
           </div>
           {photo && (
@@ -599,7 +614,7 @@ function PlantLogModal({ plant, onClose }: { plant: Houseplant; onClose: () => v
                       {new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                     {typeof e.healthRating === 'number' && (
-                      <span className={styles.logEntryHealth}>{HEALTH_EMOJI[e.healthRating]}</span>
+                      <span className={styles.logEntryHealth}><Icon name={HEALTH_ICON[e.healthRating]} size={14} /></span>
                     )}
                     <button
                       type="button"
@@ -725,7 +740,7 @@ export default function BotanistView() {
       {/* ── Plant grid ────────────────────────────────────── */}
       {filtered.length === 0 && (plants ?? []).length === 0 ? (
         <div className={`${styles.emptyState} anim-fade-in`}>
-          <p className={styles.emptyIcon}>🌱</p>
+          <p className={styles.emptyIcon}><Icon name="sprout" size={34} /></p>
           <p className={styles.emptyTitle}>No plants yet</p>
           <p className={styles.emptyBody}>Add your first plant to start tracking its care schedule.</p>
           <button type="button" className={styles.emptyAddBtn} onClick={() => setShowAdd(true)}>

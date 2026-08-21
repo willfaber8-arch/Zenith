@@ -1,4 +1,4 @@
-
+import type { IconName } from '@/components/ui/Icon'
 import { toLocalDateStr } from '@/utils/localDate'
 /**
  * utils/mealData.ts — Meal Planning Data
@@ -15,7 +15,7 @@ export type EquipmentTier = 'no_kitchen' | 'microwave' | 'mini_fridge' | 'hot_pl
 export interface EquipmentNode {
   id:          EquipmentTier
   label:       string
-  emoji:       string
+  icon:        IconName
   description: string
   unlocks:     string[]
 }
@@ -24,28 +24,28 @@ export const EQUIPMENT_NODES: EquipmentNode[] = [
   {
     id:          'no_kitchen',
     label:       'No Kitchen',
-    emoji:       '🎒',
+    icon:        'backpack',
     description: 'No cooking equipment — snacks, packaged foods, vending-machine items',
     unlocks:     ['no-cook', 'packaged', 'snack'],
   },
   {
     id:          'microwave',
     label:       'Microwave',
-    emoji:       '📡',
+    icon:        'microwave',
     description: 'Microwave meals, mug recipes, ramen upgrades',
     unlocks:     ['microwave', 'no-cook', 'packaged'],
   },
   {
     id:          'mini_fridge',
     label:       'Mini Fridge + Kettle',
-    emoji:       '🧊',
+    icon:        'fridge',
     description: 'Overnight oats, cold prep meals, sandwiches, instant noodles',
     unlocks:     ['mini-fridge', 'microwave', 'no-cook', 'packaged'],
   },
   {
     id:          'hot_plate',
     label:       'Hot Plate / Toaster Oven',
-    emoji:       '🍳',
+    icon:        'pan',
     description: 'Simple cooked meals — eggs, pasta, stir fry, toasted sandwiches',
     unlocks:     ['hot-plate', 'mini-fridge', 'microwave', 'no-cook', 'packaged'],
   },
@@ -58,18 +58,18 @@ export const EQUIPMENT_NODES: EquipmentNode[] = [
 export interface DietaryTag {
   id:    string
   label: string
-  emoji: string
+  icon: IconName
   description: string
 }
 
 export const DIETARY_TAGS: DietaryTag[] = [
-  { id: 'vegetarian',  label: 'Vegetarian',  emoji: '🥦', description: 'No meat or fish' },
-  { id: 'vegan',       label: 'Vegan',       emoji: '🌱', description: 'No animal products' },
-  { id: 'gluten-free', label: 'Gluten-Free', emoji: '🌾', description: 'No wheat/gluten' },
-  { id: 'dairy-free',  label: 'Dairy-Free',  emoji: '🥛', description: 'No dairy products' },
-  { id: 'nut-free',    label: 'Nut-Free',    emoji: '🥜', description: 'No nuts or peanuts' },
-  { id: 'high-protein',label: 'High Protein',emoji: '💪', description: 'Protein-rich meals' },
-  { id: 'low-cal',     label: 'Low Calorie', emoji: '🔥', description: 'Under 400 cal per meal' },
+  { id: 'vegetarian',  label: 'Vegetarian',  icon: 'leaf', description: 'No meat or fish' },
+  { id: 'vegan',       label: 'Vegan',       icon: 'sprout', description: 'No animal products' },
+  { id: 'gluten-free', label: 'Gluten-Free', icon: 'wheat', description: 'No wheat/gluten' },
+  { id: 'dairy-free',  label: 'Dairy-Free',  icon: 'milk', description: 'No dairy products' },
+  { id: 'nut-free',    label: 'Nut-Free',    icon: 'nut', description: 'No nuts or peanuts' },
+  { id: 'high-protein',label: 'High Protein',icon: 'dumbbell', description: 'Protein-rich meals' },
+  { id: 'low-cal',     label: 'Low Calorie', icon: 'flame', description: 'Under 400 cal per meal' },
 ]
 
 /* ════════════════════════════════════════════════════════════════
@@ -447,10 +447,10 @@ export function formatWeekLabel(weekStart: string): string {
   return `${fmt(days[0])} – ${fmt(days[6])}`
 }
 
-export const MEAL_TYPES: { key: MealTypeKey; label: string; emoji: string }[] = [
-  { key: 'breakfast', label: 'Breakfast', emoji: '🌅' },
-  { key: 'lunch',     label: 'Lunch',     emoji: '☀️' },
-  { key: 'dinner',    label: 'Dinner',    emoji: '🌙' },
+export const MEAL_TYPES: { key: MealTypeKey; label: string; icon: IconName }[] = [
+  { key: 'breakfast', label: 'Breakfast', icon: 'sunrise' },
+  { key: 'lunch',     label: 'Lunch',     icon: 'sun' },
+  { key: 'dinner',    label: 'Dinner',    icon: 'moon' },
 ]
 
 export const PLAN_TYPE_LABELS: Record<string, string> = {

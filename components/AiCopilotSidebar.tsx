@@ -342,7 +342,7 @@ export default function AiCopilotSidebar() {
             `\n⚠ **Burnout risk is critical** — I'll factor recovery headroom into every recommendation.`,
           )
         } else if (burnoutRisk === 'emerging') {
-          lines.push(`\n⚡ *Emerging fatigue signal detected — monitor your energy closely.*`)
+          lines.push(`\n*Emerging fatigue signal detected — monitor your energy closely.*`)
         }
 
         lines.push(`\nWhat can I help you with today?`)

@@ -11,6 +11,7 @@ import {
 } from '@/lib/hooks/useHabits'
 import { wateringInfo, computeGardenStats } from '@/utils/botanyStats'
 import type { PlantLogEntry } from '@/types/botany'
+import Icon from '@/components/ui/Icon'
 import styles                 from './OutlookView.module.css'
 
 /* ── Unified event shape passed to both panels ───────────── */
@@ -269,7 +270,7 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
       {plants.length > 0 && (
         <section className={`${styles.section} ${styles.sectionCard}`}>
           <h2 className={styles.sectionLabel}>
-            <span className={styles.sectionGlyph}>🪴</span>
+            <span className={styles.sectionGlyph}><Icon name="plant" size={16} /></span>
             Plant Care
             {plantsDue.length > 0 && <span className={styles.count}>{plantsDue.length}</span>}
           </h2>
@@ -364,7 +365,7 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
       {plants.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionLabel}>
-            <span className={styles.sectionGlyph}>🪴</span>
+            <span className={styles.sectionGlyph}><Icon name="plant" size={16} /></span>
             Plant Care This Week
           </h2>
           <p className={styles.plantWeekSummary}>

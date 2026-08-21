@@ -46,6 +46,7 @@ import {
   getGoogleBooksKey, setGoogleBooksKey, maskGoogleBooksKey,
 } from '@/lib/googleBooksKey'
 import { resetCoverRepairFlag } from '@/lib/coverRepair'
+import Icon from '@/components/ui/Icon'
 import styles from './SettingsView.module.css'
 
 /* ── Section wrapper ──────────────────────────────────────────── */
@@ -215,7 +216,7 @@ function NotificationsPanel() {
         <p className={styles.sectionSubtitle}>This browser doesn&apos;t support notifications.</p>
       ) : (
         <button className={styles.dataBtn} onClick={() => void enable()}>
-          🔔 Enable browser notifications
+          <Icon name="bell" size={14} /> Enable browser notifications
         </button>
       )}
     </>
@@ -850,7 +851,7 @@ export default function SettingsView() {
               {/* Streak Savers balance */}
               <div className={styles.perkCard}>
                 <div className={styles.perkCardLeft}>
-                  <span className={styles.perkIcon}>🔥</span>
+                  <span className={styles.perkIcon}><Icon name="flame" size={20} /></span>
                   <div>
                     <p className={styles.perkCardName}>Streak Savers</p>
                     <p className={styles.perkCardDesc}>Restore a broken habit streak. Each use restores the streak for one habit.</p>
@@ -1054,7 +1055,7 @@ export default function SettingsView() {
           </div>
 
           <p className={styles.aiKeyNote}>
-            🔒 Your key is stored in localStorage. It is sent only to our server
+            <Icon name="lock" size={12} /> Your key is stored in localStorage. It is sent only to our server
             as an HTTPS header for forwarding to the AI provider — never logged or persisted.
             Gemini free tier is the easiest starting point; OpenAI has no permanent free tier.
           </p>

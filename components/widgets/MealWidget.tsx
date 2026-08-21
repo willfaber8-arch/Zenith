@@ -4,12 +4,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import { getWeekStart } from '@/utils/mealData'
+import Icon, { type IconName } from '@/components/ui/Icon'
 import wStyles from './Widget.module.css'
 
-const MEAL_EMOJI: Record<string, string> = {
-  breakfast: '🌅',
-  lunch:     '🌤',
-  dinner:    '🌙',
+const MEAL_ICON: Record<string, IconName> = {
+  breakfast: 'sunrise',
+  lunch:     'sun',
+  dinner:    'moon',
 }
 
 export default function MealWidget() {
@@ -55,7 +56,7 @@ export default function MealWidget() {
         <div className={wStyles.dataStack}>
           {todaySlots.map(s => (
             <div key={s.id} className={wStyles.dataRow}>
-              <div className={wStyles.dataIcon}>{MEAL_EMOJI[s.mealType] ?? '🍽'}</div>
+              <div className={wStyles.dataIcon}><Icon name={MEAL_ICON[s.mealType] ?? 'pan'} size={18} /></div>
               <div className={wStyles.dataMeta}>
                 <div className={wStyles.dataLabel}>{s.mealName}</div>
                 <div className={wStyles.dataSub}>{s.mealType}</div>
@@ -67,7 +68,7 @@ export default function MealWidget() {
           ))}
           {totalCals > 0 && (
             <div className={wStyles.dataRow} style={{ borderBottom: 'none', paddingTop: 'var(--sp-2)' }}>
-              <div className={wStyles.dataIcon}>📊</div>
+              <div className={wStyles.dataIcon}><Icon name="chart" size={18} /></div>
               <div className={wStyles.dataMeta}>
                 <div className={wStyles.dataLabel}>Total Today</div>
               </div>

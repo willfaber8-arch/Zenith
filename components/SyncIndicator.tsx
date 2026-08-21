@@ -56,7 +56,7 @@ const STATUS_CONFIG: Record<SyncStatus, StatusConfig> = {
     clickable: false,
   },
   OFFLINE_QUEUED: {
-    icon:       '⚡',
+    icon:       '◇',
     label:      'queue',
     modifier:   'queued',
     ariaLabel:  'Offline — changes queued, click to retry',

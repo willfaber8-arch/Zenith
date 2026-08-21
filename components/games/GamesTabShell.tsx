@@ -43,6 +43,7 @@ import { CUSTOM_THEME_ID }           from '@/lib/customTheme'
 import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/lib/themePreview'
 import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import { useNav }                    from '@/lib/NavContext'
+import Icon from '@/components/ui/Icon'
 import styles from './GamesTabShell.module.css'
 
 /* ── Module-level constants ─────────────────────────────────────── */
@@ -471,7 +472,7 @@ function ShopPanel() {
 
               {/* Streak saver count chip */}
               {item.id === 'perk_streak_saver_5' && streakSavers > 0 && (
-                <p className={styles.shopPerkBalance}>🔥 {streakSavers} saved</p>
+                <p className={styles.shopPerkBalance}><Icon name="flame" size={13} /> {streakSavers} saved</p>
               )}
 
               <div className={styles.shopCardFooter}>

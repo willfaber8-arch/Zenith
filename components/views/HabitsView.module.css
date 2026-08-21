@@ -523,6 +523,11 @@
   border-radius:  var(--r-sm);
   padding:        1px 6px;
   white-space:    nowrap;
+  /* Icons render display:block, so anything holding one beside text has
+     to be a flex row — otherwise the glyph takes its own line. */
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
 }
 
 /* ── Edit mode state ──────────────────────────────────────── */
@@ -832,6 +837,9 @@
 }
 
 .dayChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 10px;
   border-radius: var(--r-md);
   font-size: 0.75rem;

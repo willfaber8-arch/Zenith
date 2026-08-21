@@ -10,34 +10,9 @@ import SyncIndicator from './SyncIndicator'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
 import NotificationBell from './NotificationBell'
 import ModuleSearch from './ModuleSearch'
+import Icon from '@/components/ui/Icon'
+import { weatherIcon } from '@/lib/weatherIcons'
 import styles from './Topbar.module.css'
-
-const WMO_ICONS: Record<string, string> = {
-  'Clear sky':                  '☀',
-  'Mainly clear':               '🌤',
-  'Partly cloudy':              '⛅',
-  'Overcast':                   '☁',
-  'Foggy':                      '🌫',
-  'Icy fog':                    '🌫',
-  'Light drizzle':              '🌦',
-  'Drizzle':                    '🌦',
-  'Heavy drizzle':              '🌧',
-  'Light rain':                 '🌦',
-  'Rain':                       '🌧',
-  'Heavy rain':                 '🌧',
-  'Light snow':                 '🌨',
-  'Snow':                       '❄',
-  'Heavy snow':                 '❄',
-  'Snow grains':                '🌨',
-  'Rain showers':               '🌦',
-  'Showers':                    '🌧',
-  'Heavy showers':              '🌧',
-  'Snow showers':               '🌨',
-  'Heavy snow showers':         '❄',
-  'Thunderstorm':               '⛈',
-  'Thunderstorm w/ hail':       '⛈',
-  'Thunderstorm w/ heavy hail': '⛈',
-}
 
 function fmtTime(d: Date): string {
   return d.toLocaleTimeString('en-US', {
@@ -96,11 +71,14 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
     : 'var(--accent-purple)'
 
   /* ── Weather display string ─────────────────────────────── */
+  /* The chip is an icon beside a number now, so the two parts are kept
+     separate rather than concatenated into one string. */
   let weatherStr = '— °'
+  let weatherCondition: string | null = null
   if (wStatus === 'idle' || wStatus === 'loading') weatherStr = '·· °'
   if (wStatus === 'ok' && weather) {
-    const icon = WMO_ICONS[weather.condition] ?? '·'
-    weatherStr = `${icon} ${weather.tempF}°F`
+    weatherCondition = weather.condition
+    weatherStr = `${weather.tempF}°F`
   }
 
   /* ── User display ───────────────────────────────────────── */
@@ -162,6 +140,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               aria-label="Current weather"
               suppressHydrationWarning
             >
+              {weatherCondition && <Icon name={weatherIcon(weatherCondition)} size={14} />}
               {weatherStr}
             </span>
             <span className={styles.divider} aria-hidden="true" />
