@@ -68,6 +68,7 @@
   width: 340px;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 560px);
+  max-height: min(70dvh, 560px);
   overflow-y: auto;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);

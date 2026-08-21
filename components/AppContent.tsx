@@ -58,7 +58,11 @@ export default function AppContent({ children }: { children: ReactNode }) {
           transition:    authed
             ? 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
             : 'opacity 0.3s ease, transform 0.3s ease',
-          minHeight: '100vh',
+          /* dvh, not vh: mobile browsers shrink the viewport as the
+             address bar hides, and vh does not follow. An inline style
+             cannot carry a fallback declaration, and every browser this
+             app already requires for color-mix() supports dvh. */
+          minHeight: '100dvh',
         }}
       >
         {isReady && <AppShell>{children}</AppShell>}

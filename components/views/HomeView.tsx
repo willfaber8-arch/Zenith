@@ -35,7 +35,7 @@ export default function HomeView() {
         <div className={styles.modeSwitcher} aria-label="Dashboard layout mode">
           <button
             type="button"
-            className={`${styles.modeChip} ${layoutMode === 'classic' ? styles.modeChipActive : ''}`}
+            className={`${styles.modeChip} tap-44 ${layoutMode === 'classic' ? styles.modeChipActive : ''}`}
             onClick={() => switchMode('classic')}
             aria-pressed={layoutMode === 'classic'}
           >
@@ -43,7 +43,7 @@ export default function HomeView() {
           </button>
           <button
             type="button"
-            className={`${styles.modeChip} ${layoutMode === 'free' ? styles.modeChipActive : ''}`}
+            className={`${styles.modeChip} tap-44 ${layoutMode === 'free' ? styles.modeChipActive : ''}`}
             onClick={() => switchMode('free')}
             aria-pressed={layoutMode === 'free'}
           >

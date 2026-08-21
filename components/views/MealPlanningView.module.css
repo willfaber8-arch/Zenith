@@ -327,6 +327,7 @@
   width:          100%;
   max-width:      560px;
   max-height:     calc(100vh - 64px);
+  max-height:     calc(100dvh - 64px);
   display:        flex;
   flex-direction: column;
   overflow:       hidden;

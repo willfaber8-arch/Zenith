@@ -753,7 +753,7 @@ export default function AiCopilotSidebar() {
           <div className={styles.headerActions}>
             <button
               type="button"
-              className={styles.iconBtn}
+              className={`${styles.iconBtn} tap-44`}
               onClick={handleClear}
               title="New conversation"
               aria-label="New conversation"
@@ -762,7 +762,7 @@ export default function AiCopilotSidebar() {
             </button>
             <button
               type="button"
-              className={styles.iconBtn}
+              className={`${styles.iconBtn} tap-44`}
               onClick={close}
               title="Close Co-Pilot (Esc)"
               aria-label="Close Co-Pilot"
@@ -880,7 +880,7 @@ export default function AiCopilotSidebar() {
 
             <button
               type="button"
-              className={`${styles.micBtn} ${isListening ? styles.micBtnActive : ''}`}
+              className={`${styles.micBtn} tap-44 ${isListening ? styles.micBtnActive : ''}`}
               onClick={handleMicClick}
               title={isListening ? 'Stop listening' : 'Speak your message'}
               aria-label={isListening ? 'Stop voice input' : 'Start voice input'}

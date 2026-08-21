@@ -23,6 +23,7 @@
   /* Escape the viewport's overflow-y:auto — pin to the exact
      available height (100vh minus the 52 px Topbar).             */
   height: calc(100vh - 52px);
+  height: calc(100dvh - 52px);
   overflow: hidden;
   background: var(--bg-main);
   position: relative;
@@ -582,7 +583,8 @@
 @media (max-width: 640px) {
   .shell {
     flex-direction: column;
-    height: calc(100vh - 52px);  /* same explicit pin on mobile */
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);  /* same explicit pin on mobile */
   }
 
   .biospherePane {
@@ -598,6 +600,7 @@
   /* On mobile: open state lets the left pane expand */
   .biospherePaneOpenMobile {
     max-height: 50vh;
+    max-height: 50dvh;
   }
 
   .biospherePaneClosed {

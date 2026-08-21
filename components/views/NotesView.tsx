@@ -514,7 +514,7 @@ export default function NotesView() {
 
           <button
             type="button"
-            className={styles.archiveToggle}
+            className={`${styles.archiveToggle} tap-44`}
             onClick={() => setShowArchived(a => !a)}
             aria-pressed={showArchived}
           >

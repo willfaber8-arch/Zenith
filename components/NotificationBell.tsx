@@ -273,7 +273,7 @@ export default function NotificationBell() {
     <div className={styles.root} ref={rootRef}>
       <button
         type="button"
-        className={`${styles.bellBtn} ${open ? styles.bellBtnActive : ''}`}
+        className={`${styles.bellBtn} tap-44 ${open ? styles.bellBtnActive : ''}`}
         onClick={handleToggle}
         aria-label={unseen > 0 ? `Notifications, ${unseen} new` : 'Notifications'}
         aria-expanded={open}
