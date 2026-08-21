@@ -465,6 +465,19 @@
    The backdrop and mobile hamburger (in Topbar) become active.
    ════════════════════════════════════════════════════════════ */
 
+/*
+ * Room for the fixed bottom bar.
+ *
+ * 56px of bar plus the home-indicator inset plus a little breathing
+ * space — without it the last card in every view sits permanently
+ * underneath the navigation, which looks like a scrolling bug.
+ */
+@media (max-width: 767px) {
+  .viewport {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (max-width: 767px) {
 
   .shell {

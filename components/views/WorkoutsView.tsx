@@ -9,6 +9,7 @@ import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import Icon, { type IconName }   from '@/components/ui/Icon'
 import WeightroomPanel           from '@/components/WeightroomPanel'
 import StravaPanel               from '@/components/StravaPanel'
+import { CAPTURE_EVENT }         from '@/components/MobileTabBar'
 import type { ImportSummary }    from '@/lib/hooks/useStrava'
 import styles                    from './WorkoutsView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -177,6 +178,19 @@ export default function WorkoutsView() {
     setVp(loadVP())
     setBiome(loadBiome())
     setMounted(true)
+  }, [])
+
+  /* The phone's capture sheet lands here already knowing which half of
+     the module you wanted, so it says so rather than making you find the
+     tab. Harmless anywhere else — nothing dispatches it on desktop. */
+  useEffect(() => {
+    const onCapture = (e: Event) => {
+      const kind = (e as CustomEvent<{ kind?: string }>).detail?.kind
+      if (kind === 'cardio') setActiveTab('cardio')
+      if (kind === 'set')    setActiveTab('weights')
+    }
+    window.addEventListener(CAPTURE_EVENT, onCapture)
+    return () => window.removeEventListener(CAPTURE_EVENT, onCapture)
   }, [])
 
   /* ── IDB cardio sessions ──────────────────────────────────── */

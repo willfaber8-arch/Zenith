@@ -21,6 +21,8 @@ import {
   type CategoryId,
 } from '@/lib/nav-config'
 import { ZenithMark } from './ZenithLogo'
+import MobileTabBar from '@/components/MobileTabBar'
+import MobileViewNote from '@/components/MobileViewNote'
 import styles from './AppShell.module.css'
 
 const COLLAPSED_KEY      = 'zenith_nav_collapsed_v1'
@@ -639,9 +641,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           className={styles.viewport}
           data-category={activeCategory ?? 'essentials'}
         >
+          <MobileViewNote />
           {children}
         </div>
       </div>
+
+      {/* ── Phone navigation ─────────────────────────────────
+          Hidden above 767px by its own CSS. Rendered outside the
+          content frame so `position: fixed` resolves against the
+          viewport rather than a transformed ancestor. */}
+      {!isStudyModeActive && <MobileTabBar />}
 
       {/* ── Study mode cockpit overlay ───────────────────────── */}
       <StudyLayoutContainer />
