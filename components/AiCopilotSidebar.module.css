@@ -809,3 +809,9 @@
   background: var(--bg-hover);
   color: var(--text-primary);
 }
+
+/* ── Touch ───────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  .textarea { min-height: 44px; }
+  .sendBtn  { min-height: 44px; }
+}

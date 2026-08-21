@@ -7,6 +7,7 @@ import type { VocabDeck, VocabCard }                        from '@/types/vocabu
 import VocabStudySession                                    from '@/components/VocabStudySession'
 import { useToast }                                         from '@/lib/ToastContext'
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
+import Icon from '@/components/ui/Icon'
 import styles                                               from './VocabBuilderView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 import { runVocabScheduleBackfill } from '@/lib/vocabBackfill'
@@ -1431,7 +1432,7 @@ function EnglishVocabTab() {
           <span className={styles.engStatLabel}>Total Words</span>
         </div>
         <div className={styles.engStat}>
-          <span className={`${styles.engStatVal} ${styles.engStatValPurple}`}>{streak > 0 ? `🔥 ${streak}` : '—'}</span>
+          <span className={`${styles.engStatVal} ${styles.engStatValPurple}`}>{streak > 0 ? <><Icon name="flame" size={14} /> {streak}</> : '—'}</span>
           <span className={styles.engStatLabel}>Day Streak</span>
         </div>
       </div>
@@ -1590,6 +1591,11 @@ function EnglishVocabTab() {
    ════════════════════════════════════════════════════════════════ */
 
 const LANG_EMOJI: Record<string, string> = {
+  /*
+   * Flags stay emoji for the same reason the biome does: a flag is not a
+   * symbol standing for a language, it is the recognisable thing itself,
+   * and no stroked outline of one would be legible at 14px.
+   */
   spanish: '🇪🇸', french: '🇫🇷', german: '🇩🇪', italian: '🇮🇹',
   portuguese: '🇧🇷', japanese: '🇯🇵', korean: '🇰🇷', chinese: '🇨🇳',
   mandarin: '🇨🇳', arabic: '🇸🇦', russian: '🇷🇺', hindi: '🇮🇳',
@@ -1599,7 +1605,7 @@ const LANG_EMOJI: Record<string, string> = {
 }
 
 function getLangEmoji(name: string): string {
-  return LANG_EMOJI[name.trim().toLowerCase()] ?? '📖'
+  return LANG_EMOJI[name.trim().toLowerCase()] ?? '◍'
 }
 
 /**
@@ -2356,7 +2362,7 @@ export default function VocabBuilderView() {
           className={`${styles.outerTab} ${mainTab === 'language' ? styles.outerTabActive : ''}`}
           onClick={() => setMainTab('language')}
         >
-          🌐 Language Builder
+          <Icon name="globe" size={15} /> Language Builder
         </button>
         <button
           className={`${styles.outerTab} ${mainTab === 'english' ? styles.outerTabActive : ''}`}

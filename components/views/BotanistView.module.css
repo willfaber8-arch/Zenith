@@ -357,6 +357,7 @@
   z-index: 401;
   width: min(560px, calc(100vw - 32px));
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   background: #0c1410;
   border: 1px solid rgba(82,204,163,0.15);
@@ -620,6 +621,7 @@
   z-index: 401;
   width: min(560px, calc(100vw - 32px));
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   background: #0c1410;
   border: 1px solid rgba(82, 204, 163, 0.15);

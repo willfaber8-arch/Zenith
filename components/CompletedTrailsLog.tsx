@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import type { CompletedTrail } from '@/types/trailLog'
 import CompleteTrailModal from './CompleteTrailModal'
+import Icon from '@/components/ui/Icon'
 import styles from './CompletedTrailsLog.module.css'
 
 function fmt(dateISO: string): string {
@@ -54,7 +55,7 @@ export default function CompletedTrailsLog() {
     return (
       <div className={styles.wrap}>
         <div className={styles.empty}>
-          <span className={styles.emptyGlyph}>🥾</span>
+          <span className={styles.emptyGlyph}><Icon name="hike" size={34} /></span>
           <p className={styles.emptyTitle}>No completed trails yet</p>
           <p className={styles.emptyHint}>
             Log any hike you&apos;ve finished — distance, difficulty, a rating, notes and photos.

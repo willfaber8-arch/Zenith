@@ -701,6 +701,7 @@
   width: 420px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
@@ -1551,6 +1552,7 @@
   width: 480px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2388,6 +2390,7 @@
   z-index: 401;
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
   overflow-y: auto;
   padding: var(--sp-5);
   border-radius: var(--r-lg);

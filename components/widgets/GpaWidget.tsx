@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import { calcGpa, fmtGpa, gpaTier } from '@/utils/gpaMath'
+import Icon from '@/components/ui/Icon'
 import wStyles from './Widget.module.css'
 
 export default function GpaWidget() {
@@ -51,7 +52,7 @@ export default function GpaWidget() {
           <div className={wStyles.dataHeroSub}>cumulative GPA</div>
           <div className={wStyles.dataStack}>
             <div className={wStyles.dataRow}>
-              <div className={wStyles.dataIcon}>📋</div>
+              <div className={wStyles.dataIcon}><Icon name="clipboard" size={18} /></div>
               <div className={wStyles.dataMeta}>
                 <div className={wStyles.dataLabel}>Credits Completed</div>
                 <div className={wStyles.dataSub}>across {semesters.filter(s => !s.isProjected).length} semesters</div>
@@ -60,7 +61,7 @@ export default function GpaWidget() {
             </div>
             {tier && (
               <div className={wStyles.dataRow}>
-                <div className={wStyles.dataIcon}>🏆</div>
+                <div className={wStyles.dataIcon}><Icon name="trophy" size={18} /></div>
                 <div className={wStyles.dataMeta}>
                   <div className={wStyles.dataLabel}>Standing</div>
                   <div className={wStyles.dataSub}>academic tier</div>

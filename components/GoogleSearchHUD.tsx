@@ -169,7 +169,7 @@ export default function GoogleSearchHUD() {
 
           {/* Submit affordance */}
           <button
-            className={`${styles.submitBtn} ${query.trim() ? styles.submitBtnActive : ''}`}
+            className={`${styles.submitBtn} tap-44 ${query.trim() ? styles.submitBtnActive : ''}`}
             onClick={handleSearchSubmission}
             aria-label="Run search"
             tabIndex={-1}

@@ -130,12 +130,23 @@ anchored to the bottom needs to move with it.
 
 ## Order
 
-1. **Touch targets and `dvh`.** Unglamorous, benefits every screen, no new
-   surface. Do this first — it may be enough to judge the rest against.
-2. **Bottom bar** behind a width breakpoint, with the five destinations.
+1. ~~**Touch targets and `dvh`.**~~ **Done.** 21 controls were under the
+   floor; most got a transparent 44px pad under `pointer: coarse` rather
+   than growing, so no toolbar reflowed. 33 layout heights across 18
+   files gained a `dvh` declaration behind the `vh` one.
+2. ~~**Bottom bar.**~~ **Done.** Five destinations, portalled to `<body>`
+   — an ancestor's identity transform was otherwise capturing its fixed
+   positioning. The "+" opens a capture sheet.
 3. **Weightroom logger** in its phone form, since it is the driver.
-4. **Today, Habits, Notes** condensed.
-5. **"More"** for everything else, honestly labelled.
+   Partly there already: `SetLogger` was built to this shape — one set on
+   screen, 56px steppers, a 58px primary action, `dvh` sizing. What is
+   left is the route into it from the bottom bar without passing through
+   the desktop Workouts layout first.
+4. **Today, Habits, Notes** condensed. All three open and work; none is
+   yet *composed* for a phone.
+5. ~~**"More"**~~ **Done, differently.** Rather than a new list, the
+   existing drawer became the overflow and laptop-only views carry a
+   one-line note saying they are better on a bigger screen.
 
 Steps 1 and 2 are independently shippable and worth having on their own.
 

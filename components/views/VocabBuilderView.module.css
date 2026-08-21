@@ -699,6 +699,7 @@
 .modal {
   width: min(520px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-xl);
@@ -971,6 +972,7 @@
   flex-direction: column;
   overflow-y: auto;
   max-height: min(480px, calc(100vh - 240px));
+  max-height: min(480px, calc(100dvh - 240px));
 }
 
 .aiCardPreviewRow {

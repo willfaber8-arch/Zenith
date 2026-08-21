@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { db } from '@/lib/db'
 import type { CompletedTrail } from '@/types/trailLog'
 import { fileToDownscaledDataUrl } from '@/utils/imageDownscale'
+import Icon from '@/components/ui/Icon'
 import styles from './CompleteTrailModal.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -197,7 +198,7 @@ export default function CompleteTrailModal({ existing, onClose, onToast }: Props
           onChange={e => void addPhotos(e.target.files)}
         />
         <button type="button" className={styles.photoBtn} onClick={() => fileRef.current?.click()} disabled={busy}>
-          {busy ? 'Adding…' : '📷 Add Photos'}
+          {busy ? 'Adding…' : <><Icon name="camera" size={14} /> Add Photos</>}
         </button>
         {photos.length > 0 && (
           <div className={styles.photoGrid}>

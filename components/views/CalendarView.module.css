@@ -518,6 +518,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   max-height: min(600px, 60vh);
+  max-height: min(600px, 60dvh);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--surface-card);
@@ -2045,6 +2046,7 @@
   z-index: 401;
   width: min(540px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
   display: flex;
   flex-direction: column;
   background: var(--surface-card);

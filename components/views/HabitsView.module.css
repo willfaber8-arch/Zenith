@@ -523,6 +523,11 @@
   border-radius:  var(--r-sm);
   padding:        1px 6px;
   white-space:    nowrap;
+  /* Icons render display:block, so anything holding one beside text has
+     to be a flex row — otherwise the glyph takes its own line. */
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
 }
 
 /* ── Edit mode state ──────────────────────────────────────── */
@@ -710,6 +715,7 @@
   z-index:        401;
   width:          min(500px, calc(100vw - 32px));
   max-height:     calc(100vh - 64px);
+  max-height:     calc(100dvh - 64px);
   display:        flex;
   flex-direction: column;
   background:     var(--surface-card);
@@ -832,6 +838,9 @@
 }
 
 .dayChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 10px;
   border-radius: var(--r-md);
   font-size: 0.75rem;
@@ -972,6 +981,7 @@
   .modal {
     width: calc(100vw - var(--sp-6));
     max-height: calc(100vh - var(--sp-10));
+    max-height: calc(100dvh - var(--sp-10));
   }
 }
 
@@ -983,4 +993,11 @@
   .weekDots {
     display: none;
   }
+}
+
+/* ── Touch ───────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  /* 42px — two short of the floor, and it is the control that collapses
+     a whole category, so a miss is annoying rather than harmless. */
+  .categoryHeader { min-height: 44px; }
 }

@@ -15,6 +15,7 @@
   width: 480px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   overflow-y: auto;
   background: #0c1410;
   border: 1px solid rgba(82, 204, 163, 0.18);

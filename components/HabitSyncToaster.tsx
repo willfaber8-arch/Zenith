@@ -27,8 +27,8 @@ export default function HabitSyncToaster() {
       const names  = detail?.names ?? []
       if (names.length === 0) return
       const label = names.length === 1
-        ? `${names[0]} — auto-completed! 🎉`
-        : `${names.length} habits auto-completed! 🎉`
+        ? `${names[0]} — auto-completed`
+        : `${names.length} habits auto-completed`
       toast(label, 'success')
     }
     window.addEventListener('zenith:habit-complete', handler)

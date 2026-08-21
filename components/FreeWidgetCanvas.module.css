@@ -5,7 +5,8 @@
 .canvas {
   position: relative;
   width:    100%;
-  height:   calc(100vh - 52px);  /* viewport minus topbar */
+  height:   calc(100vh - 52px);
+  height:   calc(100dvh - 52px);  /* viewport minus topbar */
   overflow: hidden;
   user-select: none;
   /* Snap-grid reference dots — 20px spacing matches GRID_SIZE constant */

@@ -40,6 +40,7 @@ import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
 import { outlookComposeUrl, type ExternalCalendarEvent } from '@/lib/microsoftCalendar'
+import Icon from '@/components/ui/Icon'
 import styles from './CalendarView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -849,7 +850,7 @@ function AgendaList({ events, feeds }: AgendaListProps) {
   if (groups.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <span className={styles.emptyIcon} aria-hidden="true">📅</span>
+        <span className={styles.emptyIcon} aria-hidden="true"><Icon name="calendar" size={34} /></span>
         <p className={styles.emptyTitle}>No upcoming events</p>
         <p className={styles.emptySubtitle}>
           Add a calendar feed above to populate your agenda.
@@ -1024,7 +1025,7 @@ type ViewMode = 'week' | 'month' | 'agenda'
 function EmptyPersonal({ onAdd }: { onAdd: () => void }) {
   return (
     <div className={styles.emptyState}>
-      <span className={styles.emptyIcon} aria-hidden="true">📅</span>
+      <span className={styles.emptyIcon} aria-hidden="true"><Icon name="calendar" size={34} /></span>
       <p className={styles.emptyTitle}>Your personal calendar is empty</p>
       <p className={styles.emptySubtitle}>
         Add your own events — classes, appointments, reminders — and color-code them however you like.

@@ -67,7 +67,7 @@ export default function CounterWidget() {
         </div>
         <button
           onClick={() => setEditing(e => !e)}
-          className={wStyles.timerResetBtn}
+          className={`${wStyles.timerResetBtn} tap-44`}
           title={editing ? 'Done' : 'Edit counter'}
           aria-label={editing ? 'Finish editing' : 'Edit counter'}
         >

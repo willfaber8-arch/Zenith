@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAiConfig } from '@/lib/hooks/useAiConfig'
+import Icon, { type IconName } from '@/components/ui/Icon'
 import styles from './PersonalBrandView.module.css'
 
 /* ── Career resource links ──────────────────────────────────────── */
@@ -11,7 +12,7 @@ interface CareerLink {
   url:         string
   description: string
   tag:         string
-  icon:        string
+  icon: IconName
 }
 
 const CAREER_LINKS: CareerLink[] = [
@@ -20,84 +21,84 @@ const CAREER_LINKS: CareerLink[] = [
     url: 'https://www.linkedin.com',
     description: 'Build your professional network and showcase your experience.',
     tag: 'Networking',
-    icon: '💼',
+    icon: 'people',
   },
   {
     name: 'Handshake',
     url: 'https://joinhandshake.com',
     description: 'Early-career job platform connecting students with employers.',
     tag: 'Jobs',
-    icon: '🤝',
+    icon: 'briefcase',
   },
   {
     name: 'Indeed',
     url: 'https://www.indeed.com',
     description: 'Comprehensive job search across millions of listings.',
     tag: 'Jobs',
-    icon: '🔍',
+    icon: 'search',
   },
   {
     name: 'Glassdoor',
     url: 'https://www.glassdoor.com',
     description: 'Company reviews, salaries, and interview insights.',
     tag: 'Research',
-    icon: '🏢',
+    icon: 'building',
   },
   {
     name: 'Wellfound (AngelList)',
     url: 'https://wellfound.com',
     description: 'Startup jobs and tech company opportunities.',
     tag: 'Startups',
-    icon: '🚀',
+    icon: 'rocket',
   },
   {
     name: 'Canva',
     url: 'https://www.canva.com',
     description: 'Design your resume, portfolio, and personal brand materials.',
     tag: 'Design',
-    icon: '🎨',
+    icon: 'palette',
   },
   {
     name: 'Notion',
     url: 'https://www.notion.so',
     description: 'Build a public portfolio or personal landing page.',
     tag: 'Portfolio',
-    icon: '📄',
+    icon: 'document',
   },
   {
     name: 'GitHub',
     url: 'https://github.com',
     description: 'Showcase your code projects and open-source contributions.',
     tag: 'Portfolio',
-    icon: '🐙',
+    icon: 'code',
   },
   {
     name: 'Resume.io',
     url: 'https://resume.io',
     description: 'Professional resume builder with recruiter-ready templates.',
     tag: 'Resume',
-    icon: '📝',
+    icon: 'note',
   },
   {
     name: 'Levels.fyi',
     url: 'https://www.levels.fyi',
     description: 'Tech compensation data — know your worth before negotiating.',
     tag: 'Research',
-    icon: '📊',
+    icon: 'chart',
   },
   {
     name: 'Y Combinator Jobs',
     url: 'https://www.ycombinator.com/jobs',
     description: 'Jobs at YC-backed companies — high growth opportunities.',
     tag: 'Startups',
-    icon: '🍊',
+    icon: 'sprout',
   },
   {
     name: 'Loom',
     url: 'https://www.loom.com',
     description: 'Record async video pitches or portfolio walkthroughs.',
     tag: 'Portfolio',
-    icon: '🎥',
+    icon: 'video',
   },
 ]
 
@@ -216,7 +217,7 @@ export default function PersonalBrandView() {
               className={styles.linkCard}
             >
               <div className={styles.linkCardTop}>
-                <span className={styles.linkIcon}>{link.icon}</span>
+                <span className={styles.linkIcon}><Icon name={link.icon} size={19} /></span>
                 <span className={styles.linkTag}>{link.tag}</span>
               </div>
               <p className={styles.linkName}>{link.name}</p>

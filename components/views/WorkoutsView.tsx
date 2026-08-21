@@ -9,6 +9,7 @@ import CardioGameDashboard       from '@/components/CardioGameDashboard'
 import Icon, { type IconName }   from '@/components/ui/Icon'
 import WeightroomPanel           from '@/components/WeightroomPanel'
 import StravaPanel               from '@/components/StravaPanel'
+import { CAPTURE_EVENT }         from '@/components/MobileTabBar'
 import type { ImportSummary }    from '@/lib/hooks/useStrava'
 import styles                    from './WorkoutsView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -77,6 +78,17 @@ interface BiomeItem {
 }
 
 const BIOME_CATALOG: BiomeItem[] = [
+/*
+ * These stay emoji, deliberately.
+ *
+ * Everywhere else in Zenith an emoji stood in for a concept — a flame
+ * for "streak", a clipboard for "assignment" — and a line icon says the
+ * same thing better. Here the emoji IS the thing: the goldfish is not an
+ * icon meaning goldfish, it is the goldfish you spent Vitality Points
+ * on. Redrawing the biome as monochrome outlines would make the one
+ * playful corner of the app look like the rest of it, which is the
+ * opposite of why it exists.
+ */
   // Aquarium fish
   { id: 'neon_tetra',   name: 'Neon Tetra',     emoji: '🐟', cost: 5,  category: 'fish',   biome: 'aquarium', desc: 'Tiny iridescent schooling fish.' },
   { id: 'goldfish',     name: 'Goldfish',        emoji: '🐠', cost: 10, category: 'fish',   biome: 'aquarium', desc: 'Classic, peaceful, and beautiful.' },
@@ -166,6 +178,19 @@ export default function WorkoutsView() {
     setVp(loadVP())
     setBiome(loadBiome())
     setMounted(true)
+  }, [])
+
+  /* The phone's capture sheet lands here already knowing which half of
+     the module you wanted, so it says so rather than making you find the
+     tab. Harmless anywhere else — nothing dispatches it on desktop. */
+  useEffect(() => {
+    const onCapture = (e: Event) => {
+      const kind = (e as CustomEvent<{ kind?: string }>).detail?.kind
+      if (kind === 'cardio') setActiveTab('cardio')
+      if (kind === 'set')    setActiveTab('weights')
+    }
+    window.addEventListener(CAPTURE_EVENT, onCapture)
+    return () => window.removeEventListener(CAPTURE_EVENT, onCapture)
   }, [])
 
   /* ── IDB cardio sessions ──────────────────────────────────── */

@@ -26,6 +26,7 @@
  * No React imports — callable from hooks, FSMs, and plain handlers.
  */
 
+import type { IconName } from '@/components/ui/Icon'
 import { db, type Habit } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
 import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
@@ -38,21 +39,21 @@ export type HabitAutoSource = 'cardio' | 'study' | 'vocab' | 'mood' | 'reading'
 export interface HabitSourceMeta {
   id:    HabitAutoSource
   label: string   // picker label
-  icon:  string   // emoji
+  icon:  IconName
   unit:  string   // what one unit of `amount` represents
   hint:  string   // explanation shown under the picker
 }
 
 export const HABIT_SOURCES: readonly HabitSourceMeta[] = [
-  { id: 'cardio', label: 'Cardio workout',     icon: '🏃', unit: 'minutes',
+  { id: 'cardio', label: 'Cardio workout',     icon: 'run', unit: 'minutes',
     hint: 'Fills automatically when you log a session in Workouts.' },
-  { id: 'study',  label: 'Focus session',      icon: '🧠', unit: 'minutes',
+  { id: 'study',  label: 'Focus session',      icon: 'brain', unit: 'minutes',
     hint: 'Fills automatically when you finish a Pomodoro focus block.' },
-  { id: 'vocab',  label: 'Vocabulary review',  icon: '📚', unit: 'words',
+  { id: 'vocab',  label: 'Vocabulary review',  icon: 'book', unit: 'words',
     hint: 'Fills automatically when you review words in the Polyglot Vault.' },
-  { id: 'mood',   label: 'Mood check-in',      icon: '🌤️', unit: 'check-ins',
+  { id: 'mood',   label: 'Mood check-in',      icon: 'moodNeutral', unit: 'check-ins',
     hint: 'Fills automatically when you log your mood in Mental Wellness.' },
-  { id: 'reading', label: 'Reading session',   icon: '📖', unit: 'sessions',
+  { id: 'reading', label: 'Reading session',   icon: 'bookOpen', unit: 'sessions',
     hint: 'Fills automatically when you start or finish a book in the Library.' },
 ] as const
 
@@ -148,7 +149,7 @@ export async function addHabitProgress(
       pushNotification({
         id:    `habit-goal-raise-${habitId}-${newOverStreak}`,
         type:  'habit-milestone',
-        icon:  '📈',
+        icon:  'trendingUp',
         title: `${habit.name} — time to raise your goal?`,
         body:  `You've exceeded your target ${newOverStreak} days in a row. Consider increasing it.`,
         view:  'habits',

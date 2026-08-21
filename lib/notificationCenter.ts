@@ -19,6 +19,7 @@
  * No Dexie / React imports — safe to call from any handler or hook.
  */
 
+import type { IconName } from '@/components/ui/Icon'
 import type { ViewId } from '@/lib/nav-config'
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -34,7 +35,7 @@ export type NotificationType =
 export interface ZenithNotification {
   id:        string          // stable id — drives dedup
   type:      NotificationType
-  icon:      string          // emoji glyph
+  icon:      IconName
   title:     string
   body?:     string
   view?:     ViewId          // optional deep-link target on click
@@ -54,19 +55,19 @@ const SEEN_TTL_MS  = 24 * 60 * 60 * 1000   // auto-clear 24 h after seen
 export interface ChecklistItemDef {
   id:     string
   label:  string
-  icon:   string
+  icon:   IconName
   view:   ViewId
   /** IDB signal used by the hook to auto-detect today's completion. */
   source: 'habit' | 'focus' | 'mood' | 'cardio' | 'vocab' | 'reading'
 }
 
 export const DEFAULT_CHECKLIST: readonly ChecklistItemDef[] = [
-  { id: 'habit',   label: 'Track a habit',        icon: '◎', view: 'habits',        source: 'habit'   },
-  { id: 'focus',   label: 'Complete a focus block', icon: '🧠', view: 'study-shield', source: 'focus' },
-  { id: 'mood',    label: 'Log a mood check-in',  icon: '🌤️', view: 'wellness',      source: 'mood'    },
-  { id: 'cardio',  label: 'Move your body',       icon: '🏃', view: 'workouts',      source: 'cardio'  },
-  { id: 'vocab',   label: 'Review vocabulary',    icon: '📚', view: 'vocab-builder', source: 'vocab'   },
-  { id: 'reading', label: 'Read',                 icon: '📖', view: 'book-tracker',  source: 'reading' },
+  { id: 'habit',   label: 'Track a habit',        icon: 'target', view: 'habits',        source: 'habit'   },
+  { id: 'focus',   label: 'Complete a focus block', icon: 'brain', view: 'study-shield', source: 'focus' },
+  { id: 'mood',    label: 'Log a mood check-in',  icon: 'moodNeutral', view: 'wellness',      source: 'mood'    },
+  { id: 'cardio',  label: 'Move your body',       icon: 'run', view: 'workouts',      source: 'cardio'  },
+  { id: 'vocab',   label: 'Review vocabulary',    icon: 'book', view: 'vocab-builder', source: 'vocab'   },
+  { id: 'reading', label: 'Read',                 icon: 'bookOpen', view: 'book-tracker',  source: 'reading' },
 ] as const
 
 /* ── Pub/sub bus ───────────────────────────────────────────────── */
