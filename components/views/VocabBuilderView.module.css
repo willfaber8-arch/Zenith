@@ -357,11 +357,18 @@
 .cardsToolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* Was space-between with two children; it now holds up to four, so
+     it wraps and the count keeps the left edge with a gap doing the
+     spacing instead. */
+  gap: var(--sp-3);
+  flex-wrap: wrap;
   padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
+
+/* Push whatever follows to the right edge. */
+.cardsToolbar > .addCardBtn { margin-left: auto; }
 
 .cardsCount {
   font-family: var(--font-mono);
@@ -1505,4 +1512,132 @@
   color:        var(--accent-green);
   border-color: rgba(82, 204, 163, 0.30);
   background:   rgba(82, 204, 163, 0.06);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Card selection + move between decks
+   ════════════════════════════════════════════════════════════ */
+
+.selectAllBtn,
+.strayBtn,
+.moveClear {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--sp-2) var(--sp-3);
+  min-height: 34px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.selectAllBtn:hover,
+.moveClear:hover { color: var(--text-primary); border-color: var(--text-dark); }
+
+/* The rescue button carries the accent because it is the one thing on
+   this toolbar that undoes a mistake rather than making a change. */
+.strayBtn {
+  border-color: rgba(245, 158, 11, 0.35);
+  background:   rgba(245, 158, 11, 0.10);
+  color:        #f59e0b;
+}
+.strayBtn:hover { background: rgba(245, 158, 11, 0.18); }
+
+.systemDeckNote {
+  flex-basis: 100%;
+  font-size: 0.68rem;
+  color: var(--text-dark);
+  font-style: italic;
+}
+
+/* ── Move bar ─────────────────────────────────────────────── */
+
+.moveBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
+  background: rgba(82, 204, 163, 0.08);
+  animation: anim-slide-in 200ms var(--ease-smooth) both;
+}
+
+.moveCount {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-green);
+}
+
+.moveHint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.moveSelect {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.moveBtn {
+  min-height: 36px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-green);
+  background: rgba(82, 204, 163, 0.16);
+  color: var(--accent-green);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.moveBtn:hover:not(:disabled) { background: rgba(82, 204, 163, 0.26); }
+.moveBtn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Row checkbox ─────────────────────────────────────────── */
+
+.cardCheck {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent-green);
+}
+
+.cardRowSelected {
+  border-color: color-mix(in srgb, var(--accent-green) 40%, transparent);
+  background:   rgba(82, 204, 163, 0.06);
+}
+
+@media (pointer: coarse) {
+  .cardCheck { width: 22px; height: 22px; }
+  .selectAllBtn, .strayBtn, .moveClear, .moveBtn, .moveSelect { min-height: 44px; }
+}
+
+/* Marks a deck another feature owns — listed so its cards stay
+   reachable, tagged so it is never mistaken for one of your own. */
+.deckSystemTag {
+  margin-left: var(--sp-2);
+  padding: 1px 6px;
+  border-radius: 99px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-active);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  vertical-align: middle;
 }

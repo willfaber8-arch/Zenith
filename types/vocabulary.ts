@@ -13,6 +13,18 @@ export interface VocabDeck {
   languageName: string   // * indexed — e.g. 'Spanish', 'Japanese'
   description:  string   //   optional user notes about the deck
   createdAt:    number   // * indexed — UTC ms; chronological sort
+  /**
+   * True when another feature owns this deck's contents.
+   *
+   * The English Vocabulary tab seeds a curated deck into this same
+   * table. It is not one of the user's language decks and must not be
+   * offered as a place to add cards — doing so is how forty Spanish
+   * words ended up filed under "Advanced English".
+   *
+   * Optional and non-indexed: existing rows simply lack it, and
+   * `seedEnglishDeck` back-fills the one deck that needs it.
+   */
+  isSystem?:    boolean
 }
 
 /**
