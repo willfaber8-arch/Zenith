@@ -2088,6 +2088,9 @@ function CardModal({
   const [native,    setNative]    = useState(editing?.nativeTranslation   ?? '')
   const [phonetic,  setPhonetic]  = useState(editing?.phoneticSpelling    ?? '')
   const [saving,    setSaving]    = useState(false)
+  /* How many have been added in this sitting — see handleSubmit. */
+  const [addedCount, setAddedCount] = useState(0)
+  const firstFieldRef = useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
   const canSave = foreign.trim().length > 0 && native.trim().length > 0 && !saving
@@ -2118,7 +2121,27 @@ function CardModal({
         nextReviewTimestamp:   0,   // 0 = immediately due
       }
       await db.vocab_cards.add(card)
-      toast('Card added.', 'success')
+
+      /*
+       * Stay open and clear the fields rather than closing.
+       *
+       * Adding vocabulary is something you do in runs of ten, not one
+       * at a time, and closing after each card made every card cost a
+       * round trip back to the button. The modal now reopens itself
+       * empty until you deliberately dismiss it, so the whole run is
+       * type, Enter, type, Enter.
+       *
+       * No toast per card either: twenty of them stack up and cover the
+       * form you are typing into. The count in the header says the same
+       * thing without moving anything.
+       */
+      setForeign('')
+      setNative('')
+      setPhonetic('')
+      setAddedCount(n => n + 1)
+      setSaving(false)
+      firstFieldRef.current?.focus()
+      return
     }
 
     onClose()
@@ -2133,14 +2156,26 @@ function CardModal({
     <div className={styles.modalBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={styles.modal} onKeyDown={onKeyDown}>
         <div className={styles.modalHeader}>
-          <span className={styles.modalTitle}>{editing ? 'Edit Card' : 'Add Card'}</span>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+          <span className={styles.modalTitle}>
+            {editing ? 'Edit Card' : 'Add Card'}
+            {addedCount > 0 && (
+              <span className={styles.modalCount}>
+                {addedCount} added
+              </span>
+            )}
+          </span>
+          <button
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label={addedCount > 0 ? `Done — ${addedCount} cards added` : 'Close'}
+          >×</button>
         </div>
 
         <div className={styles.modalBody}>
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel}>Foreign Word / Phrase *</label>
             <input
+              ref={firstFieldRef}
               className={styles.fieldInput}
               placeholder="The word in the target language"
               value={foreign}
@@ -2170,7 +2205,9 @@ function CardModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
+          <button className={styles.cancelBtn} onClick={onClose}>
+            {addedCount > 0 ? 'Done' : 'Cancel'}
+          </button>
           <button className={styles.submitBtn} onClick={handleSubmit} disabled={!canSave}>
             {editing ? 'Save Changes' : 'Add Card'}
           </button>
