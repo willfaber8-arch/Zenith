@@ -25,6 +25,7 @@ import {
   CALORIE_GOAL_LABELS, CALORIE_GOAL_SUB,
   type GenConfig, type CalorieGoal,
 } from '@/utils/mealGenerator'
+import Icon from '@/components/ui/Icon'
 import styles from './MealPlanningView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -317,7 +318,7 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
                   className={`${styles.typeChip} ${planType === pt ? styles.typeChipOn : ''} ${pt === 'dining_hall' ? styles.typeChipDiningHall : ''}`}
                   onClick={() => setPlanType(pt)}
                 >
-                  {pt === 'dining_hall' ? '🏫 ' : ''}{PLAN_TYPE_LABELS[pt]}
+                  {pt === 'dining_hall' && <Icon name="school" size={13} />}{PLAN_TYPE_LABELS[pt]}
                 </button>
               ))}
             </div>
@@ -326,7 +327,7 @@ function SlotModal({ weekStart, dayIndex, mealType, existing, equipment, dislike
           {/* Cost: auto-calculated for home, simplified for dining hall, manual for out */}
           {isDiningHall ? (
             <div className={styles.diningHallInfo}>
-              <div className={styles.diningHallBadge}>🏫 Dining Hall</div>
+              <div className={styles.diningHallBadge}><Icon name="school" size={13} /> Dining Hall</div>
               <p className={styles.diningHallNote}>
                 Covered by your meal plan — no cost or ingredient tracking needed.
               </p>
@@ -582,7 +583,7 @@ function GenerateConfigModal({
               onClick={() => setCfg(c => ({ ...c, emphasizeProtein: !c.emphasizeProtein }))}
             >
               <div>
-                <span className={styles.genToggleName}>💪 Emphasize protein</span>
+                <span className={styles.genToggleName}><Icon name="dumbbell" size={14} /> Emphasize protein</span>
                 <span className={styles.genToggleSub}>Prefer high-protein recipes</span>
               </div>
               <span className={`${styles.genSwitch} ${cfg.emphasizeProtein ? styles.genSwitchOn : ''}`}>
@@ -596,7 +597,7 @@ function GenerateConfigModal({
               onClick={() => setCfg(c => ({ ...c, noRepeat: !c.noRepeat }))}
             >
               <div>
-                <span className={styles.genToggleName}>🔀 Maximize variety</span>
+                <span className={styles.genToggleName}><Icon name="shuffle" size={14} /> Maximize variety</span>
                 <span className={styles.genToggleSub}>Avoid repeating recipes across the week</span>
               </div>
               <span className={`${styles.genSwitch} ${cfg.noRepeat ? styles.genSwitchOn : ''}`}>
@@ -612,7 +613,7 @@ function GenerateConfigModal({
             <div className={styles.genSkipRow}>
               {(['breakfast', 'lunch', 'dinner'] as const).map(mt => {
                 const skipped = cfg.skipMeals.includes(mt)
-                const labels: Record<string, string> = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' }
+                const meta = MEAL_TYPES.find(m => m.key === mt)
                 return (
                   <button
                     key={mt}
@@ -625,7 +626,7 @@ function GenerateConfigModal({
                         : [...c.skipMeals, mt],
                     }))}
                   >
-                    {labels[mt]}
+                    <Icon name={meta?.icon ?? 'sun'} size={13} /> {meta?.label ?? mt}
                     {skipped && <span className={styles.genSkipDot} />}
                   </button>
                 )
@@ -831,10 +832,10 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
         </div>
 
         {/* Meal rows */}
-        {MEAL_TYPES.map(({ key: mt, label, emoji }) => (
+        {MEAL_TYPES.map(({ key: mt, label, icon }) => (
           <div key={mt} className={styles.plannerRow}>
             <div className={styles.plannerMealLabel}>
-              <span className={styles.plannerMealEmoji}>{emoji}</span>
+              <span className={styles.plannerMealEmoji}><Icon name={icon} size={16} /></span>
               <span className={styles.plannerMealName}>{label}</span>
             </div>
             {weekDays.map((_, di) => {
@@ -849,7 +850,7 @@ function PlannerTab({ weekStart, equipment, weekBudget, disliked, dietary, hidde
                   {slot ? (
                     <div className={styles.slotContent}>
                       <span className={styles.slotName}>
-                        {slot.planType === 'dining_hall' ? '🏫 ' : ''}{slot.mealName}
+                        {slot.planType === 'dining_hall' && <Icon name="school" size={12} />}{slot.mealName}
                       </span>
                       <span className={styles.slotMeta}>
                         {slot.planType === 'dining_hall' ? 'Dining Hall' : slot.planType !== 'home' ? PLAN_TYPE_LABELS[slot.planType] : ''}
@@ -1287,7 +1288,7 @@ function RecipesTab({
                 <div className={styles.libraryMeta}>
                   <span>~${r.cost.toFixed(2)}</span>
                   <span>⏱ {r.cookMinutes}m</span>
-                  <span>🍳 {equipLabel(r.equipment)}</span>
+                  <span><Icon name="pan" size={12} /> {equipLabel(r.equipment)}</span>
                 </div>
                 <div className={styles.libraryTags}>
                   {r.categories.slice(0, 3).map(c => (
@@ -1317,21 +1318,21 @@ function RecipesTab({
           className={styles.collegePanelToggle}
           onClick={() => setShowCollege(v => !v)}
         >
-          <span>🎓 College Dorm Meals</span>
+          <span><Icon name="graduation" size={14} /> College Dorm Meals</span>
           <span>{showCollege ? '▲' : '▼'}</span>
         </button>
 
         {showCollege && (
           <div className={styles.collegePanelBody}>
             <div className={styles.collegeMealTypeTabs}>
-              {MEAL_TYPES.map(({ key, label, emoji }) => (
+              {MEAL_TYPES.map(({ key, label, icon }) => (
                 <button
                   key={key}
                   type="button"
                   className={`${styles.collegeMealTab} ${collegeMealType === key ? styles.collegeMealTabOn : ''}`}
                   onClick={() => setCollegeMealType(key)}
                 >
-                  {emoji} {label}
+                  <Icon name={icon} size={13} /> {label}
                 </button>
               ))}
             </div>
@@ -1389,7 +1390,7 @@ function RecipesTab({
 
       {filtered.length === 0 ? (
         <div className={styles.recipesEmpty}>
-          <p className={styles.emptyIcon}>📖</p>
+          <p className={styles.emptyIcon}><Icon name="bookOpen" size={34} /></p>
           <p className={styles.emptyTitle}>No recipes saved yet</p>
           <p className={styles.emptyBody}>Save recipe links, cookbooks, and resources you want to cook from.</p>
           <button type="button" className={styles.addRecipeBtn} onClick={() => setShowAdd(true)}>+ Add Recipe</button>
@@ -1414,7 +1415,7 @@ function RecipesTab({
               <div className={styles.recipeCardMeta}>
                 {r.cookTime      && <span>⏱ {r.cookTime}m</span>}
                 {r.estimatedCost && <span>~${r.estimatedCost.toFixed(2)}</span>}
-                {r.equipment     && <span>🍳 {r.equipment}</span>}
+                {r.equipment     && <span><Icon name="pan" size={12} /> {r.equipment}</span>}
                 {r.servings      && <span>{r.servings} svg</span>}
               </div>
               {(r.protein || r.carbs || r.fat || r.calories) && (
@@ -1650,7 +1651,7 @@ function KitchenSetupTab({
                 className={`${styles.equipNode} ${active ? styles.equipNodeOn : ''}`}
                 onClick={() => toggleEquipment(node.id)}
               >
-                <span className={styles.equipNodeEmoji}>{node.emoji}</span>
+                <span className={styles.equipNodeEmoji}><Icon name={node.icon} size={22} /></span>
                 <span className={styles.equipNodeLabel}>{node.label}</span>
                 <span className={styles.equipNodeDesc}>{node.description}</span>
                 {active && <span className={styles.equipNodeCheck}>✓</span>}
@@ -1668,7 +1669,7 @@ function KitchenSetupTab({
         </p>
         {storeName && (
           <div className={styles.currentStore}>
-            <span className={styles.currentStoreIcon}>🏪</span>
+            <span className={styles.currentStoreIcon}><Icon name="store" size={16} /></span>
             <span className={styles.currentStoreName}>{storeName}</span>
             <button type="button" className={styles.currentStoreChange} onClick={() => saveStore('')}>Change</button>
           </div>
@@ -1687,7 +1688,7 @@ function KitchenSetupTab({
             onClick={findNearbyStores}
             disabled={locLoading}
           >
-            {locLoading ? 'Searching…' : '📍 Find Nearby'}
+            {locLoading ? 'Searching…' : <><Icon name="pin" size={14} /> Find Nearby</>}
           </button>
         </div>
 
@@ -1700,7 +1701,7 @@ function KitchenSetupTab({
                 className={styles.nearbyItem}
                 onClick={() => saveStore(s)}
               >
-                <span className={styles.nearbyIcon}>🏪</span>
+                <span className={styles.nearbyIcon}><Icon name="store" size={15} /></span>
                 <span>{s}</span>
               </button>
             ))}
@@ -1736,7 +1737,7 @@ function KitchenSetupTab({
                   savePrefs(updated)
                 }}
               >
-                <span>{tag.emoji}</span>
+                <span><Icon name={tag.icon} size={14} /></span>
                 <span>{tag.label}</span>
                 {active && <span className={styles.dietaryCheck}>✓</span>}
               </button>

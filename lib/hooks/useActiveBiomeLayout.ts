@@ -24,6 +24,17 @@ export interface ActiveBiomeLayout {
 }
 
 /* Static catalog mirrors BIOME_CATALOG in WorkoutsView.tsx */
+/*
+ * These stay emoji, deliberately.
+ *
+ * Everywhere else in Zenith an emoji stood in for a concept — a flame
+ * for "streak", a clipboard for "assignment" — and a line icon says the
+ * same thing better. Here the emoji IS the thing: the goldfish is not an
+ * icon meaning goldfish, it is the goldfish you spent Vitality Points
+ * on. Redrawing the biome as monochrome outlines would make the one
+ * playful corner of the app look like the rest of it, which is the
+ * opposite of why it exists.
+ */
 const BIOME_CATALOG: BiomeAsset[] = [
   { id: 'neon_tetra',  name: 'Neon Tetra',      emoji: '🐟', category: 'fish',   biome: 'aquarium' },
   { id: 'goldfish',    name: 'Goldfish',         emoji: '🐠', category: 'fish',   biome: 'aquarium' },

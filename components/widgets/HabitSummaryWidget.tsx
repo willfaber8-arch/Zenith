@@ -2,6 +2,7 @@
 
 import { useHabits }  from '@/lib/hooks/useHabits'
 import { useNav }     from '@/lib/NavContext'
+import Icon from '@/components/ui/Icon'
 import styles         from './Widget.module.css'
 
 const RADIUS = 38
@@ -60,7 +61,7 @@ export default function HabitSummaryWidget() {
                 </span>
                 <span className={styles.habitName}>{h.name}</span>
                 {h.streakCount > 0 && (
-                  <span className={styles.habitStreak}>{h.streakCount}🔥</span>
+                  <span className={styles.habitStreak}>{h.streakCount}<Icon name="flame" size={11} /></span>
                 )}
               </li>
             ))}

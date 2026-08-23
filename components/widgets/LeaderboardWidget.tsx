@@ -6,7 +6,7 @@ import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import styles           from './Widget.module.css'
 
-const MEDALS = ['🥇', '🥈', '🥉', '4.', '5.']
+const RANKS = ['1.', '2.', '3.', '4.', '5.']
 
 export default function LeaderboardWidget() {
   const { navigate } = useNav()
@@ -69,7 +69,7 @@ export default function LeaderboardWidget() {
               key={snap.peerIdString}
               style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}
             >
-              <span style={{ fontSize: '0.85rem', width: 20, flexShrink: 0 }}>{MEDALS[i]}</span>
+              <span style={{ fontSize: '0.85rem', width: 20, flexShrink: 0 }}>{RANKS[i]}</span>
               <span style={{
                 flex: 1,
                 color: snap.peerIdString === 'self' ? 'var(--accent-purple)' : 'var(--text-muted)',

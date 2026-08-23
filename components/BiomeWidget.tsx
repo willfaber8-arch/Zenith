@@ -80,7 +80,7 @@ export default function BiomeWidget() {
           <div className={styles.biomeSwitcher} role="group" aria-label="Switch biome view">
             <button
               type="button"
-              className={`${styles.biomeBtn} ${isAqua ? styles.biomeBtnActive : ''}`}
+              className={`${styles.biomeBtn} tap-44 ${isAqua ? styles.biomeBtnActive : ''}`}
               onClick={() => switchBiome('aquarium')}
               aria-pressed={isAqua}
             >
@@ -88,7 +88,7 @@ export default function BiomeWidget() {
             </button>
             <button
               type="button"
-              className={`${styles.biomeBtn} ${!isAqua ? styles.biomeBtnActive : ''}`}
+              className={`${styles.biomeBtn} tap-44 ${!isAqua ? styles.biomeBtnActive : ''}`}
               onClick={() => switchBiome('zoo')}
               aria-pressed={!isAqua}
             >

@@ -7,6 +7,7 @@
 
 .loadingShell {
   min-height: 60vh;
+  min-height: 60dvh;
 }
 
 /* ── Spinner-less loading state — only shown during dynamic

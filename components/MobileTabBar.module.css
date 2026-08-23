@@ -1,0 +1,217 @@
+/* ════════════════════════════════════════════════════════════
+   MobileTabBar — five destinations at the bottom of a phone.
+
+   Hidden entirely above 767px, which is the same breakpoint
+   where the sidebar stops being a drawer. Below it, this is
+   the primary navigation and the drawer becomes overflow.
+   ════════════════════════════════════════════════════════════ */
+
+.bar { display: none; }
+
+@media (max-width: 767px) {
+
+  .bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 320;            /* above the viewport, below Toast (600) */
+
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+
+    /*
+     * The home indicator on a modern phone sits below the bar. Without
+     * the safe-area inset the labels end up underneath it, which reads
+     * as a rendering bug rather than a layout choice.
+     */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    background: rgba(15, 18, 27, 0.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* ── Destinations ──────────────────────────────────────── */
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    /* Comfortably over the 44px floor; this bar takes most of the
+       presses the phone ever gives the app. */
+    min-height: 56px;
+    border: none;
+    background: none;
+    color: var(--text-dark);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--dur-fast) var(--ease-smooth);
+  }
+
+  .tabOn { color: var(--accent-purple); }
+
+  .tab:active { color: var(--text-muted); }
+
+  .tabOn:active { color: var(--accent-purple); }
+
+  .tabLabel {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Capture ───────────────────────────────────────────── */
+
+  /*
+   * Raised out of the bar so it reads as an action rather than a fifth
+   * place to go. It is the one control here that changes something
+   * instead of moving you somewhere.
+   */
+  .capture {
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    margin-top: -14px;
+    border-radius: 50%;
+    border: 1px solid var(--accent-green);
+    background: var(--bg-main);
+    color: var(--accent-green);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 4px 18px rgba(82, 204, 163, 0.18);
+    transition: transform var(--dur-fast) var(--ease-smooth),
+                background var(--dur-fast) var(--ease-smooth);
+  }
+  .capture:active {
+    transform: scale(0.93);
+    background: rgba(82, 204, 163, 0.12);
+  }
+  .capture:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 3px;
+  }
+
+  /* ── Capture sheet ─────────────────────────────────────── */
+
+  .sheetBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 330;
+    background: rgba(6, 8, 13, 0.62);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex;
+    align-items: flex-end;
+    animation: sheetFade 180ms var(--ease-smooth) both;
+  }
+
+  .sheet {
+    width: 100%;
+    padding: var(--sp-3) var(--sp-4)
+             calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-card);
+    animation: sheetRise 260ms var(--ease-expo) both;
+  }
+
+  .sheetGrip {
+    width: 38px;
+    height: 4px;
+    margin: 0 auto var(--sp-3);
+    border-radius: 99px;
+    background: var(--bg-active);
+  }
+
+  .sheetTitle {
+    margin: 0 0 var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dark);
+  }
+
+  .sheetRow {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    min-height: 58px;
+    padding: 0 var(--sp-2);
+    border: none;
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--text-muted);
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sheetRow:active { background: var(--bg-hover); }
+
+  .sheetIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-hover);
+    color: var(--accent-green);
+  }
+
+  .sheetText {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sheetLabel {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .sheetHint {
+    font-size: 0.72rem;
+    color: var(--text-dark);
+  }
+
+  .sheetCancel {
+    width: 100%;
+    min-height: 48px;
+    margin-top: var(--sp-2);
+    border: none;
+    border-radius: var(--r-md);
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  @keyframes sheetRise {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  @keyframes sheetFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sheet, .sheetBackdrop { animation: none; }
+  }
+}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import { useNav } from '@/lib/NavContext'
+import Icon, { type IconName } from '@/components/ui/Icon'
 import styles from './CardioWidget.module.css'
 import wStyles from './Widget.module.css'
 
@@ -32,9 +33,10 @@ export default function CardioWidget() {
   const weekMins   = weekSess.reduce((s, r) => s + r.durationMinutes, 0)
   const lastSess   = sessions[0]
 
-  const ACTIVITY_ICONS: Record<string, string> = {
-    run: '🏃', walk: '🚶', bike: '🚴', swim: '🏊',
-    row: '🚣', hike: '🥾', yoga: '🧘', elliptical: '⚡', other: '💪',
+  const ACTIVITY_ICONS: Record<string, IconName> = {
+    run: 'run', walk: 'walk', bike: 'bike', swim: 'swim',
+    row: 'row', hike: 'hike', yoga: 'yoga', elliptical: 'elliptical',
+    other: 'dumbbell',
   }
 
   return (
@@ -67,7 +69,7 @@ export default function CardioWidget() {
           {vp && (
             <div className={styles.stat}>
               <span className={`${styles.statNum} ${styles.vpNum}`}>
-                ⚡ {vp.balance}
+                <Icon name="bolt" size={14} /> {vp.balance}
               </span>
               <span className={styles.statLabel}>vitality pts</span>
             </div>
@@ -77,7 +79,7 @@ export default function CardioWidget() {
         {lastSess ? (
           <div className={styles.lastSession}>
             <span className={styles.lastIcon}>
-              {ACTIVITY_ICONS[lastSess.activityType] ?? '💪'}
+              <Icon name={ACTIVITY_ICONS[lastSess.activityType] ?? 'dumbbell'} size={20} />
             </span>
             <div className={styles.lastInfo}>
               <span className={styles.lastActivity}>Last: {lastSess.activityType}</span>

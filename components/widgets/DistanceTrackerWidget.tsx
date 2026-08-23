@@ -141,7 +141,7 @@ export default function DistanceTrackerWidget() {
           </p>
           <button
             type="button"
-            className={styles.syncBtn}
+            className={`${styles.syncBtn} tap-44`}
             onClick={syncNow}
             aria-label="Request location access"
           >
@@ -208,7 +208,7 @@ export default function DistanceTrackerWidget() {
 
           <button
             type="button"
-            className={styles.syncBtn}
+            className={`${styles.syncBtn} tap-44`}
             onClick={syncNow}
             disabled={isSyncing}
             aria-label="Sync location on-demand"

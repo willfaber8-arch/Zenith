@@ -17,6 +17,7 @@ import type {
   LogProgressResult, PurchaseResult,
 } from '@/types/cardioGame'
 import { TRAILS, TIER_DEFINITIONS, RESOURCE_META } from '@/types/cardioGame'
+import Icon, { type IconName } from '@/components/ui/Icon'
 import styles                                        from './CardioGameDashboard.module.css'
 
 /* ════════════════════════════════════════════════════════════════
@@ -68,24 +69,24 @@ function getAsciiArt(tier: BaseTier): string {
 
 /* ── Feature badge positions (% within blueprint canvas) ─────── */
 
-type FeaturePos = { top: string; left: string; symbol: string }
+type FeaturePos = { top: string; left: string; symbol: IconName }
 
 const FEATURE_POSITIONS: Record<string, FeaturePos> = {
   // CAMPSITE features
-  'Campfire Ring':   { top: '50%',  left: '50%',  symbol: '🔥' },
-  'Supply Cache':    { top: '50%',  left: '12%',  symbol: '📦' },
-  'Lookout Post':    { top: '12%',  left: '50%',  symbol: '👁' },
-  'Stone Path':      { top: '75%',  left: '50%',  symbol: '·' },
+  'Campfire Ring':   { top: '50%',  left: '50%',  symbol: 'flame' },
+  'Supply Cache':    { top: '50%',  left: '12%',  symbol: 'box' },
+  'Lookout Post':    { top: '12%',  left: '50%',  symbol: 'eye' },
+  'Stone Path':      { top: '75%',  left: '50%',  symbol: 'walk' },
   // LOG_CABIN features
-  'Stone Fireplace': { top: '55%',  left: '18%',  symbol: '🔥' },
-  'Garden Patch':    { top: '72%',  left: '78%',  symbol: '🌿' },
-  'Wind Chimes':     { top: '18%',  left: '80%',  symbol: '♪'  },
-  'Herb Garden':     { top: '72%',  left: '18%',  symbol: '🌱' },
+  'Stone Fireplace': { top: '55%',  left: '18%',  symbol: 'flame' },
+  'Garden Patch':    { top: '72%',  left: '78%',  symbol: 'leaf' },
+  'Wind Chimes':     { top: '18%',  left: '80%',  symbol: 'music' },
+  'Herb Garden':     { top: '72%',  left: '18%',  symbol: 'sprout' },
   // MINI_CASTLE features
-  'Stone Watchtower':{ top: '10%',  left: '10%',  symbol: '🗼' },
-  'Royal Banners':   { top: '10%',  left: '82%',  symbol: '⚑'  },
-  'Moat & Bridge':   { top: '80%',  left: '50%',  symbol: '≈'  },
-  'Great Hall':      { top: '48%',  left: '50%',  symbol: '⚔'  },
+  'Stone Watchtower':{ top: '10%',  left: '10%',  symbol: 'tower' },
+  'Royal Banners':   { top: '10%',  left: '82%',  symbol: 'flag' },
+  'Moat & Bridge':   { top: '80%',  left: '50%',  symbol: 'waves' },
+  'Great Hall':      { top: '48%',  left: '50%',  symbol: 'swords' },
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -120,7 +121,7 @@ function BaseBlueprintCanvas({
             style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
             title={feat}
           >
-            <span className={styles.featureBadgeSymbol}>{pos.symbol}</span>
+            <span className={styles.featureBadgeSymbol}><Icon name={pos.symbol} size={14} /></span>
             {feat}
           </div>
         )
@@ -210,8 +211,8 @@ function TrailPanel() {
 
           {/* Trail progress map */}
           <div className={styles.trailMap} role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
-            <span className={styles.trailStartFlag}>⛺</span>
-            <span className={styles.trailEndFlag}>🌲</span>
+            <span className={styles.trailStartFlag}><Icon name="tent" size={15} /></span>
+            <span className={styles.trailEndFlag}><Icon name="tree" size={15} /></span>
 
             <div className={styles.trailLine}>
               <div className={styles.trailLineFill} style={{ width: `${progressPct}%` }} />
@@ -232,7 +233,7 @@ function TrailPanel() {
               style={{ left: `calc(20px + ${progressPct}% * (100% - 40px) / 100)` }}
               aria-hidden="true"
             >
-              🏃
+              <Icon name="run" size={16} />
             </div>
 
             <div className={styles.trailDistLabel}>

@@ -147,17 +147,39 @@ function resolveView(id: ViewId): JSX.Element {
 
 /* ── ViewRouter ───────────────────────────────────────────────── */
 
+/*
+ * Why the transform is dropped once the animation is over.
+ *
+ * A transform — including an identity one like `scale(1)` — makes an
+ * element the containing block for every `position: fixed` descendant.
+ * Left in place, a modal that asks to cover the viewport instead covers
+ * *this* element, which is as tall as the scrolling content inside it.
+ * In the Vocab Builder's card list that meant a dialog 93,207px tall
+ * starting 46,035px above the screen; focusing its first field scrolled
+ * the page to the middle of it, and every "Add Card" felt like the page
+ * had thrown you somewhere random.
+ *
+ * Nothing needs the transform once it has finished animating, so it is
+ * released. `none` renders identically to `scale(1)` — the only thing
+ * that changes is that fixed positioning starts working again.
+ */
+
 const EXIT_MS = 200
+
+/* Long enough for the 300ms enter transition to have finished. */
+const ENTER_MS = 320
 
 export default function ViewRouter() {
   const { activeView } = useNav()
   const [displayed, setDisplayed] = useState<ViewId>(activeView)
   const [visible,   setVisible]   = useState(true)
+  const [settled,   setSettled]   = useState(true)
 
   useEffect(() => {
     if (activeView === displayed) return
 
     setVisible(false)
+    setSettled(false)
 
     const t = setTimeout(() => {
       setDisplayed(activeView)
@@ -167,11 +189,19 @@ export default function ViewRouter() {
     return () => clearTimeout(t)
   }, [activeView]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Release the transform once the entrance has played out. */
+  useEffect(() => {
+    if (!visible) return
+    const t = setTimeout(() => setSettled(true), ENTER_MS)
+    return () => clearTimeout(t)
+  }, [visible, displayed])
+
   return (
     <div
       style={{
         opacity:    visible ? 1 : 0,
-        transform:  visible ? 'scale(1)' : 'scale(0.98)',
+        /* See the note above `ENTER_MS`. */
+        transform:  settled ? 'none' : visible ? 'scale(1)' : 'scale(0.98)',
         transition: visible
           ? `opacity 300ms cubic-bezier(0.16,1,0.3,1),
              transform 300ms cubic-bezier(0.16,1,0.3,1)`

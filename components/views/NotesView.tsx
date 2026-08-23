@@ -45,6 +45,7 @@ import {
 } from '@/lib/notePolicy'
 import NoteToolbar from '@/components/NoteToolbar'
 import ZenHeading from '@/components/ui/ZenHeading'
+import { CAPTURE_EVENT } from '@/components/MobileTabBar'
 import styles from './NotesView.module.css'
 
 /** Debounce before a keystroke reaches IndexedDB. */
@@ -342,6 +343,26 @@ export default function NotesView() {
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
+  /*
+   * Capture from the phone's "+" opens a blank note immediately.
+   *
+   * `createNoteRef` rather than the function itself in the dependency
+   * list: createNote is redefined every render, and depending on it
+   * would tear down and re-add the listener each time — occasionally
+   * missing the event that arrives in between.
+   */
+  const createNoteRef = useRef(createNote)
+  createNoteRef.current = createNote
+  useEffect(() => {
+    const onCapture = (e: Event) => {
+      if ((e as CustomEvent<{ kind?: string }>).detail?.kind === 'note') {
+        void createNoteRef.current()
+      }
+    }
+    window.addEventListener(CAPTURE_EVENT, onCapture)
+    return () => window.removeEventListener(CAPTURE_EVENT, onCapture)
+  }, [])
+
   const toggleChecklistLine = async (line: number) => {
     if (selectedId == null) return
     const next = toggleLine(draft, line)
@@ -514,7 +535,7 @@ export default function NotesView() {
 
           <button
             type="button"
-            className={styles.archiveToggle}
+            className={`${styles.archiveToggle} tap-44`}
             onClick={() => setShowArchived(a => !a)}
             aria-pressed={showArchived}
           >

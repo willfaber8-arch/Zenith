@@ -14,6 +14,7 @@
   width: 100%;
   max-width: 720px;
   max-height: min(86vh, 900px);
+  max-height: min(86dvh, 900px);
   display: flex;
   flex-direction: column;
   background: var(--surface-card);
@@ -128,4 +129,20 @@
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* ── Touch ───────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  /* The padding grows the hit area and the negative margin gives the
+     space straight back, so the sentence keeps its line spacing while
+     each link becomes far harder to miss — and missing one here means
+     toggling consent instead of reading what you are consenting to. */
+  .consentLink {
+    padding: 10px 0;
+    margin:  -10px 0;
+  }
+  .consentLabel input[type='checkbox'] {
+    width:  20px;
+    height: 20px;
+  }
 }

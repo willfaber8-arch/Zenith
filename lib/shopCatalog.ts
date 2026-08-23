@@ -73,8 +73,8 @@ export const SHOP_CATALOG_STATIC: readonly ShopCatalogItem[] = [
   { id: 'bg_diamonds',      name: 'Diamonds',         tagline: 'Rotated square lattice — clean geometric elegance.',        category: 'background', cost:  75, icon: '◇' },
 
   /* ── Perks ───────────────────────────────────────────────────── */
-  { id: 'perk_streak_saver_5',  name: 'Streak Savers ×5',  tagline: 'Manually restore a broken habit streak. Grants 5 uses.',        category: 'perk', cost: 150, icon: '🔥', tag: 'USEFUL' },
-  { id: 'perk_streak_saver_15', name: 'Streak Savers ×15', tagline: 'Manually restore a broken habit streak. Grants 15 uses.',       category: 'perk', cost: 400, icon: '🔥' },
+  { id: 'perk_streak_saver_5',  name: 'Streak Savers ×5',  tagline: 'Manually restore a broken habit streak. Grants 5 uses.',        category: 'perk', cost: 150, icon: '⟳', tag: 'USEFUL' },
+  { id: 'perk_streak_saver_15', name: 'Streak Savers ×15', tagline: 'Manually restore a broken habit streak. Grants 15 uses.',       category: 'perk', cost: 400, icon: '⟳' },
   { id: 'perk_extra_stats',     name: 'Analytics Vault',    tagline: 'Unlock extended habit analytics — weekday breakdowns, streaks per-period, and all-time totals.', category: 'perk', cost: 500, icon: '◎', tag: 'USEFUL' },
 ] as const
 

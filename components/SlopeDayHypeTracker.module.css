@@ -143,9 +143,18 @@
 }
 
 .moodEmoji {
-  font-size:   28px;
-  line-height: 1;
-  /* Subtle colored shadow behind the emoji */
+  display:     flex;
+  align-items: center;
+  /*
+   * The icon takes the mood's own hue.
+   *
+   * The emoji these replaced were distinguishable by colour before you
+   * read them; eight monochrome faces in a grid are not. The hue that
+   * already tints each button now tints its icon too, so the set stays
+   * one family of line drawings while each member is still findable at
+   * a glance.
+   */
+  color:       hsl(var(--mood-hue, 210) 62% 66%);
   filter:      drop-shadow(0 0 6px hsla(var(--mood-hue, 210), 65%, 62%, 0.30));
 }
 

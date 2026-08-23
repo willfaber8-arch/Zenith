@@ -7,6 +7,7 @@ import type { VocabDeck, VocabCard }                        from '@/types/vocabu
 import VocabStudySession                                    from '@/components/VocabStudySession'
 import { useToast }                                         from '@/lib/ToastContext'
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
+import Icon from '@/components/ui/Icon'
 import styles                                               from './VocabBuilderView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 import { runVocabScheduleBackfill } from '@/lib/vocabBackfill'
@@ -1431,7 +1432,7 @@ function EnglishVocabTab() {
           <span className={styles.engStatLabel}>Total Words</span>
         </div>
         <div className={styles.engStat}>
-          <span className={`${styles.engStatVal} ${styles.engStatValPurple}`}>{streak > 0 ? `🔥 ${streak}` : '—'}</span>
+          <span className={`${styles.engStatVal} ${styles.engStatValPurple}`}>{streak > 0 ? <><Icon name="flame" size={14} /> {streak}</> : '—'}</span>
           <span className={styles.engStatLabel}>Day Streak</span>
         </div>
       </div>
@@ -1590,6 +1591,11 @@ function EnglishVocabTab() {
    ════════════════════════════════════════════════════════════════ */
 
 const LANG_EMOJI: Record<string, string> = {
+  /*
+   * Flags stay emoji for the same reason the biome does: a flag is not a
+   * symbol standing for a language, it is the recognisable thing itself,
+   * and no stroked outline of one would be legible at 14px.
+   */
   spanish: '🇪🇸', french: '🇫🇷', german: '🇩🇪', italian: '🇮🇹',
   portuguese: '🇧🇷', japanese: '🇯🇵', korean: '🇰🇷', chinese: '🇨🇳',
   mandarin: '🇨🇳', arabic: '🇸🇦', russian: '🇷🇺', hindi: '🇮🇳',
@@ -1599,7 +1605,7 @@ const LANG_EMOJI: Record<string, string> = {
 }
 
 function getLangEmoji(name: string): string {
-  return LANG_EMOJI[name.trim().toLowerCase()] ?? '📖'
+  return LANG_EMOJI[name.trim().toLowerCase()] ?? '◍'
 }
 
 /**
@@ -2082,6 +2088,9 @@ function CardModal({
   const [native,    setNative]    = useState(editing?.nativeTranslation   ?? '')
   const [phonetic,  setPhonetic]  = useState(editing?.phoneticSpelling    ?? '')
   const [saving,    setSaving]    = useState(false)
+  /* How many have been added in this sitting — see handleSubmit. */
+  const [addedCount, setAddedCount] = useState(0)
+  const firstFieldRef = useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
   const canSave = foreign.trim().length > 0 && native.trim().length > 0 && !saving
@@ -2112,7 +2121,27 @@ function CardModal({
         nextReviewTimestamp:   0,   // 0 = immediately due
       }
       await db.vocab_cards.add(card)
-      toast('Card added.', 'success')
+
+      /*
+       * Stay open and clear the fields rather than closing.
+       *
+       * Adding vocabulary is something you do in runs of ten, not one
+       * at a time, and closing after each card made every card cost a
+       * round trip back to the button. The modal now reopens itself
+       * empty until you deliberately dismiss it, so the whole run is
+       * type, Enter, type, Enter.
+       *
+       * No toast per card either: twenty of them stack up and cover the
+       * form you are typing into. The count in the header says the same
+       * thing without moving anything.
+       */
+      setForeign('')
+      setNative('')
+      setPhonetic('')
+      setAddedCount(n => n + 1)
+      setSaving(false)
+      firstFieldRef.current?.focus()
+      return
     }
 
     onClose()
@@ -2127,14 +2156,26 @@ function CardModal({
     <div className={styles.modalBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={styles.modal} onKeyDown={onKeyDown}>
         <div className={styles.modalHeader}>
-          <span className={styles.modalTitle}>{editing ? 'Edit Card' : 'Add Card'}</span>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+          <span className={styles.modalTitle}>
+            {editing ? 'Edit Card' : 'Add Card'}
+            {addedCount > 0 && (
+              <span className={styles.modalCount}>
+                {addedCount} added
+              </span>
+            )}
+          </span>
+          <button
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label={addedCount > 0 ? `Done — ${addedCount} cards added` : 'Close'}
+          >×</button>
         </div>
 
         <div className={styles.modalBody}>
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel}>Foreign Word / Phrase *</label>
             <input
+              ref={firstFieldRef}
               className={styles.fieldInput}
               placeholder="The word in the target language"
               value={foreign}
@@ -2164,7 +2205,9 @@ function CardModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
+          <button className={styles.cancelBtn} onClick={onClose}>
+            {addedCount > 0 ? 'Done' : 'Cancel'}
+          </button>
           <button className={styles.submitBtn} onClick={handleSubmit} disabled={!canSave}>
             {editing ? 'Save Changes' : 'Add Card'}
           </button>
@@ -2356,7 +2399,7 @@ export default function VocabBuilderView() {
           className={`${styles.outerTab} ${mainTab === 'language' ? styles.outerTabActive : ''}`}
           onClick={() => setMainTab('language')}
         >
-          🌐 Language Builder
+          <Icon name="globe" size={15} /> Language Builder
         </button>
         <button
           className={`${styles.outerTab} ${mainTab === 'english' ? styles.outerTabActive : ''}`}

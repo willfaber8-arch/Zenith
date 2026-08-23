@@ -36,6 +36,7 @@ import { repairBrokenCovers } from '@/lib/coverRepair'
 import { coverSrc, verifyCover } from '@/lib/coverProxy'
 import { spineColorFromCover } from '@/lib/spinePalette'
 import type { LibraryShelf } from '@/types/bookTracker'
+import Icon from '@/components/ui/Icon'
 import styles from './BookTrackerDashboard.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 import {
@@ -265,7 +266,7 @@ const REQUEST_GAP_MS           = 220
 type ViewTab = 'LIBRARY' | 'TBR' | 'READING' | 'ALL'
 
 const TABS: { id: ViewTab; label: string; glyph: string }[] = [
-  { id: 'LIBRARY', label: 'Library',   glyph: '📚' },
+  { id: 'LIBRARY', label: 'Library',   glyph: '◫' },
   { id: 'TBR',     label: 'TBR',       glyph: '◈'  },
   { id: 'READING', label: 'Reading',   glyph: '◎'  },
   { id: 'ALL',     label: 'All Books', glyph: '≡'  },
@@ -2125,10 +2126,10 @@ export default function BookTrackerDashboard() {
               ? <><span className={styles.librarianSpinner} aria-hidden="true" />
                   {enrichPhase.stage === 'researching' ? 'Researching…' : 'Saving…'}</>
               : enrichQueue.length === 0
-                ? '✨ Details complete'
+                ? 'Details complete'
                 : enrichIsRecheck
-                  ? `✨ Re-check details (${Math.min(enrichQueue.length, 20)})`
-                  : `✨ Ask AI to Fill Details (${Math.min(enrichQueue.length, 20)})`}
+                  ? `Re-check details (${Math.min(enrichQueue.length, 20)})`
+                  : `Ask AI to Fill Details (${Math.min(enrichQueue.length, 20)})`}
           </button>
           <button
             className={`${styles.editModeBtn} ${editMode ? styles.editModeBtnOn : ''}`}
@@ -2272,7 +2273,7 @@ export default function BookTrackerDashboard() {
             <Bookshelf
               books={libraryPaged}
               onOpenBook={setSelectedId}
-              emptyGlyph="📚"
+              emptyGlyph="◫"
               emptyLabel={counts.completed === 0 ? 'Your library is empty' : 'No matches on this shelf'}
               emptyHint={counts.completed === 0
                 ? 'Mark a book complete or import your Goodreads CSV to start stacking your shelf.'

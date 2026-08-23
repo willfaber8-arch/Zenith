@@ -1,4 +1,5 @@
 
+import type { IconName } from '@/components/ui/Icon'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
 /**
  * utils/mentalHealthLog.ts — Mental Health Log Schema & Evaluator
@@ -38,7 +39,7 @@ export type MoodKey =
 
 export interface MoodVector {
   key:         MoodKey
-  emoji:       string
+  icon:        IconName
   label:       string
   /** Pre-set stress reading for one-tap logging (1–10) */
   stressLevel: number
@@ -51,14 +52,14 @@ export interface MoodVector {
 /* Labels kept clear and distinct. The MoodKey values are unchanged so existing
    logs keep resolving; only the display label/emoji were refreshed. */
 export const MOOD_VECTORS: MoodVector[] = [
-  { key: 'thriving',  emoji: '🌟', label: 'Great',     stressLevel: 2, energyLevel: 9, hue: 158 },
-  { key: 'energized', emoji: '✨', label: 'Energized', stressLevel: 3, energyLevel: 9, hue: 228 },
-  { key: 'focused',   emoji: '🎯', label: 'Focused',   stressLevel: 4, energyLevel: 8, hue: 218 },
-  { key: 'coasting',  emoji: '🙂', label: 'Relaxed',   stressLevel: 3, energyLevel: 5, hue: 198 },
-  { key: 'neutral',   emoji: '😐', label: 'Neutral',   stressLevel: 5, energyLevel: 5, hue: 210 },
-  { key: 'grinding',  emoji: '⚡', label: 'Busy',      stressLevel: 8, energyLevel: 7, hue:  42 },
-  { key: 'stressed',  emoji: '😤', label: 'Stressed',  stressLevel: 9, energyLevel: 4, hue:  22 },
-  { key: 'drained',   emoji: '😴', label: 'Drained',   stressLevel: 8, energyLevel: 2, hue:   0 },
+  { key: 'thriving',  icon: 'moodThriving', label: 'Great',     stressLevel: 2, energyLevel: 9, hue: 158 },
+  { key: 'energized', icon: 'moodEnergized', label: 'Energized', stressLevel: 3, energyLevel: 9, hue: 228 },
+  { key: 'focused',   icon: 'moodFocused', label: 'Focused',   stressLevel: 4, energyLevel: 8, hue: 218 },
+  { key: 'coasting',  icon: 'moodRelaxed', label: 'Relaxed',   stressLevel: 3, energyLevel: 5, hue: 198 },
+  { key: 'neutral',   icon: 'moodNeutral', label: 'Neutral',   stressLevel: 5, energyLevel: 5, hue: 210 },
+  { key: 'grinding',  icon: 'moodBusy', label: 'Busy',      stressLevel: 8, energyLevel: 7, hue:  42 },
+  { key: 'stressed',  icon: 'moodStressed', label: 'Stressed',  stressLevel: 9, energyLevel: 4, hue:  22 },
+  { key: 'drained',   icon: 'moodDrained', label: 'Drained',   stressLevel: 8, energyLevel: 2, hue:   0 },
 ]
 
 export const MOOD_MAP: Record<MoodKey, MoodVector> = Object.fromEntries(

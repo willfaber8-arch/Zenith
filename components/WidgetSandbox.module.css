@@ -324,3 +324,11 @@
   text-align:  center;
   margin-top:  var(--sp-1);
 }
+
+/* ── Touch ───────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  /* 36px at a desk, 44px under a thumb. This one grows for real rather
+     than getting a transparent pad, because it sits alone in a row and
+     nothing reflows when it does. */
+  .manageBtn { min-height: 44px; }
+}

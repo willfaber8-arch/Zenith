@@ -3,40 +3,11 @@
 import { type DayForecast } from '@/lib/weather'
 import { useWeather }       from '@/lib/hooks/useWeather'
 import { useNav } from '@/lib/NavContext'
+import Icon from '@/components/ui/Icon'
+import { weatherIcon } from '@/lib/weatherIcons'
 import styles from './WeatherWidget.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
-/* ── Weather icon map ─────────────────────────────────────── */
-const CONDITION_ICON: Record<string, string> = {
-  'Clear sky':                  '☀️',
-  'Mainly clear':               '🌤️',
-  'Partly cloudy':              '⛅',
-  'Overcast':                   '☁️',
-  'Foggy':                      '🌫️',
-  'Icy fog':                    '🌫️',
-  'Light drizzle':              '🌦️',
-  'Drizzle':                    '🌦️',
-  'Heavy drizzle':              '🌧️',
-  'Light rain':                 '🌦️',
-  'Rain':                       '🌧️',
-  'Heavy rain':                 '🌧️',
-  'Light snow':                 '🌨️',
-  'Snow':                       '❄️',
-  'Heavy snow':                 '❄️',
-  'Snow grains':                '🌨️',
-  'Rain showers':               '🌦️',
-  'Showers':                    '🌧️',
-  'Heavy showers':              '🌧️',
-  'Snow showers':               '🌨️',
-  'Heavy snow showers':         '❄️',
-  'Thunderstorm':               '⛈️',
-  'Thunderstorm w/ hail':       '⛈️',
-  'Thunderstorm w/ heavy hail': '⛈️',
-}
-
-function getIcon(condition: string): string {
-  return CONDITION_ICON[condition] ?? '🌡️'
-}
 
 /* ── Day abbreviation ─────────────────────────────────────── */
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -54,7 +25,7 @@ function ForecastStrip({ forecast }: { forecast: DayForecast[] }) {
       {forecast.map(day => (
         <div key={day.date} className={styles.forecastDay}>
           <span className={styles.forecastDayLabel}>{dayLabel(day.date)}</span>
-          <span className={styles.forecastIcon}>{getIcon(day.condition)}</span>
+          <span className={styles.forecastIcon}><Icon name={weatherIcon(day.condition)} size={19} /></span>
           <span className={styles.forecastHigh}>{day.highF}°</span>
           <span className={styles.forecastLow}>{day.lowF}°</span>
         </div>
@@ -108,7 +79,7 @@ export default function WeatherWidget() {
         <>
           {/* ── Current conditions ──────────────────────── */}
           <div className={styles.currentRow}>
-            <span className={styles.weatherIcon}>{getIcon(weather.condition)}</span>
+            <span className={styles.weatherIcon}><Icon name={weatherIcon(weather.condition)} size={40} /></span>
             <div className={styles.tempBlock}>
               <span className={styles.tempMain}>{weather.tempF}<span className={styles.deg}>°F</span></span>
               <span className={styles.conditionLabel}>{weather.condition}</span>

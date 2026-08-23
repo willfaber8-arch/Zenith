@@ -194,13 +194,13 @@ export function useNotificationCenter(): NotificationCenterApi {
         const label = hrs < 1 ? `${Math.round(hrs * 60)} min` : `${Math.round(hrs)} hr`
         pushNotification({
           id: `assignment-due-${a.id}-${a.dueDate}`,
-          type: 'assignment-due', icon: '📋', view: 'calendar',
+          type: 'assignment-due', icon: 'clipboard', view: 'calendar',
           title: `Due soon: ${a.title}`, body: `Due in ${label}`,
         })
       } else if (dueMs < now && a.status !== 'overdue') {
         pushNotification({
           id: `assignment-overdue-${a.id}-${a.dueDate}`,
-          type: 'assignment-overdue', icon: '🚨', view: 'calendar',
+          type: 'assignment-overdue', icon: 'alert', view: 'calendar',
           title: `Overdue: ${a.title}`, body: 'This task is past due',
         })
       }
@@ -215,14 +215,14 @@ export function useNotificationCenter(): NotificationCenterApi {
       if (info.isOverdue) {
         pushNotification({
           id: `plant-water-${p.id}-${iso}`,
-          type: 'info', icon: '🪴', view: 'botanist',
+          type: 'info', icon: 'plant', view: 'botanist',
           title: `${p.plantName} needs water`,
           body: `${info.daysOverdue} day${info.daysOverdue === 1 ? '' : 's'} overdue`,
         })
       } else if (info.isDue) {
         pushNotification({
           id: `plant-water-${p.id}-${iso}`,
-          type: 'info', icon: '🪴', view: 'botanist',
+          type: 'info', icon: 'plant', view: 'botanist',
           title: `${p.plantName} is due for watering`,
           body: 'Water it today',
         })
@@ -230,7 +230,7 @@ export function useNotificationCenter(): NotificationCenterApi {
       if (typeof p.healthRating === 'number' && p.healthRating <= 2) {
         pushNotification({
           id: `plant-health-${p.id}-${iso}`,
-          type: 'info', icon: '🥀', view: 'botanist',
+          type: 'info', icon: 'plantWilted', view: 'botanist',
           title: `${p.plantName} health is low`,
           body: 'Check on this plant — its last health rating was low',
         })
@@ -247,7 +247,7 @@ export function useNotificationCenter(): NotificationCenterApi {
     parts.push(`${checklist.length} daily goal${checklist.length === 1 ? '' : 's'}`)
     pushNotification({
       id: `daily-summary-${iso}`,
-      type: 'info', icon: '☀', view: 'outlook',
+      type: 'info', icon: 'sun', view: 'outlook',
       title: 'Your day at a glance',
       body: parts.join(' · '),
     })

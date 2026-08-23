@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import { MOOD_VECTORS } from '@/utils/mentalHealthLog'
+import Icon from '@/components/ui/Icon'
 import wStyles from './Widget.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -45,7 +46,7 @@ export default function WellnessWidget() {
       {latest ? (
         <div className={wStyles.dataStack}>
           <div className={wStyles.dataRow}>
-            <div className={wStyles.dataIcon}>{vector?.emoji ?? '😐'}</div>
+            <div className={wStyles.dataIcon}><Icon name={vector?.icon ?? 'moodNeutral'} size={20} /></div>
             <div className={wStyles.dataMeta}>
               <div className={wStyles.dataLabel}>{vector?.label ?? latest.moodVector}</div>
               <div className={wStyles.dataSub}>{isToday ? 'logged today' : latest.logDate}</div>
@@ -57,14 +58,14 @@ export default function WellnessWidget() {
             )}
           </div>
           <div className={wStyles.dataRow}>
-            <div className={wStyles.dataIcon}>⚡</div>
+            <div className={wStyles.dataIcon}><Icon name="bolt" size={18} /></div>
             <div className={wStyles.dataMeta}>
               <div className={wStyles.dataLabel}>Energy</div>
             </div>
             <div className={wStyles.dataBadge}>{latest.energyLevel}/10</div>
           </div>
           <div className={wStyles.dataRow}>
-            <div className={wStyles.dataIcon}>🌀</div>
+            <div className={wStyles.dataIcon}><Icon name="spiral" size={18} /></div>
             <div className={wStyles.dataMeta}>
               <div className={wStyles.dataLabel}>Stress</div>
             </div>

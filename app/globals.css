@@ -443,6 +443,46 @@ body {
 
 @layer utilities {
 
+  /* ── Touch targets ─────────────────────────────────────────────── */
+  /*
+   * .tap-44 — grows the *hit area* of a small control to 44px without
+   * changing how it looks.
+   *
+   * 44px is the floor for anything pressed with a thumb. Most of the
+   * icon buttons in this app are 26-32px, which is right at a desk with
+   * a mouse and wrong on a phone. Simply enlarging them would reflow
+   * the toolbars they sit in and make the desktop design worse to fix
+   * the mobile one.
+   *
+   * Instead a transparent pseudo-element is centred over the control
+   * and stretched to 44px. The button looks identical; the region that
+   * responds to a thumb is bigger. It only applies under
+   * `pointer: coarse`, so a mouse still gets the tight target it was
+   * designed for — and a touch laptop gets the big one, which is the
+   * point of testing the pointer rather than the width.
+   *
+   * Caveat: a `overflow: hidden` ancestor will clip the overflowing
+   * part of the pad. Every current use is verified by hit-testing the
+   * corners, not by trusting this comment.
+   */
+  @media (pointer: coarse) {
+    .tap-44 {
+      position: relative;
+    }
+    .tap-44::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+      /* Purely a hit region — never paints, never affects layout. */
+      background: transparent;
+      pointer-events: auto;
+    }
+  }
+
   /* ── Screen-reader-only text ────────────────────────────────────── */
   /*
    * .sr-only — visually hidden, still announced.

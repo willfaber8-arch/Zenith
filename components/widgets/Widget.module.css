@@ -1061,3 +1061,10 @@
   padding: 0;
   text-decoration: underline;
 }
+
+/* ── Touch ───────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  /* Was 43px — one pixel under the floor, which is the kind of thing
+     only measuring finds. */
+  .timerStartBtn { min-height: 44px; }
+}

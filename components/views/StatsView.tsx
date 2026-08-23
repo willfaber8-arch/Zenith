@@ -8,6 +8,7 @@ import { calcGpa }      from '@/utils/gpaMath'
 import { useNav }       from '@/lib/NavContext'
 import { requestGamesTab } from '@/lib/gamesNavState'
 import EcosystemWrapped from '@/components/EcosystemWrapped'
+import Icon from '@/components/ui/Icon'
 import styles from './StatsView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -191,7 +192,7 @@ export default function StatsView() {
                         />
                       </div>
                       <span className={styles.habitPct}>{pct}%</span>
-                      <span className={styles.habitStreak}>🔥 {h.streakCount ?? 0}d</span>
+                      <span className={styles.habitStreak}><Icon name="flame" size={12} /> {h.streakCount ?? 0}d</span>
                     </div>
                   )
                 })}

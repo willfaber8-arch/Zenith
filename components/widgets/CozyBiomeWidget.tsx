@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useNav } from '@/lib/NavContext'
+import Icon from '@/components/ui/Icon'
 import styles from './CozyBiomeWidget.module.css'
 import wStyles from './Widget.module.css'
 
@@ -14,6 +15,17 @@ interface VitalityStore { balance: number; lifetime: number }
 /* Items that appear in the mini preview */
 interface PreviewItem { id: string; emoji: string; category: 'fish' | 'animal' | 'decor' }
 
+/*
+ * These stay emoji, deliberately.
+ *
+ * Everywhere else in Zenith an emoji stood in for a concept — a flame
+ * for "streak", a clipboard for "assignment" — and a line icon says the
+ * same thing better. Here the emoji IS the thing: the goldfish is not an
+ * icon meaning goldfish, it is the goldfish you spent Vitality Points
+ * on. Redrawing the biome as monochrome outlines would make the one
+ * playful corner of the app look like the rest of it, which is the
+ * opposite of why it exists.
+ */
 const PREVIEW_MAP: Record<string, PreviewItem> = {
   neon_tetra:  { id: 'neon_tetra',  emoji: '🐟', category: 'fish'   },
   goldfish:    { id: 'goldfish',    emoji: '🐠', category: 'fish'   },
@@ -127,7 +139,7 @@ export default function CozyBiomeWidget() {
           {purchased.length} item{purchased.length !== 1 ? 's' : ''} unlocked
         </span>
         {vp && (
-          <span className={styles.vpBadge}>⚡ {vp.balance} VP</span>
+          <span className={styles.vpBadge}><Icon name="bolt" size={12} /> {vp.balance} VP</span>
         )}
       </div>
     </div>

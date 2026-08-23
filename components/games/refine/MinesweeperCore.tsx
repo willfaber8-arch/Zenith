@@ -34,6 +34,7 @@ import {
   type RefineScoreSummary,
 } from '@/lib/engines/RefineScoreEvaluator'
 import type { GameSessionResult } from '@/components/games/UniversalGameWrapper'
+import Icon from '@/components/ui/Icon'
 import styles from './MinesweeperCore.module.css'
 
 /* ════════════════════════════════════════════════════════════════
@@ -650,7 +651,7 @@ export default function MinesweeperCore({
               let content: React.ReactNode = null
               if (!cell.isRevealed && cell.isFlagged) {
                 content = (
-                  <span style={{ color: 'var(--accent-purple)' }} aria-hidden="true">🚩</span>
+                  <span style={{ color: 'var(--accent-purple)' }} aria-hidden="true"><Icon name="flag" size={14} /></span>
                 )
               } else if (cell.isRevealed && cell.isMine) {
                 content = (

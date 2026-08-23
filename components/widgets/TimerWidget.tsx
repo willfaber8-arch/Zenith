@@ -63,7 +63,7 @@ export default function TimerWidget() {
         {PRESETS.map(p => (
           <button
             key={p}
-            className={`${wStyles.timerChip} ${preset === p ? wStyles.timerChipActive : ''}`}
+            className={`${wStyles.timerChip} tap-44 ${preset === p ? wStyles.timerChipActive : ''}`}
             onClick={() => applyPreset(p)}
           >
             {p}m

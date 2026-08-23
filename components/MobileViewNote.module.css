@@ -1,0 +1,42 @@
+/* ════════════════════════════════════════════════════════════
+   MobileViewNote — a sentence, only on phones.
+   ════════════════════════════════════════════════════════════ */
+
+.note { display: none; }
+
+@media (max-width: 767px) {
+  .note {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: var(--sp-3) var(--sp-4) 0;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-hover);
+    color: var(--text-dark);
+    animation: anim-fade-in var(--dur-base) var(--ease-smooth) both;
+  }
+
+  .text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--text-dark);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .close:active { color: var(--text-muted); }
+}

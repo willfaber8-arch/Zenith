@@ -17,6 +17,7 @@ import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnaly
 import { pushNotification }      from '@/lib/notificationCenter'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import { useToast }             from '@/lib/ToastContext'
+import Icon from '@/components/ui/Icon'
 import styles from './HabitsView.module.css'
 
 /* ── Day labels ───────────────────────────────────────────── */
@@ -216,7 +217,7 @@ function HabitRow({
                 className={styles.habitAutoBadge}
                 title={`Auto-fills from ${autoMeta.label}`}
               >
-                {autoMeta.icon} auto
+                <Icon name={autoMeta.icon} size={12} /> auto
               </span>
             )}
           </div>
@@ -255,14 +256,14 @@ function HabitRow({
       <div className={styles.habitRight}>
         {!editMode && habit.streakCount > 0 && (
           <span className={`${styles.streak} ${habit.streakCount >= 7 ? styles.streakHot : ''}`}>
-            🔥 {habit.streakCount}
+            <Icon name="flame" size={13} /> {habit.streakCount}
           </span>
         )}
 
         {editMode && (
           <div className={styles.editActions}>
             <span className={styles.allTimeHigh} title="All-time high streak">
-              🏆 {allTimeHigh}
+              <Icon name="trophy" size={13} /> {allTimeHigh}
             </span>
             <button
               type="button"
@@ -673,7 +674,7 @@ function HabitModal({
                     setStepUnit(prev => prev.trim() ? prev : src.unit)
                   }}
                 >
-                  {src.icon} {src.label}
+                  <Icon name={src.icon} size={14} /> {src.label}
                 </button>
               ))}
             </div>
@@ -756,7 +757,7 @@ export default function HabitsView() {
         pushNotification({
           id:    `streak-loss-${b.habitId}-${habit?.lastCompletedDate ?? 'na'}`,
           type:  'streak-loss',
-          icon:  '🔥',
+          icon:  'flame',
           view:  'habits',
           title: `Streak lost: ${b.name}`,
           body:  `Your ${b.lostStreak}-day streak ended. Start fresh today!`,
@@ -786,7 +787,7 @@ export default function HabitsView() {
     // Only burst + toast on the first press that completes an at_least habit.
     if (isAtLeast && !prevDone && habit.todayCount + step >= habit.targetCompletions) {
       burst(e.clientX, e.clientY)
-      toast(`${habit.name} — completed! 🎉`, 'success')
+      toast(`${habit.name} — completed`, 'success')
     }
   }, [habits, increment, burst, toast])
 
@@ -864,7 +865,7 @@ export default function HabitsView() {
               <span className={styles.dailyLabel}>{doneCount}/{scheduledCount} done today</span>
               {habits.length > 0 && (
                 <span className={styles.dailyStreak}>
-                  🔥 {Math.max(...habits.map(h => h.streakCount), 0)} day streak
+                  <Icon name="flame" size={13} /> {Math.max(...habits.map(h => h.streakCount), 0)} day streak
                 </span>
               )}
             </div>

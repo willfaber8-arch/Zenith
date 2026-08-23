@@ -52,7 +52,7 @@ async function checkUpcoming(): Promise<void> {
   for (const ev of calEvts) {
     const mins = Math.round((ev.startMs - now) / 60_000)
     fireNotif(
-      `⏰ ${ev.title}`,
+      ev.title,
       `Starting in ${mins} min`,
       `cal-${ev.id}-${Math.floor(ev.startMs / 60_000)}`,
     )
@@ -67,7 +67,7 @@ async function checkUpcoming(): Promise<void> {
   for (const ev of persEvts) {
     const mins = Math.round((ev.startMs - now) / 60_000)
     fireNotif(
-      `⏰ ${ev.title}`,
+      ev.title,
       `Starting in ${mins} min`,
       `pers-${ev.id}-${Math.floor(ev.startMs / 60_000)}`,
     )
@@ -86,13 +86,13 @@ async function checkUpcoming(): Promise<void> {
         ? `${Math.round(hrs * 60)} min`
         : `${Math.round(hrs * 10) / 10} hr`
       fireNotif(
-        `📋 Due soon: ${a.title}`,
+        `Due soon: ${a.title}`,
         `Due in ${label}`,
         `task-${a.id}-${Math.floor(dueMs / 3_600_000)}`,
       )
     } else if (dueMs < now && a.status !== 'overdue') {
       fireNotif(
-        `🚨 Overdue: ${a.title}`,
+        `Overdue: ${a.title}`,
         'This task is now past due',
         `overdue-${a.id}-${a.dueDate ?? ''}`,
       )

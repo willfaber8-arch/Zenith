@@ -16,6 +16,7 @@ import { NAV_CONFIG, type ViewId, type CategoryId } from '@/lib/nav-config'
 import { useNotificationCenter } from '@/lib/hooks/useNotificationCenter'
 import { DEFAULT_CHECKLIST } from '@/lib/notificationCenter'
 import styles from './NotificationBell.module.css'
+import Icon from '@/components/ui/Icon'
 
 /* Flat ViewId → CategoryId map built once from the nav taxonomy. */
 const VIEW_CATEGORY: Record<string, CategoryId> = (() => {
@@ -179,7 +180,7 @@ export default function NotificationBell() {
               const on = enabledIds.has(item.id)
               return (
                 <li key={item.id} className={styles.customItem}>
-                  <span className={styles.checkIcon} aria-hidden="true">{item.icon}</span>
+                  <span className={styles.checkIcon} aria-hidden="true"><Icon name={item.icon} size={15} /></span>
                   <span className={styles.customLabel}>{item.label}</span>
                   <button
                     type="button"
@@ -205,7 +206,7 @@ export default function NotificationBell() {
                   onClick={() => go(item.view)}
                 >
                   <span className={styles.checkBox} aria-hidden="true">
-                    {item.done ? '✓' : item.icon}
+                    <Icon name={item.done ? 'check' : item.icon} size={14} />
                   </span>
                   <span className={styles.checkText}>{item.label}</span>
                   <span className={styles.checkGo} aria-hidden="true">→</span>
@@ -244,7 +245,7 @@ export default function NotificationBell() {
                   className={styles.feedMain}
                   onClick={() => go(n.view)}
                 >
-                  <span className={styles.feedIcon} aria-hidden="true">{n.icon}</span>
+                  <span className={styles.feedIcon} aria-hidden="true"><Icon name={n.icon} size={16} /></span>
                   <span className={styles.feedBody}>
                     <span className={styles.feedTitle}>{n.title}</span>
                     {n.body && <span className={styles.feedText}>{n.body}</span>}
@@ -272,7 +273,7 @@ export default function NotificationBell() {
     <div className={styles.root} ref={rootRef}>
       <button
         type="button"
-        className={`${styles.bellBtn} ${open ? styles.bellBtnActive : ''}`}
+        className={`${styles.bellBtn} tap-44 ${open ? styles.bellBtnActive : ''}`}
         onClick={handleToggle}
         aria-label={unseen > 0 ? `Notifications, ${unseen} new` : 'Notifications'}
         aria-expanded={open}

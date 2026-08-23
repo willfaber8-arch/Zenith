@@ -13,6 +13,7 @@ import {
 } from '@/utils/mentalHealthLog'
 import type { MentalHealthLog } from '@/lib/db'
 import styles from './SlopeDayHypeTracker.module.css'
+import Icon from '@/components/ui/Icon'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
@@ -167,7 +168,7 @@ export default function WellnessTracker() {
                   aria-label={`${m.label}: stress ${m.stressLevel}, energy ${m.energyLevel}`}
                   style={{ '--mood-hue': String(m.hue) } as CSSProperties}
                 >
-                  <span className={styles.moodEmoji} aria-hidden="true">{m.emoji}</span>
+                  <span className={styles.moodEmoji} aria-hidden="true"><Icon name={m.icon} size={28} /></span>
                   <span className={styles.moodLabel}>{m.label}</span>
                 </button>
               )
@@ -214,7 +215,7 @@ export default function WellnessTracker() {
                     ? (
                       <span className={styles.dayMood}>
                         <span className={styles.dayMoodEmoji}>
-                          {MOOD_MAP[log.moodVector as MoodKey]?.emoji ?? '❓'}
+                          <Icon name={MOOD_MAP[log.moodVector as MoodKey]?.icon ?? 'moodNeutral'} size={18} />
                         </span>
                         <span className={styles.dayMoodLabel}>
                           {MOOD_MAP[log.moodVector as MoodKey]?.label ?? log.moodVector}
@@ -307,7 +308,7 @@ export default function WellnessTracker() {
                   <span className={styles.calCellNum}>{dayNum}</span>
                   {log && (
                     <span className={styles.calCellEmoji} aria-hidden="true">
-                      {MOOD_MAP[log.moodVector as MoodKey]?.emoji ?? ''}
+                      <Icon name={MOOD_MAP[log.moodVector as MoodKey]?.icon ?? 'moodNeutral'} size={15} />
                     </span>
                   )}
                 </button>
@@ -348,7 +349,7 @@ export default function WellnessTracker() {
                 </span>
                 {selectedLog && (
                   <span className={styles.calDetailMoodBadge}>
-                    {MOOD_MAP[selectedLog.moodVector as MoodKey]?.emoji}{' '}
+                    <Icon name={MOOD_MAP[selectedLog.moodVector as MoodKey]?.icon ?? 'moodNeutral'} size={15} />
                     {MOOD_MAP[selectedLog.moodVector as MoodKey]?.label ?? selectedLog.moodVector}
                   </span>
                 )}
