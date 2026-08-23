@@ -1311,7 +1311,27 @@ function bumpEngStreak(): number {
 }
 
 /* ── English vocab seed function ────────────────────────────── */
-async function seedEnglishDeck(): Promise<string> {
+/*
+ * One seed run at a time, shared by every caller.
+ *
+ * The effect that calls this fires twice under React StrictMode, and
+ * both calls used to get past the "does the deck exist yet?" check
+ * before either had written anything — so a single visit created two
+ * identical decks with 1,157 cards each. Repeat that over a few
+ * sessions and the deck holds four copies of every word, which is
+ * exactly what a real install turned out to look like.
+ *
+ * A module-level promise makes concurrent callers await the same run
+ * rather than each starting their own.
+ */
+let englishSeedRun: Promise<string> | null = null
+
+function seedEnglishDeck(): Promise<string> {
+  if (!englishSeedRun) englishSeedRun = runEnglishSeed()
+  return englishSeedRun
+}
+
+async function runEnglishSeed(): Promise<string> {
   const cached = (() => { try { return localStorage.getItem(ENGLISH_DECK_LS_KEY) } catch { return null } })()
 
   /* Resolve (or create) the deck id */
@@ -1320,10 +1340,36 @@ async function seedEnglishDeck(): Promise<string> {
     const exists = await db.vocab_decks.get(cached)
     if (exists) deckId = cached
   }
+
+  /*
+   * Fold away duplicates the old race left behind.
+   *
+   * The oldest row wins and every card in the others is reassigned to
+   * it — including anything the user added by hand, which is why this
+   * moves cards rather than deleting decks outright.
+   */
+  const named = await db.vocab_decks.where('languageName').equals(ENGLISH_DECK_NAME).toArray()
+  if (named.length > 1) {
+    const sorted    = [...named].sort((a, b) => a.createdAt - b.createdAt)
+    const canonical = sorted.find(d => d.id === deckId) ?? sorted[0]
+    const extras    = sorted.filter(d => d.id !== canonical.id)
+    await db.transaction('rw', [db.vocab_decks, db.vocab_cards], async () => {
+      for (const dup of extras) {
+        const orphans = await db.vocab_cards.where('deckId').equals(dup.id).toArray()
+        for (const c of orphans) await db.vocab_cards.update(c.id, { deckId: canonical.id })
+        await db.vocab_decks.delete(dup.id)
+      }
+    })
+    deckId = canonical.id
+    try { localStorage.setItem(ENGLISH_DECK_LS_KEY, deckId) } catch { /* noop */ }
+  }
+
   if (!deckId) {
-    const existing = await db.vocab_decks.where('languageName').equals(ENGLISH_DECK_NAME).first()
+    const existing = named[0]
     if (existing) {
       deckId = existing.id
+      /* Back-fill for installs created before the flag existed. */
+      if (!existing.isSystem) await db.vocab_decks.update(deckId, { isSystem: true })
     } else {
       deckId = crypto.randomUUID()
       const deck: VocabDeck = {
@@ -1331,6 +1377,7 @@ async function seedEnglishDeck(): Promise<string> {
         languageName: ENGLISH_DECK_NAME,
         description:  'Advanced English vocabulary — GRE & SAT level words for mastery.',
         createdAt:    Date.now(),
+        isSystem:     true,
       }
       await db.vocab_decks.add(deck)
     }
@@ -2221,14 +2268,67 @@ function CardModal({
 function CardsTab({
   cards,
   deckId,
+  decks,
+  isSystemDeck,
   onAddCard,
 }: {
-  cards:     VocabCard[]
-  deckId:    string
-  onAddCard: () => void
+  cards:        VocabCard[]
+  deckId:       string
+  decks:        VocabDeck[]
+  isSystemDeck: boolean
+  onAddCard:    () => void
 }) {
   const { toast } = useToast()
   const [editCard, setEditCard] = useState<VocabCard | null>(null)
+
+  /* ── Selection, for moving cards between decks ───────────────── */
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [moveTo,   setMoveTo]   = useState('')
+  const [moving,   setMoving]   = useState(false)
+
+  /* Selection is per-deck; carrying it across a deck switch would move
+     cards the user can no longer see. */
+  useEffect(() => { setSelected(new Set()); setMoveTo('') }, [deckId])
+
+  const toggle = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }, [])
+
+  /*
+   * Cards sitting in the curated English deck that were never part of
+   * it — which is precisely the accident this fixes. The seed list is a
+   * static array in this file, so "does not belong here" is exact
+   * rather than a guess about which language a word is in.
+   */
+  const strays = useMemo(() => {
+    if (!isSystemDeck) return []
+    const curated = new Set(ADVANCED_ENGLISH_WORDS.map(w => w.word.toLowerCase()))
+    return cards.filter(c => !curated.has(c.foreignWord.trim().toLowerCase()))
+  }, [cards, isSystemDeck])
+
+  const otherDecks = useMemo(
+    () => decks.filter(d => d.id !== deckId && !d.isSystem),
+    [decks, deckId],
+  )
+
+  const handleMove = useCallback(async () => {
+    if (!moveTo || selected.size === 0) return
+    setMoving(true)
+    const ids = [...selected]
+    /* One transaction: a half-moved batch is worse than a failed one. */
+    await db.transaction('rw', db.vocab_cards, async () => {
+      for (const id of ids) await db.vocab_cards.update(id, { deckId: moveTo })
+    })
+    const dest = decks.find(d => d.id === moveTo)?.languageName ?? 'deck'
+    setSelected(new Set())
+    setMoveTo('')
+    setMoving(false)
+    toast(`Moved ${ids.length} ${ids.length === 1 ? 'card' : 'cards'} to ${dest}.`, 'success')
+  }, [moveTo, selected, decks, toast])
 
   async function handleDelete(card: VocabCard) {
     await db.vocab_cards.delete(card.id)
@@ -2241,10 +2341,77 @@ function CardsTab({
         <span className={styles.cardsCount}>
           {cards.length} {cards.length === 1 ? 'card' : 'cards'}
         </span>
-        <button className={styles.addCardBtn} onClick={onAddCard}>
-          + Add Card
-        </button>
+
+        {cards.length > 0 && (
+          <button
+            className={styles.selectAllBtn}
+            onClick={() => setSelected(prev =>
+              prev.size === cards.length ? new Set() : new Set(cards.map(c => c.id)))}
+          >
+            {selected.size === cards.length ? 'Clear selection' : 'Select all'}
+          </button>
+        )}
+
+        {/* The one-click rescue: everything in the curated deck that was
+            never part of it. */}
+        {strays.length > 0 && (
+          <button
+            className={styles.strayBtn}
+            onClick={() => setSelected(new Set(strays.map(c => c.id)))}
+            title="Cards in this deck that are not part of the built-in English set"
+          >
+            Select {strays.length} not from this set
+          </button>
+        )}
+
+        {isSystemDeck ? (
+          <span className={styles.systemDeckNote}>
+            Built-in deck — add cards to one of your own instead
+          </span>
+        ) : (
+          <button className={styles.addCardBtn} onClick={onAddCard}>
+            + Add Card
+          </button>
+        )}
       </div>
+
+      {/* ── Move bar ────────────────────────────────────────────── */}
+      {selected.size > 0 && (
+        <div className={styles.moveBar}>
+          <span className={styles.moveCount}>
+            {selected.size} selected
+          </span>
+          {otherDecks.length === 0 ? (
+            <span className={styles.moveHint}>
+              Make another deck first — there is nowhere to move these yet.
+            </span>
+          ) : (
+            <>
+              <select
+                className={styles.moveSelect}
+                value={moveTo}
+                onChange={e => setMoveTo(e.target.value)}
+                aria-label="Move selected cards to deck"
+              >
+                <option value="">Move to…</option>
+                {otherDecks.map(d => (
+                  <option key={d.id} value={d.id}>{d.languageName}</option>
+                ))}
+              </select>
+              <button
+                className={styles.moveBtn}
+                onClick={() => void handleMove()}
+                disabled={!moveTo || moving}
+              >
+                {moving ? 'Moving…' : 'Move'}
+              </button>
+            </>
+          )}
+          <button className={styles.moveClear} onClick={() => setSelected(new Set())}>
+            Clear
+          </button>
+        </div>
+      )}
 
       {cards.length === 0 ? (
         <div className={styles.emptyCards}>
@@ -2263,7 +2430,17 @@ function CardsTab({
             const dotClass = stabilityClass(card, styles)
 
             return (
-              <div key={card.id} className={styles.cardRow}>
+              <div
+                key={card.id}
+                className={`${styles.cardRow} ${selected.has(card.id) ? styles.cardRowSelected : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  className={styles.cardCheck}
+                  checked={selected.has(card.id)}
+                  onChange={() => toggle(card.id)}
+                  aria-label={`Select ${card.foreignWord}`}
+                />
                 <div className={styles.cardRowBody}>
                   <span className={styles.cardForeignWord}>{card.foreignWord}</span>
                   <span className={styles.cardTranslation}>{card.nativeTranslation}</span>
@@ -2460,11 +2637,19 @@ function LanguageBuilderTab() {
     } catch { /* noop */ }
   }, [])
 
-  // Auto-select first deck when list is populated
+  /*
+   * Auto-select the first deck the user actually owns.
+   *
+   * `decks` includes the curated deck the English Vocabulary tab seeds
+   * into the same table, and it is usually the oldest — so opening
+   * Language Builder selected it, and every card added from here went
+   * into it. It stays listed (the cards inside it have to be reachable)
+   * but it is never the default, and never a target for adding.
+   */
   useEffect(() => {
-    if (!selectedId && decks.length > 0) {
-      setSelectedId(decks[0].id)
-    }
+    if (selectedId) return
+    const own = decks.find(d => !d.isSystem)
+    if (own) setSelectedId(own.id)
   }, [decks, selectedId])
 
   // Dismiss delete confirmation if user clicks away
@@ -2536,7 +2721,18 @@ function LanguageBuilderTab() {
                 </p>
               </div>
             ) : (
-              decks.filter(deck => deck.languageName !== ENGLISH_DECK_NAME).map(deck => {
+              /*
+               * The built-in deck is listed, marked, and last.
+               *
+               * It used to be filtered out here while auto-select picked
+               * from the unfiltered list — so Language Builder opened on
+               * a deck that was not in its own sidebar, and every card
+               * added went into it invisibly. Hiding it also meant that
+               * once cards had landed there wrongly, there was no way to
+               * reach them. It is a real deck holding real cards; the
+               * honest thing is to show it and say what it is.
+               */
+              [...decks].sort((a, b) => Number(!!a.isSystem) - Number(!!b.isSystem)).map(deck => {
                 const s   = deckStatsMap.get(deck.id) ?? { total: 0, due: 0 }
                 const isActive = deck.id === selectedId
 
@@ -2552,7 +2748,12 @@ function LanguageBuilderTab() {
                   >
                     <span className={styles.deckEmoji}>{getLangEmoji(deck.languageName)}</span>
                     <div className={styles.deckInfo}>
-                      <span className={styles.deckLang}>{deck.languageName}</span>
+                      <span className={styles.deckLang}>
+                        {deck.languageName}
+                        {deck.isSystem && (
+                          <span className={styles.deckSystemTag}>Built-in</span>
+                        )}
+                      </span>
                       <div className={styles.deckMetaRow}>
                         <span className={styles.deckStatChip}>{s.total} cards</span>
                         {s.due > 0 && (
@@ -2671,6 +2872,8 @@ function LanguageBuilderTab() {
                   <CardsTab
                     cards={selectedCards}
                     deckId={selectedDeck.id}
+                    decks={decks}
+                    isSystemDeck={!!selectedDeck.isSystem}
                     onAddCard={() => setModal({ kind: 'add-card', deckId: selectedDeck.id })}
                   />
                 )}
