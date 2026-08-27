@@ -14,6 +14,16 @@ import { scheduleNext, type RecallGrade } from '@/lib/engines/ReviewScheduler'
 const MASTERED_THRESHOLD = 5
 const REVIEW_SET_SIZE    = 10
 
+/*
+ * How many times the batch is drilled before the session ends.
+ *
+ * Round 1 teaches (flip through, then quiz). Rounds 2 and 3 are the
+ * same locked set of cards in a fresh random order — no new words are
+ * pulled in partway through, because the point of a batch is that you
+ * leave knowing all of it, not that you saw a lot of it once.
+ */
+const TOTAL_ROUNDS = 3
+
 /* ════════════════════════════════════════════════════════════════
    Types
    ════════════════════════════════════════════════════════════════ */
@@ -25,6 +35,9 @@ type Phase = 'loading' | 'empty' | 'learn' | 'mc' | 'type' | 'complete'
 interface DailySet {
   date:    string    // YYYY-MM-DD
   cardIds: string[]
+  /* The batch size this set was built for. Changing the size has to
+     rebuild the set, or today's saved ten would outlive the choice. */
+  size?:   number
 }
 
 /** Per-card outcome accumulated during a session. */
@@ -38,6 +51,15 @@ interface Props {
   deckId:           string
   languageName:     string
   dailyGoal:        number
+  /**
+   * How many cards this session locks in, if not the daily goal.
+   *
+   * Deliberately separate: the daily goal is a target for the day and
+   * drives the "N due" counts elsewhere; this is how much you want to
+   * chew at once. Wanting to sit down and drill 30 has nothing to do
+   * with whether the day's target was 20.
+   */
+  batchSize?:       number
   mode:             'study' | 'review'
   sessionKey?:      number
   filterCardIds?:   string[]    // if set, study only these cards (MC distractors still use full deck)
@@ -116,6 +138,7 @@ export default function VocabStudySession({
   deckId,
   languageName,
   dailyGoal,
+  batchSize,
   mode,
   filterCardIds,
   sessionNamespace,
@@ -127,6 +150,7 @@ export default function VocabStudySession({
   const [phase,    setPhase]    = useState<Phase>('loading')
   const [queue,    setQueue]    = useState<VocabCard[]>([])
   const [idx,      setIdx]      = useState(0)
+  const [round,    setRound]    = useState(1)
 
   /* ── Learn phase ─────────────────────────────────────────────── */
   const [learnFlipped, setLearnFlipped] = useState(false)
@@ -180,7 +204,11 @@ export default function VocabStudySession({
       if (sessionCards.length === 0) { setPhase('empty'); return }
 
       const key = getDailySetKey(deckId, mode, sessionNamespace)
+      const wanted = Math.max(1, batchSize ?? dailyGoal)
       let savedSet = loadDailySet(key)
+
+      /* A saved set built for a different batch size is stale. */
+      if (savedSet && savedSet.size != null && savedSet.size !== wanted) savedSet = null
 
       /* Validate that saved card IDs still exist within the session subset */
       if (savedSet) {
@@ -204,7 +232,7 @@ export default function VocabStudySession({
           if (mastered.length === 0) {
             setPhase('empty'); return
           }
-          cardIds = shuffle(mastered).slice(0, REVIEW_SET_SIZE).map(c => c.id!)
+          cardIds = shuffle(mastered).slice(0, Math.min(wanted, REVIEW_SET_SIZE)).map(c => c.id!)
         } else {
           /* Study: non-mastered cards sorted weakest-first */
           const nonMastered = sessionCards
@@ -217,9 +245,18 @@ export default function VocabStudySession({
           if (nonMastered.length === 0) {
             setPhase('empty'); return
           }
-          cardIds = nonMastered.slice(0, dailyGoal).map(c => c.id!)
+          /*
+           * Pick the weakest, then shuffle them.
+           *
+           * The sort decides *which* cards you get; it should not also
+           * decide the order you meet them in. Left sorted, the batch
+           * arrived weakest-first every single time, so the same word
+           * was always first and position became a memory cue of its
+           * own — you learn the sequence rather than the vocabulary.
+           */
+          cardIds = shuffle(nonMastered.slice(0, wanted)).map(c => c.id!)
         }
-        saveDailySet(key, { date: todayISO(), cardIds })
+        saveDailySet(key, { date: todayISO(), cardIds, size: wanted })
       }
 
       /* Build ordered queue from IDs */
@@ -230,6 +267,7 @@ export default function VocabStudySession({
 
       setQueue(orderedCards)
       setIdx(0)
+      setRound(1)
       setLearnFlipped(false)
       setMcOptions([])
       setMcSelected(null)
@@ -243,7 +281,7 @@ export default function VocabStudySession({
 
     void run()
     return () => { cancelled = true }
-  }, [deckId, mode, dailyGoal, filterCardIds, sessionNamespace])
+  }, [deckId, mode, dailyGoal, batchSize, filterCardIds, sessionNamespace])
 
   /* ─────────────────────────────────────────────────────────────
      Rebuild MC options whenever card or phase changes to 'mc'
@@ -488,13 +526,41 @@ export default function VocabStudySession({
     if (phase !== 'type' || !currentCard) return
 
     const nextIdx = idx + 1
-    if (nextIdx >= queue.length) {
-      void completeSessionRef.current?.()
-    } else {
+    if (nextIdx < queue.length) {
       setIdx(nextIdx)
       setPhase('mc')
+      return
     }
-  }, [phase, currentCard, idx, queue.length])
+
+    /*
+     * End of a pass over the batch.
+     *
+     * Rather than finishing here and handing back a fresh set of words,
+     * the same cards go round again in a new order. Seeing ten words
+     * once is recognition; seeing them three times in three different
+     * orders is closer to recall, and it is the reshuffle that does the
+     * work — a fixed order lets you ride the sequence instead of
+     * knowing each word on its own.
+     */
+    if (round < TOTAL_ROUNDS) {
+      setQueue(q => shuffle(q))
+      setIdx(0)
+      setRound(r => r + 1)
+      /* Each round is graded on its own merits; the last one is what
+         gets written, so a word you finally nailed counts as nailed. */
+      outcomesRef.current = new Map()
+      setMcSelected(null)
+      setMcCorrect(null)
+      setMcFirstTry(true)
+      setTypeInput('')
+      setTypeResult(null)
+      setWrongWord('')
+      setPhase('mc')
+      return
+    }
+
+    void completeSessionRef.current?.()
+  }, [phase, currentCard, idx, queue.length, round])
 
   const handleTypeGotIt = useCallback(() => {
     if (phase !== 'type' || !currentCard) return
@@ -520,27 +586,62 @@ export default function VocabStudySession({
   /* ─────────────────────────────────────────────────────────────
      Keyboard shortcuts
      ──────────────────────────────────────────────────────────── */
+  /*
+   * Every action in a session has a key, so a whole batch can be run
+   * without reaching for the mouse. The only place the hands leave the
+   * keyboard is typing the answer, which is the point of that phase.
+   *
+   * The typing input handles its own Enter and is skipped here. Once an
+   * answer is submitted the input unmounts, focus returns to the body,
+   * and the result panel's keys become live — which is why the guard
+   * below only skips *while* a field is focused rather than for the
+   * whole phase.
+   */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      const el  = e.target as HTMLElement
+      const tag = el.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      const k = e.key.toLowerCase()
 
       if (phase === 'learn') {
-        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleLearnFlip() }
+        if (e.key === ' ')          { e.preventDefault(); handleLearnFlip() }
+        if (e.key === 'Enter')      { e.preventDefault(); handleLearnNext() }
         if (e.key === 'ArrowRight') { e.preventDefault(); handleLearnNext() }
         if (e.key === 'ArrowLeft')  { e.preventDefault(); handleLearnPrev() }
+        if (k === 's')              { e.preventDefault(); handleStartQuiz() }
+        return
       }
 
       if (phase === 'mc') {
-        if (['1','2','3','4'].includes(e.key)) {
+        if (['1', '2', '3', '4'].includes(e.key)) {
           e.preventDefault()
           handleMCSelectRef.current?.(Number(e.key) - 1)
         }
+        return
+      }
+
+      if (phase === 'type') {
+        /* Only reachable once the input is gone, i.e. an answer is in. */
+        if (typeResult === 'exact' || typeResult === 'close') {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); advanceFromType() }
+        } else if (typeResult === 'wrong') {
+          if (e.key === 'Enter') { e.preventDefault(); handleTypeTryAgain() }
+          if (k === 'g')         { e.preventDefault(); handleTypeGotIt() }
+        }
+        return
+      }
+
+      if (phase === 'complete' || phase === 'empty') {
+        if (e.key === 'Enter' || k === 'r') { e.preventDefault(); onRestart?.() }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [phase, handleLearnFlip, handleLearnNext, handleLearnPrev])
+  }, [phase, typeResult, handleLearnFlip, handleLearnNext, handleLearnPrev,
+      handleStartQuiz, advanceFromType, handleTypeGotIt, handleTypeTryAgain, onRestart])
 
   /* ─────────────────────────────────────────────────────────────
      Derived values
@@ -588,11 +689,19 @@ export default function VocabStudySession({
         <span className={styles.completeGlyph}>◇</span>
         <p className={styles.completeTitle}>Session complete</p>
         <p className={styles.completeSubtitle}>
-          {perfectCount} / {totalCount} cards mastered this round
+          {perfectCount} / {totalCount} clean on the final round
         </p>
+        {mode === 'study' && (
+          <p className={styles.completeNote}>
+            Those {totalCount} were drilled {TOTAL_ROUNDS} times in a different
+            order each round. Start a new session for the next batch.
+          </p>
+        )}
         <div className={styles.completeActions}>
           {onRestart && (
-            <button className={styles.restartBtn} onClick={onRestart}>↺ New Session</button>
+            <button className={styles.restartBtn} onClick={onRestart}>
+              ↺ New Session <kbd className={styles.kbd}>↵</kbd>
+            </button>
           )}
         </div>
       </div>
@@ -625,6 +734,11 @@ export default function VocabStudySession({
         <div className={styles.progressTrack}>
           <div className={styles.progressFill} style={{ width: `${progress}%` }} />
         </div>
+        {mode === 'study' && (
+          <span className={styles.roundBadge} title="The same cards, reshuffled each round">
+            Round {round}/{TOTAL_ROUNDS}
+          </span>
+        )}
         <span className={styles.langBadge}>{languageName}</span>
       </div>
 
@@ -674,7 +788,7 @@ export default function VocabStudySession({
               className={`${styles.startQuizBtn}`}
               onClick={handleStartQuiz}
             >
-              Start Quiz →
+              Start Quiz <kbd className={styles.kbd}>S</kbd>
             </button>
 
             <button
@@ -685,6 +799,13 @@ export default function VocabStudySession({
               Next →
             </button>
           </div>
+
+          <p className={styles.keyHint}>
+            <kbd className={styles.kbd}>Space</kbd> flip
+            <kbd className={styles.kbd}>↵</kbd> next
+            <kbd className={styles.kbd}>←</kbd> <kbd className={styles.kbd}>→</kbd> move
+            <kbd className={styles.kbd}>S</kbd> start quiz
+          </p>
         </div>
       )}
 
@@ -724,7 +845,10 @@ export default function VocabStudySession({
             })}
           </div>
 
-          <p className={styles.mcKeyHint}>Press 1–4 to select</p>
+          <p className={styles.keyHint}>
+            <kbd className={styles.kbd}>1</kbd><kbd className={styles.kbd}>2</kbd>
+            <kbd className={styles.kbd}>3</kbd><kbd className={styles.kbd}>4</kbd> choose
+          </p>
         </div>
       )}
 
@@ -762,7 +886,7 @@ export default function VocabStudySession({
                 onClick={handleTypeSubmit}
                 disabled={typeInput.trim().length === 0}
               >
-                Submit →
+                Submit <kbd className={styles.kbd}>↵</kbd>
               </button>
             </div>
           )}
@@ -775,7 +899,7 @@ export default function VocabStudySession({
                 {typeResult === 'exact' ? 'Correct!' : 'Close enough!'}
               </span>
               <button className={styles.typeNextBtn} onClick={advanceFromType}>
-                Next →
+                Next <kbd className={styles.kbd}>↵</kbd>
               </button>
             </div>
           )}
@@ -786,10 +910,10 @@ export default function VocabStudySession({
               <p className={styles.typeWrongLabel}>✗ The word was: <strong>{wrongWord}</strong></p>
               <div className={styles.typeWrongActions}>
                 <button className={styles.typeGotItBtn} onClick={handleTypeGotIt}>
-                  Got it (close enough)
+                  Got it <kbd className={styles.kbd}>G</kbd>
                 </button>
                 <button className={styles.typeTryAgainBtn} onClick={handleTypeTryAgain}>
-                  Try again
+                  Try again <kbd className={styles.kbd}>↵</kbd>
                 </button>
               </div>
             </div>
