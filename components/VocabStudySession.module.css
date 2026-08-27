@@ -698,3 +698,64 @@
   border-color: rgba(124, 149, 255, 0.35);
   color: var(--text-primary);
 }
+
+/* ════════════════════════════════════════════════════════════
+   Rounds + keyboard affordances
+   ════════════════════════════════════════════════════════════ */
+
+/* Which pass over the locked batch you are on. */
+.roundBadge {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--accent-green) 32%, transparent);
+  background: color-mix(in srgb, var(--accent-green) 10%, transparent);
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* One line of available keys, per phase. Shown always rather than
+   behind a help toggle — a shortcut nobody can see is a shortcut
+   nobody uses. */
+.keyHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--sp-4) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dark);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  margin: 0 1px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  border-bottom-width: 2px;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.completeNote {
+  max-width: 44ch;
+  margin: 0 auto var(--sp-4);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+  text-align: center;
+}

@@ -1641,3 +1641,21 @@
   color: var(--text-dark);
   vertical-align: middle;
 }
+
+/* Free-entry companion to the preset buttons in the batch picker. */
+.goalInput {
+  width: 62px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-align: center;
+}
+.goalInput:focus {
+  outline: none;
+  border-color: var(--cat-accent, var(--accent-purple));
+}

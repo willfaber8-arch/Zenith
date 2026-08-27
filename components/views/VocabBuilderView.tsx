@@ -21,6 +21,32 @@ const ENGLISH_DECK_LS_KEY  = 'zenith_english_deck_id_v1'
 const ENGLISH_STREAK_KEY   = 'zenith_english_vocab_streak_v1'
 const VOCAB_DAILY_GOAL_KEY = 'zenith_vocab_daily_goal_v1'
 const DEFAULT_DAILY_GOAL   = 20
+
+/*
+ * How many cards a single sitting locks in — separate from the daily
+ * goal on purpose.
+ *
+ * The daily goal is a target for the day and feeds the "N due" counts.
+ * This is how much you want to chew at once, and wanting to sit down
+ * and drill 40 has nothing to do with whether the day's target was 20.
+ */
+const VOCAB_BATCH_KEY  = 'zenith_vocab_batch_size_v1'
+const DEFAULT_BATCH    = 10
+const BATCH_PRESETS    = [5, 10, 15, 20, 30, 50]
+const MAX_BATCH        = 200
+
+function loadBatchSize(): number {
+  try {
+    const raw = localStorage.getItem(VOCAB_BATCH_KEY)
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= 1) return Math.min(MAX_BATCH, Math.round(n))
+  } catch { /* noop */ }
+  return DEFAULT_BATCH
+}
+
+function saveBatchSize(n: number): void {
+  try { localStorage.setItem(VOCAB_BATCH_KEY, String(n)) } catch { /* noop */ }
+}
 const MASTERED_THRESHOLD   = 5
 
 const ADVANCED_ENGLISH_WORDS: Array<{ word: string; definition: string }> = [
@@ -1414,12 +1440,69 @@ async function runEnglishSeed(): Promise<string> {
    EnglishVocabTab — advanced English vocabulary study
    ════════════════════════════════════════════════════════════════ */
 
+/**
+ * Batch size — how many cards one sitting locks in.
+ *
+ * Presets for the common answers plus a free number, because "exactly
+ * 37 because that is what is left in the unit" is a real thing and a
+ * fixed set of buttons cannot express it.
+ */
+function BatchPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => { setDraft(String(value)) }, [value])
+
+  const commit = () => {
+    const n = Math.round(Number(draft))
+    if (!Number.isFinite(n) || n < 1) { setDraft(String(value)); return }
+    onChange(Math.min(MAX_BATCH, n))
+  }
+
+  return (
+    <div className={styles.goalRow}>
+      <span className={styles.goalLabel}>Cards per session:</span>
+      {BATCH_PRESETS.map(n => (
+        <button
+          key={n}
+          className={`${styles.goalBtn} ${value === n ? styles.goalBtnActive : ''}`}
+          onClick={() => onChange(n)}
+        >
+          {n}
+        </button>
+      ))}
+      <input
+        className={styles.goalInput}
+        type="number"
+        min={1}
+        max={MAX_BATCH}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          commit()
+          /* Hand focus back, or every session shortcut stays dead: the
+             key handler ignores keypresses while a field is focused, so
+             pressing S here would type into this box rather than start
+             the quiz. */
+          e.currentTarget.blur()
+        }}
+        aria-label="Custom number of cards per session"
+      />
+      <span className={styles.goalSuffix}>
+        locked in, drilled 3× — separate from the daily goal
+      </span>
+    </div>
+  )
+}
+
 function EnglishVocabTab() {
   const [deckId,           setDeckId]           = useState<string | null>(null)
   const [sessionKey,       setSessionKey]       = useState(0)
   const [streak,           setStreak]           = useState(0)
   const [tab,              setTab]              = useState<'study' | 'review' | 'words'>('study')
   const [dailyGoal,        setDailyGoal]        = useState<number>(DEFAULT_DAILY_GOAL)
+  const [batchSize,        setBatchSize]        = useState<number>(DEFAULT_BATCH)
   const [selectedCatIdx,   setSelectedCatIdx]   = useState(0)   // index into CATEGORY_OPTIONS
 
   /* Bootstrap — seed deck + load persisted goal */
@@ -1431,6 +1514,8 @@ function EnglishVocabTab() {
     try {
       const raw = localStorage.getItem(VOCAB_DAILY_GOAL_KEY)
       if (raw) setDailyGoal(Number(raw) || DEFAULT_DAILY_GOAL)
+      setBatchSize(loadBatchSize())
+      setBatchSize(loadBatchSize())
     } catch { /* noop */ }
   }, [])
 
@@ -1522,6 +1607,11 @@ function EnglishVocabTab() {
         <span className={styles.goalSuffix}>cards</span>
       </div>
 
+      <BatchPicker
+        value={batchSize}
+        onChange={n => { setBatchSize(n); saveBatchSize(n) }}
+      />
+
       {/* ── Category pills ──────────────────────────────────── */}
       <div className={styles.catPillRow}>
         {CATEGORY_OPTIONS.map((opt, i) => (
@@ -1566,6 +1656,7 @@ function EnglishVocabTab() {
               deckId={deckId}
               languageName="Advanced English"
               dailyGoal={dailyGoal}
+                    batchSize={batchSize}
               mode="study"
               filterCardIds={filterCardIds}
               sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
@@ -1591,6 +1682,7 @@ function EnglishVocabTab() {
               deckId={deckId}
               languageName="Advanced English"
               dailyGoal={dailyGoal}
+                    batchSize={batchSize}
               mode="review"
               filterCardIds={filterCardIds}
               sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
@@ -2628,6 +2720,7 @@ function LanguageBuilderTab() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [sessionKey,    setSessionKey]    = useState(0)   // increment to restart session
   const [dailyGoal,     setDailyGoal]     = useState<number>(DEFAULT_DAILY_GOAL)
+  const [batchSize,     setBatchSize]     = useState<number>(DEFAULT_BATCH)
 
   /* Load persisted daily goal */
   useEffect(() => {
@@ -2828,6 +2921,22 @@ function LanguageBuilderTab() {
                 <span className={styles.goalSuffix}>cards</span>
               </div>
 
+              <BatchPicker
+                value={batchSize}
+                onChange={n => {
+                  setBatchSize(n)
+                  saveBatchSize(n)
+                  /* The saved set was built for the old size, so it has to
+                     go or today's batch would outlive the choice. */
+                  try {
+                    if (selectedDeck) {
+                      localStorage.removeItem(`zenith_daily_study_v2_${selectedDeck.id.slice(0, 8)}`)
+                    }
+                  } catch { /* noop */ }
+                  setSessionKey(k => k + 1)
+                }}
+              />
+
               {/* Tab bar */}
               <div className={styles.tabBar}>
                 {(['study', 'review', 'cards', 'progress'] as DeckTab[]).map(tab => (
@@ -2852,6 +2961,7 @@ function LanguageBuilderTab() {
                     deckId={selectedDeck.id}
                     languageName={selectedDeck.languageName}
                     dailyGoal={dailyGoal}
+                    batchSize={batchSize}
                     mode="study"
                     onRestart={() => setSessionKey(k => k + 1)}
                   />
@@ -2863,6 +2973,7 @@ function LanguageBuilderTab() {
                     deckId={selectedDeck.id}
                     languageName={selectedDeck.languageName}
                     dailyGoal={dailyGoal}
+                    batchSize={batchSize}
                     mode="review"
                     onRestart={() => setSessionKey(k => k + 1)}
                   />
