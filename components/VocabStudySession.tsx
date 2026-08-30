@@ -24,6 +24,18 @@ const REVIEW_SET_SIZE    = 10
  */
 const TOTAL_ROUNDS = 3
 
+/**
+ * Which way round the card is asked.
+ *
+ * `toWord`    — you are shown the meaning and produce the word. Recall.
+ * `toMeaning` — you are shown the word and produce the meaning.
+ *               Recognition, and much easier.
+ *
+ * They are not the same skill and a deck is not learnt until both work,
+ * which is why this is a switch rather than a preference set once.
+ */
+export type StudyDirection = 'toWord' | 'toMeaning'
+
 /* ════════════════════════════════════════════════════════════════
    Types
    ════════════════════════════════════════════════════════════════ */
@@ -60,6 +72,8 @@ interface Props {
    * with whether the day's target was 20.
    */
   batchSize?:       number
+  /** Which way the cards are asked. Defaults to recall. */
+  direction?:       StudyDirection
   mode:             'study' | 'review'
   sessionKey?:      number
   filterCardIds?:   string[]    // if set, study only these cards (MC distractors still use full deck)
@@ -139,6 +153,7 @@ export default function VocabStudySession({
   languageName,
   dailyGoal,
   batchSize,
+  direction = 'toWord',
   mode,
   filterCardIds,
   sessionNamespace,
@@ -288,21 +303,49 @@ export default function VocabStudySession({
      ──────────────────────────────────────────────────────────── */
   const currentCard = queue[idx] ?? null
 
+  /*
+   * Which side of the card is the question and which is the answer.
+   *
+   * Everything downstream — the flip card, the distractors, the typed
+   * target — reads through these two, so reversing the deck is one
+   * switch rather than a parallel set of branches in five places.
+   */
+  const promptOf = useCallback(
+    (c: VocabCard) => (direction === 'toWord' ? c.nativeTranslation : c.foreignWord),
+    [direction],
+  )
+  const answerOf = useCallback(
+    (c: VocabCard) => (direction === 'toWord' ? c.foreignWord : c.nativeTranslation),
+    [direction],
+  )
+
+  /*
+   * Recognition rounds skip the typing phase.
+   *
+   * Asked word-to-meaning, the answer is a whole definition — "Having
+   * an irritatingly strong and unpleasant taste or smell" — and nobody
+   * is typing that forty times. Multiple choice is the honest test in
+   * that direction, so it is graded a shade lower than a typed recall
+   * can reach.
+   */
+  const usesTyping = direction === 'toWord'
+
   useEffect(() => {
     if (phase !== 'mc' || !currentCard) return
 
-    const allWords = allCardsRef.current
-      .map(c => c.foreignWord)
-      .filter(w => w !== currentCard.foreignWord)
+    const correct = answerOf(currentCard)
+    const pool = allCardsRef.current
+      .map(answerOf)
+      .filter(w => w !== correct)
 
-    const distractors = shuffle(allWords).slice(0, 3)
-    const options     = shuffle([currentCard.foreignWord, ...distractors])
+    const distractors = shuffle(pool).slice(0, 3)
+    const options     = shuffle([correct, ...distractors])
 
     setMcOptions(options)
     setMcSelected(null)
     setMcCorrect(null)
     setMcFirstTry(true)
-  }, [phase, currentCard])
+  }, [phase, currentCard, answerOf])
 
   /* ─────────────────────────────────────────────────────────────
      Auto-focus type input when entering type phase
@@ -449,7 +492,7 @@ export default function VocabStudySession({
     if (phase !== 'mc' || mcSelected !== null || !currentCard) return
 
     const chosen    = mcOptions[optionIdx]
-    const isCorrect = chosen === currentCard.foreignWord
+    const isCorrect = chosen === answerOf(currentCard)
 
     setMcSelected(optionIdx)
     setMcCorrect(isCorrect)
@@ -464,11 +507,15 @@ export default function VocabStudySession({
       outcomesRef.current.set(currentCard.id!, {
         ...prev,
         mcCorrectFirst: mcFirstTry,
+        /* Recognition has no typed half. Recording it as 'close' rather
+           than 'exact' caps this direction at a grade 4 — right, but a
+           weaker signal than having produced the word from nothing. */
+        ...(usesTyping ? {} : { typeResult: 'close' as const }),
       })
 
-      /* Advance to type phase after short delay */
       setTimeout(() => {
-        setPhase('type')
+        if (usesTyping) { setPhase('type'); return }
+        advanceCardRef.current?.()
       }, 520)
     } else {
       /* Wrong — mark firstTry false, allow retry */
@@ -498,17 +545,18 @@ export default function VocabStudySession({
   const handleTypeSubmit = useCallback(() => {
     if (phase !== 'type' || !currentCard || typeResult !== null) return
 
+    const expected = answerOf(currentCard)
     const answer = normalize(typeInput)
-    const target = normalize(currentCard.foreignWord)
+    const target = normalize(expected)
 
     let result: 'exact' | 'close' | 'wrong'
     if (answer === target) {
       result = 'exact'
-    } else if (isCloseEnough(typeInput, currentCard.foreignWord)) {
+    } else if (isCloseEnough(typeInput, expected)) {
       result = 'close'
     } else {
       result = 'wrong'
-      setWrongWord(currentCard.foreignWord)
+      setWrongWord(expected)
     }
 
     setTypeResult(result)
@@ -520,11 +568,18 @@ export default function VocabStudySession({
       typeResult:     null,
     }
     outcomesRef.current.set(currentCard.id!, { ...prev, typeResult: result })
-  }, [phase, currentCard, typeInput, typeResult])
+  }, [phase, currentCard, typeInput, typeResult, answerOf])
 
-  const advanceFromType = useCallback(() => {
-    if (phase !== 'type' || !currentCard) return
+  /*
+   * Move to the next card, or round, or finish.
+   *
+   * Held in a ref because two phases end a card: the typing phase in
+   * recall, and the multiple-choice phase directly in recognition,
+   * where there is no typing step to pass through.
+   */
+  const advanceCardRef = useRef<(() => void) | null>(null)
 
+  const advanceCard = useCallback(() => {
     const nextIdx = idx + 1
     if (nextIdx < queue.length) {
       setIdx(nextIdx)
@@ -560,7 +615,14 @@ export default function VocabStudySession({
     }
 
     void completeSessionRef.current?.()
-  }, [phase, currentCard, idx, queue.length, round])
+  }, [idx, queue.length, round])
+
+  advanceCardRef.current = advanceCard
+
+  const advanceFromType = useCallback(() => {
+    if (phase !== 'type' || !currentCard) return
+    advanceCard()
+  }, [phase, currentCard, advanceCard])
 
   const handleTypeGotIt = useCallback(() => {
     if (phase !== 'type' || !currentCard) return
@@ -650,10 +712,12 @@ export default function VocabStudySession({
   const progress = total > 0 ? (idx / total) * 100 : 0
 
   /* Phase breadcrumb steps */
+  const typeStep: Array<{ key: Phase; label: string }> =
+    usesTyping ? [{ key: 'type', label: 'Type' }] : []
   const breadcrumbSteps: Array<{ key: Phase; label: string }> =
     mode === 'review'
-      ? [{ key: 'mc', label: 'Quiz' }, { key: 'type', label: 'Type' }]
-      : [{ key: 'learn', label: 'Learn' }, { key: 'mc', label: 'Quiz' }, { key: 'type', label: 'Type' }]
+      ? [{ key: 'mc', label: 'Quiz' }, ...typeStep]
+      : [{ key: 'learn', label: 'Learn' }, { key: 'mc', label: 'Quiz' }, ...typeStep]
 
   /* ════════════════════════════════════════════════════════════════
      Render
@@ -750,25 +814,41 @@ export default function VocabStudySession({
           <div
             className={`${styles.flipContainer} ${learnFlipped ? styles.flipContainerFlipped : ''}`}
             onClick={handleLearnFlip}
-            role="button"
-            tabIndex={0}
-            aria-label={learnFlipped ? `Answer: ${currentCard.nativeTranslation}` : 'Click to reveal translation'}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLearnFlip() } }}
+            /*
+             * Deliberately not a focusable control.
+             *
+             * It used to be a role="button" with its own Enter/Space
+             * handler, while the window handler bound the same keys —
+             * so Space flipped twice and looked dead, and Enter both
+             * flipped and advanced. Clicking it also left the focus
+             * ring parked on the card.
+             *
+             * The keys are global and shown under the card, so one
+             * owner is enough: the window handler. This stays a plain
+             * surface you can click.
+             */
           >
             <div className={styles.flipInner}>
               {/* Front — definition */}
               <div className={`${styles.flipFace} ${styles.flipFront}`}>
                 <p className={styles.tapHint}>tap to reveal</p>
-                <p className={styles.foreignWord}>{currentCard.foreignWord}</p>
+                {/* The question side. Which half that is depends on the
+                    direction, so learning rehearses the same mapping the
+                    quiz will test rather than the reverse of it. */}
+                <p className={direction === 'toWord' ? styles.translation : styles.foreignWord}>
+                  {promptOf(currentCard)}
+                </p>
               </div>
-              {/* Back — translation */}
+              {/* Back — the answer */}
               <div className={`${styles.flipFace} ${styles.flipBack}`}>
-                <p className={styles.translation}>{currentCard.nativeTranslation}</p>
+                <p className={direction === 'toWord' ? styles.foreignWord : styles.translation}>
+                  {answerOf(currentCard)}
+                </p>
                 {currentCard.phoneticSpelling && (
                   <p className={styles.phonetic}>/{currentCard.phoneticSpelling}/</p>
                 )}
                 <hr className={styles.cardDivider} />
-                <p className={styles.tapHint}>{currentCard.foreignWord}</p>
+                <p className={styles.tapHint}>{promptOf(currentCard)}</p>
               </div>
             </div>
           </div>
@@ -816,8 +896,12 @@ export default function VocabStudySession({
         <div className={styles.mcWrap}>
           {/* Definition prompt */}
           <div className={styles.mcPromptCard}>
-            <p className={styles.mcPromptHint}>Which word matches this definition?</p>
-            <p className={styles.mcDefinition}>{currentCard.nativeTranslation}</p>
+            <p className={styles.mcPromptHint}>
+              {direction === 'toWord'
+                ? 'Which word matches this meaning?'
+                : 'What does this word mean?'}
+            </p>
+            <p className={styles.mcDefinition}>{promptOf(currentCard)}</p>
             {currentCard.phoneticSpelling && (
               <p className={styles.mcPhonetic}>/{currentCard.phoneticSpelling}/</p>
             )}
@@ -860,7 +944,7 @@ export default function VocabStudySession({
           {/* Definition prompt */}
           <div className={styles.typePromptCard}>
             <p className={styles.mcPromptHint}>Type the word from memory</p>
-            <p className={styles.mcDefinition}>{currentCard.nativeTranslation}</p>
+            <p className={styles.mcDefinition}>{promptOf(currentCard)}</p>
             {currentCard.phoneticSpelling && (
               <p className={styles.mcPhonetic}>/{currentCard.phoneticSpelling}/</p>
             )}

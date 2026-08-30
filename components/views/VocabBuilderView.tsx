@@ -4,7 +4,9 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useLiveQuery }                                      from 'dexie-react-hooks'
 import { db }                                               from '@/lib/db'
 import type { VocabDeck, VocabCard }                        from '@/types/vocabulary'
-import VocabStudySession                                    from '@/components/VocabStudySession'
+import VocabStudySession, { type StudyDirection }           from '@/components/VocabStudySession'
+import StudyFocusShell                                      from '@/components/StudyFocusShell'
+import DeckShareModal                                       from '@/components/DeckShareModal'
 import { useToast }                                         from '@/lib/ToastContext'
 import { useAiConfig }                                      from '@/lib/hooks/useAiConfig'
 import Icon from '@/components/ui/Icon'
@@ -46,6 +48,56 @@ function loadBatchSize(): number {
 
 function saveBatchSize(n: number): void {
   try { localStorage.setItem(VOCAB_BATCH_KEY, String(n)) } catch { /* noop */ }
+}
+
+/* Which way the cards are asked — see StudyDirection. */
+const VOCAB_DIRECTION_KEY = 'zenith_vocab_direction_v1'
+
+function loadDirection(): StudyDirection {
+  try {
+    return localStorage.getItem(VOCAB_DIRECTION_KEY) === 'toMeaning' ? 'toMeaning' : 'toWord'
+  } catch { return 'toWord' }
+}
+
+function saveDirection(d: StudyDirection): void {
+  try { localStorage.setItem(VOCAB_DIRECTION_KEY, d) } catch { /* noop */ }
+}
+
+/**
+ * Recall or recognition.
+ *
+ * Labelled by what you do rather than by field names: "meaning → word"
+ * is what actually happens, and it reads the same whether the deck is
+ * Spanish or a wall of GRE definitions.
+ */
+function DirectionPicker({ value, onChange }: {
+  value: StudyDirection
+  onChange: (d: StudyDirection) => void
+}) {
+  return (
+    <div className={styles.goalRow}>
+      <span className={styles.goalLabel}>Ask me:</span>
+      <button
+        className={`${styles.goalBtn} ${value === 'toWord' ? styles.goalBtnActive : ''}`}
+        onClick={() => onChange('toWord')}
+        aria-pressed={value === 'toWord'}
+      >
+        Meaning → Word
+      </button>
+      <button
+        className={`${styles.goalBtn} ${value === 'toMeaning' ? styles.goalBtnActive : ''}`}
+        onClick={() => onChange('toMeaning')}
+        aria-pressed={value === 'toMeaning'}
+      >
+        Word → Meaning
+      </button>
+      <span className={styles.goalSuffix}>
+        {value === 'toWord'
+          ? 'recall — you produce the word, and type it'
+          : 'recognition — multiple choice only, no typing a whole definition'}
+      </span>
+    </div>
+  )
 }
 const MASTERED_THRESHOLD   = 5
 
@@ -1503,6 +1555,7 @@ function EnglishVocabTab() {
   const [tab,              setTab]              = useState<'study' | 'review' | 'words'>('study')
   const [dailyGoal,        setDailyGoal]        = useState<number>(DEFAULT_DAILY_GOAL)
   const [batchSize,        setBatchSize]        = useState<number>(DEFAULT_BATCH)
+  const [direction,        setDirection]        = useState<StudyDirection>('toWord')
   const [selectedCatIdx,   setSelectedCatIdx]   = useState(0)   // index into CATEGORY_OPTIONS
 
   /* Bootstrap — seed deck + load persisted goal */
@@ -1515,7 +1568,9 @@ function EnglishVocabTab() {
       const raw = localStorage.getItem(VOCAB_DAILY_GOAL_KEY)
       if (raw) setDailyGoal(Number(raw) || DEFAULT_DAILY_GOAL)
       setBatchSize(loadBatchSize())
+      setDirection(loadDirection())
       setBatchSize(loadBatchSize())
+      setDirection(loadDirection())
     } catch { /* noop */ }
   }, [])
 
@@ -1612,6 +1667,11 @@ function EnglishVocabTab() {
         onChange={n => { setBatchSize(n); saveBatchSize(n) }}
       />
 
+      <DirectionPicker
+        value={direction}
+        onChange={d => { setDirection(d); saveDirection(d) }}
+      />
+
       {/* ── Category pills ──────────────────────────────────── */}
       <div className={styles.catPillRow}>
         {CATEGORY_OPTIONS.map((opt, i) => (
@@ -1651,20 +1711,26 @@ function EnglishVocabTab() {
           : undefined
         return (
           <div className={styles.engStudyWrap}>
+            <StudyFocusShell
+              title="Advanced English"
+              subtitle={cat.label}
+            >
             <VocabStudySession
-              key={`eng-study-${sessionKey}-${cat.namespace}`}
-              deckId={deckId}
-              languageName="Advanced English"
-              dailyGoal={dailyGoal}
-                    batchSize={batchSize}
-              mode="study"
-              filterCardIds={filterCardIds}
-              sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
-              onRestart={() => {
-                setSessionKey(k => k + 1)
-                setStreak(bumpEngStreak())
-              }}
-            />
+                key={`eng-study-${sessionKey}-${cat.namespace}`}
+                deckId={deckId}
+                languageName="Advanced English"
+                dailyGoal={dailyGoal}
+                      batchSize={batchSize}
+                      direction={direction}
+                mode="study"
+                filterCardIds={filterCardIds}
+                sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
+                onRestart={() => {
+                  setSessionKey(k => k + 1)
+                  setStreak(bumpEngStreak())
+                }}
+              />
+            </StudyFocusShell>
           </div>
         )
       })()}
@@ -1677,17 +1743,23 @@ function EnglishVocabTab() {
           : undefined
         return (
           <div className={styles.engStudyWrap}>
+            <StudyFocusShell
+              title="Advanced English"
+              subtitle={cat.label}
+            >
             <VocabStudySession
-              key={`eng-review-${sessionKey}-${cat.namespace}`}
-              deckId={deckId}
-              languageName="Advanced English"
-              dailyGoal={dailyGoal}
-                    batchSize={batchSize}
-              mode="review"
-              filterCardIds={filterCardIds}
-              sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
-              onRestart={() => setSessionKey(k => k + 1)}
-            />
+                key={`eng-review-${sessionKey}-${cat.namespace}`}
+                deckId={deckId}
+                languageName="Advanced English"
+                dailyGoal={dailyGoal}
+                      batchSize={batchSize}
+                      direction={direction}
+                mode="review"
+                filterCardIds={filterCardIds}
+                sessionNamespace={cat.namespace !== 'all' ? cat.namespace : undefined}
+                onRestart={() => setSessionKey(k => k + 1)}
+              />
+            </StudyFocusShell>
           </div>
         )
       })()}
@@ -2721,6 +2793,8 @@ function LanguageBuilderTab() {
   const [sessionKey,    setSessionKey]    = useState(0)   // increment to restart session
   const [dailyGoal,     setDailyGoal]     = useState<number>(DEFAULT_DAILY_GOAL)
   const [batchSize,     setBatchSize]     = useState<number>(DEFAULT_BATCH)
+  const [direction,     setDirection]     = useState<StudyDirection>('toWord')
+  const [share,         setShare]         = useState<null | { kind: 'export'; deck: VocabDeck } | { kind: 'import' }>(null)
 
   /* Load persisted daily goal */
   useEffect(() => {
@@ -2782,6 +2856,13 @@ function LanguageBuilderTab() {
   /* ── Render ───────────────────────────────────────────────── */
   return (
     <div className={styles.wrapper}>
+      {share && (
+        <DeckShareModal
+          mode={share}
+          onClose={() => setShare(null)}
+          onImported={id => setSelectedId(id)}
+        />
+      )}
       <div className={styles.layout}>
 
         {/* ── Left: Deck list ───────────────────────────────── */}
@@ -2795,6 +2876,13 @@ function LanguageBuilderTab() {
                 title="Generate a deck with AI"
               >
                 ✦ AI
+              </button>
+              <button
+                className={styles.newDeckBtn}
+                onClick={() => setShare({ kind: 'import' })}
+                title="Import a deck someone shared"
+              >
+                ↓ Import
               </button>
               <button
                 className={styles.newDeckBtn}
@@ -2885,6 +2973,13 @@ function LanguageBuilderTab() {
                 )}
                 <div className={styles.headerActions}>
                   <button
+                    className={styles.newDeckBtn}
+                    onClick={() => setShare({ kind: 'export', deck: selectedDeck })}
+                    title="Send this deck to someone"
+                  >
+                    Share
+                  </button>
+                  <button
                     data-delete-btn=""
                     className={`${styles.deleteDeckBtn} ${
                       deleteConfirm === selectedDeck.id ? styles.deleteDeckBtnConfirm : ''
@@ -2937,6 +3032,11 @@ function LanguageBuilderTab() {
                 }}
               />
 
+              <DirectionPicker
+                value={direction}
+                onChange={d => { setDirection(d); saveDirection(d) }}
+              />
+
               {/* Tab bar */}
               <div className={styles.tabBar}>
                 {(['study', 'review', 'cards', 'progress'] as DeckTab[]).map(tab => (
@@ -2956,27 +3056,39 @@ function LanguageBuilderTab() {
               {/* Tab content */}
               <div className={styles.tabContent}>
                 {activeTab === 'study' && (
+                  <StudyFocusShell
+                    title={selectedDeck.languageName}
+                    subtitle={direction === 'toWord' ? 'Meaning → Word' : 'Word → Meaning'}
+                  >
                   <VocabStudySession
-                    key={`${selectedDeck.id}-study-${sessionKey}`}
-                    deckId={selectedDeck.id}
-                    languageName={selectedDeck.languageName}
-                    dailyGoal={dailyGoal}
-                    batchSize={batchSize}
-                    mode="study"
-                    onRestart={() => setSessionKey(k => k + 1)}
-                  />
+                      key={`${selectedDeck.id}-study-${sessionKey}`}
+                      deckId={selectedDeck.id}
+                      languageName={selectedDeck.languageName}
+                      dailyGoal={dailyGoal}
+                      batchSize={batchSize}
+                      direction={direction}
+                      mode="study"
+                      onRestart={() => setSessionKey(k => k + 1)}
+                    />
+                  </StudyFocusShell>
                 )}
 
                 {activeTab === 'review' && (
+                  <StudyFocusShell
+                    title={selectedDeck.languageName}
+                    subtitle={direction === 'toWord' ? 'Meaning → Word' : 'Word → Meaning'}
+                  >
                   <VocabStudySession
-                    key={`${selectedDeck.id}-review-${sessionKey}`}
-                    deckId={selectedDeck.id}
-                    languageName={selectedDeck.languageName}
-                    dailyGoal={dailyGoal}
-                    batchSize={batchSize}
-                    mode="review"
-                    onRestart={() => setSessionKey(k => k + 1)}
-                  />
+                      key={`${selectedDeck.id}-review-${sessionKey}`}
+                      deckId={selectedDeck.id}
+                      languageName={selectedDeck.languageName}
+                      dailyGoal={dailyGoal}
+                      batchSize={batchSize}
+                      direction={direction}
+                      mode="review"
+                      onRestart={() => setSessionKey(k => k + 1)}
+                    />
+                  </StudyFocusShell>
                 )}
 
                 {activeTab === 'cards' && (
