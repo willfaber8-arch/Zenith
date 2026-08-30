@@ -48,6 +48,15 @@ export interface VocabCard {
   reviewIntervalDays:    number   //   days until next review; default 1
   consecutiveSuccesses:  number   //   resets to 0 on grade < 3
   nextReviewTimestamp:   number   // * indexed — UTC ms; due-date filter
+  /**
+   * Set aside until this moment, because you said you know it.
+   *
+   * Distinct from being scheduled far out: this is a card you took out
+   * of rotation deliberately, and it comes back on its own rather than
+   * needing to be found again. Optional and non-indexed, so existing
+   * cards need no migration and simply have none.
+   */
+  shelvedUntil?:         number
 }
 
 /**

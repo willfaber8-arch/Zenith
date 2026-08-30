@@ -16,7 +16,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import Icon from '@/components/ui/Icon'
 import styles from './StudyFocusShell.module.css'
 
@@ -24,10 +23,17 @@ interface Props {
   /** Shown in the focus panel's header so you know what you are in. */
   title:    string
   subtitle?: string
+  /**
+   * True when this shell is mounted but its pane is hidden. Vocab
+   * Builder keeps both outer tabs mounted, so without this the shell
+   * behind the one you are looking at also answers F and Escape — and
+   * F would ask for fullscreen twice.
+   */
+  paused?:  boolean
   children: ReactNode
 }
 
-export default function StudyFocusShell({ title, subtitle, children }: Props) {
+export default function StudyFocusShell({ title, subtitle, paused = false, children }: Props) {
   const [active, setActive] = useState(false)
   const [mounted, setMounted] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -59,6 +65,7 @@ export default function StudyFocusShell({ title, subtitle, children }: Props) {
   /* F toggles, Escape leaves — but never while a field has the caret,
      or F would be swallowed mid-answer. */
   useEffect(() => {
+    if (paused) return
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
       const tag = el.tagName
@@ -69,7 +76,7 @@ export default function StudyFocusShell({ title, subtitle, children }: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active, enter, exit])
+  }, [paused, active, enter, exit])
 
   /* Nothing behind the panel should scroll while it is up. */
   useEffect(() => {
@@ -96,47 +103,50 @@ export default function StudyFocusShell({ title, subtitle, children }: Props) {
     </button>
   )
 
-  if (!mounted) return <>{children}</>
-
-  if (!active) {
-    return (
-      <>
-        <div className={styles.toggleRow}>{toggle}</div>
-        {children}
-      </>
-    )
-  }
-
   /*
-   * Portalled to <body>. AppShell sits inside a wrapper carrying an
-   * inline transform, and any transform — the identity one it settles
-   * on included — makes that element the containing block for fixed
-   * descendants, which would pin this panel to the scroll content
-   * instead of the viewport.
+   * One wrapper, always in the same place in the tree.
+   *
+   * This used to portal the children to <body> when active, and to
+   * change its own tree shape once mounted. Both move the session to a
+   * different position in the React tree, and React reads that as a
+   * different component: entering focus mode unmounted the session and
+   * mounted a fresh one, so it restarted from card one and threw away
+   * everything you had answered.
+   *
+   * The portal was there because a fixed-position panel inside
+   * AppShell's transformed wrapper would have been pinned to the
+   * scroll content rather than the viewport. That wrapper now releases
+   * its transform once the sign-in animation settles, so `position:
+   * fixed` resolves against the viewport again and styling this div in
+   * place does the same job without ever moving the children.
    */
-  return createPortal(
-    <div
-      ref={panelRef}
-      className={styles.panel}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${title} — focus mode`}
-      tabIndex={-1}
-    >
-      <header className={styles.header}>
-        <div className={styles.headText}>
-          <span className={styles.headTitle}>{title}</span>
-          {subtitle && <span className={styles.headSub}>{subtitle}</span>}
-        </div>
-        <button type="button" className={styles.exitBtn} onClick={exit}>
-          Exit <kbd className={styles.kbd}>Esc</kbd>
-        </button>
-      </header>
+  return (
+    <div className={active ? styles.panel : undefined}
+         ref={panelRef}
+         role={active ? 'dialog' : undefined}
+         aria-modal={active ? true : undefined}
+         aria-label={active ? `${title} — focus mode` : undefined}
+         tabIndex={active ? -1 : undefined}>
 
-      <div className={styles.stage}>
-        <div className={styles.stageInner}>{children}</div>
+      {active ? (
+        <header className={styles.header}>
+          <div className={styles.headText}>
+            <span className={styles.headTitle}>{title}</span>
+            {subtitle && <span className={styles.headSub}>{subtitle}</span>}
+          </div>
+          <button type="button" className={styles.exitBtn} onClick={exit}>
+            Exit <kbd className={styles.kbd}>Esc</kbd>
+          </button>
+        </header>
+      ) : (
+        <div className={styles.toggleRow}>{mounted ? toggle : null}</div>
+      )}
+
+      <div className={active ? styles.stage : undefined}>
+        <div className={active ? styles.stageInner : undefined}>
+          {children}
+        </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   )
 }
