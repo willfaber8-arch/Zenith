@@ -66,7 +66,6 @@ function friendColor(name: string): string {
    SECTION 1 — Date utilities
    ══════════════════════════════════════════════════════════════ */
 
-const HOUR_PX   = 60   // pixels per one hour slot in the week grid
 const DAY_MS    = 86_400_000
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -133,12 +132,6 @@ function getEventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
   const start = day.getTime()
   const end   = start + DAY_MS
   return events.filter(e => e.startMs >= start && e.startMs < end)
-}
-
-/** Current-time progress within today as a pixel offset from midnight. */
-function getNowOffset(): number {
-  const now = new Date()
-  return (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_PX
 }
 
 /* ── Month-grid utilities ──────────────────────────────────── */
@@ -645,11 +638,15 @@ function DeadlineBanners({ weekDays, events, feeds }: DeadlineBannersProps) {
 /* ── EventPillEl ───────────────────────────────────────────── */
 
 interface EventPillElProps {
-  event:   CalendarEvent
-  feed?:   CalendarFeed
+  event:    CalendarEvent
+  feed?:    CalendarFeed
+  /** Pixels per hour — the grid scales to fit, so this is not a constant. */
+  hourPx:   number
+  /** First hour shown in the column, as a float (e.g. 7 for 07:00). */
+  dayStart: number
 }
 
-function EventPillEl({ event, feed }: EventPillElProps) {
+function EventPillEl({ event, feed, hourPx, dayStart }: EventPillElProps) {
   const start = new Date(event.startMs)
   const end   = new Date(event.endMs)
 
@@ -657,32 +654,46 @@ function EventPillEl({ event, feed }: EventPillElProps) {
   const endMins     = end.getHours()   * 60 + end.getMinutes()
   const durationMin = Math.max(endMins - startMins, 20) // min height
 
-  const top    = (startMins / 60) * HOUR_PX
-  const height = (durationMin / 60) * HOUR_PX - 2
+  /* Offset by the first hour on screen — the grid no longer starts at
+     midnight, so a 09:00 class is not nine hours down the column. */
+  const top    = ((startMins / 60) - dayStart) * hourPx
+  const height = Math.max((durationMin / 60) * hourPx - 2, 14)
 
-  const color   = (event as CalendarEvent & { _color?: string })._color ?? feed?.color ?? '#7c95ff'
-  const bgAlpha = height < 30 ? '22' : '18'  // slightly denser for short pills
+  const color = (event as CalendarEvent & { _color?: string })._color ?? feed?.color ?? '#7c95ff'
+
+  /*
+   * Fill, not tint.
+   *
+   * These were a 9%-alpha wash with a 2px edge, which on the dark
+   * surface left the block barely separable from the empty column
+   * behind it — you had to look for your classes rather than see them.
+   * A denser fill and a full-strength bar down the side make the shape
+   * read as an object at a glance, which matters more now that a whole
+   * day fits in less vertical space.
+   */
+  const compact = height < 34
 
   return (
     <div
-      className={styles.eventPill}
+      className={`${styles.eventPill} ${compact ? styles.eventPillCompact : ''}`}
       style={{
         top:             `${top}px`,
         height:          `${height}px`,
-        backgroundColor: `${color}${bgAlpha}`,
-        borderLeft:      `2px solid ${color}cc`,
+        backgroundColor: `${color}2e`,
+        borderLeft:      `3px solid ${color}`,
+        color:           color,
       }}
       title={`${event.title}\n${formatTime(event.startMs)} – ${formatTime(event.endMs)}${event.location ? `\n${event.location}` : ''}`}
       role="article"
       aria-label={event.title}
     >
       <span className={styles.eventPillTitle}>{event.title}</span>
-      {height >= 30 && (
+      {height >= 34 && (
         <span className={styles.eventPillTime}>
           {formatTime(event.startMs)}
         </span>
       )}
-      {height >= 46 && (
+      {height >= 58 && (
         <span className={styles.eventPillCat}>{event.category}</span>
       )}
     </div>
@@ -697,34 +708,123 @@ interface WeekGridProps {
   feeds:    CalendarFeed[]
 }
 
-function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
-  const scrollRef  = useRef<HTMLDivElement>(null)
-  const feedMap    = useMemo(() => new Map(feeds.map(f => [f.id, f])), [feeds])
-  const [nowOffset, setNowOffset] = useState(getNowOffset)
+/*
+ * How much of the day to draw, and how tall an hour is.
+ *
+ * The grid used to be a fixed 1,440px — twenty-four hours at sixty
+ * pixels each — inside a 600px box, so it always scrolled and you could
+ * never see a week at once. Two things fix that together: stop drawing
+ * the hours nothing happens in, and let the remaining ones shrink to
+ * whatever room is actually on screen.
+ */
+const MIN_HOUR_PX     = 26   // below this the pills stop being readable
+const MAX_HOUR_PX     = 64   // above this a sparse week looks stretched
+const DEFAULT_START_H = 8
+const DEFAULT_END_H   = 20
+const GRID_BOTTOM_PAD = 24   // breathing room under the grid
 
-  /* Auto-scroll to current hour on mount */
+/**
+ * The span of hours worth showing for a week.
+ *
+ * Taken from the events themselves and padded by an hour on each side,
+ * then widened to a sensible default so an empty week is not a sliver.
+ * A 09:00–15:00 timetable draws six hours instead of twenty-four, which
+ * is most of what makes the week fit.
+ */
+export function visibleHourRange(events: CalendarEvent[]): { startH: number; endH: number } {
+  let min = DEFAULT_START_H
+  let max = DEFAULT_END_H
+
+  for (const e of events) {
+    if (e.allDay === 1 || e.is1159 === 1) continue
+    const s = new Date(e.startMs)
+    const t = new Date(e.endMs)
+    min = Math.min(min, s.getHours())
+    /* Round the end hour up so an event finishing at 15:20 keeps its tail. */
+    max = Math.max(max, t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours())
+  }
+
+  return {
+    startH: Math.max(0,  Math.floor(min) - 1),
+    endH:   Math.min(24, Math.ceil(max)  + 1),
+  }
+}
+
+function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
+  const wrapRef   = useRef<HTMLDivElement>(null)
+  const feedMap   = useMemo(() => new Map(feeds.map(f => [f.id, f])), [feeds])
+  const [nowMins, setNowMins] = useState(() => {
+    const n = new Date()
+    return n.getHours() * 60 + n.getMinutes()
+  })
+
+  const { startH, endH } = useMemo(() => visibleHourRange(events), [events])
+  const hoursShown = Math.max(1, endH - startH)
+
+  const [hourPx, setHourPx] = useState(MAX_HOUR_PX)
+  const [maxH,   setMaxH]   = useState<number | undefined>(undefined)
+
+  /*
+   * Size an hour to the space left below the grid's top edge.
+   *
+   * Measured rather than assumed: the header, tab bar and deadline
+   * banners above the grid all come and go, so a fixed offset would be
+   * wrong half the time. Clamped at both ends — the point is to remove
+   * scrolling, not to squeeze a day into something unreadable, and a
+   * week with one event should not stretch it to the full height.
+   */
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const target = Math.max(getNowOffset() - 120, 0)  // show 2h above now
-    el.scrollTop = target
-  }, [])
+    const measure = () => {
+      const el = wrapRef.current
+      if (!el) return
+      const top   = el.getBoundingClientRect().top
+      const avail = window.innerHeight - top - GRID_BOTTOM_PAD
+      /* The sticky day header eats into the same box. */
+      const forRows = avail - (el.querySelector(`.${styles.weekDayHeader}`)?.clientHeight ?? 56)
+      const ideal   = forRows / hoursShown
+      setHourPx(Math.round(Math.min(MAX_HOUR_PX, Math.max(MIN_HOUR_PX, ideal))))
+      /*
+       * Cap the box at the room available too.
+       *
+       * When the ideal hour height falls under the readable floor the
+       * clamp wins and the grid is taller than the space it was given.
+       * Without a cap that pushes the whole page down and you scroll the
+       * document to reach Friday afternoon; with one, the grid scrolls
+       * inside its own frame and the rest of the view stays put.
+       */
+      setMaxH(Math.max(240, Math.round(avail)))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [hoursShown])
 
   /* Update the now-line every minute */
   useEffect(() => {
-    setNowOffset(getNowOffset())
-    const id = setInterval(() => setNowOffset(getNowOffset()), 60_000)
+    const tick = () => {
+      const n = new Date()
+      setNowMins(n.getHours() * 60 + n.getMinutes())
+    }
+    tick()
+    const id = setInterval(tick, 60_000)
     return () => clearInterval(id)
   }, [])
 
-  const todayIdx = weekDays.findIndex(d => isToday(d))
+  const todayIdx   = weekDays.findIndex(d => isToday(d))
+  const gridHeight = hoursShown * hourPx
+  const nowOffset  = (nowMins / 60 - startH) * hourPx
+  const nowVisible = nowMins / 60 >= startH && nowMins / 60 <= endH
+
+  /* Sub-hour guides only earn their keep when there is room for them. */
+  const showHalfGuides = hourPx >= 40
 
   return (
     <div
       className={styles.weekWrapper}
-      ref={scrollRef}
+      ref={wrapRef}
       role="grid"
       aria-label="Week calendar grid"
+      style={{ ['--hour-px' as string]: `${hourPx}px`, maxHeight: maxH ? `${maxH}px` : undefined }}
     >
       {/* Sticky day-header row */}
       <div className={styles.weekDayHeader} role="row">
@@ -732,7 +832,11 @@ function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
         {weekDays.map((day, i) => (
           <div
             key={i}
-            className={`${styles.weekDayHeaderCell} ${isToday(day) ? styles.dayHeaderToday : ''}`}
+            className={[
+              styles.weekDayHeaderCell,
+              isToday(day) ? styles.dayHeaderToday : '',
+              i >= 5 ? styles.dayHeaderWeekend : '',
+            ].filter(Boolean).join(' ')}
             role="columnheader"
             aria-label={FORMAT_WEEKDAY_FULL.format(day)}
           >
@@ -745,49 +849,61 @@ function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
       {/* Time grid */}
       <div className={styles.timeGrid} role="presentation">
 
-        {/* Left time gutter — 24 hour labels */}
-        <div className={styles.timeGutter} aria-hidden="true">
-          {Array.from({ length: 24 }, (_, h) => (
-            <div key={h} className={styles.hourLabel}>
-              {h === 0 ? '' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`}
-            </div>
-          ))}
+        {/* Left time gutter — only the hours on screen */}
+        <div className={styles.timeGutter} aria-hidden="true" style={{ height: `${gridHeight}px` }}>
+          {Array.from({ length: hoursShown }, (_, i) => {
+            const h = startH + i
+            return (
+              <div key={h} className={styles.hourLabel} style={{ height: `${hourPx}px` }}>
+                {h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`}
+              </div>
+            )
+          })}
         </div>
 
         {/* 7 day columns */}
         {weekDays.map((day, colIdx) => {
           const dayEvents = getEventsForDay(events, day)
           const timedEvts = dayEvents.filter(e => e.is1159 !== 1 && e.allDay !== 1)
+          const weekend   = colIdx >= 5
 
           return (
             <div
               key={colIdx}
-              className={styles.dayColumn}
+              className={[
+                styles.dayColumn,
+                colIdx === todayIdx ? styles.dayColumnToday : '',
+                weekend ? styles.dayColumnWeekend : '',
+              ].filter(Boolean).join(' ')}
+              style={{ height: `${gridHeight}px` }}
               role="gridcell"
               aria-label={FORMAT_WEEKDAY_FULL.format(day)}
             >
               {/* Hour guide lines */}
-              {Array.from({ length: 24 }, (_, h) => (
-                <div
-                  key={h}
-                  className={styles.hourGuide}
-                  style={{ top: `${h * HOUR_PX}px` }}
-                  aria-hidden="true"
-                />
-              ))}
+              {Array.from({ length: hoursShown }, (_, i) => {
+                const h = startH + i
+                return (
+                  <div
+                    key={h}
+                    className={`${styles.hourGuide} ${h % 6 === 0 ? styles.hourGuideMajor : ''}`}
+                    style={{ top: `${i * hourPx}px`, height: `${hourPx}px` }}
+                    aria-hidden="true"
+                  />
+                )
+              })}
 
-              {/* Quarter-hour sub-guides */}
-              {Array.from({ length: 24 * 3 }, (_, q) => (
+              {/* Half-hour sub-guides, when the rows are tall enough to want them */}
+              {showHalfGuides && Array.from({ length: hoursShown }, (_, i) => (
                 <div
-                  key={q}
+                  key={`q${i}`}
                   className={styles.quarterGuide}
-                  style={{ top: `${(q + 1) * (HOUR_PX / 4)}px` }}
+                  style={{ top: `${(i + 0.5) * hourPx}px` }}
                   aria-hidden="true"
                 />
               ))}
 
               {/* Current-time line (today column only) */}
-              {colIdx === todayIdx && (
+              {colIdx === todayIdx && nowVisible && (
                 <div
                   className={styles.nowLine}
                   style={{ top: `${nowOffset}px` }}
@@ -801,6 +917,8 @@ function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
                   key={evt.id}
                   event={evt}
                   feed={feedMap.get(evt.feedId)}
+                  hourPx={hourPx}
+                  dayStart={startH}
                 />
               ))}
             </div>
@@ -1364,7 +1482,18 @@ export default function CalendarView() {
   const [weekStart,     setWeekStart]     = useState(() => getWeekStart(new Date()))
   const [showCalMgr,    setShowCalMgr]    = useState(false)
   const [gridKey,       setGridKey]       = useState(0)
-  const [calTab,        setCalTab]        = useState<'personal' | 'schedule' | 'tasks'>('personal')
+  /*
+   * Two tabs, not three.
+   *
+   * There were three, but only two of them were ways of looking at a
+   * calendar: the third was the course-schedule generator, a tool you
+   * use once a term. Sitting it beside Personal and Tasks made the bar
+   * read as three views of the same thing and pushed the actual
+   * calendar a click further away. It is an action under the calendar
+   * now, opened from the button beside "New Event".
+   */
+  const [calTab,        setCalTab]        = useState<'personal' | 'tasks'>('personal')
+  const [showSchedule,  setShowSchedule]  = useState(false)
   const [showNewEvent,  setShowNewEvent]  = useState(false)
   const [editEvent,     setEditEvent]     = useState<PersonalEvent | null>(null)
 
@@ -1640,15 +1769,7 @@ export default function CalendarView() {
           onClick={() => setCalTab('personal')}
         >
           <span className={styles.calTabDot} style={{ background: '#7c95ff' }} aria-hidden="true" />
-          Personal
-        </button>
-        <button
-          type="button"
-          className={`${styles.calTab} ${calTab === 'schedule' ? styles.calTabActive : ''}`}
-          onClick={() => setCalTab('schedule')}
-        >
-          <span className={styles.calTabDot} style={{ background: '#f59e0b' }} aria-hidden="true" />
-          Course Schedule
+          Calendar
         </button>
         <button
           type="button"
@@ -1660,13 +1781,24 @@ export default function CalendarView() {
         </button>
 
         {calTab === 'personal' && (
-          <button
-            type="button"
-            className={styles.newEventBtn}
-            onClick={() => setShowNewEvent(true)}
-          >
-            + New Event
-          </button>
+          <div className={styles.calTabActions}>
+            <button
+              type="button"
+              className={`${styles.scheduleToggleBtn} ${showSchedule ? styles.scheduleToggleBtnOn : ''}`}
+              onClick={() => setShowSchedule(o => !o)}
+              aria-expanded={showSchedule}
+            >
+              <span className={styles.calTabDot} style={{ background: '#f59e0b' }} aria-hidden="true" />
+              Course Schedule
+            </button>
+            <button
+              type="button"
+              className={styles.newEventBtn}
+              onClick={() => setShowNewEvent(true)}
+            >
+              + New Event
+            </button>
+          </div>
         )}
       </div>
 
@@ -1680,10 +1812,10 @@ export default function CalendarView() {
         />
       )}
 
-      {calTab === 'schedule' && (
+      {calTab === 'personal' && showSchedule && (
         <div className={styles.scheduleTabContent}>
           <UniversityScheduleReplicator
-            onDone={() => setCalTab('personal')}
+            onDone={() => setShowSchedule(false)}
           />
           <div className={styles.cognitiveLoadSection}>
             <div className={styles.cognitiveLoadHeader}>
@@ -1695,6 +1827,14 @@ export default function CalendarView() {
       )}
 
       {calTab === 'tasks' && <TasksPanel />}
+
+      {/*
+       * Everything below is the calendar itself, so the Tasks tab hides
+       * it. It used to render underneath the task list, which made the
+       * tab a heading rather than a view — and with only two tabs left
+       * that reads as a bug.
+       */}
+      {calTab === 'personal' && <>
 
       {/* ── Week / Month navigation bar ───────────────── */}
       {(view === 'week' || view === 'month') && (
@@ -1751,6 +1891,8 @@ export default function CalendarView() {
       ) : (
         <AgendaList events={allEvents} feeds={allFeeds} />
       )}
+
+      </>}
 
       {/* ── Modals ────────────────────────────────────── */}
       {showNewEvent && (

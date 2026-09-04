@@ -513,12 +513,20 @@
    WEEK GRID
    ══════════════════════════════════════════════════════════ */
 
-/* Outer scroll container */
+/*
+ * The week fits; it does not scroll.
+ *
+ * This had a 600px cap around a fixed 1,440px grid, so a week was always
+ * a keyhole onto a quarter of itself. The grid now draws only the hours
+ * that hold something and sizes an hour to the room available, so the
+ * height here follows its contents. `overflow-y: auto` is kept purely as
+ * a floor: on a very short viewport the hour height clamps at its
+ * minimum rather than collapsing, and then scrolling is the honest
+ * fallback.
+ */
 .weekWrapper {
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: min(600px, 60vh);
-  max-height: min(600px, 60dvh);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--surface-card);
@@ -567,6 +575,12 @@
   letter-spacing: -0.02em;
 }
 
+/* The weekend reads as quieter in the header too, matching its column. */
+.dayHeaderWeekend .dayName,
+.dayHeaderWeekend .dayNumber {
+  opacity: 0.62;
+}
+
 /* Today highlight */
 .dayHeaderToday .dayName {
   color: var(--accent-purple);
@@ -587,18 +601,17 @@
 .timeGrid {
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
-  /* 24 hours * 60px = 1440px total height */
+  /* Row height comes from --hour-px, set per render to fit the viewport. */
 }
 
 /* Time gutter — left column, full grid height */
 .timeGutter {
   grid-column: 1;
-  grid-row: 1 / span 24;
   position: relative;
 }
 
 .hourLabel {
-  height: 60px;
+  height: var(--hour-px, 60px);
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -609,9 +622,17 @@
   font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--text-dark);
-  opacity: 0.7;
+  opacity: 0.85;
   position: relative;
-  top: -8px; /* optically offset so label sits ON the hour line */
+  /*
+   * No negative offset.
+   *
+   * The label used to be lifted 8px to straddle its hour line, which
+   * pushed the first one above the gutter and the scroll container
+   * clipped it — the top hour read as a sliver. Each hour rule sits at
+   * the top of its own row, so a label flush to that top edge lines up
+   * with it and stays inside the box.
+   */
   pointer-events: none;
   user-select: none;
 }
@@ -619,8 +640,25 @@
 /* Day columns */
 .dayColumn {
   position: relative;
-  height: 1440px; /* 24 * 60px */
   border-left: 1px solid var(--border-subtle);
+}
+
+/*
+ * Columns you can tell apart.
+ *
+ * Every column used to be the same flat surface, which left the eye
+ * counting across from the header to work out which day it was looking
+ * at. The weekend recedes and today comes forward, so the week has a
+ * shape before you read a single label.
+ */
+.dayColumnWeekend {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.dayColumnToday {
+  background: rgba(124, 149, 255, 0.05);
+  box-shadow: inset 1px 0 0 rgba(124, 149, 255, 0.28),
+              inset -1px 0 0 rgba(124, 149, 255, 0.28);
 }
 
 /* Horizontal hour guide lines inside each day column */
@@ -628,9 +666,15 @@
   position: absolute;
   left: 0;
   right: 0;
-  height: 60px;
-  border-bottom: 1px solid rgba(124, 149, 255, 0.05);
+  height: var(--hour-px, 60px);
+  /* Was 5% alpha — effectively invisible, so the grid read as a void. */
+  border-bottom: 1px solid rgba(124, 149, 255, 0.11);
   pointer-events: none;
+}
+
+/* A brighter rule every six hours gives the column a scale to read against. */
+.hourGuideMajor {
+  border-bottom-color: rgba(124, 149, 255, 0.22);
 }
 
 /* Every quarter-hour: finer dotted sub-guides */
@@ -638,7 +682,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  border-bottom: 1px dashed rgba(124, 149, 255, 0.03);
+  border-bottom: 1px dashed rgba(124, 149, 255, 0.07);
   pointer-events: none;
 }
 
@@ -677,11 +721,23 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-height: 18px;
+  min-height: 14px;
   z-index: 2;
   transition:
     filter    var(--dur-fast),
     transform var(--dur-fast) var(--ease-expo);
+}
+
+/*
+ * A short pill has room for one line and should spend it on the title.
+ * Now that an hour can be 26px tall, a 50-minute class is a single row
+ * of text — stacking it would clip the only thing worth reading.
+ */
+.eventPillCompact {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
 }
 
 .eventPill:hover {
@@ -705,7 +761,10 @@
   font-size: 0.62rem;
   font-weight: 500;
   letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.65);
+  /* Inherits the feed colour set on the pill, so the metadata line
+     identifies which calendar the event came from without a legend. */
+  color: currentColor;
+  opacity: 0.92;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1029,8 +1088,45 @@
   padding: 1px 5px;
 }
 
-.newEventBtn {
+/* Actions sit together at the far end, away from the two view tabs, so
+   "open a tool" never reads as "third way to look at the calendar". */
+.calTabActions {
   margin-left: auto;
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  flex-wrap:   wrap;
+}
+
+.scheduleToggleBtn {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  padding:       5px 12px;
+  background:    transparent;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  color:         var(--text-muted);
+  font-size:     0.8rem;
+  font-weight:   600;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    background var(--dur-fast) ease, border-color var(--dur-fast) ease,
+                 color var(--dur-fast) ease;
+}
+
+.scheduleToggleBtn:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  color:        #f59e0b;
+}
+
+.scheduleToggleBtnOn {
+  background:   rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  color:        #f59e0b;
+}
+
+.newEventBtn {
   padding: 5px 14px;
   background: rgba(124,149,255,0.10);
   border: 1px dashed rgba(124,149,255,0.35);
