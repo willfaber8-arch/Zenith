@@ -51,6 +51,7 @@ import {
 import {
   executeAtomicUnlock,
   NEXUS_NODE_ID,
+  SKILL_TREE_MAP,
 } from '@/lib/engines/SkillTreeFirewall'
 
 /* ════════════════════════════════════════════════════════════════
@@ -584,8 +585,27 @@ describe('Suite 4 — Dependency Tree & Access Control Verification', () => {
   const runner = new SuiteRunner('Suite 4 — Skill Prerequisite Gate')
 
   const TARGET_NODE          = 'd1_synthesis'
-  const D1_COST_SHARDS       = 1_500
-  const SUFFICIENT_BALANCE   = 2_000  // > 1500 — satisfies d1_synthesis cost
+  /*
+   * Read the price from the registry rather than restating it.
+   *
+   * This was a hardcoded 1,500, which is what the node used to cost.
+   * The tree was rebalanced to make the Arcade economy solvable and
+   * the number here was not, so the suite failed on a disagreement
+   * between the test and the thing it was testing rather than on
+   * anything being wrong. Deriving it means the next rebalance moves
+   * both together, and the assertion still catches the case that
+   * matters: an unlock that charges the wrong amount.
+   */
+  const D1_COST_SHARDS = (() => {
+    const cost = SKILL_TREE_MAP.get('d1_synthesis')
+      ?.costs.find(c => c.resourceId === 'raw_data_shards')?.amount
+    if (cost === undefined) {
+      throw new Error('d1_synthesis no longer costs raw_data_shards — update this suite')
+    }
+    return cost
+  })()
+  /* Comfortably above the price, whatever the price currently is. */
+  const SUFFICIENT_BALANCE = D1_COST_SHARDS + 500
 
   beforeEach(async () => {
     await resetDb()
@@ -629,7 +649,7 @@ describe('Suite 4 — Dependency Tree & Access Control Verification', () => {
     }
     await gamesDb.skill_tree.put(nexusRecord)
 
-    // raw_data_shards balance is still 0 (insufficient for 1500 cost)
+    // raw_data_shards balance is still 0 — below any positive cost
     const result = await executeAtomicUnlock(TARGET_NODE)
 
     runner.log(
