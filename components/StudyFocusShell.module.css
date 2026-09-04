@@ -1,0 +1,151 @@
+/* ════════════════════════════════════════════════════════════
+   StudyFocusShell — the app gets out of the way.
+   ════════════════════════════════════════════════════════════ */
+
+.toggleRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--sp-2);
+}
+
+.enterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+.enterBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+
+/* ── The panel ─────────────────────────────────────────────── */
+
+.panel {
+  position: fixed;
+  inset: 0;
+  /* Above every view and overlay in the app, below Toast (600) so a
+     notification still reaches you. */
+  z-index: 520;
+  display: flex;
+  flex-direction: column;
+  /* dvh: the address bar on a phone changes the viewport, and vh does
+     not follow it. */
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg-main);
+  animation: focusIn 260ms var(--ease-expo) both;
+}
+
+@keyframes focusIn {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.headText { display: flex; align-items: baseline; gap: var(--sp-3); min-width: 0; }
+
+.headTitle {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.headSub {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.exitBtn:hover { color: var(--text-primary); border-color: var(--text-dark); }
+
+/* The card itself gets the middle of the screen and nothing else
+   competes for it. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.stageInner {
+  width: 100%;
+  max-width: 860px;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  border-bottom-width: 2px;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  line-height: 1;
+  text-transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .header { padding: var(--sp-3) var(--sp-4); }
+  .headSub { display: none; }
+  .stage { padding: var(--sp-4) var(--sp-3); }
+}

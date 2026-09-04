@@ -1,0 +1,158 @@
+/* ════════════════════════════════════════════════════════════
+   DeckShareModal — export a deck, or take one in.
+   ════════════════════════════════════════════════════════════ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 540;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  background: rgba(6, 8, 13, 0.66);
+  backdrop-filter: blur(4px);
+  animation: anim-fade-in var(--dur-base) var(--ease-smooth) both;
+}
+
+.modal {
+  width: 100%;
+  max-width: 620px;
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  animation: anim-scale-in var(--dur-base) var(--ease-expo) both;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.close:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+}
+
+.blurb {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.area {
+  width: 100%;
+  min-height: 220px;
+  flex: 1;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.area:focus {
+  outline: none;
+  border-color: var(--cat-accent, var(--accent-purple));
+  color: var(--text-primary);
+}
+
+.error {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid #ff6b6b;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: rgba(255, 107, 107, 0.08);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #ff9d9d;
+}
+
+/* Triggered from the "Open file" button — the native control is ugly
+   and says less than the button does. */
+.fileInput { display: none; }
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ghost,
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ghost {
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+}
+.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-dark); }
+
+.primary {
+  border: 1px solid var(--accent-green);
+  background: rgba(82, 204, 163, 0.16);
+  color: var(--accent-green);
+}
+.primary:hover:not(:disabled) { background: rgba(82, 204, 163, 0.26); }
+
+.ghost:disabled, .primary:disabled { opacity: 0.45; cursor: default; }
+
+@media (pointer: coarse) {
+  .ghost, .primary { min-height: 44px; }
+  .close { width: 44px; height: 44px; }
+}

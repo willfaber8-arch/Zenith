@@ -720,6 +720,19 @@
 /* One line of available keys, per phase. Shown always rather than
    behind a help toggle — a shortcut nobody can see is a shortcut
    nobody uses. */
+/* Choose-round footer: the key hints sit centred, with the set-aside
+   button pulled out to the edge so it is never mistaken for an option. */
+.mcFooter {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-4);
+  flex-wrap:       wrap;
+  margin-top:      var(--sp-4);
+}
+
+.mcFooter .keyHint { margin: 0; }
+
 .keyHint {
   display: flex;
   align-items: center;
@@ -759,3 +772,23 @@
   color: var(--text-dark);
   text-align: center;
 }
+
+/* "I know this one" — sets the card aside rather than grading it. */
+.knowItBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 38px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-green) 8%, transparent);
+  color: var(--accent-green);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.knowItBtn:hover { background: color-mix(in srgb, var(--accent-green) 16%, transparent); }
+
+@media (pointer: coarse) { .knowItBtn { min-height: 44px; } }
