@@ -165,12 +165,23 @@
 .dayBtn:disabled { opacity: 0.40; cursor: not-allowed; }
 
 /* Time inputs */
+/* Same shape as a per-day row minus the day name, so the single-time and
+   per-day layouts line up with each other. */
 .timePair {
-  display:     flex;
-  align-items: flex-end;
-  gap:         var(--sp-3);
+  display:               grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items:           center;
+  gap:                   var(--sp-3);
+  max-width:             26rem;
 }
 
+/*
+ * A fixed 110px box clipped its own contents: the native control renders
+ * "09:05 AM" plus a picker glyph, which does not fit inside 110px once
+ * the padding is taken off, so the leading digits were cut away and the
+ * field read ":05 AM". It sizes to its cell now, with a floor wide
+ * enough for the longest value the control can show.
+ */
 .timeInput {
   font-family:   var(--font-mono);
   font-size:     0.8125rem;
@@ -178,9 +189,11 @@
   background:    rgba(0, 0, 0, 0.22);
   border:        1px solid var(--border-subtle);
   border-radius: var(--r-md);
-  padding:       var(--sp-3) var(--sp-3);
+  padding:       var(--sp-3) var(--sp-2);
   outline:       none;
-  width:         110px;
+  width:         100%;
+  min-width:     8.75rem;
+  box-sizing:    border-box;
   transition:    border-color var(--dur-base) var(--ease-smooth);
   color-scheme:  dark;
 }
@@ -485,4 +498,248 @@
   .scheduleRow { flex-direction: column; gap: var(--sp-4); }
   .select { max-width: 100%; }
   .successPanel { flex-direction: column; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Per-day times
+   ════════════════════════════════════════════════════════════════ */
+
+.timesHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--sp-4);
+  flex-wrap:       wrap;
+}
+
+.uniformToggle {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+  cursor:         pointer;
+  user-select:    none;
+}
+
+.uniformToggle input { accent-color: var(--accent-purple); cursor: pointer; }
+
+.perDayList {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.perDayRow {
+  display:               grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items:           center;
+  gap:                   var(--sp-3);
+  max-width:             34rem;
+}
+
+.perDayName {
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Calendar editor — term dates and breaks
+   ════════════════════════════════════════════════════════════════ */
+
+.customBadge {
+  padding:        2px var(--sp-2);
+  border-radius:  var(--r-sm);
+  border:         1px solid rgba(245, 158, 11, 0.35);
+  background:     rgba(245, 158, 11, 0.10);
+  color:          #f59e0b;
+  font-family:    var(--font-mono);
+  font-size:      0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calEditBtn {
+  margin-left:    auto;
+  padding:        var(--sp-1) var(--sp-3);
+  border-radius:  var(--r-sm);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor:         pointer;
+  transition:     border-color var(--dur-fast) var(--ease-smooth),
+                  color var(--dur-fast) var(--ease-smooth);
+}
+
+.calEditBtn:hover:not(:disabled) {
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.calEditBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.calEditor {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+  margin-top:     var(--sp-4);
+  padding-top:    var(--sp-4);
+  border-top:     1px solid var(--border-subtle);
+}
+
+.calHint {
+  margin:      0;
+  font-size:   0.72rem;
+  line-height: 1.5;
+  color:       var(--text-muted);
+}
+
+.calDateRow {
+  display: flex;
+  gap:     var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.calDateField {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  flex:           1;
+  min-width:      10rem;
+}
+
+.calFieldLabel {
+  font-family:    var(--font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.dateInput {
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    var(--bg-main);
+  color:         var(--text-primary);
+  font-family:   var(--font-mono);
+  font-size:     0.78rem;
+  color-scheme:  dark;
+  width:         100%;
+  min-width:     9.5rem;
+  box-sizing:    border-box;
+}
+
+.dateInput:focus  { border-color: rgba(124, 149, 255, 0.40); outline: none; }
+.dateInput:disabled { opacity: 0.40; cursor: not-allowed; }
+
+.breakEditor {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.calEmpty {
+  margin:    0;
+  font-size: 0.72rem;
+  color:     var(--text-dark);
+}
+
+.breakRow {
+  display:     grid;
+  grid-template-columns: minmax(6rem, 1fr) auto auto auto auto;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.breakNameInput {
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    var(--bg-main);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.78rem;
+  min-width:     0;
+}
+
+.breakNameInput::placeholder { color: var(--text-dark); }
+.breakNameInput:focus { border-color: rgba(124, 149, 255, 0.40); outline: none; }
+
+.breakRemoveBtn {
+  width:         28px;
+  height:        28px;
+  border-radius: var(--r-sm);
+  border:        1px solid transparent;
+  background:    transparent;
+  color:         var(--text-dark);
+  cursor:        pointer;
+  line-height:   1;
+  transition:    color var(--dur-fast) var(--ease-smooth),
+                 border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.breakRemoveBtn:hover:not(:disabled) {
+  color:        #f87171;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.calActions {
+  display:   flex;
+  gap:       var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+
+.addBreakBtn,
+.resetCalBtn {
+  padding:        var(--sp-2) var(--sp-3);
+  border-radius:  var(--r-md);
+  border:         1px dashed var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  font-family:    var(--font-mono);
+  font-size:      0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor:         pointer;
+  transition:     border-color var(--dur-fast) var(--ease-smooth),
+                  color var(--dur-fast) var(--ease-smooth);
+}
+
+.addBreakBtn:hover:not(:disabled) {
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.resetCalBtn:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.35);
+  color:        #f87171;
+}
+
+.problemMsg {
+  margin:        0;
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid rgba(248, 113, 113, 0.30);
+  background:    rgba(248, 113, 113, 0.08);
+  color:         #f87171;
+  font-size:     0.75rem;
+}
+
+@media (max-width: 640px) {
+  .perDayRow { grid-template-columns: 1fr; gap: var(--sp-2); }
+  .perDayRow .timeSep { display: none; }
+  .breakRow  { grid-template-columns: 1fr; }
+  .breakRow .breakRemoveBtn { justify-self: end; }
 }
