@@ -128,12 +128,14 @@ export function useHabits() {
   /* ── Mutations ─────────────────────────────────────────── */
 
   const increment = useCallback(async (habitId: number) => {
-    if (!db) return
+    if (!db) return null
     const habit = await db.habits.get(habitId)
-    if (!habit) return
+    if (!habit) return null
     // Manual "+" press: advance by one step. Completion + streak logic
     // lives in the shared engine so manual and auto-sync paths can't drift.
-    await addHabitProgress(habitId, habit.stepAmount ?? 1, today)
+    // The result is handed back so the caller can react to the press that
+    // actually completed the habit without re-deriving that rule itself.
+    return addHabitProgress(habitId, habit.stepAmount ?? 1, today)
   }, [today])
 
   const createHabit = useCallback(async (input: NewHabitInput) => {

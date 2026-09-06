@@ -1,5 +1,6 @@
 'use client'
 
+import { playHabitProgress } from '@/lib/habitSounds'
 import { useState, useMemo }  from 'react'
 import { useLiveQuery }       from 'dexie-react-hooks'
 import { db }                 from '@/lib/db'
@@ -90,7 +91,7 @@ function HabitRing({ pct, color }: { pct: number; color: string }) {
 /* ── Shared panel props ───────────────────────────────────────── */
 interface PanelProps {
   habits:      HabitWithCompletion[]
-  increment:   (id: number) => Promise<void>
+  increment:   (id: number) => Promise<{ completedNow: boolean; newCount: number } | null>
   events:      ViewEvent[]
   assignments: AsmtRow[]
 }
@@ -213,7 +214,7 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
                   {!h.todayDone && (
                     <button
                       className={styles.habitBtn}
-                      onClick={() => increment(h.id!)}
+                      onClick={() => { void increment(h.id!).then(r => playHabitProgress(r, h.targetCompletions)) }}
                       aria-label={`Log ${h.name}`}
                       type="button"
                     >
@@ -392,7 +393,7 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
                     background:  h.todayDone ? (h.color ?? '#7c95ff') : 'transparent',
                     borderColor: h.color ?? '#7c95ff',
                   }}
-                  onClick={() => !h.todayDone && increment(h.id!)}
+                  onClick={() => { if (!h.todayDone) void increment(h.id!).then(r => playHabitProgress(r, h.targetCompletions)) }}
                   aria-label={`${h.name}${h.todayDone ? ' — done' : ' — tap to log'}`}
                   type="button"
                 />
