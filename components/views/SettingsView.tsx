@@ -1,5 +1,6 @@
 'use client'
 
+import { isHabitSoundEnabled, setHabitSoundEnabled, playHabitComplete } from '@/lib/habitSounds'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLiveQuery }     from 'dexie-react-hooks'
 import { useAuth }          from '@/lib/AuthContext'
@@ -270,6 +271,10 @@ function ToggleRow({
    ════════════════════════════════════════════════════════════════ */
 
 export default function SettingsView() {
+  /* Read after mount: localStorage does not exist during the server render. */
+  const [habitSoundOn, setHabitSoundOn] = useState(true)
+  useEffect(() => { setHabitSoundOn(isHabitSoundEnabled()) }, [])
+
   const { session }            = useAuth()
   const { toast }              = useToast()
   const { config, toggleWidget } = useSandboxConfig()
@@ -914,6 +919,22 @@ export default function SettingsView() {
                 </button>
               ))}
             </div>
+          </div>
+        </Section>
+
+        {/* ── Sound ───────────────────────────────────────────── */}
+        <Section id="s-sound" title="Sound">
+          <p className={styles.sectionSubtitle}>
+            Habits play a short tone as you log each step, rising as you
+            approach the goal, and a chime when you reach it.
+          </p>
+          <div className={styles.toggleList}>
+            <ToggleRow
+              label="Habit sounds"
+              hint="A tone per step and a chime on completion"
+              checked={habitSoundOn}
+              onChange={v => { setHabitSoundEnabled(v); setHabitSoundOn(v); if (v) playHabitComplete() }}
+            />
           </div>
         </Section>
 

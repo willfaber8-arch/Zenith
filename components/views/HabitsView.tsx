@@ -16,6 +16,7 @@ import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET 
 import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
 import { pushNotification }      from '@/lib/notificationCenter'
 import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
+import { playHabitProgress } from '@/lib/habitSounds'
 import { useToast }             from '@/lib/ToastContext'
 import Icon from '@/components/ui/Icon'
 import styles from './HabitsView.module.css'
@@ -780,12 +781,22 @@ export default function HabitsView() {
   const handleIncrement = useCallback(async (habitId: number, e: React.MouseEvent) => {
     const habit = habits.find(h => h.id === habitId)
     if (!habit) return
-    const prevDone   = habit.todayDone
-    const isAtLeast  = (habit.goalType ?? 'at_least') === 'at_least'
-    const step       = habit.stepAmount ?? 1
-    await increment(habitId)
-    // Only burst + toast on the first press that completes an at_least habit.
-    if (isAtLeast && !prevDone && habit.todayCount + step >= habit.targetCompletions) {
+
+    /*
+     * Ask the engine what happened rather than working it out again here.
+     *
+     * This used to re-derive "did that press complete it?" from the
+     * habit's local counts, which is the same rule addHabitProgress
+     * already applies — and only the at_least half of it, so an at_most
+     * habit never got its moment. One source for the answer means the
+     * chime, the confetti and the streak can no longer disagree.
+     */
+    const result = await increment(habitId)
+    if (!result) return   // not scheduled today, or the write was a no-op
+
+    playHabitProgress(result, habit.targetCompletions)
+
+    if (result.completedNow) {
       burst(e.clientX, e.clientY)
       toast(`${habit.name} — completed`, 'success')
     }
