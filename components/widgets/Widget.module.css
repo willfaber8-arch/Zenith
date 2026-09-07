@@ -1068,3 +1068,19 @@
      only measuring finds. */
   .timerStartBtn { min-height: 44px; }
 }
+
+/*
+ * "+N more".
+ *
+ * Several widgets show the first few of a longer list. Cutting the list
+ * off without saying so makes the widget look like the whole truth —
+ * a habits card listing four of your eight habits reads as though you
+ * only have four. This is the line that admits there is more, and the
+ * card itself is already clickable through to the full view.
+ */
+.moreRow {
+  display:     block;
+  padding-top: 4px;
+  font-size:   0.7rem;
+  color:       var(--text-dark);
+}

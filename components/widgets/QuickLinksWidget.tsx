@@ -7,6 +7,10 @@ import { safeExternalHref } from '@/lib/safeUrl'
 import { useNav }       from '@/lib/NavContext'
 import wStyles from './Widget.module.css'
 
+/* How many links fit before the card outgrows its neighbours. */
+const LINK_PREVIEW = 6
+
+
 function Favicon({ url, label }: { url: string; label: string }) {
   const [errored, setErrored] = useState(false)
   let domain = ''
@@ -34,12 +38,15 @@ function Favicon({ url, label }: { url: string; label: string }) {
 export default function QuickLinksWidget() {
   const { navigate } = useNav()
 
-  const bookmarks = useLiveQuery(
+  /* Sorted but not truncated: the widget needs the total to be able to
+     say how many it is not showing. */
+  const allBookmarks = useLiveQuery(
     () => db.customBookmarks.toArray().then(all =>
-      all.sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0)).slice(0, 6)
+      all.sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0))
     ),
     [],
   ) ?? []
+  const bookmarks = allBookmarks.slice(0, LINK_PREVIEW)
 
   return (
     <div className={wStyles.card}>
@@ -76,6 +83,11 @@ export default function QuickLinksWidget() {
             </a>
           ))}
         </div>
+      )}
+      {allBookmarks.length > LINK_PREVIEW && (
+        <span className={wStyles.moreRow}>
+          +{allBookmarks.length - LINK_PREVIEW} more
+        </span>
       )}
     </div>
   )

@@ -5,6 +5,10 @@ import { useNav }     from '@/lib/NavContext'
 import Icon from '@/components/ui/Icon'
 import styles         from './Widget.module.css'
 
+/* How many habits fit before the card would grow past its neighbours. */
+const HABIT_PREVIEW = 4
+
+
 const RADIUS = 38
 const CIRC   = 2 * Math.PI * RADIUS
 
@@ -54,7 +58,7 @@ export default function HabitSummaryWidget() {
           </div>
 
           <ul className={styles.habitList} aria-label={`${doneCount} of ${scheduledCount} habits done today`}>
-            {habits.slice(0, 4).map(h => (
+            {habits.slice(0, HABIT_PREVIEW).map(h => (
               <li key={h.id} className={`${styles.habitRow} ${h.todayDone ? styles.habitRowDone : ''}`}>
                 <span className={styles.habitCheck} aria-label={h.todayDone ? 'completed' : 'pending'}>
                   {h.todayDone ? '✓' : '○'}
@@ -65,6 +69,11 @@ export default function HabitSummaryWidget() {
                 )}
               </li>
             ))}
+            {habits.length > HABIT_PREVIEW && (
+              <li className={styles.moreRow}>
+                +{habits.length - HABIT_PREVIEW} more
+              </li>
+            )}
           </ul>
         </div>
       )}
