@@ -76,6 +76,13 @@ export interface ProgressResult {
   /** true only on the press/sync that first reaches the daily goal */
   completedNow: boolean
   newCount:     number
+  /**
+   * True on the press that first takes a limit habit past its cap.
+   *
+   * Only ever true for `at_most`, and only once per day — the tap that
+   * crossed, not every tap after it.
+   */
+  crossedLimit: boolean
 }
 
 /**
@@ -113,10 +120,21 @@ export async function addHabitProgress(
   const goalType = habit.goalType ?? 'at_least'
   const target   = habit.targetCompletions
 
-  // completedNow: first press that crosses the "done" threshold for this goal type.
+  /*
+   * A press can complete a goal habit. It can never complete a limit one.
+   *
+   * This used to treat the first tap under the cap as completion, which
+   * awarded a streak for having one coffee — success at "no more than
+   * two" is not knowable until the day is over. Limit habits settle
+   * from history instead (see utils/habitLimit), so no press writes a
+   * streak for them and none is celebrated.
+   */
   const completedNow = goalType === 'at_most'
-    ? newCount > 0 && prevCount === 0 && newCount <= target   // first tracked tap while under limit
-    : newCount >= target && prevCount < target                 // first press reaching minimum
+    ? false
+    : newCount >= target && prevCount < target   // first press reaching minimum
+
+  /* The single tap that takes a limit habit over its cap. */
+  const crossedLimit = goalType === 'at_most' && newCount > target && prevCount <= target
 
   if (completedNow) {
     // "Consecutive" = the previous scheduled occurrence was completed —
@@ -157,7 +175,7 @@ export async function addHabitProgress(
     }
   }
 
-  return { completedNow, newCount }
+  return { completedNow, newCount, crossedLimit }
 }
 
 /* ── Auto-sync dispatch ───────────────────────────────────────── */

@@ -186,6 +186,35 @@
   color: #fca5a5 !important;
 }
 
+/*
+ * A limit habit's button shows what is left, not a tick.
+ *
+ * Amber rather than green: this is an allowance draining, and the
+ * colour should never let it be mistaken at a glance for a goal being
+ * met on the row above it.
+ */
+.plusBtnLimit {
+  color: #f59e0b;
+}
+
+.plusBtnLimit:hover {
+  color: #fbbf24 !important;
+}
+
+.limitLeft {
+  font-family:   var(--font-mono);
+  font-size:     0.72rem;
+  font-weight:   700;
+  line-height:   1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gone over: a restrained red wash, not an error state for the page. */
+.habitRowOver {
+  border-left-color: #f87171;
+  background: rgba(248, 113, 113, 0.05);
+}
+
 .habitInfo {
   display: flex;
   flex-direction: column;
