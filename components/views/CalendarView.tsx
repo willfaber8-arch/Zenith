@@ -202,23 +202,44 @@ function CalendarManager({
   const [label,   setLabel]   = useState('')
   const [gcalUrl, setGcalUrl] = useState('')
 
+  /*
+   * A subscription link pasted into the name box is not a calendar name.
+   *
+   * This box is on the tab the dialog opens on, and the import flow is
+   * behind the one next to it — so a pasted .ics link landed here and
+   * became a local calendar named after the URL, which syncs nothing.
+   * Recognising it and importing instead is the behaviour the paste was
+   * asking for.
+   */
   const handleCreateLocal = () => {
-    if (!calName.trim()) return
-    onCreateLocal(calName.trim(), calColor)
+    const name = calName.trim()
+    if (!name) return
+
+    if (looksLikeFeedUrl(name)) {
+      setMode('import')
+      setUrl(name)
+      setCalName('')
+      void onAddFeed(name, '')
+      return
+    }
+
+    onCreateLocal(name, calColor)
     setCalName('')
     setCalColor(FEED_COLORS[0])
   }
 
   const handleAdd = () => {
     if (!url.trim()) return
-    onAddFeed(url, label)
+    /* Fire-and-forget would swallow a rejection silently, which is how
+       the original failure went unnoticed. */
+    void Promise.resolve(onAddFeed(url, label)).catch(() => {})
     setUrl('')
     setLabel('')
   }
 
   const handleConnectGcal = () => {
     if (!gcalUrl.trim()) return
-    onAddFeed(gcalUrl, label.trim() || 'Google Calendar')
+    void Promise.resolve(onAddFeed(gcalUrl, label.trim() || 'Google Calendar')).catch(() => {})
     setGcalUrl('')
   }
 
@@ -633,6 +654,22 @@ function DeadlineBanners({ weekDays, events, feeds }: DeadlineBannersProps) {
       </div>
     </div>
   )
+}
+
+/**
+ * Does this look like a calendar subscription link rather than a name?
+ *
+ * Deliberately generous: anything with a URL scheme, a leading //, or a
+ * host-looking string ending in .ics. The cost of a false positive is
+ * an import attempt that reports a clear error; the cost of a false
+ * negative is a local calendar named "https://calendar.google.com/..."
+ * that silently syncs nothing.
+ */
+function looksLikeFeedUrl(value: string): boolean {
+  const v = value.trim()
+  if (/^(https?|webcal):\/\//i.test(v)) return true
+  if (/^\/\//.test(v)) return true
+  return /^[\w.-]+\.[a-z]{2,}\/\S*\.ics(\?|$)/i.test(v)
 }
 
 /* ── EventPillEl ───────────────────────────────────────────── */
