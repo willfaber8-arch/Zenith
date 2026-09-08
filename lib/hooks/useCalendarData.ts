@@ -107,6 +107,8 @@ export function useCalendarData(): UseCalendarDataReturn {
       .map(e => ({
         feedId,
         uid:         e.uid,
+        seriesUid:   e.seriesUid,
+        locallyEdited: 0,
         title:       e.title,
         startMs:     e.startMs,
         endMs:       e.endMs,
@@ -206,9 +208,26 @@ export function useCalendarData(): UseCalendarDataReturn {
     if (!db) return
     setIsFetching(true)
     try {
-      /* Delete all existing events for this feed, then re-fetch */
-      await db.calendarEvents.where('feedId').equals(feed.id).delete()
+      /*
+       * A refresh rebuilds the feed's events from the source — except
+       * the ones you have edited. Wiping those would undo your change
+       * without asking, so they are kept and their uids are treated as
+       * already present, which stops the re-import recreating them.
+       */
+      const edited = await db.calendarEvents
+        .where('feedId').equals(feed.id)
+        .filter(e => e.locallyEdited === 1)
+        .toArray()
+
+      await db.calendarEvents
+        .where('feedId').equals(feed.id)
+        .filter(e => e.locallyEdited !== 1)
+        .delete()
+
       const count = await fetchAndStore(feed.id, feed.url)
+      if (edited.length > 0) {
+        toast(`${edited.length} edited ${edited.length === 1 ? 'event was' : 'events were'} kept as you left them.`, 'info')
+      }
       await db.calendarFeeds.update(feed.id, { lastFetchedAt: Date.now() })
       toast(`"${feed.label}" refreshed — ${count} events loaded.`, 'success')
     } catch (err) {

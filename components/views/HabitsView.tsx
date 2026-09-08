@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { loadCutoffHour, isInGraceWindow } from '@/utils/dayBoundary'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   useHabits,
   isoForDayOffset,
@@ -797,6 +798,15 @@ export default function HabitsView() {
     })()
   }, [allHabits, toast])
 
+  /* Recomputed on render; the window closes on its own once the hour passes. */
+  const graceNote = useMemo(() => {
+    const cutoff = loadCutoffHour()
+    if (!isInGraceWindow(new Date(), cutoff)) return null
+    const label = new Date(2000, 0, 1, cutoff).toLocaleTimeString(undefined,
+      { hour: 'numeric', minute: '2-digit' })
+    return `Still counting yesterday until ${label} — anything you tick off now goes to that day.`
+  }, [])
+
   const handleLoadPreset = useCallback(async () => {
     const n = await loadGeneralHabitPreset()
     if (n > 0) toast(`Added ${n} starter habits.`, 'success')
@@ -917,6 +927,13 @@ export default function HabitsView() {
       </div>
 
       {/* ── Toolbar row ──────────────────────────────────── */}
+      {/*
+        A late cutoff silently rewrites what "today" means, and silent is
+        the wrong way for that to work — at 2am the grid would otherwise
+        look a day behind with no explanation.
+      */}
+      {graceNote && <p className={styles.graceNote}>{graceNote}</p>}
+
       <div className={styles.toolbar}>
         {!editMode && (
           <button

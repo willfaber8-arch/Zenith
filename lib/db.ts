@@ -388,6 +388,23 @@ export interface CalendarEvent {
   id:           number   // * PK — auto-increment
   feedId:       number   // * indexed — FK → CalendarFeed.id
   uid:          string   // * indexed — iCal UID; dedup guard on re-fetch
+  /**
+   * The series this occurrence belongs to; equals `uid` for a one-off.
+   *
+   * Repeating events are stored as one row per occurrence, so this is
+   * what makes "delete this one" and "delete the whole series" two
+   * different queries over ordinary rows.
+   */
+  seriesUid?:   string   // * indexed
+  /**
+   * 1 once you have edited an imported event.
+   *
+   * A feed refresh rebuilds its events from the source, which would
+   * quietly undo your change. Flagged rows are left alone instead — the
+   * calendar keeps what you decided, at the cost of that one event no
+   * longer tracking the feed.
+   */
+  locallyEdited?: number  // * indexed — 0 | 1
   title:        string   // * indexed — event summary / assignment title
   startMs:      number   // * indexed — Unix ms (UTC)
   endMs:        number   //   Unix ms (UTC)
@@ -1364,6 +1381,19 @@ class ZenithDatabase extends Dexie {
        * A wrong number is harder to notice than a broken button.
        */
       vocab_cards: 'id, deckId, nextReviewTimestamp, easeFactor, reviewIntervalDays',
+    })
+
+    /*
+     * Version 44 — recurring occurrences and locally-edited events.
+     *
+     * `seriesUid` groups the occurrences of a repeating event so a
+     * single one can be changed without touching the rest. `locallyEdited`
+     * marks an imported event you have altered, so a refresh leaves it
+     * alone rather than silently reverting it.
+     */
+    this.version(44).stores({
+      calendarEvents:
+        '++id, feedId, uid, seriesUid, title, startMs, allDay, is1159, category, locallyEdited',
     })
   }
 }

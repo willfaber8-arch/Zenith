@@ -1,6 +1,7 @@
 'use client'
 
 import { isHabitSoundEnabled, setHabitSoundEnabled, playHabitComplete } from '@/lib/habitSounds'
+import { loadCutoffHour, saveCutoffHour, describeCutoff } from '@/utils/dayBoundary'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLiveQuery }     from 'dexie-react-hooks'
 import { useAuth }          from '@/lib/AuthContext'
@@ -273,7 +274,8 @@ function ToggleRow({
 export default function SettingsView() {
   /* Read after mount: localStorage does not exist during the server render. */
   const [habitSoundOn, setHabitSoundOn] = useState(true)
-  useEffect(() => { setHabitSoundOn(isHabitSoundEnabled()) }, [])
+  const [cutoffHour,   setCutoffHour]   = useState(0)
+  useEffect(() => { setHabitSoundOn(isHabitSoundEnabled()); setCutoffHour(loadCutoffHour()) }, [])
 
   const { session }            = useAuth()
   const { toast }              = useToast()
@@ -920,6 +922,30 @@ export default function SettingsView() {
               ))}
             </div>
           </div>
+        </Section>
+
+        {/* ── Day rollover ────────────────────────────────────── */}
+        <Section id="s-day-cutoff" title="When Your Day Ends">
+          <p className={styles.sectionSubtitle}>
+            Habits roll over at midnight by default. If you are often still
+            up past then, push the boundary later — anything you log before
+            it counts for the day before, so a late session does not read as
+            a missed day or break a streak.
+          </p>
+          <div className={styles.cutoffRow}>
+            {[0, 2, 3, 4, 5, 6].map(h => (
+              <button
+                key={h}
+                type="button"
+                className={`${styles.cutoffBtn} ${cutoffHour === h ? styles.cutoffBtnOn : ''}`}
+                onClick={() => { saveCutoffHour(h); setCutoffHour(h) }}
+                aria-pressed={cutoffHour === h}
+              >
+                {h === 0 ? 'Midnight' : `${h} AM`}
+              </button>
+            ))}
+          </div>
+          <p className={styles.cutoffHint}>{describeCutoff(cutoffHour)}</p>
         </Section>
 
         {/* ── Sound ───────────────────────────────────────────── */}
