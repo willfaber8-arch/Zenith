@@ -18,6 +18,8 @@
  *     make noise must never stop a habit being recorded.
  */
 
+import { remainingFraction } from '@/utils/habitLimit'
+
 /* ── Preference ─────────────────────────────────────────────────── */
 
 const PREF_KEY = 'zenith_habit_sound_v1'
@@ -113,7 +115,10 @@ function audioContext(): AudioContext | null {
 function tone(
   c: AudioContext,
   freq: number,
-  opts: { at?: number; peak?: number; decay?: number; glideTo?: number; type?: OscillatorType },
+  opts: {
+    at?: number; peak?: number; decay?: number; glideTo?: number
+    type?: OscillatorType; muffleHz?: number
+  },
 ): void {
   const at    = c.currentTime + (opts.at ?? 0)
   const peak  = opts.peak  ?? 0.1
@@ -133,7 +138,21 @@ function tone(
   gain.gain.exponentialRampToValueAtTime(peak, at + 0.006)
   gain.gain.exponentialRampToValueAtTime(0.0001, at + decay)
 
-  osc.connect(gain).connect(c.destination)
+  /*
+   * An optional lowpass is what makes a sound "dull" rather than merely
+   * quiet. Rolling the top off a tone removes its sparkle, which is the
+   * difference between a sound that reads as a reward and one that
+   * reads as a cost.
+   */
+  if (opts.muffleHz !== undefined) {
+    const lp = c.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(opts.muffleHz, at)
+    osc.connect(gain).connect(lp).connect(c.destination)
+  } else {
+    osc.connect(gain).connect(c.destination)
+  }
+
   osc.start(at)
   osc.stop(at + decay + 0.02)
 }
@@ -182,10 +201,84 @@ export function playHabitComplete(): void {
  * and nothing at all when the write was a no-op.
  */
 export function playHabitProgress(
-  result: { completedNow: boolean; newCount: number } | null,
-  target: number,
+  result:   { completedNow: boolean; newCount: number; crossedLimit?: boolean } | null,
+  target:   number,
+  goalType: 'at_least' | 'at_most' = 'at_least',
 ): void {
   if (!result) return
+
+  if (goalType === 'at_most') {
+    /* Never the chime. Logging against a limit is a cost, not an
+       achievement, and the sound has to say so. */
+    if (result.crossedLimit) playHabitOverLimit()
+    else                     playHabitSpend(remainingFraction(result.newCount, target))
+    return
+  }
+
   if (result.completedNow) playHabitComplete()
   else                     playHabitStep(progressFraction(result.newCount, target))
+}
+
+/* ── Limit habits ───────────────────────────────────────────────── */
+
+/*
+ * A limit habit sounds like the opposite of a goal habit.
+ *
+ * Where a goal step rises and rings, spending an allowance falls and is
+ * damped: a triangle wave bent downward, run through a lowpass so it
+ * has no sparkle at all, and cut short. The intent is a sound you would
+ * not press a button to hear again — noticeable as a cost, without
+ * being an error noise for something that is not an error.
+ */
+
+/** Where the spend tone lands with the allowance untouched. */
+export const SPEND_TOP_HZ = 330
+/** How far it sinks as the allowance runs out. */
+export const SPEND_DROP_HZ = 150
+
+/**
+ * Pitch for a spend tap, given the fraction of allowance *left*.
+ *
+ * Falls as the allowance drains, so the fourth of four coffees is
+ * audibly lower than the first, and the sound gets heavier as the
+ * headroom disappears.
+ */
+export function spendFrequency(remaining: number): number {
+  const r = Number.isFinite(remaining) ? Math.min(1, Math.max(0, remaining)) : 0
+  return SPEND_TOP_HZ - (1 - r) * SPEND_DROP_HZ
+}
+
+/** One damped, descending tone: an allowance being spent. */
+export function playHabitSpend(remaining: number): void {
+  if (!isHabitSoundEnabled()) return
+  const c = audioContext()
+  if (!c) return
+  try {
+    const f = spendFrequency(remaining)
+    tone(c, f, {
+      type: 'triangle',
+      peak: 0.075,
+      decay: 0.22,
+      glideTo: f * 0.72,   // bends down, the inverse of the step droplet
+      muffleHz: 900,
+    })
+  } catch { /* a decoration must never break the tap that triggered it */ }
+}
+
+/**
+ * Crossing the limit: two low tones a semitone apart, overlapping.
+ *
+ * Deliberately unresolved. A minor second is the interval ears read as
+ * wrong, and heard through the same lowpass it lands as a dull knock
+ * rather than an alarm — this is a habit going over, not a system
+ * failure, and it should not sound like one.
+ */
+export function playHabitOverLimit(): void {
+  if (!isHabitSoundEnabled()) return
+  const c = audioContext()
+  if (!c) return
+  try {
+    tone(c, 165,    { type: 'triangle', peak: 0.10, decay: 0.42, muffleHz: 700 })
+    tone(c, 155.6,  { type: 'triangle', peak: 0.09, decay: 0.46, muffleHz: 700, at: 0.05 })
+  } catch { /* silence beats an exception here */ }
 }

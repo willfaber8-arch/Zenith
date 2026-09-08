@@ -181,7 +181,12 @@ function HabitRow({
 
   return (
     <div
-      className={`${styles.habitRow} ${habit.todayDone && todayScheduled ? styles.habitRowDone : ''} ${editMode ? styles.habitRowEdit : ''}`}
+      className={[
+        styles.habitRow,
+        habit.todayDone && todayScheduled ? styles.habitRowDone : '',
+        isWarning ? styles.habitRowOver : '',
+        editMode ? styles.habitRowEdit : '',
+      ].filter(Boolean).join(' ')}
       style={{ '--habit-color': habitColor } as React.CSSProperties}
     >
 
@@ -198,11 +203,30 @@ function HabitRow({
           {todayScheduled && !editMode && (
             <button
               type="button"
-              className={`${styles.plusBtn} ${isWarning ? styles.plusBtnWarn : ''}`}
+              className={[
+                styles.plusBtn,
+                isWarning ? styles.plusBtnWarn : '',
+                isAtMost && !isWarning ? styles.plusBtnLimit : '',
+              ].filter(Boolean).join(' ')}
               onClick={(e) => onIncrement(habit.id, e)}
-              aria-label={`Add completion for ${habit.name}`}
+              aria-label={isAtMost
+                ? `Log one against ${habit.name} — ${Math.max(0, habit.targetCompletions - habit.todayCount)} left of ${habit.targetCompletions}`
+                : `Add completion for ${habit.name}`}
             >
-              {habit.todayDone && !isWarning ? '✓' : '+'}
+              {/*
+                * A tick is a reward, and a limit habit has nothing to
+                * reward. It used to show one the moment you logged
+                * anything under the cap, so using up your allowance
+                * looked exactly like achieving a goal. A limit shows
+                * what is left instead, and an alert once it is gone.
+                */}
+              {isAtMost
+                ? (isWarning
+                    ? <Icon name="alert" size={13} />
+                    : <span className={styles.limitLeft}>
+                        {Math.max(0, habit.targetCompletions - habit.todayCount)}
+                      </span>)
+                : (habit.todayDone ? '✓' : '+')}
             </button>
           )}
         </div>
@@ -794,11 +818,19 @@ export default function HabitsView() {
     const result = await increment(habitId)
     if (!result) return   // not scheduled today, or the write was a no-op
 
-    playHabitProgress(result, habit.targetCompletions)
+    const goalType = habit.goalType ?? 'at_least'
+    playHabitProgress(result, habit.targetCompletions, goalType)
 
+    /*
+     * Only a goal habit gets a celebration. A limit habit reaching its
+     * cap is the opposite of an achievement, and briefly shipped as one
+     * — confetti and a "completed" toast for logging your first coffee.
+     */
     if (result.completedNow) {
       burst(e.clientX, e.clientY)
       toast(`${habit.name} — completed`, 'success')
+    } else if (result.crossedLimit) {
+      toast(`${habit.name} — over your limit of ${habit.targetCompletions}`, 'error')
     }
   }, [habits, increment, burst, toast])
 

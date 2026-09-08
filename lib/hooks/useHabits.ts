@@ -4,7 +4,8 @@ import { useCallback }    from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db, type Habit, type HabitCompletion, type HabitFrequency } from '@/lib/db'
 import { addHabitProgress } from '@/lib/habitSync'
-import { isHabitScheduledOn as scheduledOn } from '@/utils/habitSchedule'
+import { isHabitScheduledOn as scheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
+import { limitStreak } from '@/utils/habitLimit'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -98,14 +99,30 @@ export function useHabits() {
       .forEach(c => completionMap.set(c.date, c.count))
 
     const todayCount = completionMap.get(today) ?? 0
-    const todayDone  = habit.goalType === 'at_most'
-      ? todayCount > 0 && todayCount <= habit.targetCompletions
+    const isAtMost   = habit.goalType === 'at_most'
+
+    /*
+     * A limit habit is never "done" while the day is still running.
+     *
+     * It used to count as done the moment you logged one under the cap,
+     * which awarded the day for having a coffee rather than for keeping
+     * to two. Success at a limit is only knowable once the day is over,
+     * so today stays pending and the credit is settled from history.
+     */
+    const todayDone  = isAtMost
+      ? false
       : todayCount >= habit.targetCompletions
 
     const weekData: DayStatus[] = weekDates.map(iso => {
       const count = completionMap.get(iso) ?? 0
-      const done  = habit.goalType === 'at_most'
-        ? count > 0 && count <= habit.targetCompletions
+      /*
+       * For a limit, a finished day under the cap is a success even
+       * with nothing logged — no coffees is the best possible day for
+       * "no more than two", and marking it missed inverts the habit.
+       * Today is left unmarked because it has not been decided.
+       */
+      const done  = isAtMost
+        ? (iso < today && count <= habit.targetCompletions)
         : count >= habit.targetCompletions
       return {
         iso,
@@ -116,7 +133,14 @@ export function useHabits() {
       }
     })
 
-    return { ...habit, todayCount, todayDone, weekData }
+    /* Limit streaks are counted back over finished days rather than
+       written on a press — nothing runs at midnight to settle them. */
+    const streakCount = isAtMost
+      ? limitStreak(habit, (iso: string) => completionMap.get(iso) ?? 0, today,
+                    scheduledOn, previousScheduledDate)
+      : habit.streakCount
+
+    return { ...habit, todayCount, todayDone, weekData, streakCount }
   })
 
   const scheduledToday = habitsWithData.filter(h => isHabitScheduledOn(h, today))

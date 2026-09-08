@@ -7,6 +7,8 @@ import { useToast }        from '@/lib/ToastContext'
 import { useNavBadge }     from '@/lib/NavBadgeContext'
 import { useStudyMode }    from '@/lib/StudyModeContext'
 import { useHiddenNavItems } from '@/lib/hooks/useHiddenNavItems'
+import { useNavLayout }      from '@/lib/hooks/useNavLayout'
+import { MAX_GROUPS as NAV_MAX_GROUPS, MAX_LABEL as NAV_MAX_LABEL } from '@/lib/navLayout'
 import { useNotifications }  from '@/lib/hooks/useNotifications'
 import { useIsMobileViewport } from '@/lib/hooks/useMediaQuery'
 import { useBodyScrollLock }   from '@/lib/hooks/useBodyScrollLock'
@@ -82,6 +84,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     hidden, hideItem, showItem, showAll, mounted: hiddenMounted,
   } = useHiddenNavItems()
   const { collapsed, toggle: toggleCollapsed } = useCollapsedCategories()
+  const nav = useNavLayout()
+  const [newGroupName, setNewGroupName] = useState('')
+
+  /*
+   * Every nav link by id, so a custom group can render a view without
+   * caring which built-in category it came from.
+   */
+  const linkById = useMemo(() => {
+    const m = new Map<string, NavLink>()
+    for (const cat of NAV_CONFIG) {
+      for (const sub of cat.subcategories ?? []) for (const l of sub.links) m.set(l.id, l)
+      for (const l of cat.links ?? []) m.set(l.id, l)
+    }
+    return m
+  }, [])
   const { sidebarHidden, toggleSidebarHidden } = useSidebarHidden()
   useNotifications()
 
@@ -319,6 +336,60 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               </li>
 
+              {/* ── Your groups ──────────────────────────────────
+                  Rendered above the built-in taxonomy, which is the
+                  whole point: the views you open most sit at the top
+                  instead of wherever their category happens to fall. */}
+              {nav.layout.groups.map(group => {
+                const links = group.items
+                  .map(id => linkById.get(id))
+                  .filter((l): l is NavLink => Boolean(l))
+                  .filter(l => !hiddenMounted || !hidden.has(l.id))
+                if (links.length === 0) return null
+                const isCatCollapsed = collapsed.has(group.id)
+                return (
+                  <li key={group.id} className={styles.categoryBlock}>
+                    <button
+                      type="button"
+                      className={styles.categoryLabelBtn}
+                      onClick={() => toggleCollapsed(group.id)}
+                      aria-expanded={!isCatCollapsed}
+                      aria-label={`${isCatCollapsed ? 'Expand' : 'Collapse'} ${group.label}`}
+                    >
+                      <span className={styles.categoryLabelText}>{group.label}</span>
+                      <span
+                        className={styles.collapseChevron}
+                        style={{ transform: isCatCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                        aria-hidden="true"
+                      >
+                        ▾
+                      </span>
+                    </button>
+                    <div
+                      className={styles.categoryContent}
+                      style={{ display: isCatCollapsed ? 'none' : undefined }}
+                    >
+                      <ul className={styles.navList}>
+                        {links.map(link => (
+                          <NavLinkItem
+                            key={link.id}
+                            link={link}
+                            active={activeView === link.id}
+                            badge={badges[link.id] ?? 0}
+                            onClick={() => handleLink(link)}
+                            onHide={() => {
+                              hideItem(link.id)
+                              toast(`"${link.label}" hidden from sidebar.`, 'info')
+                            }}
+                            colorOverride={link.id === 'uni-hub' ? (uniBrandColor ?? undefined) : undefined}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  </li>
+                )
+              })}
+
               {/* ── Category taxonomy ─────────────────────────── */}
               {NAV_CONFIG.map((cat) => {
                 const isCatCollapsed = collapsed.has(cat.id)
@@ -355,6 +426,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           <ul className={styles.navList}>
                             {sub.links
                               .filter(link => !hiddenMounted || !hidden.has(link.id))
+                              .filter(link => !nav.assigned.has(link.id))
                               .map(link => (
                               <NavLinkItem
                                 key={link.id}
@@ -376,6 +448,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       {/* Direct links (Creator's Choice, Personalized Vault) */}
                       {cat.links
                         ?.filter(link => !hiddenMounted || !hidden.has(link.id))
+                        .filter(link => !nav.assigned.has(link.id))
                         .map(link => (
                         <ul key={link.id} className={styles.navList}>
                           <NavLinkItem
@@ -583,6 +656,106 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <div className={styles.customizePanelScroll}>
+
+              {/* ── Your groups ──────────────────────────────── */}
+              <p className={styles.customizeSectionLabel}>Your Groups</p>
+              <p className={styles.customizeHint}>
+                Group the views you use most. Groups sit above everything
+                else in the sidebar.
+              </p>
+
+              {nav.layout.groups.map((group, gi) => (
+                <div key={group.id} className={styles.groupCard}>
+                  <div className={styles.groupCardHead}>
+                    <input
+                      className={styles.groupNameInput}
+                      value={group.label}
+                      onChange={e => nav.renameGroup(group.id, e.target.value)}
+                      maxLength={NAV_MAX_LABEL}
+                      aria-label={`Rename ${group.label}`}
+                    />
+                    <button
+                      type="button" className={styles.groupIconBtn}
+                      onClick={() => nav.moveGroup(group.id, -1)}
+                      disabled={gi === 0}
+                      aria-label={`Move ${group.label} up`}
+                    >↑</button>
+                    <button
+                      type="button" className={styles.groupIconBtn}
+                      onClick={() => nav.moveGroup(group.id, 1)}
+                      disabled={gi === nav.layout.groups.length - 1}
+                      aria-label={`Move ${group.label} down`}
+                    >↓</button>
+                    <button
+                      type="button" className={styles.groupIconBtn}
+                      onClick={() => nav.removeGroup(group.id)}
+                      aria-label={`Delete ${group.label}`}
+                      title="Delete group — its views go back to their usual place"
+                    >×</button>
+                  </div>
+
+                  {group.items.length === 0 ? (
+                    <p className={styles.groupEmpty}>
+                      Empty — add views from the list below.
+                    </p>
+                  ) : (
+                    group.items.map((id, ii) => {
+                      const link = linkById.get(id)
+                      if (!link) return null
+                      return (
+                        <div key={id} className={styles.groupItemRow}>
+                          <span className={styles.groupItemLabel}>{link.label}</span>
+                          <button
+                            type="button" className={styles.groupIconBtn}
+                            onClick={() => nav.moveItem(group.id, id, -1)}
+                            disabled={ii === 0}
+                            aria-label={`Move ${link.label} up`}
+                          >↑</button>
+                          <button
+                            type="button" className={styles.groupIconBtn}
+                            onClick={() => nav.moveItem(group.id, id, 1)}
+                            disabled={ii === group.items.length - 1}
+                            aria-label={`Move ${link.label} down`}
+                          >↓</button>
+                          <button
+                            type="button" className={styles.groupIconBtn}
+                            onClick={() => nav.unassignItem(id)}
+                            aria-label={`Remove ${link.label} from ${group.label}`}
+                          >×</button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              ))}
+
+              {nav.layout.groups.length < NAV_MAX_GROUPS && (
+                <form
+                  className={styles.newGroupRow}
+                  onSubmit={e => {
+                    e.preventDefault()
+                    if (!newGroupName.trim()) return
+                    nav.addGroup(newGroupName)
+                    setNewGroupName('')
+                  }}
+                >
+                  <input
+                    className={styles.groupNameInput}
+                    placeholder="New group name, e.g. Daily"
+                    value={newGroupName}
+                    onChange={e => setNewGroupName(e.target.value)}
+                    maxLength={NAV_MAX_LABEL}
+                    aria-label="New group name"
+                  />
+                  <button
+                    type="submit"
+                    className={styles.addGroupBtn}
+                    disabled={!newGroupName.trim()}
+                  >+ Add</button>
+                </form>
+              )}
+
+              {/* ── Visibility + placement, per view ─────────── */}
               {NAV_CONFIG.map(cat => {
                 const allLinks = [
                   ...(cat.subcategories?.flatMap(sub => sub.links) ?? []),
@@ -601,6 +774,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           >
                             {link.label}
                           </span>
+                          {nav.layout.groups.length > 0 && (
+                            <select
+                              className={styles.groupSelect}
+                              value={nav.layout.groups.find(g => g.items.includes(link.id))?.id ?? ''}
+                              onChange={e => {
+                                if (e.target.value) nav.assignItem(e.target.value, link.id)
+                                else                nav.unassignItem(link.id)
+                              }}
+                              aria-label={`Group for ${link.label}`}
+                            >
+                              <option value="">Default</option>
+                              {nav.layout.groups.map(g => (
+                                <option key={g.id} value={g.id}>{g.label}</option>
+                              ))}
+                            </select>
+                          )}
                           <span
                             className={`${styles.customizeToggle} ${isVisible ? styles.customizeToggleOn : ''}`}
                             onClick={() => isVisible ? hideItem(link.id) : showItem(link.id)}

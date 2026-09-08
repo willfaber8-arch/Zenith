@@ -847,3 +847,139 @@
     min-height: 44px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Customize Sidebar — your own groups
+   ════════════════════════════════════════════════════════════════ */
+
+.customizeHint {
+  margin:      0 0 var(--sp-3);
+  padding:     0 var(--sp-1);
+  font-size:   0.7rem;
+  line-height: 1.5;
+  color:       var(--text-dark);
+}
+
+.groupCard {
+  margin-bottom:  var(--sp-3);
+  padding:        var(--sp-2);
+  border:         1px solid var(--border-subtle);
+  border-radius:  var(--r-md);
+  background:     rgba(124, 149, 255, 0.03);
+}
+
+.groupCardHead {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  margin-bottom: var(--sp-2);
+}
+
+.groupNameInput {
+  flex:          1;
+  min-width:     0;
+  padding:       5px var(--sp-2);
+  border-radius: var(--r-sm);
+  border:        1px solid transparent;
+  background:    rgba(0, 0, 0, 0.22);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.78rem;
+  font-weight:   600;
+}
+
+.groupNameInput::placeholder { color: var(--text-dark); font-weight: 400; }
+.groupNameInput:focus { outline: none; border-color: rgba(124, 149, 255, 0.40); }
+
+/* Square, quiet controls — there are several per row and they should
+   read as handles rather than as buttons competing for attention. */
+.groupIconBtn {
+  flex:          0 0 auto;
+  width:         22px;
+  height:        22px;
+  border-radius: var(--r-sm);
+  border:        1px solid transparent;
+  background:    transparent;
+  color:         var(--text-dark);
+  font-size:     0.72rem;
+  line-height:   1;
+  cursor:        pointer;
+  transition:    color var(--dur-fast) var(--ease-smooth),
+                 border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.groupIconBtn:hover:not(:disabled) {
+  color:        var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+.groupIconBtn:disabled { opacity: 0.28; cursor: default; }
+
+.groupItemRow {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  padding:     2px 0 2px var(--sp-2);
+}
+
+.groupItemLabel {
+  flex:          1;
+  min-width:     0;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+  font-size:     0.76rem;
+  color:         var(--text-muted);
+}
+
+.groupEmpty {
+  margin:    0;
+  padding:   var(--sp-1) var(--sp-2);
+  font-size: 0.7rem;
+  color:     var(--text-dark);
+}
+
+.newGroupRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.addGroupBtn {
+  flex:           0 0 auto;
+  padding:        5px var(--sp-3);
+  border-radius:  var(--r-sm);
+  border:         1px dashed var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     border-color var(--dur-fast) var(--ease-smooth),
+                  color var(--dur-fast) var(--ease-smooth);
+}
+
+.addGroupBtn:hover:not(:disabled) {
+  border-color: var(--accent-purple-dim);
+  color:        var(--accent-purple);
+}
+
+.addGroupBtn:disabled { opacity: 0.35; cursor: default; }
+
+.groupSelect {
+  flex:          0 0 auto;
+  max-width:     7.5rem;
+  padding:       3px var(--sp-2);
+  border-radius: var(--r-sm);
+  border:        1px solid var(--border-subtle);
+  background:    var(--bg-main);
+  color:         var(--text-muted);
+  font-size:     0.68rem;
+  cursor:        pointer;
+}
+
+.groupSelect:focus { outline: none; border-color: rgba(124, 149, 255, 0.40); }

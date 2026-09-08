@@ -10,7 +10,7 @@
 
 import {
   stepFrequency, progressFraction, isHabitSoundEnabled, setHabitSoundEnabled,
-  STEP_BASE_HZ, STEP_RANGE_HZ, CHIME_HZ,
+  STEP_BASE_HZ, STEP_RANGE_HZ, CHIME_HZ, spendFrequency,
 } from '@/lib/habitSounds'
 
 describe('progressFraction', () => {
@@ -91,5 +91,26 @@ describe('the preference', () => {
     expect(isHabitSoundEnabled()).toBe(false)
     setHabitSoundEnabled(true)
     expect(isHabitSoundEnabled()).toBe(true)
+  })
+})
+
+describe('the spend tone (limit habits)', () => {
+  it('falls as the allowance drains — the inverse of a goal step', () => {
+    // A goal rises toward its target; a limit sinks toward its cap.
+    expect(spendFrequency(1)).toBeGreaterThan(spendFrequency(0.5))
+    expect(spendFrequency(0.5)).toBeGreaterThan(spendFrequency(0))
+  })
+
+  it('stays below the goal step tone, so the two never sound alike', () => {
+    expect(spendFrequency(1)).toBeLessThan(stepFrequency(0))
+  })
+
+  it('clamps and never returns NaN', () => {
+    for (const r of [-4, 0, 0.5, 1, 9, NaN, Infinity]) {
+      const f = spendFrequency(r)
+      expect(Number.isFinite(f)).toBe(true)
+      expect(f).toBeGreaterThan(20)
+      expect(f).toBeLessThan(20_000)
+    }
   })
 })
