@@ -30,7 +30,8 @@ import type { IconName } from '@/components/ui/Icon'
 import { db, type Habit } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
 import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
-import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { toLocalDateStr } from '@/utils/localDate'
+import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
@@ -96,7 +97,10 @@ export interface ProgressResult {
 export async function addHabitProgress(
   habitId: number,
   amount:  number,
-  dateISO: string = todayISO(),
+  /* Defaults to the habit day, so progress synced from a workout or a
+     study session at 2am lands on the same day a manual tap would. */
+  dateISO: string = effectiveDateISO(new Date(),
+    typeof window !== 'undefined' ? loadCutoffHour() : 0),
 ): Promise<ProgressResult | null> {
   if (!db || !Number.isFinite(amount) || amount <= 0) return null
 

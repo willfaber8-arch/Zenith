@@ -1030,3 +1030,20 @@
      a whole category, so a miss is annoying rather than harmless. */
   .categoryHeader { min-height: 44px; }
 }
+
+/*
+ * Shown only while the late cutoff is holding yesterday open.
+ *
+ * Without it the grid just looks a day behind at 2am, which reads as a
+ * bug rather than the setting doing its job.
+ */
+.graceNote {
+  margin:        0 0 var(--sp-3);
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid rgba(245, 158, 11, 0.28);
+  background:    rgba(245, 158, 11, 0.07);
+  color:         #f59e0b;
+  font-size:     0.74rem;
+  line-height:   1.5;
+}

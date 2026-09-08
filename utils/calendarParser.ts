@@ -26,10 +26,21 @@
 
 /* ── Public types ───────────────────────────────────────────── */
 
+import { parseRRule, expandOccurrences } from '@/utils/recurrence'
+
 export type EventCategory = 'scholastic' | 'exam' | 'life' | 'general'
 
 export interface ParsedCalendarEvent {
   uid:          string
+  /**
+   * The UID of the series this occurrence belongs to.
+   *
+   * Equal to `uid` for a one-off. For a repeating event every occurrence
+   * carries the same seriesUid and its own unique uid, which is what
+   * lets "delete this one" and "delete all of them" be different
+   * operations on ordinary rows.
+   */
+  seriesUid:    string
   title:        string
   /** Unix ms — UTC-anchored, display with `new Date(startMs)` */
   startMs:      number
@@ -248,6 +259,8 @@ export function parseIcal(icalText: string): ParsedCalendarEvent[] {
   let allDay      = false
   let location    = ''
   let description = ''
+  let rruleText   = ''
+  let exDates: number[] = []
 
   for (const raw of lines) {
     const line = raw.trim()
@@ -257,6 +270,7 @@ export function parseIcal(icalText: string): ParsedCalendarEvent[] {
       inEvent = true
       uid = ''; title = ''; startMs = 0; endMs = 0
       allDay = false; location = ''; description = ''
+      rruleText = ''; exDates = []
       continue
     }
 
@@ -269,17 +283,37 @@ export function parseIcal(icalText: string): ParsedCalendarEvent[] {
       const resolvedEnd = endMs > 0 ? endMs : startMs
       const resolvedUid = uid || `z_${startMs}_${Math.random().toString(36).slice(2, 8)}`
 
-      results.push({
-        uid:         resolvedUid,
-        title:       title.trim() || '(No title)',
-        startMs,
-        endMs:       resolvedEnd,
-        allDay,
-        is1159:      !allDay && detect1159(resolvedEnd),
-        category:    classifyCategory(title, description),
-        location:    location    || undefined,
-        description: description || undefined,
-      })
+      /*
+       * Expand the repeat rule here rather than storing it.
+       *
+       * This used to push one row and drop the RRULE, so a class meeting
+       * every Monday from January to December arrived as a single
+       * January event — the import reported a count and the calendar was
+       * empty. Materialising the occurrences costs rows and buys the
+       * thing everything else depends on: each one is an ordinary event
+       * that can be moved, edited or cancelled on its own.
+       */
+      const rule  = rruleText ? parseRRule(rruleText) : null
+      const occs  = expandOccurrences(startMs, resolvedEnd, rule, exDates)
+      const cat   = classifyCategory(title, description)
+      const clean = title.trim() || '(No title)'
+
+      for (const occ of occs) {
+        results.push({
+          /* Unique per occurrence so a re-import updates rather than
+             duplicates, and stable so it survives a refresh. */
+          uid:         occs.length > 1 ? `${resolvedUid}::${occ.startMs}` : resolvedUid,
+          seriesUid:   resolvedUid,
+          title:       clean,
+          startMs:     occ.startMs,
+          endMs:       occ.endMs,
+          allDay,
+          is1159:      !allDay && detect1159(occ.endMs),
+          category:    cat,
+          location:    location    || undefined,
+          description: description || undefined,
+        })
+      }
       continue
     }
 
@@ -324,6 +358,18 @@ export function parseIcal(icalText: string): ParsedCalendarEvent[] {
         endMs = p.ms
         break
       }
+
+      case 'RRULE':
+        rruleText = value
+        break
+
+      /* One EXDATE line may carry several comma-separated dates. */
+      case 'EXDATE':
+        for (const one of value.split(',')) {
+          const p = parseIcalDate(one.trim(), params)
+          if (p.ms > 0) exDates.push(p.ms)
+        }
+        break
 
       /* Canvas exports assignment deadlines as DUE, not DTSTART/DTEND */
       case 'DUE': {

@@ -27,6 +27,13 @@
  */
 
 import {
+  deltaMinutesFromPx, deltaDaysFromPx, applyMove, applyResize, clampToVisibleDay,
+} from '@/utils/calendarInteraction'
+import {
+  applyEventPatch, removeEvent, commitDrag, seriesSize, type EditScope,
+} from '@/lib/calendarMutations'
+import EventDetailPopover from '@/components/EventDetailPopover'
+import {
   useState, useEffect, useRef, useMemo, useCallback,
   type ChangeEvent, type KeyboardEvent,
 } from 'react'
@@ -51,6 +58,14 @@ const EVENT_COLORS = [
 ]
 
 const PERSONAL_FEED_ID = -1
+
+/*
+ * Below this, a press is a click rather than a drag.
+ *
+ * Without it a slightly shaky press on an event nudges it by fifteen
+ * minutes when you only meant to read what it said.
+ */
+const DRAG_THRESHOLD_PX = 4
 const FRIEND_FEED_ID   = -2
 
 /* Stable per-friend colour from their display name (so each friend's shared
@@ -681,38 +696,110 @@ interface EventPillElProps {
   hourPx:   number
   /** First hour shown in the column, as a float (e.g. 7 for 07:00). */
   dayStart: number
+  /** Last hour shown, for clamping a drag inside the drawn day. */
+  dayEnd:   number
+  /** Width of a day column, so a sideways drag can be read as days. */
+  columnPx: number
+  onOpen:   (event: CalendarEvent, rect: DOMRect) => void
+  onDrag:   (event: CalendarEvent, next: { startMs: number; endMs: number }) => void
 }
 
-function EventPillEl({ event, feed, hourPx, dayStart }: EventPillElProps) {
-  const start = new Date(event.startMs)
-  const end   = new Date(event.endMs)
+/**
+ * One event on the grid.
+ *
+ * Three gestures share this element: a click opens its details, a drag
+ * on the body moves it, and a drag on the bottom edge changes how long
+ * it runs. They are told apart by distance — anything under a few
+ * pixels is a click, which stops a slightly shaky press from nudging an
+ * event when you only meant to read it.
+ */
+function EventPillEl({
+  event, feed, hourPx, dayStart, dayEnd, columnPx, onOpen, onDrag,
+}: EventPillElProps) {
+  const elRef = useRef<HTMLDivElement>(null)
+  const [preview, setPreview] = useState<{ startMs: number; endMs: number } | null>(null)
 
+  /* Drag state lives in a ref: mousemove fires constantly and must not
+     re-render on every pixel (rule 29). */
+  const dragRef = useRef<{
+    mode: 'move' | 'resize'
+    x0: number; y0: number
+    moved: boolean
+  } | null>(null)
+
+  const shown = preview ?? { startMs: event.startMs, endMs: event.endMs }
+
+  const start = new Date(shown.startMs)
+  const end   = new Date(shown.endMs)
   const startMins   = start.getHours() * 60 + start.getMinutes()
   const endMins     = end.getHours()   * 60 + end.getMinutes()
-  const durationMin = Math.max(endMins - startMins, 20) // min height
+  const durationMin = Math.max(endMins - startMins, 20)
 
-  /* Offset by the first hour on screen — the grid no longer starts at
-     midnight, so a 09:00 class is not nine hours down the column. */
   const top    = ((startMins / 60) - dayStart) * hourPx
   const height = Math.max((durationMin / 60) * hourPx - 2, 14)
 
   const color = (event as CalendarEvent & { _color?: string })._color ?? feed?.color ?? '#7c95ff'
+  const compact = height < 34
+
+  const beginDrag = useCallback((mode: 'move' | 'resize') => (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragRef.current = { mode, x0: e.clientX, y0: e.clientY, moved: false }
+  }, [])
 
   /*
-   * Fill, not tint.
-   *
-   * These were a 9%-alpha wash with a 2px edge, which on the dark
-   * surface left the block barely separable from the empty column
-   * behind it — you had to look for your classes rather than see them.
-   * A denser fill and a full-strength bar down the side make the shape
-   * read as an object at a glance, which matters more now that a whole
-   * day fits in less vertical space.
+   * Document-level listeners, not element-level: a fast drag outruns the
+   * pill and the pointer ends up over the column behind it, at which
+   * point an element handler stops receiving moves and the event sticks
+   * to the cursor.
    */
-  const compact = height < 34
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      const dx = e.clientX - d.x0
+      const dy = e.clientY - d.y0
+      if (!d.moved && Math.abs(dx) < DRAG_THRESHOLD_PX && Math.abs(dy) < DRAG_THRESHOLD_PX) return
+      d.moved = true
+
+      const mins = deltaMinutesFromPx(dy, hourPx)
+      if (d.mode === 'resize') {
+        setPreview(applyResize(event.startMs, event.endMs, mins))
+      } else {
+        const days = deltaDaysFromPx(dx, columnPx)
+        setPreview(clampToVisibleDay(
+          applyMove(event.startMs, event.endMs, days, mins), dayStart, dayEnd))
+      }
+    }
+
+    const onUp = () => {
+      const d = dragRef.current
+      dragRef.current = null
+      if (!d) return
+      if (d.moved) {
+        setPreview(p => {
+          if (p && (p.startMs !== event.startMs || p.endMs !== event.endMs)) {
+            onDrag(event, p)
+          }
+          return null
+        })
+      } else if (elRef.current) {
+        onOpen(event, elRef.current.getBoundingClientRect())
+      }
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [event, hourPx, columnPx, dayStart, dayEnd, onDrag, onOpen])
 
   return (
     <div
-      className={`${styles.eventPill} ${compact ? styles.eventPillCompact : ''}`}
+      ref={elRef}
+      className={`${styles.eventPill} ${compact ? styles.eventPillCompact : ''} ${preview ? styles.eventPillDragging : ''}`}
       style={{
         top:             `${top}px`,
         height:          `${height}px`,
@@ -720,18 +807,35 @@ function EventPillEl({ event, feed, hourPx, dayStart }: EventPillElProps) {
         borderLeft:      `3px solid ${color}`,
         color:           color,
       }}
-      title={`${event.title}\n${formatTime(event.startMs)} – ${formatTime(event.endMs)}${event.location ? `\n${event.location}` : ''}`}
-      role="article"
-      aria-label={event.title}
+      onMouseDown={beginDrag('move')}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          if (elRef.current) onOpen(event, elRef.current.getBoundingClientRect())
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${event.title}, ${formatTime(shown.startMs)}. Open details.`}
     >
       <span className={styles.eventPillTitle}>{event.title}</span>
       {height >= 34 && (
-        <span className={styles.eventPillTime}>
-          {formatTime(event.startMs)}
-        </span>
+        <span className={styles.eventPillTime}>{formatTime(shown.startMs)}</span>
       )}
-      {height >= 58 && (
+      {height >= 58 && event.location && (
+        <span className={styles.eventPillCat}>{event.location}</span>
+      )}
+      {height >= 58 && !event.location && (
         <span className={styles.eventPillCat}>{event.category}</span>
+      )}
+
+      {/* Bottom edge: drag to change how long the event runs. */}
+      {height >= 22 && (
+        <span
+          className={styles.resizeGrip}
+          onMouseDown={beginDrag('resize')}
+          aria-hidden="true"
+        />
       )}
     </div>
   )
@@ -743,6 +847,8 @@ interface WeekGridProps {
   weekDays: Date[]
   events:   CalendarEvent[]
   feeds:    CalendarFeed[]
+  onOpen:   (event: CalendarEvent, rect: DOMRect) => void
+  onDrag:   (event: CalendarEvent, next: { startMs: number; endMs: number }) => void
 }
 
 /*
@@ -787,7 +893,11 @@ export function visibleHourRange(events: CalendarEvent[]): { startH: number; end
   }
 }
 
-function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
+function WeekGrid({ weekDays, events, feeds, onOpen, onDrag }: WeekGridProps) {
+  /* Measured, because a day column's width depends on the sidebar, the
+     viewport and whether a scrollbar is showing — a sideways drag has to
+     be read against the real column, not an assumed one. */
+  const [columnPx, setColumnPx] = useState(160)
   const wrapRef   = useRef<HTMLDivElement>(null)
   const feedMap   = useMemo(() => new Map(feeds.map(f => [f.id, f])), [feeds])
   const [nowMins, setNowMins] = useState(() => {
@@ -830,6 +940,9 @@ function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
        * inside its own frame and the rest of the view stays put.
        */
       setMaxH(Math.max(240, Math.round(avail)))
+
+      const col = el.querySelector(`.${styles.dayColumn}`)
+      if (col) setColumnPx(Math.max(1, col.getBoundingClientRect().width))
     }
     measure()
     window.addEventListener('resize', measure)
@@ -956,6 +1069,10 @@ function WeekGrid({ weekDays, events, feeds }: WeekGridProps) {
                   feed={feedMap.get(evt.feedId)}
                   hourPx={hourPx}
                   dayStart={startH}
+                  dayEnd={endH}
+                  columnPx={columnPx}
+                  onOpen={onOpen}
+                  onDrag={onDrag}
                 />
               ))}
             </div>
@@ -1695,6 +1812,43 @@ export default function CalendarView() {
     await db.calendarFeeds.update(feed.id, { isActive: feed.isActive === 0 ? 1 : 0 })
   }, [])
 
+  /* ── Event interaction: open, drag, edit, delete ─────────── */
+
+  const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
+  const [detail, setDetail] = useState<
+    { event: CalendarEvent; rect: DOMRect; seriesCount: number } | null
+  >(null)
+
+  const handleOpenEvent = useCallback(async (event: CalendarEvent, rect: DOMRect) => {
+    /* The count decides whether deleting has to ask a question at all. */
+    const count = await seriesSize(event)
+    setDetail({ event, rect, seriesCount: count })
+  }, [])
+
+  const handleDragEvent = useCallback(async (
+    event: CalendarEvent,
+    next:  { startMs: number; endMs: number },
+  ) => {
+    try {
+      await commitDrag(event, next)
+      setDetail(null)
+    } catch {
+      toast('Could not move that event.', 'error')
+    }
+  }, [toast])
+
+  const handleDeleteFromPopover = useCallback(async (scope: EditScope) => {
+    if (!detail) return
+    const { event } = detail
+    setDetail(null)
+    try {
+      const n = await removeEvent(event, scope)
+      toast(n > 1 ? `Deleted ${n} occurrences.` : 'Event deleted.', 'info')
+    } catch {
+      toast('Could not delete that event.', 'error')
+    }
+  }, [detail, toast])
+
   /* Personal event CRUD */
   const handleAddEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
     if (!db) return
@@ -1915,7 +2069,14 @@ export default function CalendarView() {
             ? <EmptyPersonal onAdd={() => setShowNewEvent(true)} />
             : <EmptyCalendar onOpenFeedPanel={() => setShowCalMgr(true)} />
         ) : (
-          <WeekGrid key={gridKey} weekDays={weekDays} events={allEvents} feeds={allFeeds} />
+          <WeekGrid
+            key={gridKey}
+            weekDays={weekDays}
+            events={allEvents}
+            feeds={allFeeds}
+            onOpen={handleOpenEvent}
+            onDrag={handleDragEvent}
+          />
         )
       ) : view === 'month' ? (
         <MonthGrid
@@ -1931,6 +2092,30 @@ export default function CalendarView() {
 
       </>}
 
+      {/* ── Event details, anchored beside what you clicked ── */}
+      {detail && (
+        <EventDetailPopover
+          event={detail.event}
+          anchor={detail.rect}
+          seriesCount={detail.seriesCount}
+          color={(detail.event as CalendarEvent & { _color?: string })._color
+                 ?? allFeeds.find(f => f.id === detail.event.feedId)?.color
+                 ?? '#7c95ff'}
+          feedLabel={allFeeds.find(f => f.id === detail.event.feedId)?.label}
+          onClose={() => setDetail(null)}
+          onEdit={() => {
+            /*
+             * Both kinds of event edit through the same form. An imported
+             * one is written back through applyEventPatch so it picks up
+             * the locallyEdited flag and survives the next refresh.
+             */
+            setEditTarget(detail.event)
+            setDetail(null)
+          }}
+          onDelete={scope => void handleDeleteFromPopover(scope)}
+        />
+      )}
+
       {/* ── Modals ────────────────────────────────────── */}
       {showNewEvent && (
         <NewEventModal
@@ -1943,6 +2128,47 @@ export default function CalendarView() {
           onPushMicrosoft={handlePushMicrosoft}
         />
       )}
+      {editTarget && (
+        <NewEventModal
+          onClose={() => setEditTarget(null)}
+          onSave={async data => {
+            const target = editTarget
+            setEditTarget(null)
+            if (!target) return
+            try {
+              await applyEventPatch(target, {
+                title:       data.title,
+                startMs:     data.startMs,
+                endMs:       data.endMs,
+                allDay:      data.allDay,
+                category:    data.category,
+                description: data.description,
+                location:    (data as { location?: string }).location,
+              }, 'this')
+              toast('Event updated.', 'success')
+            } catch {
+              toast('Could not save that change.', 'error')
+            }
+          }}
+          initial={{
+            id:          (editTarget.id ?? 0) as number,
+            title:       editTarget.title,
+            startMs:     editTarget.startMs,
+            endMs:       editTarget.endMs,
+            allDay:      editTarget.allDay,
+            color:       '#7c95ff',
+            category:    editTarget.category,
+            description: editTarget.description,
+            createdAt:   Date.now(),
+          } as PersonalEvent}
+          localCalendars={localCalendars}
+          msConfigured={ms.configured}
+          msConnected={ms.account !== null}
+          onAddToOutlook={handleAddToOutlook}
+          onPushMicrosoft={handlePushMicrosoft}
+        />
+      )}
+
       {editEvent && (
         <NewEventModal
           onClose={() => setEditEvent(null)}

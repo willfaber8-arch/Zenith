@@ -1642,3 +1642,44 @@
   font-size: 0.75rem; cursor: pointer;
 }
 .resetCancel:hover { color: var(--text-primary); }
+
+/* ════════════════════════════════════════════════════════════════
+   Day rollover — how late the previous day stays open
+   ════════════════════════════════════════════════════════════════ */
+
+.cutoffRow {
+  display:   flex;
+  gap:       var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.cutoffBtn {
+  padding:        var(--sp-2) var(--sp-4);
+  border-radius:  var(--r-xl);
+  border:         1px solid var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-muted);
+  font-family:    var(--font-mono);
+  font-size:      0.68rem;
+  letter-spacing: 0.04em;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:     border-color var(--dur-fast) var(--ease-smooth),
+                  color var(--dur-fast) var(--ease-smooth),
+                  background var(--dur-fast) var(--ease-smooth);
+}
+
+.cutoffBtn:hover { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+
+.cutoffBtnOn {
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-active);
+  color:        var(--accent-purple);
+}
+
+.cutoffHint {
+  margin:     var(--sp-3) 0 0;
+  font-size:  0.72rem;
+  line-height: 1.5;
+  color:      var(--text-dark);
+}

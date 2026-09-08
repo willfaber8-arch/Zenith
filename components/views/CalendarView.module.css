@@ -2416,3 +2416,61 @@
     font-size: 0.62rem;
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Direct manipulation — drag to move, drag the edge to resize
+   ══════════════════════════════════════════════════════════ */
+
+/*
+ * The pill is now a control, so it says so on hover. `grab` rather than
+ * `pointer` because the primary gesture is moving it; a plain click
+ * opens the details and is handled by the distance threshold in JS.
+ */
+.eventPill {
+  cursor: grab;
+  user-select: none;
+}
+
+.eventPill:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 1px;
+}
+
+/*
+ * While dragging, the event lifts and turns off its transition so it
+ * tracks the cursor exactly — an eased position lags the hand and feels
+ * like the drag is fighting you.
+ */
+.eventPillDragging {
+  cursor: grabbing;
+  z-index: 6;
+  transition: none !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  filter: brightness(1.15);
+}
+
+/*
+ * A grab strip along the bottom edge. Taller than it looks — 8px is
+ * about the smallest a pointer reliably hits, and the visible hint is
+ * only drawn on hover so the grid stays quiet at rest.
+ */
+.resizeGrip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 8px;
+  cursor: ns-resize;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+}
+
+.eventPill:hover .resizeGrip {
+  background: linear-gradient(to bottom, transparent, currentColor);
+  opacity: 0.5;
+}
+
+/* A coarse pointer cannot hit 8px reliably, and has no hover to reveal it. */
+@media (pointer: coarse) {
+  .resizeGrip { height: 14px; }
+  .eventPill .resizeGrip { background: linear-gradient(to bottom, transparent, currentColor); opacity: 0.35; }
+}

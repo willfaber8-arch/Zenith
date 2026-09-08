@@ -6,15 +6,20 @@ import { db, type Habit, type HabitCompletion, type HabitFrequency } from '@/lib
 import { addHabitProgress } from '@/lib/habitSync'
 import { isHabitScheduledOn as scheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { limitStreak } from '@/utils/habitLimit'
+import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
+/**
+ * The habit day, which is not always the calendar day.
+ *
+ * Habit-facing code asks this rather than the plain date helper, so a
+ * configured late cutoff applies everywhere a streak is read or written.
+ * Non-habit features keep using `toLocalDateStr` and roll over at
+ * midnight, which is what they should do.
+ */
 export function todayISO(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return effectiveDateISO(new Date(), typeof window !== 'undefined' ? loadCutoffHour() : 0)
 }
 
 export function isoForDayOffset(offset: number): string {
@@ -75,7 +80,18 @@ export function getWeekDates(): string[] {
 /* ── Hook ─────────────────────────────────────────────────── */
 
 export function useHabits() {
-  const today     = todayISO()
+  /*
+   * "Today" is whatever day you are still in, not what the clock says.
+   *
+   * With a late cutoff configured, a habit ticked off at 02:30 belongs
+   * to the day you were working through — otherwise a session that ran
+   * past midnight marks that day missed and breaks the streak, which is
+   * the opposite of what should happen to someone who stayed up to do
+   * the work. Re-read on every render so the day flips over on its own
+   * once the cutoff passes.
+   */
+  const cutoffHour = typeof window !== 'undefined' ? loadCutoffHour() : 0
+  const today      = effectiveDateISO(new Date(), cutoffHour)
   const weekDates = getWeekDates()
 
   const habits = useLiveQuery(
