@@ -1339,6 +1339,32 @@ class ZenithDatabase extends Dexie {
     this.version(42).stores({
       cardioSessions: '++id, activityType, durationMinutes, logDate, completedAt, stravaActivityId',
     })
+
+    /*
+     * Version 43 — index `url` on calendarFeeds.
+     *
+     * Adding a feed looks up the URL first to refuse duplicates, and
+     * Dexie can only run `.where()` against an index — without one the
+     * query threw a SchemaError before the feed was ever fetched. The
+     * throw happened outside the handler's try, so nothing was caught
+     * and no message reached the screen: pasting a subscription link
+     * did nothing at all.
+     */
+    this.version(43).stores({
+      calendarFeeds:
+        '++id, label, isActive, lastFetchedAt, createdAt, url',
+
+      /*
+       * `reviewIntervalDays` for the same reason, one table over.
+       *
+       * The friend leaderboard counts mastered cards with
+       * `.where('reviewIntervalDays').aboveOrEqual(21)`. That query also
+       * had no index, and its caller catches and moves on — so instead
+       * of failing it quietly reported zero mastered cards, every time.
+       * A wrong number is harder to notice than a broken button.
+       */
+      vocab_cards: 'id, deckId, nextReviewTimestamp, easeFactor, reviewIntervalDays',
+    })
   }
 }
 

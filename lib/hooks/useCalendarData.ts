@@ -139,16 +139,30 @@ export function useCalendarData(): UseCalendarDataReturn {
       return
     }
 
-    /* Duplicate guard */
-    const dup = await db.calendarFeeds.where('url').equals(clean).first()
-    if (dup) { toast(`"${dup.label}" is already added.`, 'info'); return }
-
     const now     = Date.now()
     const color   = pickColor(feeds.length)
     const feedLabel = label.trim() || 'My Calendar'
 
     setIsFetching(true)
+    /*
+     * Everything that touches the database is inside the try.
+     *
+     * The duplicate lookup used to sit above it, and because `url` was
+     * not an index Dexie threw a SchemaError there — outside the catch,
+     * in a promise nobody awaited. The result was the worst possible
+     * failure: pasting a subscription link did nothing whatsoever, with
+     * no error, no toast and no feed. Anything that can throw belongs
+     * where the user will hear about it.
+     */
     try {
+      /* Duplicate guard */
+      const dup = await db.calendarFeeds.where('url').equals(clean).first()
+      if (dup) {
+        toast(`"${dup.label}" is already added.`, 'info')
+        setIsFetching(false)
+        return
+      }
+
       const feedId = await db.calendarFeeds.add({
         label:         feedLabel,
         url:           clean,
@@ -164,10 +178,14 @@ export function useCalendarData(): UseCalendarDataReturn {
 
       toast(`"${feedLabel}" added — ${count} events imported.`, 'success')
     } catch (err) {
-      /* Clean up orphan feed row on failure */
-      const orphan = await db.calendarFeeds.where('url').equals(clean).first()
-      if (orphan) await db.calendarFeeds.delete(orphan.id)
-      toast(`Feed error: ${String(err)}`, 'error')
+      /* Clean up the orphan feed row, but never let the cleanup itself
+         replace the message explaining what actually went wrong. */
+      try {
+        const orphan = await db.calendarFeeds.where('url').equals(clean).first()
+        if (orphan) await db.calendarFeeds.delete(orphan.id)
+      } catch { /* leave the row; the message below matters more */ }
+      const detail = err instanceof Error ? err.message : String(err)
+      toast(`Could not add that calendar — ${detail}`, 'error')
     } finally {
       setIsFetching(false)
     }

@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { assertSafePublicUrl } from '@/lib/server/ssrfGuard'
+import { fetchFeedFollowingRedirects } from '@/lib/server/fetchFeed'
 import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
@@ -43,30 +44,35 @@ export async function GET(req: NextRequest) {
   /* Normalise webcal:// → https:// (common for Apple/Canvas feeds) */
   const normalised = rawUrl.replace(/^webcal:\/\//i, 'https://')
 
-  /* SSRF guard — protocol, port, credentials, and private-IP resolution check */
-  const safe = await assertSafePublicUrl(normalised)
-  if (!safe.ok) {
-    return NextResponse.json({ error: safe.reason ?? 'URL not permitted' }, { status: 400 })
-  }
-
   try {
-    const upstream = await fetch(normalised, {
-      headers: {
-        'User-Agent': 'ZenithOS/2.5 CalendarAggregator (+https://zenith.app)',
-        'Accept':     'text/calendar, text/plain, */*',
-      },
-      redirect: 'error',                      // a redirect could bypass the SSRF check
-      signal:   AbortSignal.timeout(10_000),  // bound slow/hung upstreams
-      /* Next.js server cache — avoids hammering upstream on every render */
-      next: { revalidate: 300 },
-    })
+    /*
+     * Redirects are followed, and the SSRF guard runs on every hop
+     * including the first. This used to pass `redirect: 'error'`, which
+     * made fetch throw on any 3xx — safe, but it meant no redirecting
+     * feed could ever be added, and published Outlook calendars, some
+     * Canvas deployments and most webcal:// hosts all redirect.
+     */
+    const result = await fetchFeedFollowingRedirects(
+      normalised,
+      { fetchImpl: fetch, assertSafe: assertSafePublicUrl },
+      {
+        headers: {
+          'User-Agent': 'ZenithOS/2.5 CalendarAggregator (+https://zenith.app)',
+          'Accept':     'text/calendar, text/plain, */*',
+        },
+        signal: AbortSignal.timeout(10_000),   // bound slow/hung upstreams
+        /* Next.js server cache — avoids hammering upstream on every render */
+        next: { revalidate: 300 },
+      } as RequestInit,
+    )
 
-    if (!upstream.ok) {
+    if (!result.ok || !result.response) {
       return NextResponse.json(
-        { error: `Upstream HTTP ${upstream.status}` },
-        { status: 502 },
+        { error: result.reason ?? 'Feed fetch failed' },
+        { status: result.status || 502 },
       )
     }
+    const upstream = result.response
 
     /* Enforce a byte ceiling while reading the body */
     const reader = upstream.body?.getReader()
