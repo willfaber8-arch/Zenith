@@ -21,11 +21,20 @@
 
 name: CI · Validate & Deploy
 
+# The default branch of this repository is `master`. Listing only `main`
+# meant every push and every pull request went unvalidated: the type
+# check and the Playwright suite below have not run on a change in a
+# long time, and a green tick on a pull request was Vercel's preview
+# deploy on its own — a pipeline that never runs is worse than no
+# pipeline, because it still looks like one.
+#
+# The deploy stages further down stay gated on `refs/heads/main`, so
+# this turns validation back on without changing what deploys or when.
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 # Cancel any in-flight run for the same branch when a newer push arrives.
 # Prevents simultaneous deploys from a rapid succession of commits.
