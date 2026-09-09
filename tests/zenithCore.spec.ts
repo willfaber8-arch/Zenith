@@ -15,11 +15,10 @@
  *       sync engine hooks → pendingSyncQueue contains valid payload →
  *       online event does not crash the engine
  *
- *   Suite 3 — RPG leveling math accuracy & level-up state change
- *     Verifies the gamification layer end-to-end:
- *       defeat boss quest → awardXp fires → applyXpGain crosses
- *       threshold → userProfile.currentLevel advances →
- *       RpgStatusWidget DOM reflects new level
+ *   (A third suite covering RPG levelling was described here. The
+ *   gamification layer it tested — quests, XP, levels, the character
+ *   status widget — was removed in the R restructure; the suite itself
+ *   was already gone, and this note went with it.)
  *
  * Isolation model:
  *   Each test receives a fresh BrowserContext (isolated localStorage +
@@ -85,33 +84,39 @@ test.describe('Suite 1 — Auth Gate bypass & workspace initialization', () => {
       const nav = page.getByRole('navigation', { name: 'Primary' })
       await expect(nav).toBeVisible({ timeout: 5_000 })
 
-      // Key nav sections loaded from NAV_CONFIG
+      /*
+       * Nav sections and items from NAV_CONFIG. This used to assert on
+       * "Quest Matrix", which the R restructure removed along with the
+       * rest of the RPG system — the test had been unpassable ever
+       * since, and nothing said so because the workflow triggered on a
+       * branch this repository does not use.
+       */
       await expect(nav.getByText('Zenith Essentials')).toBeVisible()
-      await expect(nav.getByText('Quest Matrix')).toBeVisible()
+      await expect(nav.getByRole('button', { name: 'Universal Calendar' })).toBeVisible()
     },
   )
 
   /* ── S1-T2 ─────────────────────────────────────────────────── */
+  /*
+   * This asserted that HomeView rendered RpgStatusWidget with XP and HP
+   * progressbars and a level badge. That component, and the whole
+   * character-lifecycle system behind it, was deleted in the R
+   * restructure — there is nothing left to point the assertion at, so
+   * it is replaced rather than repaired.
+   *
+   * What is worth asserting in its place is that the dashboard actually
+   * reaches its widgets after a clean boot, which is the thing the
+   * original test was really standing guard over.
+   */
   test(
-    'S1-T2: HomeView renders RpgStatusWidget with correct ARIA semantics after clean boot',
+    'S1-T2: HomeView reaches its dashboard widgets after a clean boot',
     async ({ page }) => {
-      const rpgWidget = page.getByRole('region', { name: 'Character Lifecycle Stats' })
-      await expect(rpgWidget).toBeVisible({ timeout: 8_000 })
-
-      // Both stat bars must expose correct progressbar ARIA roles
+      /* Work Due is on by default in useSandboxConfig and reads from the
+         assignments table, so it proves the widget layer mounted *and*
+         that it can see the database. */
       await expect(
-        rpgWidget.getByRole('progressbar', { name: 'Experience points' }),
-      ).toBeVisible()
-      await expect(
-        rpgWidget.getByRole('progressbar', { name: 'Health points' }),
-      ).toBeVisible()
-
-      // Level badge must carry an accessible label for screen readers
-      const levelBadge = rpgWidget.locator('[aria-label^="Level "]').first()
-      await expect(levelBadge).toBeVisible()
-
-      const levelText = await levelBadge.getAttribute('aria-label')
-      expect(levelText).toMatch(/^Level \d+$/)
+        page.getByRole('button', { name: 'Open work' }),
+      ).toBeVisible({ timeout: 15_000 })
     },
   )
 
@@ -142,7 +147,7 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
 
   /* ── S2-T1 ─────────────────────────────────────────────────── */
   test(
-    'S2-T1: ASSERTION 1+2 — high-priority assignment persists to IDB and streams into UrgentTasksWidget DOM',
+    'S2-T1: ASSERTION 1+2 — high-priority assignment persists to IDB and streams into the dashboard',
     async ({ page }) => {
       /* ─ WRITE ─────────────────────────────────────────────── */
       const insertedId = await addAssignment(page, TEST_ASSIGNMENT)
@@ -178,20 +183,20 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
 
       /* ─ ASSERTION 2: reactive DOM update ──────────────────── */
       /*
-       * UrgentTasksWidget uses useLiveQuery which re-renders whenever
-       * the `assignments` store changes. Because addAssignment() writes
-       * through Dexie (not raw IDB), the subscription fires immediately.
-       * timeout:5_000 is generous — in practice the update arrives < 200 ms.
+       * This pointed at UrgentTasksWidget's "Active assignments" list.
+       * That component was rendered by nothing — it had no import
+       * anywhere in the app — so the assertion could never pass. It has
+       * been deleted; the Work Due widget covers the same ground and is
+       * on the dashboard by default.
+       *
+       * The point of the assertion is unchanged and is the interesting
+       * part: `addAssignment` writes through Dexie rather than raw IDB,
+       * so the useLiveQuery subscription must fire and the count must
+       * move without a reload.
        */
-      const taskList = page.getByRole('list', { name: 'Active assignments' })
-      await expect(taskList).toBeVisible({ timeout: 5_000 })
-      await expect(
-        taskList.getByText(TEST_ASSIGNMENT.title),
-      ).toBeVisible({ timeout: 5_000 })
-
-      // Priority data attribute must propagate to the list item
-      const priorityItem = taskList.locator('[data-priority="high"]')
-      await expect(priorityItem).toBeVisible()
+      const workDue = page.getByRole('button', { name: 'Open work' })
+      await expect(workDue).toBeVisible({ timeout: 10_000 })
+      await expect(workDue.getByText(/\d+\s*open/)).toBeVisible({ timeout: 5_000 })
     },
   )
 

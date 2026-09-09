@@ -105,7 +105,7 @@ export interface TestAssignment {
  * Because this goes through Dexie (not raw IndexedDB), it:
  *   • triggers the `assignments.creating` Dexie hook → enqueues to
  *     pendingSyncQueue for high/critical priorities
- *   • notifies useLiveQuery subscribers → UrgentTasksWidget re-renders
+ *   • notifies useLiveQuery subscribers → the dashboard re-renders
  *   • injects `supabaseId = crypto.randomUUID()` onto the row
  *
  * Returns the auto-incremented IDB primary key.
