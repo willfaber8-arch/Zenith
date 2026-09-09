@@ -109,18 +109,27 @@ let _seedGuard = false
 export default function HouseplantGrid() {
   const plants = useLiveQuery(() => db.houseplants.toArray(), [])
 
-  // Seed default plants once. The module-level flag prevents the StrictMode
-  // double-invoke from writing duplicate rows; the count check clears any
-  // duplicates that may have persisted from a previous session.
+  /*
+   * Seeds the example plants, and only ever when there are none.
+   *
+   * This used to also take the branch `count > SEED_PLANTS.length` and
+   * respond by clearing the table and re-seeding it — meant as a
+   * cleanup for duplicate rows left by an earlier StrictMode
+   * double-invoke. But that condition cannot tell a duplicated seed
+   * from someone who simply owns more plants than the example set: the
+   * Botanist view adds to this same table, so growing a collection past
+   * the seed count was enough to have it deleted and replaced with the
+   * examples on the next mount. A guard against duplicates that
+   * destroys real rows is worse than the duplicates.
+   *
+   * The module-level flag already prevents the double-invoke that
+   * caused them, and an empty-table check cannot delete anything.
+   */
   useEffect(() => {
     if (_seedGuard) return
     _seedGuard = true
     async function seed() {
-      const count = await db.houseplants.count()
-      if (count === 0) {
-        await db.houseplants.bulkAdd(SEED_PLANTS as Houseplant[])
-      } else if (count > SEED_PLANTS.length) {
-        await db.houseplants.clear()
+      if (await db.houseplants.count() === 0) {
         await db.houseplants.bulkAdd(SEED_PLANTS as Houseplant[])
       }
     }

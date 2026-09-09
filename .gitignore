@@ -10,3 +10,8 @@ tsconfig.tsbuildinfo
 # Playwright run artefacts (traces, videos, screenshots, junit)
 /tests/playwright-results/
 /tests/playwright-report/
+
+# Local-only harness scratch (sandbox browser path, ad-hoc probes)
+playwright.local.config.ts
+verify.local.mjs
+probe.local.mjs

@@ -62,6 +62,73 @@ function isValidPayload(data: unknown): data is MasterBackupPayload {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   inspectBackup — read the file without touching the database
+   ══════════════════════════════════════════════════════════════════ */
+
+/** What a backup file contains, for showing before anything is replaced. */
+export type BackupSummary = {
+  /** When the backup was taken. */
+  exportedAt:    number
+  /** Schema version the backup was written at, when it recorded one. */
+  schemaVersion: number | null
+  /** Tables carrying at least one row. */
+  tableCount:    number
+  /** Rows across every table in the file. */
+  rowCount:      number
+  /** The largest tables, for a recognisable "yes, that's my data" check. */
+  largest:       { name: string; rows: number }[]
+}
+
+/**
+ * Parses and validates a backup, and describes what is in it.
+ *
+ * Restoring replaces everything: it clears every table before writing.
+ * That is the correct behaviour for a restore and a catastrophic
+ * behaviour for a misclick, and the two are indistinguishable at the
+ * moment a file is chosen. Reading the file first means the question
+ * "replace all of this with that?" can be asked with both halves
+ * actually named, rather than being answered by the act of opening a
+ * file picker.
+ *
+ * Throws the same human-readable errors as the restore itself, so a
+ * malformed file is refused before anything is at risk rather than
+ * after.
+ */
+export function inspectBackup(jsonString: string): BackupSummary {
+  let payload: unknown
+  try {
+    payload = JSON.parse(jsonString)
+  } catch {
+    throw new Error(
+      'Could not parse file — make sure you selected a valid Zenith OS backup (.json).',
+    )
+  }
+
+  if (!isValidPayload(payload)) {
+    throw new Error(
+      'File structure does not match the Zenith OS backup format. ' +
+      'Expected { version, exportedAt, tables } — this file may be corrupted or from an incompatible source.',
+    )
+  }
+
+  const tables = (payload as MasterBackupPayload).tables
+  const counts = Object.entries(tables)
+    .filter(([, rows]) => Array.isArray(rows) && rows.length > 0)
+    .map(([name, rows]) => ({ name, rows: (rows as unknown[]).length }))
+    .sort((a, b) => b.rows - a.rows)
+
+  const raw = payload as MasterBackupPayload & { schemaVersion?: unknown }
+
+  return {
+    exportedAt:    raw.exportedAt,
+    schemaVersion: typeof raw.schemaVersion === 'number' ? raw.schemaVersion : null,
+    tableCount:    counts.length,
+    rowCount:      counts.reduce((n, c) => n + c.rows, 0),
+    largest:       counts.slice(0, 4),
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    importJsonToLocalDatabase
    ══════════════════════════════════════════════════════════════════ */
 

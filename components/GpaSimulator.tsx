@@ -350,6 +350,10 @@ function SemesterCard({
   const [open,       setOpen]       = useState(true)
   const [addingCourse, setAddingCourse] = useState(false)
   const [editingId,  setEditingId]  = useState<number | null>(null)
+  /* Deleting a semester takes every course in it — a term of grades,
+     with nothing that puts them back. One press arms it, the second
+     commits, and the count of what goes is named before it goes. */
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isProjected = semester.isProjected === 1
 
   /* Per-semester GPA (respects slider overrides for projected) */
@@ -402,15 +406,42 @@ function SemesterCard({
           )}
         </div>
 
-        {/* Delete semester button */}
-        <button
-          type="button"
-          className={styles.cardDeleteBtn}
-          onClick={e => { e.stopPropagation(); onDeleteSemester(semester.id!) }}
-          aria-label={`Delete ${semester.name}`}
-        >
-          ×
-        </button>
+        {/* Delete semester — armed, not immediate */}
+        {confirmDelete ? (
+          <span
+            className={styles.cardConfirm}
+            role="alert"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className={styles.cardConfirmLabel}>
+              Delete {semester.name}
+              {courses.length > 0 && ` and its ${courses.length} ${courses.length === 1 ? 'course' : 'courses'}`}?
+            </span>
+            <button
+              type="button"
+              className={styles.cardConfirmYes}
+              onClick={e => { e.stopPropagation(); setConfirmDelete(false); onDeleteSemester(semester.id!) }}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className={styles.cardConfirmNo}
+              onClick={e => { e.stopPropagation(); setConfirmDelete(false) }}
+            >
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className={styles.cardDeleteBtn}
+            onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
+            aria-label={`Delete ${semester.name}`}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Collapsible body — CSS grid-template-rows trick */}

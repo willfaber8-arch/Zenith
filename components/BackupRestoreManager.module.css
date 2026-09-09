@@ -196,3 +196,84 @@
   margin:      0;
   font-family: var(--font-mono);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   CONFIRMING A REPLACEMENT
+
+   Restoring clears every table before writing. Choosing a file used
+   to do that immediately, which made the file picker's OK button the
+   point of no return for the whole database with nothing saying so.
+   ══════════════════════════════════════════════════════════════ */
+
+.confirmPanel {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid rgba(229, 193, 124, 0.35);
+  border-radius: var(--r-md);
+  background: rgba(229, 193, 124, 0.05);
+  animation: restoreConfirmIn 0.24s var(--ease-expo) both;
+}
+
+@keyframes restoreConfirmIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.confirmTitle {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.confirmBody {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.confirmWarn {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #f0b4b4;
+  margin-bottom: var(--sp-4);
+}
+
+.confirmActions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.confirmYes,
+.confirmNo {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+/* The destructive action is the plainer of the two on purpose: it
+   should be reachable, not inviting. */
+.confirmYes {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: #f87171;
+}
+
+.confirmYes:hover { background: rgba(248, 113, 113, 0.12); }
+
+.confirmNo {
+  background: rgba(229, 193, 124, 0.12);
+  border: 1px solid rgba(229, 193, 124, 0.35);
+  color: #e5c17c;
+}
+
+.confirmNo:hover { background: rgba(229, 193, 124, 0.20); }
