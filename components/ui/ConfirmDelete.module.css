@@ -1,0 +1,87 @@
+/* ══════════════════════════════════════════════════════════════
+   ConfirmDelete — the resting button, and the question it becomes.
+   ══════════════════════════════════════════════════════════════ */
+
+.trigger {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-dark);
+  line-height: 1;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              background var(--dur-fast) var(--ease-smooth),
+              opacity var(--dur-fast) var(--ease-smooth);
+}
+
+.triggerSm { width: 22px; height: 22px; font-size: 0.72rem; }
+.triggerMd { width: 30px; height: 30px; font-size: 0.85rem; }
+
+.trigger:hover:not(:disabled) {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.trigger:disabled { opacity: 0.35; cursor: default; }
+
+/* Quiet at rest in a long list, but never hidden from the keyboard —
+   a control you can only reach with a pointer is a control a keyboard
+   user does not have. */
+.reveal { opacity: 0; }
+
+.reveal:focus-visible,
+li:hover > .reveal,
+tr:hover .reveal,
+*:hover > .reveal { opacity: 1; }
+
+@media (pointer: coarse) {
+  /* A touch screen has no hover to reveal it with. */
+  .reveal { opacity: 1; }
+  .triggerSm { width: 30px; height: 30px; }
+}
+
+/* ── Armed ───────────────────────────────────────────────────── */
+
+.armed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  animation: confirmIn 0.14s var(--ease-expo) both;
+}
+
+@keyframes confirmIn {
+  from { opacity: 0; transform: translateX(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.question {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+}
+
+.yes,
+.no {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+/* The destructive half is the plainer of the two on purpose: reachable,
+   not inviting. */
+.yes { border: 1px solid rgba(248, 113, 113, 0.40); color: #f87171; }
+.yes:hover { background: rgba(248, 113, 113, 0.12); }
+
+.no { border: 1px solid var(--border-subtle); color: var(--text-muted); }
+.no:hover { color: var(--text-primary); background: var(--bg-hover); }

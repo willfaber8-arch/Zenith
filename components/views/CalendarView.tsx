@@ -56,6 +56,7 @@ import {
   createReminder, updateTask, setDone, isDone, deleteList, toggleProblem,
 } from '@/lib/taskMutations'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
@@ -1526,7 +1527,6 @@ function TasksPanel() {
    */
   const handleDeleteCategory = async (id: number, name: string) => {
     const moved = await deleteList(id)
-    setConfirmDeleteList(null)
     toast(
       moved === 0
         ? `List "${name}" removed.`
@@ -1556,11 +1556,9 @@ function TasksPanel() {
   const [editingCatId, setEditingCatId] = useState<number | null>(null)
   const [catDraft, setCatDraft] = useState('')
 
-  /* Destructive actions are armed, not immediate. Both are keyed to an
-     id and cleared on the next change, so a primed delete can never
-     survive to a different row than the one you aimed at. */
-  const [confirmDeleteTask, setConfirmDeleteTask] = useState<number | null>(null)
-  const [confirmDeleteList, setConfirmDeleteList] = useState<number | null>(null)
+  /* Arming lives in <ConfirmDelete>, which also guarantees only one
+     row is armed at a time — with per-row state, arming a second left
+     the first armed too. */
 
   /* Which problem set is open, showing its problems. */
   const [expanded, setExpanded] = useState<number | null>(null)
@@ -1568,7 +1566,6 @@ function TasksPanel() {
   const beginEditTask = (item: Assignment) => {
     setEditingTaskId(item.id!)
     setTaskEditError(null)
-    setConfirmDeleteTask(null)
     setTaskDraft({
       title:      item.title,
       dueDate:    hasDueDate(item) ? item.dueDate : '',
@@ -1620,7 +1617,6 @@ function TasksPanel() {
       keys:    [item.id!],
       message: `“${item.title}” deleted.`,
     })
-    setConfirmDeleteTask(null)
   }
 
   const handleToggleProblem = async (a: Assignment, problemId: string) => {
@@ -1770,35 +1766,12 @@ function TasksPanel() {
               )}
               <span className={styles.taskCategoryCount}>{openCount} open</span>
               {cat !== null && (
-                confirmDeleteList === cat.id ? (
-                  <span className={styles.confirmRow} role="alert">
-                    <span className={styles.confirmLabel}>Delete list? Its tasks become unfiled.</span>
-                    <button
-                      type="button"
-                      className={styles.confirmYes}
-                      onClick={() => void handleDeleteCategory(cat.id!, cat.name)}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.confirmNo}
-                      onClick={() => setConfirmDeleteList(null)}
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.deleteCategoryBtn}
-                    onClick={() => { setConfirmDeleteList(cat.id!); setConfirmDeleteTask(null) }}
-                    aria-label={`Delete list ${cat.name}`}
-                    title="Delete list"
-                  >
-                    ✕
-                  </button>
-                )
+                <ConfirmDelete
+                  label={`list ${cat.name}`}
+                  question="Its tasks become unfiled."
+                  onConfirm={() => handleDeleteCategory(cat.id!, cat.name)}
+                  className={styles.deleteCategoryBtn}
+                />
               )}
             </div>
 
@@ -1934,34 +1907,11 @@ function TasksPanel() {
                           >
                             ✎
                           </button>
-                          {confirmDeleteTask === item.id ? (
-                            <span className={styles.confirmRow} role="alert">
-                              <button
-                                type="button"
-                                className={styles.confirmYes}
-                                onClick={() => void handleDeleteTask(item)}
-                              >
-                                Delete
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.confirmNo}
-                                onClick={() => setConfirmDeleteTask(null)}
-                              >
-                                Cancel
-                              </button>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className={styles.deleteTaskBtn}
-                              onClick={() => { setConfirmDeleteTask(item.id!); setConfirmDeleteList(null) }}
-                              aria-label={`Delete ${item.title}`}
-                              title="Delete task"
-                            >
-                              ✕
-                            </button>
-                          )}
+                          <ConfirmDelete
+                            label={item.title}
+                            onConfirm={() => handleDeleteTask(item)}
+                            className={styles.deleteTaskBtn}
+                          />
                         </>
                       )}
 

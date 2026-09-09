@@ -30,6 +30,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type QuickNote } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import {
   pendingTasks, toggleLine, checklistProgress, detectTasks, type DetectedTask,
 } from '@/lib/engines/NoteTaskDetector'
@@ -172,7 +173,6 @@ export default function NotesView() {
   /* Two-step delete. Holding the pending id rather than a boolean means
      a second note's button can never inherit the first one's armed
      state. */
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const loaded = notes !== undefined
   const all: QuickNote[] = useMemo(() => notes ?? [], [notes])
@@ -404,23 +404,19 @@ export default function NotesView() {
    * A dialog for every delete is heavy; a single click on a ✕ next to
    * the text you were just editing is how notes get lost.
    */
-  const destroy = async (n: QuickNote) => {
+  /* Arming lives in <ConfirmDelete>; this is what happens once it has
+     been confirmed. Deleting a piece of writing is the one most worth
+     being able to take back, so the toast carries the way back too. */
+  const destroyNow = async (n: QuickNote) => {
     if (!db || n.id == null) return
-    if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); return }
-    /* Deleting a piece of writing is the one worth being able to take
-       back, so the toast carries the way back with it. */
     await undoableDelete({
       table:   'quickNotes',
       keys:    [n.id],
       message: n.title ? `“${n.title}” deleted.` : 'Note deleted.',
     })
-    setConfirmDeleteId(null)
     if (selectedId === n.id) setSelectedId(null)
   }
 
-  /* An armed delete disarms itself when you move to another note, so a
-     primed button never survives to a different piece of writing. */
-  useEffect(() => { setConfirmDeleteId(null) }, [selectedId])
 
   /* ── Folders ─────────────────────────────────────────────────── */
 
@@ -860,34 +856,12 @@ export default function NotesView() {
                     instead, which is a step you can see rather than one
                     you have to know about.
                   */}
-                  {confirmDeleteId === selected.id ? (
-                    <span className={styles.confirmDelete}>
-                      <button
-                        type="button"
-                        className={styles.confirmDeleteYes}
-                        onClick={() => void destroy(selected)}
-                        autoFocus
-                      >
-                        Delete for good
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.confirmDeleteNo}
-                        onClick={() => setConfirmDeleteId(null)}
-                      >
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button" className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                      onClick={() => void destroy(selected)}
-                      title="Delete this note"
-                    >
-                      <span aria-hidden="true">✕</span>
-                      <span className="sr-only">Delete note</span>
-                    </button>
-                  )}
+                  <ConfirmDelete
+                    label={selected.title || 'this note'}
+                    glyph="✕"
+                    onConfirm={() => destroyNow(selected)}
+                    className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                  />
                 </div>
               </div>
 

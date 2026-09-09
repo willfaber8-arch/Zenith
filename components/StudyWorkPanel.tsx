@@ -26,6 +26,7 @@ import {
   setDone, isDone, updateTask, toggleProblem as commitProblem,
 } from '@/lib/taskMutations'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './StudyWorkPanel.module.css'
 import MathText from '@/components/MathText'
 
@@ -144,12 +145,10 @@ export default function StudyWorkPanel() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [draft, setDraft] = useState({ title: '', dueDate: '', priority: 'medium' as Priority, courseId: '' })
   const [editError, setEditError] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
 
   const beginEdit = useCallback((a: Assignment) => {
     setEditingId(a.id ?? null)
     setEditError(null)
-    setConfirmDelete(null)
     setExpanded(null)
     setDraft({
       title:    a.title,
@@ -183,7 +182,6 @@ export default function StudyWorkPanel() {
       keys:    [a.id],
       message: `“${a.title}” deleted.`,
     })
-    setConfirmDelete(null)
   }, [undoableDelete])
 
   const create = useCallback(async (input: {
@@ -400,29 +398,11 @@ export default function StudyWorkPanel() {
                   ✎
                 </button>
 
-                {confirmDelete === a.id ? (
-                  /* Delete asks first, in place — an explicit second
-                     press you can see, keyed to this row so a primed
-                     delete can never land on a different one. */
-                  <span className={styles.confirmRow} role="alert">
-                    <button type="button" className={styles.confirmYes} onClick={() => void removeTask(a)}>
-                      Delete
-                    </button>
-                    <button type="button" className={styles.confirmNo} onClick={() => setConfirmDelete(null)}>
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.rowAction}
-                    onClick={() => { setConfirmDelete(a.id ?? null); setEditingId(null) }}
-                    aria-label={`Delete ${a.title}`}
-                    title="Delete"
-                  >
-                    ✕
-                  </button>
-                )}
+                <ConfirmDelete
+                  label={a.title}
+                  onConfirm={() => removeTask(a)}
+                  className={styles.rowAction}
+                />
               </div>
               )}
 

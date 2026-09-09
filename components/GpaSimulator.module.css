@@ -975,39 +975,3 @@
     flex-wrap: wrap;
   }
 }
-
-/* ── Arming a semester delete ──────────────────────────────────
-   The × removed a semester and every course inside it in one press,
-   with nothing that put them back. Named and asked for now. */
-
-.cardConfirm {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex-shrink: 0;
-}
-
-.cardConfirmLabel {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--text-muted);
-}
-
-.cardConfirmYes,
-.cardConfirmNo {
-  padding: 1px var(--sp-2);
-  border-radius: var(--r-sm);
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-smooth),
-              color var(--dur-fast) var(--ease-smooth);
-}
-
-.cardConfirmYes { border: 1px solid rgba(248, 113, 113, 0.40); color: #f87171; }
-.cardConfirmYes:hover { background: rgba(248, 113, 113, 0.12); }
-
-.cardConfirmNo { border: 1px solid var(--border-subtle); color: var(--text-muted); }
-.cardConfirmNo:hover { color: var(--text-primary); background: var(--bg-hover); }

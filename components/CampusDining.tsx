@@ -17,6 +17,7 @@ import {
   evaluateStatus, describeStatus, sortRank, fmtTime,
   type DiningStatus, type Weekday,
 } from '@/lib/engines/DiningHours'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './CampusDining.module.css'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -158,9 +159,12 @@ export default function CampusDining({ universityId }: { universityId: string })
                   >
                     {open ? 'Done' : 'Edit hours'}
                   </button>
-                  <button type="button" className={styles.linkQuiet} onClick={() => remove(hall)}>
-                    Remove
-                  </button>
+                  <ConfirmDelete
+                    label={hall.name}
+                    glyph="Remove"
+                    onConfirm={() => remove(hall)}
+                    className={styles.linkQuiet}
+                  />
                 </div>
               </div>
 

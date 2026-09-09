@@ -12,6 +12,7 @@ import {
 } from '@/utils/botanyStats'
 import { useToast } from '@/lib/ToastContext'
 import Icon, { type IconName } from '@/components/ui/Icon'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './BotanistView.module.css'
 import { toLocalDateStr, daysSinceLocalDate } from '@/utils/localDate'
 
@@ -291,7 +292,14 @@ function PlantModal({
                 <button type="button" className={styles.backBtn} onClick={() => setCustom(false)}>← Back</button>
               )}
               {initial && onDelete && (
-                <button type="button" className={styles.deleteModalBtn} onClick={onDelete}>Delete Plant</button>
+                <ConfirmDelete
+                  label={initial.plantName}
+                  question="Its journal and health history go too."
+                  glyph="Delete Plant"
+                  size="md"
+                  onConfirm={onDelete}
+                  className={styles.deleteModalBtn}
+                />
               )}
               <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
               <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={!canSave}>
@@ -614,12 +622,11 @@ function PlantLogModal({ plant, onClose }: { plant: Houseplant; onClose: () => v
                     {typeof e.healthRating === 'number' && (
                       <span className={styles.logEntryHealth}><Icon name={HEALTH_ICON[e.healthRating]} size={14} /></span>
                     )}
-                    <button
-                      type="button"
+                    <ConfirmDelete
+                      label="this entry"
+                      onConfirm={() => removeEntry(e.id)}
                       className={styles.logEntryDelete}
-                      onClick={() => void removeEntry(e.id)}
-                      aria-label="Delete entry"
-                    >✕</button>
+                    />
                   </div>
                   {e.photo && (
                     // eslint-disable-next-line @next/next/no-img-element

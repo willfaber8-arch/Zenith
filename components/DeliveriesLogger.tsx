@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import type { DeliveryItem, DeliveryStatus } from '@/types/finance'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './DeliveriesLogger.module.css'
 
 /* ── Seed data ───────────────────────────────────────────────────── */
@@ -248,13 +249,11 @@ export default function DeliveriesLogger() {
                       Collected
                     </button>
                   )}
-                  <button
+                  <ConfirmDelete
+                    label={item.itemName}
+                    onConfirm={() => removeItem(item.id!)}
                     className={styles.deleteBtn}
-                    onClick={() => removeItem(item.id!)}
-                    title="Remove entry"
-                  >
-                    ✕
-                  </button>
+                  />
                 </div>
               </div>
             ))
