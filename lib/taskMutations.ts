@@ -139,6 +139,31 @@ export async function toggleProblem(
   return { allDone, justCompleted }
 }
 
+/* ── Steps ───────────────────────────────────────────────────── */
+
+/**
+ * Replaces a task's list of steps.
+ *
+ * The same field problem sets use — see utils/subtasks on why this is
+ * naming rather than a second structure. Adding the first step to a
+ * finished task reopens it: a task cannot be both complete and holding
+ * something unticked, and silently leaving it closed would hide the
+ * step that was just added.
+ */
+export async function setSubtasks(
+  a: Assignment, items: ProblemItem[],
+): Promise<void> {
+  if (!db || a.id == null) return
+  const anyOpen = items.some(i => !i.done)
+  await db.assignments.update(a.id, {
+    problems: items,
+    ...(anyOpen && a.status === 'completed'
+      ? { status: 'pending' as AssignmentStatus }
+      : {}),
+    updatedAt: Date.now(),
+  })
+}
+
 /* ── Deleting ────────────────────────────────────────────────── */
 
 export async function deleteTask(id: number): Promise<void> {

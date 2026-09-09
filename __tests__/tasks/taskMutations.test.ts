@@ -11,7 +11,7 @@
 import 'fake-indexeddb/auto'
 import { db, type Assignment } from '@/lib/db'
 import {
-  createReminder, updateTask, deleteTask, deleteList, setDone, isDone, toggleProblem,
+  createReminder, updateTask, deleteTask, deleteList, setDone, isDone, toggleProblem, setSubtasks,
 } from '@/lib/taskMutations'
 
 beforeEach(async () => {
@@ -241,5 +241,49 @@ describe('ticking a repeating task', () => {
     const res = await setDone((await get(id))!, true)
     expect(res).toBeNull()
     expect((await get(id))?.status).toBe('completed')
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════
+   Steps on any task
+   ══════════════════════════════════════════════════════════════ */
+
+describe('giving a task steps', () => {
+  it('stores them on an ordinary reminder, not just a problem set', async () => {
+    const id = await createReminder({ title: 'Plan the trip' })
+    await setSubtasks((await get(id!))!, [
+      { id: 's1', label: 'book flights', done: false },
+      { id: 's2', label: 'book hotel',   done: false },
+    ])
+    const row = await get(id!)
+    expect(row?.problems?.map(p => p.label)).toEqual(['book flights', 'book hotel'])
+    expect(row?.kind).toBe('reminder')     // still a plain reminder
+  })
+
+  /*
+   * A task cannot be both complete and holding something unticked.
+   * Leaving it closed would hide the step that was just added.
+   */
+  it('reopens a finished task when an unticked step is added to it', async () => {
+    const id = await createReminder({ title: 'Plan the trip' })
+    await db.assignments.update(id!, { status: 'completed' })
+
+    await setSubtasks((await get(id!))!, [{ id: 's1', label: 'one more thing', done: false }])
+    expect((await get(id!))?.status).toBe('pending')
+  })
+
+  it('leaves a finished task closed when every step added is already done', async () => {
+    const id = await createReminder({ title: 'Plan the trip' })
+    await db.assignments.update(id!, { status: 'completed' })
+
+    await setSubtasks((await get(id!))!, [{ id: 's1', label: 'already did it', done: true }])
+    expect((await get(id!))?.status).toBe('completed')
+  })
+
+  it('can clear the list back to nothing', async () => {
+    const id = await createReminder({ title: 'Plan the trip' })
+    await setSubtasks((await get(id!))!, [{ id: 's1', label: 'x', done: false }])
+    await setSubtasks((await get(id!))!, [])
+    expect((await get(id!))?.problems).toEqual([])
   })
 })

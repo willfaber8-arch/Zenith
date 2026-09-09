@@ -2944,3 +2944,42 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+/* ── Steps within a task ─────────────────────────────────────────
+   Any task can be broken down, not only a problem set — the storage
+   was never problem-set-shaped, only the wording was. */
+
+.taskProblemRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.taskProblemRow .taskProblem { flex: 1 1 auto; min-width: 0; }
+
+.taskProblemDelete { opacity: 0; }
+.taskProblemRow:hover .taskProblemDelete,
+.taskProblemDelete:focus-visible { opacity: 1; }
+
+@media (pointer: coarse) {
+  /* No hover to reveal it with. */
+  .taskProblemDelete { opacity: 1; }
+}
+
+.addStepInput {
+  width: 100%;
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+}
+
+.addStepInput::placeholder { color: var(--text-dark); }
+.addStepInput:focus {
+  outline: none;
+  border-bottom-color: var(--accent-purple-dim);
+}

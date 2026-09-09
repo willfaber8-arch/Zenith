@@ -48,13 +48,16 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
-import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment } from '@/lib/db'
+import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem } from '@/lib/db'
 import {
   kindOf, hasDueDate, isOverdue, isOpen, groupByList, KIND_BADGE, type TaskKind,
 } from '@/utils/taskUnify'
 import {
-  createReminder, updateTask, setDone, isDone, deleteList, toggleProblem,
+  createReminder, updateTask, setDone, isDone, deleteList, toggleProblem, setSubtasks,
 } from '@/lib/taskMutations'
+import {
+  addSubtask, removeSubtask, parseSubtaskLines, itemNoun, type SubtaskLike,
+} from '@/utils/subtasks'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import {
@@ -1564,8 +1567,26 @@ function TasksPanel() {
      row is armed at a time — with per-row state, arming a second left
      the first armed too. */
 
-  /* Which problem set is open, showing its problems. */
+  /* Which task is open, showing its steps. */
   const [expanded, setExpanded] = useState<number | null>(null)
+  /* Per-task text for the "add a step" box. */
+  const [stepDrafts, setStepDrafts] = useState<Record<number, string>>({})
+
+  const handleAddStep = async (item: Assignment, pasted?: string) => {
+    const text = pasted ?? stepDrafts[item.id!] ?? ''
+    if (!text.trim()) return
+    /* A pasted list becomes one step per line — people paste the
+       bullets along with it, so those are stripped. */
+    const lines = parseSubtaskLines(text)
+    let items = (item.problems ?? []) as SubtaskLike[]
+    for (const line of lines) {
+      const r = addSubtask(items, line)
+      if (!r.ok) { toast(r.reason, 'error'); break }
+      items = r.items
+    }
+    await setSubtasks(item, items as ProblemItem[])
+    setStepDrafts(d => ({ ...d, [item.id!]: '' }))
+  }
 
   const beginEditTask = (item: Assignment) => {
     setEditingTaskId(item.id!)
@@ -1908,17 +1929,21 @@ function TasksPanel() {
                           {item.courseId && (
                             <span className={styles.taskCourseTag}>{item.courseId}</span>
                           )}
-                          {prog && (
-                            <button
-                              type="button"
-                              className={styles.taskProgress}
-                              onClick={() => setExpanded(isExpanded ? null : (item.id ?? null))}
-                              aria-expanded={isExpanded}
-                              aria-label={`${prog.done} of ${prog.total} problems done — ${isExpanded ? 'collapse' : 'expand'}`}
-                            >
-                              {prog.done}/{prog.total}
-                            </button>
-                          )}
+                          {/* Every task can be broken into steps, so the
+                              control is always here; it just reads as a
+                              count once there are any. */}
+                          <button
+                            type="button"
+                            className={styles.taskProgress}
+                            onClick={() => setExpanded(isExpanded ? null : (item.id ?? null))}
+                            aria-expanded={isExpanded}
+                            aria-label={prog
+                              ? `${prog.done} of ${prog.total} ${itemNoun(kind)}s done — ${isExpanded ? 'collapse' : 'expand'}`
+                              : `Add steps to ${item.title}`}
+                            title={prog ? undefined : 'Break this into steps'}
+                          >
+                            {prog ? `${prog.done}/${prog.total}` : '⋯'}
+                          </button>
                           {hasDueDate(item) && (
                             <span className={`${styles.taskDueDate} ${overdue ? styles.taskDueDateOverdue : ''}`}>
                               {overdue ? '⚠ ' : ''}{item.dueDate}
@@ -1941,10 +1966,10 @@ function TasksPanel() {
                         </>
                       )}
 
-                      {isExpanded && prog && (
+                      {isExpanded && (
                         <ul className={styles.taskProblems}>
-                          {item.problems!.map(p => (
-                            <li key={p.id}>
+                          {(item.problems ?? []).map(p => (
+                            <li key={p.id} className={styles.taskProblemRow}>
                               <label className={styles.taskProblem}>
                                 <input
                                   type="checkbox"
@@ -1953,8 +1978,40 @@ function TasksPanel() {
                                 />
                                 <span className={p.done ? styles.taskProblemDone : ''}>{p.label}</span>
                               </label>
+                              <ConfirmDelete
+                                label={p.label}
+                                onConfirm={() => setSubtasks(item, removeSubtask(item.problems, p.id) as ProblemItem[])}
+                                className={styles.taskProblemDelete}
+                              />
                             </li>
                           ))}
+                          <li>
+                            <input
+                              type="text"
+                              className={styles.addStepInput}
+                              placeholder={`Add a ${itemNoun(kind)}…`}
+                              aria-label={`Add a ${itemNoun(kind)} to ${item.title}`}
+                              value={stepDrafts[item.id!] ?? ''}
+                              onChange={e => setStepDrafts(d => ({ ...d, [item.id!]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') void handleAddStep(item) }}
+                              /*
+                                A single-line input silently flattens a
+                                pasted list: the browser strips the
+                                newlines before React ever sees them, so
+                                "book flights / book hotel / renew
+                                passport" arrives as one step with the
+                                bullets still in it. Reading the
+                                clipboard here is what makes pasting a
+                                list actually produce a list.
+                              */
+                              onPaste={e => {
+                                const text = e.clipboardData.getData('text')
+                                if (!text.includes('\n')) return   // ordinary paste
+                                e.preventDefault()
+                                void handleAddStep(item, text)
+                              }}
+                            />
+                          </li>
                         </ul>
                       )}
                     </li>
