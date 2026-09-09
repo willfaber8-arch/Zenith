@@ -220,3 +220,51 @@
 @media (max-width: 767px) {
   .root { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   CONTENT RESULTS
+
+   Modules resolve instantly from a static index; matches from the
+   database arrive a moment later. The heading is what stops that
+   feeling like the list glitched.
+   ══════════════════════════════════════════════════════════════ */
+
+.sectionHeading {
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--sp-2);
+}
+
+/* First section in the panel needs no rule above it. */
+li:first-child .sectionHeading {
+  border-top: none;
+  margin-top: 0;
+}
+
+.resultKind {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dark);
+}
+
+/* Each kind carries its own tint, so a glance down the list tells you
+   what sort of thing each row is without reading the label. */
+.resultKind[data-kind='task']  { color: var(--accent-purple); border-color: var(--accent-purple-dim); }
+.resultKind[data-kind='note']  { color: #c2a980; border-color: rgba(194, 169, 128, 0.35); }
+.resultKind[data-kind='event'] { color: #60a5fa; border-color: rgba(96, 165, 250, 0.35); }
+.resultKind[data-kind='book']  { color: #f97316; border-color: rgba(249, 115, 22, 0.35); }
+.resultKind[data-kind='link']  { color: var(--accent-green); border-color: rgba(82, 204, 163, 0.35); }
+.resultKind[data-kind='word']  { color: #a78bfa; border-color: rgba(167, 139, 250, 0.35); }
