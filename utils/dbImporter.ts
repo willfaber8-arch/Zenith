@@ -36,6 +36,20 @@ const SKIP_RESTORE: ReadonlySet<string> = new Set([
   'outboxMutations',
 ])
 
+/*
+ * Tables left completely alone — neither cleared nor repopulated.
+ *
+ * `db_snapshots` holds the automatic local copies. Clearing it would
+ * destroy the way back at the exact moment someone is using a way back:
+ * restore the wrong snapshot and every other snapshot, including the
+ * one taken seconds earlier as a safety net, would be gone with it.
+ * They are recovery state rather than user data, so a restore has no
+ * business touching them.
+ */
+const PRESERVE: ReadonlySet<string> = new Set([
+  'db_snapshots',
+])
+
 /* ── Return type ─────────────────────────────────────────────────── */
 
 export type ImportResult = {
@@ -180,6 +194,9 @@ export async function importJsonToLocalDatabase(
    */
   await db.transaction('rw', db.tables, async () => {
     for (const table of db.tables) {
+      /* Step 0 — some tables are not part of a restore at all */
+      if (PRESERVE.has(table.name)) continue
+
       /* Step 1 — always clear, regardless of what the backup contains */
       await table.clear()
 

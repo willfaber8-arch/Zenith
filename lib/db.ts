@@ -586,6 +586,29 @@ export interface NoteFolder {
   createdAt: number   //   Unix ms
 }
 
+/**
+ * DbSnapshot — an automatic copy of the whole database, kept locally.
+ *
+ * The export button only helps someone who remembered to press it, and
+ * the people who most need a way back are the ones who did not. A
+ * snapshot is taken quietly once a day so "yesterday" is always
+ * available without anyone having planned for it.
+ *
+ * The payload is the same shape the export writes, stored as a string
+ * rather than a nested object: IndexedDB would otherwise structure-clone
+ * every row of every table on each read, and this is only ever read
+ * whole.
+ */
+export interface DbSnapshot {
+  id:            string   // * PK — explicit UUID
+  takenAt:       number   // * indexed — Unix ms; newest-first ordering
+  schemaVersion: number
+  /** Rows across every table, for showing what a snapshot holds. */
+  rowCount:      number
+  /** Serialised MasterBackupPayload. */
+  payload:       string
+}
+
 export interface TodoCategory {
   id:        number   // * PK — auto-increment
   name:      string   // * indexed — category display name
@@ -714,6 +737,7 @@ class ZenithDatabase extends Dexie {
   reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
+  db_snapshots!:                EntityTable<DbSnapshot,               'id'>
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
@@ -1490,6 +1514,16 @@ class ZenithDatabase extends Dexie {
        * and a row can never be counted in both lists at once.
        */
       await tx.table('todo_items').clear()
+    })
+
+    /*
+     * Version 47 — automatic local snapshots.
+     *
+     * `takenAt` is indexed so the newest is a query rather than a scan
+     * of payloads; nothing else about a snapshot is ever filtered on.
+     */
+    this.version(47).stores({
+      db_snapshots: 'id, takenAt',
     })
   }
 }

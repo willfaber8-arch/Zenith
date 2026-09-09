@@ -41,6 +41,7 @@ import { setPreviewId, clearPreview, subscribePreview, getPreviewId } from '@/li
 import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } from '@/lib/bgPreview'
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
+import LocalSnapshots            from '@/components/LocalSnapshots'
 import CloudSnapshotManager       from '@/components/CloudSnapshotManager'
 import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -1244,6 +1245,8 @@ export default function SettingsView() {
             Use the archive system below to back up or restore your entire workspace.
           </p>
           <BackupRestoreManager />
+
+          <LocalSnapshots />
 
           {/* ── Reset the library ───────────────────────────────────
               Shelves and cover art are additive, so an existing library
