@@ -34,6 +34,7 @@ import {
 } from '@/lib/calendarMutations'
 import EventDetailPopover from '@/components/EventDetailPopover'
 import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
+import { normaliseTaskEdit, isNoOpEdit, MAX_TITLE, type TaskDraft } from '@/utils/taskEdit'
 import {
   loadLocked, saveLocked, loadHourSpan, saveHourSpan, type HourSpan,
 } from '@/utils/calendarPrefs'
@@ -1497,6 +1498,46 @@ function TasksPanel() {
     setAddTaskState(prev => ({ ...prev, [catId]: { title: '', dueDate: '' } }))
   }
 
+  /* Which task is open for editing, and the draft being typed into it. */
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [taskDraft, setTaskDraft] = useState<TaskDraft>({ title: '', dueDate: '', categoryId: 0 })
+  const [taskEditError, setTaskEditError] = useState<string | null>(null)
+
+  /* Renaming a list — the same gap one level up: lists could be made
+     and destroyed but never corrected. */
+  const [editingCatId, setEditingCatId] = useState<number | null>(null)
+  const [catDraft, setCatDraft] = useState('')
+
+  const beginEditTask = (item: TodoItem) => {
+    setEditingTaskId(item.id!)
+    setTaskEditError(null)
+    setTaskDraft({
+      title:      item.title,
+      dueDate:    item.dueDate ?? '',
+      categoryId: item.categoryId,
+    })
+  }
+
+  const cancelEditTask = () => { setEditingTaskId(null); setTaskEditError(null) }
+
+  const handleSaveTask = async (item: TodoItem) => {
+    const result = normaliseTaskEdit(taskDraft)
+    if (!result.ok) { setTaskEditError(result.reason); return }
+    if (isNoOpEdit(result.patch, item)) { cancelEditTask(); return }
+    if (!db) return
+    await db.todo_items.update(item.id!, result.patch)
+    cancelEditTask()
+  }
+
+  const handleRenameCategory = async (id: number) => {
+    const name = catDraft.trim()
+    /* An empty name would leave a list nobody can identify, so a blank
+       rename is a cancel rather than a destructive save. */
+    if (!name || !db) { setEditingCatId(null); return }
+    await db.todo_categories.update(id, { name })
+    setEditingCatId(null)
+  }
+
   const handleToggleTask = async (item: TodoItem) => {
     if (!db) return
     await db.todo_items.update(item.id!, { completed: item.completed === 0 ? 1 : 0 })
@@ -1557,7 +1598,31 @@ function TasksPanel() {
         return (
           <div key={cat.id} className={styles.taskCategory}>
             <div className={styles.taskCategoryHeader}>
-              <span className={styles.taskCategoryName}>{cat.name}</span>
+              {editingCatId === cat.id ? (
+                <input
+                  type="text"
+                  className={styles.catRenameInput}
+                  value={catDraft}
+                  onChange={e => setCatDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  void handleRenameCategory(cat.id!)
+                    if (e.key === 'Escape') setEditingCatId(null)
+                  }}
+                  onBlur={() => void handleRenameCategory(cat.id!)}
+                  aria-label={`Rename list ${cat.name}`}
+                  maxLength={60}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.taskCategoryName}
+                  onClick={() => { setEditingCatId(cat.id!); setCatDraft(cat.name) }}
+                  title="Rename this list"
+                >
+                  {cat.name}
+                </button>
+              )}
               <span className={styles.taskCategoryCount}>{openCount} open</span>
               <button
                 type="button"
@@ -1576,30 +1641,119 @@ function TasksPanel() {
                   const isOverdue = item.completed === 0 && item.dueDate && item.dueDate < today
                   return (
                     <li key={item.id} className={styles.taskItem}>
-                      <button
-                        type="button"
-                        className={`${styles.taskCheckbox} ${item.completed === 1 ? styles.taskCheckboxDone : ''}`}
-                        onClick={() => void handleToggleTask(item)}
-                        aria-label={item.completed === 1 ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        {item.completed === 1 && <span className={styles.taskCheckMark}>✓</span>}
-                      </button>
-                      <span className={`${styles.taskTitle} ${item.completed === 1 ? styles.taskTitleDone : ''}`}>
-                        {item.title}
-                      </span>
-                      {item.dueDate && (
-                        <span className={`${styles.taskDueDate} ${isOverdue ? styles.taskDueDateOverdue : ''}`}>
-                          {isOverdue ? '⚠ ' : ''}{item.dueDate}
-                        </span>
+                      {editingTaskId === item.id ? (
+                        /*
+                          The row becomes the form, rather than opening a
+                          dialog over it — a to-do list is a place for
+                          quick corrections, and a modal for fixing a
+                          typo is more ceremony than the change deserves.
+                        */
+                        <div
+                          className={styles.taskEditRow}
+                          /*
+                            Escape is handled for the whole row, not just
+                            the text fields. After a refused save the
+                            focus is on the Save button, and an Escape
+                            bound only to the inputs left the row stuck
+                            open with no obvious way out.
+                          */
+                          onKeyDown={e => { if (e.key === 'Escape') cancelEditTask() }}
+                        >
+                          <input
+                            type="text"
+                            className={styles.taskEditTitle}
+                            value={taskDraft.title}
+                            onChange={e => {
+                              setTaskDraft(d => ({ ...d, title: e.target.value }))
+                              setTaskEditError(null)
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleSaveTask(item) }}
+                            maxLength={MAX_TITLE}
+                            aria-label="Task title"
+                            autoFocus
+                          />
+                          <input
+                            type="date"
+                            className={styles.taskEditDate}
+                            value={taskDraft.dueDate}
+                            onChange={e => setTaskDraft(d => ({ ...d, dueDate: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleSaveTask(item) }}
+                            aria-label="Due date — clear it to remove the deadline"
+                          />
+                          {categories.length > 1 && (
+                            <select
+                              className={styles.taskEditList}
+                              value={taskDraft.categoryId}
+                              onChange={e => setTaskDraft(d => ({ ...d, categoryId: Number(e.target.value) }))}
+                              aria-label="Move to list"
+                            >
+                              {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.taskEditSave}
+                            onClick={() => void handleSaveTask(item)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.taskEditCancel}
+                            onClick={cancelEditTask}
+                          >
+                            Cancel
+                          </button>
+                          {taskEditError && (
+                            <span className={styles.taskEditError} role="alert">{taskEditError}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={`${styles.taskCheckbox} ${item.completed === 1 ? styles.taskCheckboxDone : ''}`}
+                            onClick={() => void handleToggleTask(item)}
+                            aria-label={item.completed === 1 ? 'Mark incomplete' : 'Mark complete'}
+                          >
+                            {item.completed === 1 && <span className={styles.taskCheckMark}>✓</span>}
+                          </button>
+                          {/* The title is the edit affordance: clicking what
+                              you want to change is where the hand goes. */}
+                          <button
+                            type="button"
+                            className={`${styles.taskTitle} ${item.completed === 1 ? styles.taskTitleDone : ''}`}
+                            onClick={() => beginEditTask(item)}
+                            title="Click to edit"
+                          >
+                            {item.title}
+                          </button>
+                          {item.dueDate && (
+                            <span className={`${styles.taskDueDate} ${isOverdue ? styles.taskDueDateOverdue : ''}`}>
+                              {isOverdue ? '⚠ ' : ''}{item.dueDate}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.editTaskBtn}
+                            onClick={() => beginEditTask(item)}
+                            aria-label={`Edit ${item.title}`}
+                            title="Edit task"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.deleteTaskBtn}
+                            onClick={() => void handleDeleteTask(item.id!)}
+                            aria-label="Delete task"
+                          >
+                            ✕
+                          </button>
+                        </>
                       )}
-                      <button
-                        type="button"
-                        className={styles.deleteTaskBtn}
-                        onClick={() => void handleDeleteTask(item.id!)}
-                        aria-label="Delete task"
-                      >
-                        ✕
-                      </button>
                     </li>
                   )
                 })}
