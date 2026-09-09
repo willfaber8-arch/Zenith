@@ -339,3 +339,166 @@
 /* The writing surface has no visible border, so its focus state is the
    panel edge lighting up rather than a ring around the text. */
 .editor:focus-within { border-color: var(--cat-border, rgba(124, 149, 255, 0.28)); }
+
+/* ══════════════════════════════════════════════════════════
+   Folders
+   ══════════════════════════════════════════════════════════ */
+
+/*
+ * A horizontal strip rather than a third column. The two-pane layout is
+ * already tight, and a rail of folders would squeeze the list that
+ * actually holds the writing.
+ */
+.folderStrip {
+  display:     flex;
+  flex-wrap:   wrap;
+  align-items: center;
+  gap:         var(--sp-2);
+  padding:     var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.folderChipWrap {
+  display:     inline-flex;
+  align-items: center;
+  position:    relative;
+}
+
+.folderChip {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  padding:       3px 10px;
+  border-radius: var(--r-xl);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-muted);
+  font-family:   var(--font-body);
+  font-size:     0.72rem;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    border-color var(--dur-fast) ease, color var(--dur-fast) ease,
+                 background var(--dur-fast) ease;
+}
+
+.folderChip:hover { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+
+.folderChipOn {
+  border-color: var(--accent-purple-dim);
+  background:   var(--bg-active);
+  color:        var(--accent-purple);
+}
+
+.folderCount {
+  font-family:  var(--font-mono);
+  font-size:    0.6rem;
+  color:        var(--text-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.folderChipOn .folderCount { color: var(--accent-purple); opacity: 0.75; }
+
+/* Revealed on hover so the strip stays quiet with many folders. */
+.folderChipX {
+  width:       16px;
+  height:      16px;
+  margin-left: 2px;
+  border:      none;
+  background:  transparent;
+  color:       var(--text-dark);
+  font-size:   0.8rem;
+  line-height: 1;
+  cursor:      pointer;
+  opacity:     0;
+  transition:  opacity var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.folderChipWrap:hover .folderChipX,
+.folderChipX:focus-visible { opacity: 1; }
+.folderChipX:hover { color: #f87171; }
+
+@media (pointer: coarse) { .folderChipX { opacity: 1; width: 22px; height: 22px; } }
+
+.folderAdd {
+  padding:        3px 10px;
+  border-radius:  var(--r-xl);
+  border:         1px dashed var(--border-subtle);
+  background:     transparent;
+  color:          var(--text-dark);
+  font-family:    var(--font-mono);
+  font-size:      0.62rem;
+  letter-spacing: 0.04em;
+  cursor:         pointer;
+}
+
+.folderAdd:hover { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+
+.folderRenameInput {
+  padding:       3px var(--sp-2);
+  border-radius: var(--r-xl);
+  border:        1px solid rgba(124, 149, 255, 0.45);
+  background:    var(--bg-main);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.72rem;
+  max-width:     10rem;
+}
+
+.folderRenameInput:focus { outline: none; border-color: rgba(124, 149, 255, 0.70); }
+
+.folderError {
+  margin:    0;
+  padding:   var(--sp-2) var(--sp-3);
+  font-size: 0.72rem;
+  color:     #f87171;
+}
+
+/* The note's own folder, in the editor bar. */
+.notefolderSelect {
+  flex:          0 0 auto;
+  max-width:     9rem;
+  padding:       3px var(--sp-2);
+  border-radius: var(--r-sm);
+  border:        1px solid var(--border-subtle);
+  background:    var(--bg-main);
+  color:         var(--text-muted);
+  font-size:     0.7rem;
+  cursor:        pointer;
+}
+
+.notefolderSelect:focus { outline: none; border-color: rgba(124, 149, 255, 0.45); }
+
+/* ══════════════════════════════════════════════════════════
+   Deleting a note — the second press
+   ══════════════════════════════════════════════════════════ */
+
+.confirmDelete {
+  display:     inline-flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.confirmDeleteYes {
+  padding:       4px var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid rgba(248, 113, 113, 0.45);
+  background:    rgba(248, 113, 113, 0.12);
+  color:         #f87171;
+  font-size:     0.74rem;
+  font-weight:   600;
+  cursor:        pointer;
+  white-space:   nowrap;
+}
+
+.confirmDeleteYes:hover { background: rgba(248, 113, 113, 0.20); }
+
+.confirmDeleteNo {
+  padding:    4px var(--sp-2);
+  border:     none;
+  background: transparent;
+  color:      var(--text-muted);
+  font-size:  0.74rem;
+  cursor:     pointer;
+}
+
+.confirmDeleteNo:hover { color: var(--text-primary); }

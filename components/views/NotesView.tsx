@@ -46,6 +46,10 @@ import {
 import NoteToolbar from '@/components/NoteToolbar'
 import ZenHeading from '@/components/ui/ZenHeading'
 import { CAPTURE_EVENT } from '@/components/MobileTabBar'
+import {
+  validateFolderName, notesInFolder, folderCounts, selectionAfterDelete,
+  ALL_NOTES, UNFILED, MAX_FOLDER_NAME, type FolderSelection,
+} from '@/utils/noteFolders'
 import styles from './NotesView.module.css'
 
 /** Debounce before a keystroke reaches IndexedDB. */
@@ -152,12 +156,28 @@ export default function NotesView() {
     async () => (db ? db.quickNotes.orderBy('updatedAt').reverse().toArray() : []),
     [],
   )
+  const folders = useLiveQuery(
+    async () => (db ? db.noteFolders.orderBy('sortOrder').toArray() : []),
+    [],
+  ) ?? []
+
+  const [folderSel,   setFolderSel]   = useState<FolderSelection>(ALL_NOTES)
+  const [addingFolder, setAddingFolder] = useState(false)
+  const [folderDraft, setFolderDraft]  = useState('')
+  const [folderError, setFolderError]  = useState<string | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<number | null>(null)
+
+  /* Two-step delete. Holding the pending id rather than a boolean means
+     a second note's button can never inherit the first one's armed
+     state. */
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
   const loaded = notes !== undefined
   const all: QuickNote[] = useMemo(() => notes ?? [], [notes])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return all
+    return notesInFolder(all, folderSel)
       .filter(n => (showArchived ? n.archived === 1 : n.archived !== 1))
       .filter(n => !q
         || n.title.toLowerCase().includes(q)
@@ -168,7 +188,7 @@ export default function NotesView() {
         const p = (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
         return p !== 0 ? p : b.updatedAt - a.updatedAt
       })
-  }, [all, query, showArchived])
+  }, [all, query, showArchived, folderSel])
 
   const selected = useMemo(
     () => all.find(n => n.id === selectedId) ?? null,
@@ -377,11 +397,71 @@ export default function NotesView() {
     toast(archived ? 'Note archived.' : 'Note restored.', 'info')
   }
 
+  /*
+   * Deleting is permanent, so it takes two presses rather than a modal.
+   * A dialog for every delete is heavy; a single click on a ✕ next to
+   * the text you were just editing is how notes get lost.
+   */
   const destroy = async (n: QuickNote) => {
     if (!db || n.id == null) return
+    if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); return }
     await db.quickNotes.delete(n.id)
+    setConfirmDeleteId(null)
     if (selectedId === n.id) setSelectedId(null)
     toast('Note deleted.', 'info')
+  }
+
+  /* An armed delete disarms itself when you move to another note, so a
+     primed button never survives to a different piece of writing. */
+  useEffect(() => { setConfirmDeleteId(null) }, [selectedId])
+
+  /* ── Folders ─────────────────────────────────────────────────── */
+
+  const counts = useMemo(
+    () => folderCounts(all.filter(n => n.archived !== 1), folders),
+    [all, folders],
+  )
+
+  const createFolder = async () => {
+    const result = validateFolderName(folderDraft, folders)
+    if (!result.ok) { setFolderError(result.reason); return }
+    if (!db) return
+    const id = await db.noteFolders.add({
+      name: result.name, sortOrder: folders.length, createdAt: Date.now(),
+    } as never) as number
+    setFolderDraft(''); setAddingFolder(false); setFolderError(null)
+    setFolderSel(id)
+  }
+
+  const renameFolder = async (id: number) => {
+    const result = validateFolderName(folderDraft, folders, id)
+    if (!result.ok) { setFolderError(result.reason); return }
+    if (!db) return
+    await db.noteFolders.update(id, { name: result.name })
+    setRenamingFolderId(null); setFolderError(null)
+  }
+
+  /*
+   * Deleting a folder never deletes what is in it. The notes become
+   * unfiled, which is a place they can be found again — losing a folder
+   * should not be able to lose a term's writing with it.
+   */
+  const deleteFolder = async (id: number) => {
+    if (!db) return
+    const inside = all.filter(n => n.folderId === id)
+    await db.transaction('rw', [db.noteFolders, db.quickNotes], async () => {
+      for (const n of inside) await db.quickNotes.update(n.id, { folderId: undefined })
+      await db.noteFolders.delete(id)
+    })
+    setFolderSel(sel => selectionAfterDelete(sel, id))
+    toast(inside.length > 0
+      ? `Folder removed — ${inside.length} ${inside.length === 1 ? 'note is' : 'notes are'} now unfiled.`
+      : 'Folder removed.', 'info')
+  }
+
+  const moveNoteToFolder = async (n: QuickNote, folderId: number | undefined) => {
+    if (!db || n.id == null) return
+    await db.quickNotes.update(n.id, { folderId, updatedAt: Date.now() })
   }
 
   const duplicate = async (n: QuickNote) => {
@@ -542,6 +622,96 @@ export default function NotesView() {
             {showArchived ? '← Back to notes' : 'View archive'}
           </button>
 
+          {/*
+            The folder strip. Horizontal rather than a third column: the
+            two-pane layout is already tight, and a rail of folders would
+            squeeze the list that actually holds the writing.
+          */}
+          <div className={styles.folderStrip} role="tablist" aria-label="Note folders">
+            {([ALL_NOTES, UNFILED] as const).map(k => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={folderSel === k}
+                className={`${styles.folderChip} ${folderSel === k ? styles.folderChipOn : ''}`}
+                onClick={() => setFolderSel(k)}
+              >
+                {k === ALL_NOTES ? 'All' : 'Unfiled'}
+                <span className={styles.folderCount}>{counts.get(k) ?? 0}</span>
+              </button>
+            ))}
+
+            {folders.map(f => (
+              renamingFolderId === f.id ? (
+                <input
+                  key={f.id}
+                  className={styles.folderRenameInput}
+                  value={folderDraft}
+                  onChange={e => { setFolderDraft(e.target.value); setFolderError(null) }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  void renameFolder(f.id)
+                    if (e.key === 'Escape') { setRenamingFolderId(null); setFolderError(null) }
+                  }}
+                  onBlur={() => void renameFolder(f.id)}
+                  maxLength={MAX_FOLDER_NAME}
+                  aria-label={`Rename folder ${f.name}`}
+                  autoFocus
+                />
+              ) : (
+                <span key={f.id} className={styles.folderChipWrap}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={folderSel === f.id}
+                    className={`${styles.folderChip} ${folderSel === f.id ? styles.folderChipOn : ''}`}
+                    onClick={() => setFolderSel(f.id)}
+                    onDoubleClick={() => { setRenamingFolderId(f.id); setFolderDraft(f.name) }}
+                    title="Double-click to rename"
+                  >
+                    {f.name}
+                    <span className={styles.folderCount}>{counts.get(f.id) ?? 0}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.folderChipX}
+                    onClick={() => void deleteFolder(f.id)}
+                    aria-label={`Delete folder ${f.name} — its notes become unfiled`}
+                    title="Delete folder (its notes are kept, and become unfiled)"
+                  >
+                    ×
+                  </button>
+                </span>
+              )
+            ))}
+
+            {addingFolder ? (
+              <input
+                className={styles.folderRenameInput}
+                placeholder="Folder name…"
+                value={folderDraft}
+                onChange={e => { setFolderDraft(e.target.value); setFolderError(null) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter')  void createFolder()
+                  if (e.key === 'Escape') { setAddingFolder(false); setFolderDraft(''); setFolderError(null) }
+                }}
+                maxLength={MAX_FOLDER_NAME}
+                aria-label="New folder name"
+                autoFocus
+              />
+            ) : (
+              <button
+                type="button"
+                className={styles.folderAdd}
+                onClick={() => { setAddingFolder(true); setFolderDraft(''); setFolderError(null) }}
+                aria-label="New folder"
+              >
+                + Folder
+              </button>
+            )}
+          </div>
+          {folderError && <p className={styles.folderError} role="alert">{folderError}</p>}
+
           {!loaded && <p className={styles.empty}>Loading…</p>}
 
           {loaded && visible.length === 0 && (
@@ -622,6 +792,20 @@ export default function NotesView() {
                   aria-label="Note title"
                   spellCheck={false}
                 />
+                {/* Where this note lives. Changing it is a normal edit,
+                    not a move operation with its own ceremony. */}
+                <select
+                  className={styles.notefolderSelect}
+                  value={selected.folderId ?? ''}
+                  onChange={e => void moveNoteToFolder(
+                    selected, e.target.value ? Number(e.target.value) : undefined)}
+                  aria-label="Folder for this note"
+                  title="Which folder this note is in"
+                >
+                  <option value="">Unfiled</option>
+                  {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+
                 <div className={styles.editorActions}>
                   <button
                     type="button" className={styles.iconBtn}
@@ -662,16 +846,39 @@ export default function NotesView() {
                       {selected.archived === 1 ? 'Restore note' : 'Archive note'}
                     </span>
                   </button>
-                  {/* Delete is offered only from the archive: archiving first
-                      makes losing a note take two deliberate steps. */}
-                  {selected.archived === 1 && (
+                  {/*
+                    Delete is reachable from any note now, not only from
+                    the archive — hiding it behind archiving made it look
+                    absent. The safety is an explicit second press
+                    instead, which is a step you can see rather than one
+                    you have to know about.
+                  */}
+                  {confirmDeleteId === selected.id ? (
+                    <span className={styles.confirmDelete}>
+                      <button
+                        type="button"
+                        className={styles.confirmDeleteYes}
+                        onClick={() => void destroy(selected)}
+                        autoFocus
+                      >
+                        Delete for good
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.confirmDeleteNo}
+                        onClick={() => setConfirmDeleteId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
                     <button
                       type="button" className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                      onClick={() => destroy(selected)}
-                      title="Delete permanently"
+                      onClick={() => void destroy(selected)}
+                      title="Delete this note"
                     >
                       <span aria-hidden="true">✕</span>
-                      <span className="sr-only">Delete note permanently</span>
+                      <span className="sr-only">Delete note</span>
                     </button>
                   )}
                 </div>

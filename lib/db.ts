@@ -272,6 +272,14 @@ export interface QuickNote {
    * unless the user says so.
    */
   privateFromAi?: boolean
+  /**
+   * Which folder holds this note, if any.
+   *
+   * Absent means unfiled, which is a normal state rather than an error —
+   * a note you jot down in a hurry should not demand a decision about
+   * where it belongs before you can write it.
+   */
+  folderId?:  number   // * indexed (v45) — FK → NoteFolder.id
   /** Task text already filed from this note — prevents re-offering. */
   createdTasks?: string[]
   /** Per-note consent for to-do detection. Global policy in localStorage. */
@@ -549,6 +557,21 @@ export interface LocalCalendar {
  * TodoCategory — a user-created list category for the Calendar To-Do panel.
  * Default categories are "Short Term" and "Long Term".
  */
+/**
+ * NoteFolder — a user-made grouping for notes.
+ *
+ * Distinct from `QuickNote.category`, which is a fixed internal set
+ * ('lecture' | 'idea' | 'ref'), and from `tags`, which are freeform and
+ * many-per-note. A folder is the one place a note lives, which is what
+ * makes it useful for finding things rather than describing them.
+ */
+export interface NoteFolder {
+  id:        number   // * PK — auto-increment
+  name:      string   // * indexed
+  sortOrder: number   //   render order (lower first)
+  createdAt: number   //   Unix ms
+}
+
 export interface TodoCategory {
   id:        number   // * PK — auto-increment
   name:      string   // * indexed — category display name
@@ -637,6 +660,7 @@ class ZenithDatabase extends Dexie {
   habits!:                  EntityTable<Habit,                  'id'>
   habitCompletions!:        EntityTable<HabitCompletion,        'id'>
   workouts!:                EntityTable<Workout,                'id'>
+  noteFolders!:             EntityTable<NoteFolder,             'id'>
   quickNotes!:              EntityTable<QuickNote,              'id'>
   customBookmarks!:         EntityTable<CustomBookmark,         'id'>
   userProfile!:             EntityTable<UserProfile,            'id'>
@@ -1405,6 +1429,19 @@ class ZenithDatabase extends Dexie {
     this.version(44).stores({
       calendarEvents:
         '++id, feedId, uid, seriesUid, title, startMs, allDay, is1159, category, locallyEdited',
+    })
+
+    /*
+     * Version 45 — folders for notes.
+     *
+     * Notes had a fixed internal category and freeform tags, neither of
+     * which answers "where do I keep this". A folder is the one place a
+     * note lives; `folderId` is indexed so a folder's contents and counts
+     * come from a query rather than a scan of every note.
+     */
+    this.version(45).stores({
+      noteFolders: '++id, name, sortOrder, createdAt',
+      quickNotes:  '++id, title, updatedAt, category, archived, pinned, folderId',
     })
   }
 }
