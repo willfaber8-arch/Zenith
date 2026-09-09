@@ -660,6 +660,8 @@ export default function SettingsView() {
 
   /* ── Keyboard shortcuts table ───────────────────────────────── */
   const shortcuts = [
+    { key: '⌘K / Ctrl K', action: 'Command palette — do anything, go anywhere, find anything' },
+    { key: '/',       action: 'Jump to the search box' },
     { key: 'Esc',     action: 'Close overlay / exit study mode' },
     { key: '↵',       action: 'Send AI Co-Pilot message' },
     { key: '⇧ ↵',    action: 'New line in AI Co-Pilot' },

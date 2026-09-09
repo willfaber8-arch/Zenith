@@ -16,8 +16,10 @@
  * after you have already started moving down it is worse than one that
  * grows at the bottom.
  *
- * Keyboard: ⌘K / Ctrl+K focuses it from anywhere · ↑/↓ move the selection ·
- * Enter navigates · Escape clears & blurs. Click-outside closes the dropdown.
+ * Keyboard: `/` focuses it from anywhere (unless you are already typing
+ * somewhere) · ↑/↓ move the selection · Enter navigates · Escape clears
+ * and blurs. Click-outside closes the dropdown. ⌘K opens the command
+ * palette instead — see components/CommandPalette.
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
@@ -82,15 +84,27 @@ export default function ModuleSearch() {
   /* Reset highlight whenever the result set changes. */
   useEffect(() => { setActiveIdx(0) }, [query])
 
-  /* ⌘K / Ctrl+K focuses the finder from anywhere in the app. */
+  /*
+   * `/` focuses the finder from anywhere — but only when nothing else
+   * has the caret, or typing a slash into a note would jump the focus
+   * out of what you were writing.
+   *
+   * ⌘K used to land here. It belongs to the command palette now: two
+   * handlers on one key meant both fired, focusing this box behind an
+   * overlay that had just covered it.
+   */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        inputRef.current?.focus()
-        inputRef.current?.select()
-        setOpen(true)
-      }
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = document.activeElement as HTMLElement | null
+      const typing = !!el && (
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+      )
+      if (typing) return
+      e.preventDefault()
+      inputRef.current?.focus()
+      inputRef.current?.select()
+      setOpen(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -1,0 +1,152 @@
+/* ══════════════════════════════════════════════════════════════
+   CommandPalette — ⌘K over everything Zenith can do or hold.
+
+   Portalled to document.body, so nothing in the app tree can trap it
+   in a stacking context. z-index sits above the Co-Pilot panel (300)
+   and below the toast stack (600) — a message about what just happened
+   should still be readable over it.
+   ══════════════════════════════════════════════════════════════ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  justify-content: center;
+  /* Not centred vertically: a list that grows downward from a fixed
+     point is easier to read than one that shifts under the cursor as
+     results arrive. */
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgba(8, 10, 14, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: paletteBackdropIn 0.16s var(--ease-smooth) both;
+}
+
+@keyframes paletteBackdropIn { from { opacity: 0 } to { opacity: 1 } }
+
+.panel {
+  width: min(640px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card), 0 24px 70px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  animation: paletteIn 0.2s var(--ease-expo) both;
+}
+
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.input {
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-5);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.input::placeholder { color: var(--text-dark); }
+.input:focus { outline: none; }
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.heading {
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+
+.rowActive { background: var(--bg-active); }
+
+.body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.label {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.empty {
+  padding: var(--sp-5) var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+}
+
+.footer kbd {
+  display: inline-block;
+  margin-right: 3px;
+  padding: 0 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  color: var(--text-muted);
+}
