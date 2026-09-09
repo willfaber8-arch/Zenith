@@ -64,3 +64,33 @@
   from { opacity: 1; transform: translateX(0)    scale(1);    }
   to   { opacity: 0; transform: translateX(24px) scale(0.94); }
 }
+
+/* ── A toast that offers to undo ───────────────────────────────
+   A message about something destructive is the wrong shape if it only
+   reports: the moment you realise you did not mean it is the moment
+   the message is on screen. */
+
+.message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.action {
+  flex-shrink: 0;
+  margin-left: var(--sp-3);
+  padding: 2px var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.action:hover { background: var(--bg-active); color: var(--text-primary); }

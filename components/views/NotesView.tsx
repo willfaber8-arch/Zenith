@@ -29,6 +29,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type QuickNote } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
+import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import {
   pendingTasks, toggleLine, checklistProgress, detectTasks, type DetectedTask,
 } from '@/lib/engines/NoteTaskDetector'
@@ -123,6 +124,7 @@ type SaveState = 'idle' | 'dirty' | 'saved'
 
 export default function NotesView() {
   const { toast } = useToast()
+  const undoableDelete = useUndoableDelete()
 
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query,      setQuery]      = useState('')
@@ -405,10 +407,15 @@ export default function NotesView() {
   const destroy = async (n: QuickNote) => {
     if (!db || n.id == null) return
     if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); return }
-    await db.quickNotes.delete(n.id)
+    /* Deleting a piece of writing is the one worth being able to take
+       back, so the toast carries the way back with it. */
+    await undoableDelete({
+      table:   'quickNotes',
+      keys:    [n.id],
+      message: n.title ? `“${n.title}” deleted.` : 'Note deleted.',
+    })
     setConfirmDeleteId(null)
     if (selectedId === n.id) setSelectedId(null)
-    toast('Note deleted.', 'info')
   }
 
   /* An armed delete disarms itself when you move to another note, so a

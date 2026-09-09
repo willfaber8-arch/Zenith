@@ -23,8 +23,9 @@ import { useToast } from '@/lib/ToastContext'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
 import { kindOf, hasDueDate, isOpen, KIND_BADGE, type TaskKind } from '@/utils/taskUnify'
 import {
-  setDone, isDone, deleteTask, updateTask, toggleProblem as commitProblem,
+  setDone, isDone, updateTask, toggleProblem as commitProblem,
 } from '@/lib/taskMutations'
+import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import styles from './StudyWorkPanel.module.css'
 import MathText from '@/components/MathText'
 
@@ -80,6 +81,7 @@ function progressOf(a: Assignment): { done: number; total: number } | null {
 
 export default function StudyWorkPanel() {
   const { toast } = useToast()
+  const undoableDelete = useUndoableDelete()
 
   const [filter,   setFilter]   = useState<Filter>('all')
   const [showDone, setShowDone] = useState(false)
@@ -175,10 +177,14 @@ export default function StudyWorkPanel() {
 
   const removeTask = useCallback(async (a: Assignment) => {
     if (a.id == null) return
-    await deleteTask(a.id)
+    /* The toast carries the way back — see useUndoableDelete. */
+    await undoableDelete({
+      table:   'assignments',
+      keys:    [a.id],
+      message: `“${a.title}” deleted.`,
+    })
     setConfirmDelete(null)
-    toast(`"${a.title}" deleted.`, 'info')
-  }, [toast])
+  }, [undoableDelete])
 
   const create = useCallback(async (input: {
     title: string; dueDate: string; kind: TaskKind

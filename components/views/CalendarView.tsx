@@ -53,8 +53,9 @@ import {
   kindOf, hasDueDate, isOverdue, isOpen, groupByList, KIND_BADGE, type TaskKind,
 } from '@/utils/taskUnify'
 import {
-  createReminder, updateTask, setDone, isDone, deleteTask, deleteList, toggleProblem,
+  createReminder, updateTask, setDone, isDone, deleteList, toggleProblem,
 } from '@/lib/taskMutations'
+import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
@@ -1460,6 +1461,7 @@ function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
  */
 function TasksPanel() {
   const { toast } = useToast()
+  const undoableDelete = useUndoableDelete()
 
   const lists = useLiveQuery(
     () => db?.todo_categories.orderBy('id').toArray() ?? Promise.resolve([]),
@@ -1604,8 +1606,20 @@ function TasksPanel() {
     await setDone(item, !isDone(item))
   }
 
-  const handleDeleteTask = async (id: number) => {
-    await deleteTask(id)
+  /*
+   * Deleting a task offers it straight back.
+   *
+   * The armed second press stays: it catches the misclick before it
+   * happens, and the undo catches the one you only notice afterwards.
+   * They protect against different mistakes, and neither costs anything
+   * when you did mean it.
+   */
+  const handleDeleteTask = async (item: Assignment) => {
+    await undoableDelete({
+      table:   'assignments',
+      keys:    [item.id!],
+      message: `“${item.title}” deleted.`,
+    })
     setConfirmDeleteTask(null)
   }
 
@@ -1925,7 +1939,7 @@ function TasksPanel() {
                               <button
                                 type="button"
                                 className={styles.confirmYes}
-                                onClick={() => void handleDeleteTask(item.id!)}
+                                onClick={() => void handleDeleteTask(item)}
                               >
                                 Delete
                               </button>
