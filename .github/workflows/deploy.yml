@@ -97,6 +97,20 @@ jobs:
         # Only chromium is installed — matching the single project in playwright.config.ts.
         run: npx playwright install --with-deps chromium
 
+      # The build above and the dev server below both use `.next`, and they
+      # cannot share it. `next build` inlines NEXT_PUBLIC_* values into the
+      # chunks it writes; `next dev` then starts with NEXT_PUBLIC_E2E=1 and
+      # reuses what it finds, so the browser is served a mixture of chunks
+      # built under two different environments. The result is a
+      # "SyntaxError: Invalid or unexpected token" with no stack, an empty
+      # page, and every single test timing out waiting for a sidebar.
+      #
+      # That is why this suite has never passed. It was invisible because
+      # the workflow triggered on a branch this repository does not use, so
+      # nothing ever ran it.
+      - name: Clear the production build before starting the dev server
+        run: rm -rf .next
+
       - name: Run E2E test suite
         # playwright.config.ts handles the webServer lifecycle: it boots
         # `npm run dev` with NEXT_PUBLIC_E2E=1, mounts TestBridge on window.__zenith,

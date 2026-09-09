@@ -60,7 +60,19 @@ export default defineConfig({
   outputDir: 'tests/playwright-results',
 
   /* ── Test timeout ───────────────────────────────────────────── */
-  timeout: 45_000,    // generous ceiling for slow CI environments
+  /*
+   * 180s, because the setup hooks wait up to 120s on their own.
+   *
+   * This was 45s, which is shorter than the `toBeVisible({ timeout:
+   * 120_000 })` calls inside the beforeAll hooks that wait for a cold
+   * `next dev` compile — so the hook was killed while its own wait was
+   * still legitimately running, and every test in the file reported a
+   * missing sidebar. The specs also try to raise it themselves via
+   * `test.describe.configure({ timeout })`, which is not an option that
+   * function accepts: it is ignored silently, and the project default
+   * stays in force.
+   */
+  timeout: 180_000,
 
   /* ── Browser projects ───────────────────────────────────────── */
   projects: [
