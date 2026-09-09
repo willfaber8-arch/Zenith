@@ -33,6 +33,12 @@ import {
   applyEventPatch, removeEvent, commitDrag, seriesSize, type EditScope,
 } from '@/lib/calendarMutations'
 import EventDetailPopover from '@/components/EventDetailPopover'
+import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
+import {
+  loadLocked, saveLocked, loadHourSpan, saveHourSpan, type HourSpan,
+} from '@/utils/calendarPrefs'
+import { pushUndo, popUndo, peekUndo, describeUndo, type UndoEntry } from '@/utils/undoStack'
+import { captureUndo, applyUndo, type CalRow } from '@/lib/calendarUndo'
 import {
   useState, useEffect, useRef, useMemo, useCallback,
   type ChangeEvent, type KeyboardEvent,
@@ -702,6 +708,8 @@ interface EventPillElProps {
   columnPx: number
   onOpen:   (event: CalendarEvent, rect: DOMRect) => void
   onDrag:   (event: CalendarEvent, next: { startMs: number; endMs: number }) => void
+  /** When locked, events open on click but cannot be dragged or resized. */
+  locked:   boolean
 }
 
 /**
@@ -714,7 +722,7 @@ interface EventPillElProps {
  * event when you only meant to read it.
  */
 function EventPillEl({
-  event, feed, hourPx, dayStart, dayEnd, columnPx, onOpen, onDrag,
+  event, feed, hourPx, dayStart, dayEnd, columnPx, onOpen, onDrag, locked,
 }: EventPillElProps) {
   const elRef = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<{ startMs: number; endMs: number } | null>(null)
@@ -742,10 +750,13 @@ function EventPillEl({
   const compact = height < 34
 
   const beginDrag = useCallback((mode: 'move' | 'resize') => (e: React.MouseEvent) => {
+    /* Locked means read-only: a click still opens the details, but no
+       gesture can move anything. */
+    if (locked) return
     e.preventDefault()
     e.stopPropagation()
     dragRef.current = { mode, x0: e.clientX, y0: e.clientY, moved: false }
-  }, [])
+  }, [locked])
 
   /*
    * Document-level listeners, not element-level: a fast drag outruns the
@@ -799,7 +810,12 @@ function EventPillEl({
   return (
     <div
       ref={elRef}
-      className={`${styles.eventPill} ${compact ? styles.eventPillCompact : ''} ${preview ? styles.eventPillDragging : ''}`}
+      className={[
+        styles.eventPill,
+        compact ? styles.eventPillCompact : '',
+        preview ? styles.eventPillDragging : '',
+        locked  ? styles.eventPillLocked  : '',
+      ].filter(Boolean).join(' ')}
       style={{
         top:             `${top}px`,
         height:          `${height}px`,
@@ -808,6 +824,11 @@ function EventPillEl({
         color:           color,
       }}
       onMouseDown={beginDrag('move')}
+      onClick={() => {
+        /* With dragging off there is no mouseup handler to tell a click
+           from a drag, so the click has to open the card itself. */
+        if (locked && elRef.current) onOpen(event, elRef.current.getBoundingClientRect())
+      }}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
@@ -830,7 +851,7 @@ function EventPillEl({
       )}
 
       {/* Bottom edge: drag to change how long the event runs. */}
-      {height >= 22 && (
+      {height >= 22 && !locked && (
         <span
           className={styles.resizeGrip}
           onMouseDown={beginDrag('resize')}
@@ -849,6 +870,9 @@ interface WeekGridProps {
   feeds:    CalendarFeed[]
   onOpen:   (event: CalendarEvent, rect: DOMRect) => void
   onDrag:   (event: CalendarEvent, next: { startMs: number; endMs: number }) => void
+  /** When locked, events open on click but cannot be dragged or resized. */
+  locked:   boolean
+  hourSpan: HourSpan
 }
 
 /*
@@ -874,7 +898,14 @@ const GRID_BOTTOM_PAD = 24   // breathing room under the grid
  * A 09:00–15:00 timetable draws six hours instead of twenty-four, which
  * is most of what makes the week fit.
  */
-export function visibleHourRange(events: CalendarEvent[]): { startH: number; endH: number } {
+export function visibleHourRange(
+  events: CalendarEvent[],
+  span: HourSpan = 'fit',
+): { startH: number; endH: number } {
+  /* The full day, so nothing is out of reach: you cannot drag an event
+     to 11pm through an hour the grid does not draw. */
+  if (span === 'full') return { startH: 0, endH: 24 }
+
   let min = DEFAULT_START_H
   let max = DEFAULT_END_H
 
@@ -893,7 +924,7 @@ export function visibleHourRange(events: CalendarEvent[]): { startH: number; end
   }
 }
 
-function WeekGrid({ weekDays, events, feeds, onOpen, onDrag }: WeekGridProps) {
+function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }: WeekGridProps) {
   /* Measured, because a day column's width depends on the sidebar, the
      viewport and whether a scrollbar is showing — a sideways drag has to
      be read against the real column, not an assumed one. */
@@ -905,7 +936,7 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag }: WeekGridProps) {
     return n.getHours() * 60 + n.getMinutes()
   })
 
-  const { startH, endH } = useMemo(() => visibleHourRange(events), [events])
+  const { startH, endH } = useMemo(() => visibleHourRange(events, hourSpan), [events, hourSpan])
   const hoursShown = Math.max(1, endH - startH)
 
   const [hourPx, setHourPx] = useState(MAX_HOUR_PX)
@@ -999,6 +1030,22 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag }: WeekGridProps) {
       {/* Time grid */}
       <div className={styles.timeGrid} role="presentation">
 
+        {/*
+          The current time, spelled out.
+          A bare line tells you roughly where you are; the reason Google
+          prints the clock beside it is that "roughly" is not much use
+          when you are deciding whether you have missed something.
+        */}
+        {nowVisible && todayIdx >= 0 && (
+          <div
+            className={styles.nowLabel}
+            style={{ top: `${nowOffset}px` }}
+            aria-hidden="true"
+          >
+            {new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+          </div>
+        )}
+
         {/* Left time gutter — only the hours on screen */}
         <div className={styles.timeGutter} aria-hidden="true" style={{ height: `${gridHeight}px` }}>
           {Array.from({ length: hoursShown }, (_, i) => {
@@ -1073,6 +1120,7 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag }: WeekGridProps) {
                   columnPx={columnPx}
                   onOpen={onOpen}
                   onDrag={onDrag}
+                  locked={locked}
                 />
               ))}
             </div>
@@ -1736,6 +1784,10 @@ export default function CalendarView() {
         is1159:      0,
         category:    pe.category,
         description: pe.description,
+        /* Carried across, or a zone tagged on a personal event would be
+           saved and then never shown — the grid reads this shape, not
+           the stored row. */
+        timeZone:    pe.timeZone,
         _color:      pe.color ?? cal?.color,   // event colour (defaults to its calendar's)
       } as CalendarEvent & { _color?: string }))
   }, [personalEventsRaw, localCalendars])
@@ -1814,6 +1866,17 @@ export default function CalendarView() {
 
   /* ── Event interaction: open, drag, edit, delete ─────────── */
 
+  /* Locked by default: most visits are to read the calendar, and a drag
+     is one gesture away from moving a class to the wrong week. */
+  const [locked,   setLocked]   = useState(true)
+  const [hourSpan, setHourSpan] = useState<HourSpan>('full')
+  const [undoStack, setUndoStack] = useState<UndoEntry<CalRow>[]>([])
+
+  useEffect(() => {
+    setLocked(loadLocked())
+    setHourSpan(loadHourSpan())
+  }, [])
+
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
   const [detail, setDetail] = useState<
     { event: CalendarEvent; rect: DOMRect; seriesCount: number } | null
@@ -1830,19 +1893,38 @@ export default function CalendarView() {
     next:  { startMs: number; endMs: number },
   ) => {
     try {
+      /* Photograph the row before the write — afterwards its previous
+         position exists nowhere. */
+      const snap = await captureUndo(event, 'this', 'move')
       await commitDrag(event, next)
+      if (snap) setUndoStack(st => pushUndo(st, snap))
       setDetail(null)
     } catch {
       toast('Could not move that event.', 'error')
     }
   }, [toast])
 
+  const handleUndo = useCallback(async () => {
+    const { entry, rest } = popUndo(undoStack)
+    if (!entry) return
+    try {
+      await applyUndo(entry)
+      setUndoStack(rest)
+      setDetail(null)
+      toast(`Reverted ${entry.label}.`, 'info')
+    } catch {
+      toast('Could not undo that.', 'error')
+    }
+  }, [undoStack, toast])
+
   const handleDeleteFromPopover = useCallback(async (scope: EditScope) => {
     if (!detail) return
     const { event } = detail
     setDetail(null)
     try {
+      const snap = await captureUndo(event, scope, scope === 'series' ? 'delete of series' : 'delete')
       const n = await removeEvent(event, scope)
+      if (snap) setUndoStack(st => pushUndo(st, snap))
       toast(n > 1 ? `Deleted ${n} occurrences.` : 'Event deleted.', 'info')
     } catch {
       toast('Could not delete that event.', 'error')
@@ -1982,6 +2064,51 @@ export default function CalendarView() {
               <span className={styles.calTabDot} style={{ background: '#f59e0b' }} aria-hidden="true" />
               Course Schedule
             </button>
+            {/*
+              Locked by default. Reading a calendar is the common case
+              and dragging is destructive-by-accident, so editing is
+              something you switch on rather than something you tiptoe
+              around.
+            */}
+            <button
+              type="button"
+              className={`${styles.lockBtn} ${locked ? '' : styles.lockBtnOpen}`}
+              onClick={() => { const next = !locked; setLocked(next); saveLocked(next) }}
+              aria-pressed={!locked}
+              title={locked
+                ? 'Events are locked — click to allow dragging and resizing'
+                : 'Events can be dragged — click to lock them again'}
+            >
+              <Icon name="lock" size={13} />
+              {locked ? 'Locked' : 'Editing'}
+            </button>
+
+            {/* Only while editing: with the lock on there is nothing to take back. */}
+            {!locked && undoStack.length > 0 && (
+              <button
+                type="button"
+                className={styles.undoBtn}
+                onClick={() => void handleUndo()}
+                title={describeUndo(peekUndo(undoStack))}
+              >
+                ↺ {describeUndo(peekUndo(undoStack))}
+              </button>
+            )}
+
+            <button
+              type="button"
+              className={styles.spanBtn}
+              onClick={() => {
+                const next: HourSpan = hourSpan === 'full' ? 'fit' : 'full'
+                setHourSpan(next); saveHourSpan(next)
+              }}
+              title={hourSpan === 'full'
+                ? 'Showing all 24 hours — click to shrink to the hours in use'
+                : 'Showing only the hours in use — click for the full 24 hours'}
+            >
+              {hourSpan === 'full' ? '24h' : 'Fit'}
+            </button>
+
             <button
               type="button"
               className={styles.newEventBtn}
@@ -2076,6 +2203,8 @@ export default function CalendarView() {
             feeds={allFeeds}
             onOpen={handleOpenEvent}
             onDrag={handleDragEvent}
+            locked={locked}
+            hourSpan={hourSpan}
           />
         )
       ) : view === 'month' ? (
@@ -2136,6 +2265,8 @@ export default function CalendarView() {
             setEditTarget(null)
             if (!target) return
             try {
+              const snap = await captureUndo(target, 'this', 'edit')
+              if (snap) setUndoStack(st => pushUndo(st, snap))
               await applyEventPatch(target, {
                 title:       data.title,
                 startMs:     data.startMs,
@@ -2143,6 +2274,7 @@ export default function CalendarView() {
                 allDay:      data.allDay,
                 category:    data.category,
                 description: data.description,
+                timeZone:    data.timeZone,
                 location:    (data as { location?: string }).location,
               }, 'this')
               toast('Event updated.', 'success')
@@ -2159,6 +2291,7 @@ export default function CalendarView() {
             color:       '#7c95ff',
             category:    editTarget.category,
             description: editTarget.description,
+            timeZone:    editTarget.timeZone,
             createdAt:   Date.now(),
           } as PersonalEvent}
           localCalendars={localCalendars}
@@ -2255,6 +2388,8 @@ function NewEventModal({
   const [color,   setColor]   = useState(initial?.color ?? '#7c95ff')
   const [cat,     setCat]     = useState(initial?.category ?? 'personal')
   const [desc,    setDesc]    = useState(initial?.description ?? '')
+  /* '' means "no tag" — read it in my own zone, like every other event. */
+  const [zone,    setZone]    = useState(initial?.timeZone ?? '')
   const [calendarId, setCalendarId] = useState<number | undefined>(
     initial?.calendarId ?? localCalendars[0]?.id,
   )
@@ -2300,6 +2435,7 @@ function NewEventModal({
       color,
       category: cat,
       description: desc.trim() || undefined,
+      timeZone:    zone || undefined,
       createdAt:   Date.now(),
       calendarId,
     })
@@ -2403,6 +2539,31 @@ function NewEventModal({
           <div className={styles.evField}>
             <label className={styles.evLabel} htmlFor="ev-desc">Description (optional)</label>
             <input id="ev-desc" type="text" className={styles.evInput} placeholder="Add a note…" value={desc} onChange={e => setDesc(e.target.value)} />
+          </div>
+
+          {/*
+            Tagging a zone does not move the event — the instant stays
+            exactly where it is. It adds a second reading to the card,
+            for a call with someone whose afternoon is your morning.
+          */}
+          <div className={styles.evField}>
+            <label className={styles.evLabel} htmlFor="ev-zone">Also show in (optional)</label>
+            <select
+              id="ev-zone"
+              className={styles.evInput}
+              value={zone}
+              onChange={e => setZone(e.target.value)}
+            >
+              <option value="">My time zone only</option>
+              {COMMON_ZONES.map(z => (
+                <option key={z.id} value={z.id}>{z.label}</option>
+              ))}
+            </select>
+            {zone && (
+              <span className={styles.evZoneHint}>
+                {describeInZone(computeTimes().startMs, zone) ?? 'Same as your time zone'}
+              </span>
+            )}
           </div>
 
           {/* ── External calendar export ─────────────────────── */}

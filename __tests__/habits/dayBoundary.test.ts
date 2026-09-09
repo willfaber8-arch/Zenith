@@ -87,8 +87,17 @@ describe('clampCutoff', () => {
 describe('the stored setting', () => {
   beforeEach(() => localStorage.clear())
 
-  it('defaults to midnight, so nothing changes until you ask', () => {
+  it('defaults to the late cutoff, not midnight', () => {
+    // Number(null) is 0, so reading the key without a null check would
+    // have pinned the default to midnight whatever it was set to —
+    // silently disabling the whole feature.
     expect(loadCutoffHour()).toBe(DEFAULT_CUTOFF_HOUR)
+    expect(DEFAULT_CUTOFF_HOUR).toBeGreaterThan(0)
+  })
+
+  it('honours an explicit midnight choice over the default', () => {
+    saveCutoffHour(0)
+    expect(loadCutoffHour()).toBe(0)
   })
 
   it('round-trips', () => {

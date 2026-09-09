@@ -602,6 +602,9 @@
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
   /* Row height comes from --hour-px, set per render to fit the viewport. */
+  /* Positioned so the now-time label anchors to the grid rather than
+     escaping to whichever ancestor happened to be positioned. */
+  position: relative;
 }
 
 /* Time gutter — left column, full grid height */
@@ -2473,4 +2476,87 @@
 @media (pointer: coarse) {
   .resizeGrip { height: 14px; }
   .eventPill .resizeGrip { background: linear-gradient(to bottom, transparent, currentColor); opacity: 0.35; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Lock, undo, and how much of the day is drawn
+   ══════════════════════════════════════════════════════════ */
+
+.lockBtn,
+.spanBtn,
+.undoBtn {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  padding:       5px 12px;
+  border-radius: var(--r-xl);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-muted);
+  font-size:     0.78rem;
+  font-weight:   600;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    border-color var(--dur-fast) ease, color var(--dur-fast) ease,
+                 background var(--dur-fast) ease;
+}
+
+.lockBtn:hover,
+.spanBtn:hover { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+
+/*
+ * Unlocked is the state worth noticing — amber, because it means a drag
+ * will now move something.
+ */
+.lockBtnOpen {
+  border-color: rgba(245, 158, 11, 0.45);
+  background:   rgba(245, 158, 11, 0.10);
+  color:        #f59e0b;
+}
+
+.lockBtnOpen:hover { border-color: rgba(245, 158, 11, 0.65); color: #fbbf24; }
+
+.undoBtn {
+  border-style: dashed;
+  max-width:    16rem;
+  overflow:     hidden;
+  text-overflow: ellipsis;
+}
+
+.undoBtn:hover { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+
+/* A locked event still opens on click; it just cannot be moved. */
+.eventPillLocked { cursor: pointer; }
+
+/*
+ * The clock beside the now-line.
+ *
+ * A bare line says roughly where you are, which is not much use when
+ * you are deciding whether you have missed something.
+ */
+.nowLabel {
+  position:       absolute;
+  left:           0;
+  width:          50px;
+  transform:      translateY(-50%);
+  padding:        1px 4px;
+  border-radius:  var(--r-sm);
+  background:     #f87171;
+  color:          #fff;
+  font-family:    var(--font-mono);
+  font-size:      0.56rem;
+  font-weight:    700;
+  letter-spacing: 0.02em;
+  text-align:     center;
+  z-index:        7;
+  pointer-events: none;
+}
+
+/* Live preview of what a zone tag will read as, under the picker. */
+.evZoneHint {
+  display:     block;
+  margin-top:  var(--sp-2);
+  font-family: var(--font-mono);
+  font-size:   0.66rem;
+  color:       var(--accent-purple);
 }

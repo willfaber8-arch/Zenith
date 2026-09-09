@@ -32,6 +32,7 @@ export interface EventPatch {
   description?: string
   category?:    string
   allDay?:      number
+  timeZone?:    string
 }
 
 export function isPersonal(event: { feedId: number }): boolean {

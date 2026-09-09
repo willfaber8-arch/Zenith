@@ -199,3 +199,20 @@
 @media (max-width: 640px) {
   .card { left: 50% !important; transform: translateX(-50%); width: min(92vw, 320px) !important; }
 }
+
+/*
+ * The foreign-zone reading, tinted so it is clearly a second opinion on
+ * the time above it rather than a competing fact.
+ */
+.zoneLine {
+  display:     flex;
+  align-items: flex-start;
+  gap:         var(--sp-2);
+  margin:      0;
+  padding:     var(--sp-2);
+  border-radius: var(--r-sm);
+  background:  rgba(124, 149, 255, 0.07);
+  color:       var(--accent-purple);
+}
+
+.zoneLine .rowText { color: var(--accent-purple); }

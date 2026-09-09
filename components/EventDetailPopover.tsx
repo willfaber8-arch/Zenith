@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom'
 import type { CalendarEvent } from '@/lib/db'
 import { popoverPosition } from '@/utils/calendarInteraction'
 import { type EditScope } from '@/lib/calendarMutations'
+import { describeInZone } from '@/utils/eventTimezone'
 import Icon from '@/components/ui/Icon'
 import styles from './EventDetailPopover.module.css'
 
@@ -80,6 +81,10 @@ export default function EventDetailPopover({
     else onDelete('this')
   }, [seriesCount, onDelete])
 
+  const zoneLine = event.timeZone
+    ? describeInZone(event.startMs, event.timeZone)
+    : null
+
   if (!mounted) return null
 
   const pos = popoverPosition(
@@ -105,6 +110,19 @@ export default function EventDetailPopover({
       </div>
 
       <p className={styles.when}>{fmtRange(event.startMs, event.endMs, event.allDay === 1)}</p>
+
+      {/*
+        The same instant read against another clock.
+        Shown beneath the local time rather than replacing it — the point
+        is the comparison, and an event that only showed the foreign
+        reading would be worse than one that showed neither.
+      */}
+      {zoneLine && (
+        <p className={styles.zoneLine}>
+          <Icon name="globe" size={13} />
+          <span className={styles.rowText}>{zoneLine}</span>
+        </p>
+      )}
 
       {event.location && (
         <p className={styles.row}>

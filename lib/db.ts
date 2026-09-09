@@ -413,6 +413,8 @@ export interface CalendarEvent {
   category:     string   // * indexed — 'scholastic'|'exam'|'life'|'general'
   location?:    string
   description?: string
+  /** IANA zone to read this event against. Display only — see PersonalEvent. */
+  timeZone?:    string
 }
 
 /**
@@ -519,6 +521,15 @@ export interface PersonalEvent {
   description?: string
   createdAt:    number    //   Unix ms
   calendarId?:  number    //   FK → LocalCalendar.id (which local calendar it belongs to)
+  /**
+   * An IANA zone to read this event against, e.g. 'Europe/Madrid'.
+   *
+   * Display only. The stored instant never moves — the moment something
+   * starts does not change because you looked at it from elsewhere — so
+   * this says "also show me this in Madrid", never "move this event".
+   * Non-indexed, so no migration.
+   */
+  timeZone?:    string
 }
 
 /**
