@@ -20,6 +20,7 @@
 import type { Assignment, Habit }  from '@/lib/db'
 import type { MentalHealthLog }    from '@/utils/mentalHealthLog'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { hasDueDate } from '@/utils/taskUnify'
 
 /* ── Token-safety constants ──────────────────────────────────── */
 
@@ -109,13 +110,25 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   const completed = allAssignments.filter(
     a => a.status === 'completed' && a.dueDate >= cutoff,
   )
+  /*
+   * An undated item is unscheduled, not overdue.
+   *
+   * `dueDate` is a required column, so "no deadline" is the empty
+   * string — and `'' < today` is true. Without the guard every dateless
+   * reminder would be reported to the Co-Pilot as overdue, and it would
+   * open conversations by apologising for a backlog that doesn't exist.
+   */
   const overdue = allAssignments.filter(
     a => a.status === 'overdue' ||
-         (a.status !== 'completed' && a.dueDate < today),
+         (a.status !== 'completed' && hasDueDate(a) && a.dueDate < today),
   )
   const pending = allAssignments.filter(
     a => a.status === 'pending' || a.status === 'in_progress',
-  ).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  ).sort((a, b) => {
+    const dA = hasDueDate(a), dB = hasDueDate(b)
+    if (dA !== dB) return dA ? -1 : 1
+    return a.dueDate.localeCompare(b.dueDate)
+  })
 
   /* ── 2. Habits ──────────────────────────────────────────────── */
   const habits: Habit[] = await db.habits.toArray()
@@ -177,7 +190,7 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
       .forEach(a => {
         const note = truncate(a.notes, MAX_NOTE_CHARS)
         lines.push(
-          `  [${a.priority.toUpperCase()}] "${a.title}" | course: ${a.courseId} | due: ${a.dueDate}` +
+          `  [${a.priority.toUpperCase()}] "${a.title}" | course: ${a.courseId} | due: ${a.dueDate || "no deadline"}` +
           (note ? ` | note: "${note}"` : ''),
         )
       })

@@ -12,6 +12,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Assignment } from '@/lib/db'
 import { useNav } from '@/lib/NavContext'
 import { todayISO } from '@/utils/localDate'
+import { hasDueDate } from '@/utils/taskUnify'
 import styles from './Widget.module.css'
 
 const OPEN = ['pending', 'in_progress', 'overdue']
@@ -35,13 +36,26 @@ export default function ProblemSetsWidget() {
     const all = await db.assignments.toArray()
     return all
       .filter(a => OPEN.includes(a.status))
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      /*
+       * Dated work first.
+       *
+       * Since the to-do list was folded into this table (db v46) some
+       * rows have no deadline, stored as the empty string. `''` sorts
+       * before every real date, so a plain sort would put an undated
+       * reminder at the top and this widget would announce it as the
+       * next thing due.
+       */
+      .sort((a, b) => {
+        const dA = hasDueDate(a), dB = hasDueDate(b)
+        if (dA !== dB) return dA ? -1 : 1
+        return a.dueDate.localeCompare(b.dueDate)
+      })
   }, [])
 
   const open    = rows ?? []
   const sets    = open.filter(a => a.kind === 'problem_set')
-  const overdue = open.filter(a => daysUntil(a.dueDate) < 0).length
-  const next    = open[0]
+  const overdue = open.filter(a => hasDueDate(a) && daysUntil(a.dueDate) < 0).length
+  const next    = open.find(hasDueDate)
 
   return (
     <div

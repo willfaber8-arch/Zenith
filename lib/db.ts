@@ -53,6 +53,7 @@ export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 import type { LibraryBook, LibraryShelf, ReadingSession } from '@/types/bookTracker'
 import type { StrengthSession, WorkoutPlan } from '@/types/weightroom'
 import { toLocalDateStr } from '@/utils/localDate'
+import { toReminder } from '@/utils/taskUnify'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
 
@@ -86,7 +87,7 @@ export interface Assignment {
   /** Absent means 'task'. Problem sets are a kind of assignment rather
    *  than a parallel entity, so there stays one task list, one
    *  notification stream and one badge count. */
-  kind?:       'task' | 'problem_set'   // * indexed
+  kind?:       'task' | 'problem_set' | 'reminder'   // * indexed
   /** Markdown + LaTeX body, rendered when kind is 'problem_set'. */
   body?:       string
   /** Per-problem breakdown, so partial progress is real progress. */
@@ -97,6 +98,12 @@ export interface Assignment {
    *  note and the task stay linked rather than inferring the connection
    *  from a category string. */
   sourceNoteId?: number
+  /* ── One task list (v46) ─────────────────────────────────────── */
+  /** FK → TodoCategory.id — which user-made list this sits in.
+   *  Absent means unfiled, which is a real place rather than an error:
+   *  work arriving from the Co-Pilot or from a note has no list to be
+   *  filed into, and should not have to invent one to exist. */
+  listId?:     number           // * indexed
 }
 
 /**
@@ -1442,6 +1449,40 @@ class ZenithDatabase extends Dexie {
     this.version(45).stores({
       noteFolders: '++id, name, sortOrder, createdAt',
       quickNotes:  '++id, title, updatedAt, category, archived, pinned, folderId',
+    })
+
+    /*
+     * Version 46 — one task list.
+     *
+     * Zenith kept two task systems that could not see each other:
+     * `todo_items` behind the Calendar's Tasks tab, and `assignments`
+     * behind Work Due. A thing you had to do lived in one or the other
+     * depending on which screen you happened to be on when you wrote it
+     * down, and neither list could tell you what the other held.
+     *
+     * `assignments` absorbs to-do items as a third `kind`. The rows move
+     * here rather than being copied, because two lists that disagree is
+     * worse than either list alone — and `listId` carries the list they
+     * were in, so "Short Term" and "Long Term" survive the move.
+     *
+     * The upgrade is one transaction: every item arrives, or none does
+     * and the old table is untouched.
+     */
+    this.version(46).stores({
+      assignments:
+        '++id, title, dueDate, courseId, status, priority, category, supabaseId, kind, listId',
+    }).upgrade(async tx => {
+      const items = await tx.table('todo_items').toArray()
+      if (items.length === 0) return
+
+      await tx.table('assignments').bulkAdd(items.map(toReminder))
+
+      /*
+       * Emptied, not dropped. Keeping the store means an install that
+       * somehow runs this twice finds nothing to move the second time,
+       * and a row can never be counted in both lists at once.
+       */
+      await tx.table('todo_items').clear()
     })
   }
 }

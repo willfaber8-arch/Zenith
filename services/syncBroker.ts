@@ -263,7 +263,20 @@ function _registerHooks(safeDb: NonNullable<typeof db>): void {
 
   /* ── assignments (additive — pendingSyncQueue hooks still fire) ── */
 
+  /*
+   * Reminders stay on this machine.
+   *
+   * When the Calendar's to-do list was folded into `assignments` (db
+   * v46) it brought rows that had only ever lived in local IndexedDB
+   * with it. These hooks upload every assignment they see, so without
+   * this gate merging two lists would have quietly started publishing a
+   * private one to a server. Combining where you *look* at your tasks
+   * is not consent to change where they are *kept*.
+   */
+  const isLocalOnly = (obj?: Assignment | null) => obj?.kind === 'reminder'
+
   safeDb.assignments.hook('creating', (_pk, obj: Assignment) => {
+    if (isLocalOnly(obj)) return
     // The existing ZenithSyncEngine hook injects supabaseId here first.
     // We read it after setTimeout so the engine's synchronous injection
     // has already run before we snapshot the object.
@@ -278,6 +291,7 @@ function _registerHooks(safeDb: NonNullable<typeof db>): void {
 
   safeDb.assignments.hook('updating', (mods: Partial<Assignment>, pk: unknown, obj: Assignment) => {
     const merged: Assignment = { ...(obj ?? {}), ...mods } as Assignment
+    if (isLocalOnly(merged)) return
     merged.id = pk as number
     const supabaseId = merged.supabaseId ?? crypto.randomUUID()
     const snapshot = { ...merged, supabaseId }
@@ -285,6 +299,7 @@ function _registerHooks(safeDb: NonNullable<typeof db>): void {
   })
 
   safeDb.assignments.hook('deleting', (_pk: unknown, obj: Assignment) => {
+    if (isLocalOnly(obj)) return
     const supabaseId = obj?.supabaseId
     if (!supabaseId) return
     setTimeout(() => _enqueue('assignments', 'DELETE', supabaseId, { ...obj }), 0)

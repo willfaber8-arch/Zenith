@@ -25,9 +25,20 @@ export function useLiveAssignmentBadges(): number {
   const activeCount = useLiveQuery(
     async (): Promise<number> => {
       if (!db) return 0
+      /*
+       * Reminders are excluded on purpose.
+       *
+       * The to-do list was folded into this table (db v46), so it now
+       * holds groceries alongside problem sets. This badge sits on
+       * Study Shield, and a study badge that counts "buy stamps" stops
+       * meaning anything — you learn to ignore it, which is worse than
+       * not having it. Reminders are counted in the Tasks tab, where
+       * they live.
+       */
       return db.assignments
         .where('status')
         .anyOf(['pending', 'in_progress', 'overdue'])
+        .filter(a => a.kind !== 'reminder')
         .count()
     },
     [],

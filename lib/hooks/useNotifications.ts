@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { db }        from '@/lib/db'
+import { dueEndOfDayMs } from '@/utils/taskUnify'
 
 /* ── Constants ──────────────────────────────────────────────── */
 
@@ -77,8 +78,9 @@ async function checkUpcoming(): Promise<void> {
   const assignments = await db.assignments.toArray()
   for (const a of assignments) {
     if (a.status === 'completed') continue
-    const dueMs = new Date(a.dueDate ?? '').getTime()
-    if (Number.isNaN(dueMs)) continue
+    /* End of the local day, not UTC midnight — see dueEndOfDayMs. */
+    const dueMs = dueEndOfDayMs(a.dueDate)
+    if (dueMs === null) continue
 
     if (dueMs > now && dueMs <= now + TASK_LEAD_MS) {
       const hrs = (dueMs - now) / 3_600_000

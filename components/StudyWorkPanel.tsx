@@ -21,10 +21,22 @@ import {
 } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { kindOf, hasDueDate, isOpen, KIND_BADGE, type TaskKind } from '@/utils/taskUnify'
+import {
+  setDone, isDone, deleteTask, updateTask, toggleProblem as commitProblem,
+} from '@/lib/taskMutations'
 import styles from './StudyWorkPanel.module.css'
 import MathText from '@/components/MathText'
 
-type Filter = 'all' | 'task' | 'problem_set'
+/**
+ * The kinds this panel can narrow to.
+ *
+ * `reminder` is here because the Calendar's to-do list and this panel
+ * are now two windows onto one table (db v46). Leaving reminders out
+ * would recreate the exact problem the merge removed: work that exists
+ * but is invisible from whichever screen you happen to be on.
+ */
+type Filter = 'all' | TaskKind
 
 const PRIORITY_RANK: Record<Priority, number> = {
   critical: 0, high: 1, medium: 2, low: 3,
@@ -43,6 +55,13 @@ function daysUntil(dueDate: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
+/**
+ * Undated work is unscheduled, not overdue.
+ *
+ * `dueDate` is a required column, so "no deadline" is the empty string —
+ * and `'' < '2026-09-09'` is true, which would render every dateless
+ * reminder as decades overdue. The caller checks `hasDueDate` first.
+ */
 function dueLabel(dueDate: string): { text: string; tone: 'over' | 'soon' | 'ok' } {
   const d = daysUntil(dueDate)
   if (d < 0)  return { text: d === -1 ? '1 day overdue' : `${-d} days overdue`, tone: 'over' }
@@ -77,50 +96,92 @@ export default function StudyWorkPanel() {
   const visible = useMemo(() => {
     return all
       .filter(a => {
-        const kind = a.kind ?? 'task'
-        if (filter !== 'all' && kind !== filter) return false
+        if (filter !== 'all' && kindOf(a) !== filter) return false
         return showDone ? true : OPEN_STATUSES.includes(a.status)
       })
       .sort((a, b) => {
         const p = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
-        return p !== 0 ? p : a.dueDate.localeCompare(b.dueDate)
+        if (p !== 0) return p
+        /* Dated work first. An undated reminder is unscheduled rather
+           than ancient, and sorting on '' would float it to the top. */
+        const dA = hasDueDate(a), dB = hasDueDate(b)
+        if (dA !== dB) return dA ? -1 : 1
+        return a.dueDate.localeCompare(b.dueDate)
       })
   }, [all, filter, showDone])
 
   const counts = useMemo(() => ({
-    tasks:       all.filter(a => (a.kind ?? 'task') === 'task' && OPEN_STATUSES.includes(a.status)).length,
-    problemSets: all.filter(a => a.kind === 'problem_set' && OPEN_STATUSES.includes(a.status)).length,
-    overdue:     all.filter(a => OPEN_STATUSES.includes(a.status) && daysUntil(a.dueDate) < 0).length,
+    reminders:   all.filter(a => kindOf(a) === 'reminder'    && isOpen(a)).length,
+    tasks:       all.filter(a => kindOf(a) === 'task'        && isOpen(a)).length,
+    problemSets: all.filter(a => kindOf(a) === 'problem_set' && isOpen(a)).length,
+    overdue:     all.filter(a => isOpen(a) && hasDueDate(a) && daysUntil(a.dueDate) < 0).length,
   }), [all])
 
   /* ── Mutations ───────────────────────────────────────────────── */
 
+  /*
+   * The writes live in lib/taskMutations, shared with the Calendar's
+   * Tasks tab. Two screens onto one table have to agree about what
+   * completing something does; implementing it twice is how they stop
+   * agreeing.
+   */
   const setStatus = useCallback(async (a: Assignment, status: AssignmentStatus) => {
-    if (!db) return
-    await db.assignments.update(a.id, { status, updatedAt: Date.now() })
+    await setDone(a, status === 'completed')
   }, [])
 
   const toggleProblem = useCallback(async (a: Assignment, problemId: string) => {
-    if (!db || !a.problems) return
-    const problems: ProblemItem[] = a.problems.map(p =>
-      p.id === problemId ? { ...p, done: !p.done } : p)
+    const { justCompleted } = await commitProblem(a, problemId)
+    if (justCompleted) toast(`"${a.title}" complete.`, 'success')
+  }, [toast])
 
-    /* Completing the last problem completes the set. Doing this here
-       rather than making the user tick twice is the whole reason
-       per-problem progress is worth modelling. */
-    const allDone = problems.every(p => p.done)
-    await db.assignments.update(a.id, {
-      problems,
-      ...(allDone && a.status !== 'completed' ? { status: 'completed' as AssignmentStatus } : {}),
-      updatedAt: Date.now(),
+  /* ── Editing and deleting ────────────────────────────────────
+     Work could be created and ticked off but never corrected, and
+     never removed at all — and it arrives here from the Co-Pilot and
+     from filed notes as well as by hand, which makes a wrong title
+     more likely rather than less. */
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [draft, setDraft] = useState({ title: '', dueDate: '', priority: 'medium' as Priority, courseId: '' })
+  const [editError, setEditError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+
+  const beginEdit = useCallback((a: Assignment) => {
+    setEditingId(a.id ?? null)
+    setEditError(null)
+    setConfirmDelete(null)
+    setExpanded(null)
+    setDraft({
+      title:    a.title,
+      dueDate:  hasDueDate(a) ? a.dueDate : '',
+      priority: a.priority,
+      courseId: a.courseId ?? '',
     })
-    if (allDone && a.status !== 'completed') {
-      toast(`"${a.title}" complete.`, 'success')
-    }
+  }, [])
+
+  const saveEdit = useCallback(async (a: Assignment) => {
+    const title = draft.title.trim()
+    /* A blank title renders as a line you can neither read nor find,
+       so an emptied one is refused rather than saved. */
+    if (!title) { setEditError('A title is needed.'); return }
+    if (a.id == null) return
+    await updateTask(a.id, {
+      title,
+      dueDate:  draft.dueDate,
+      priority: draft.priority,
+      courseId: draft.courseId.trim(),
+    })
+    setEditingId(null)
+    setEditError(null)
+  }, [draft])
+
+  const removeTask = useCallback(async (a: Assignment) => {
+    if (a.id == null) return
+    await deleteTask(a.id)
+    setConfirmDelete(null)
+    toast(`"${a.title}" deleted.`, 'info')
   }, [toast])
 
   const create = useCallback(async (input: {
-    title: string; dueDate: string; kind: 'task' | 'problem_set'
+    title: string; dueDate: string; kind: TaskKind
     priority: Priority; courseId: string; problemCount: number; body: string
   }) => {
     if (!db) return
@@ -137,7 +198,7 @@ export default function StudyWorkPanel() {
       courseId: input.courseId,
       status:   'pending',
       priority: input.priority,
-      category: 'scholastic',
+      category: input.kind === 'reminder' ? 'life' : 'scholastic',
       kind:     input.kind,
       ...(input.body ? { body: input.body } : {}),
       ...(problems.length ? { problems } : {}),
@@ -146,7 +207,12 @@ export default function StudyWorkPanel() {
     } as Assignment)
 
     setComposing(false)
-    toast(input.kind === 'problem_set' ? 'Problem set added.' : 'Task added.', 'success')
+    toast(
+      input.kind === 'problem_set' ? 'Problem set added.'
+        : input.kind === 'reminder' ? 'Reminder added.'
+        : 'Task added.',
+      'success',
+    )
   }, [toast])
 
   /* ── Render ──────────────────────────────────────────────────── */
@@ -158,6 +224,7 @@ export default function StudyWorkPanel() {
         <div className={styles.filters} role="tablist" aria-label="Filter work">
           {([
             ['all',         'All'],
+            ['reminder',    `Reminders${counts.reminders ? ` · ${counts.reminders}` : ''}`],
             ['task',        `Tasks${counts.tasks ? ` · ${counts.tasks}` : ''}`],
             ['problem_set', `Problem Sets${counts.problemSets ? ` · ${counts.problemSets}` : ''}`],
           ] as [Filter, string][]).map(([id, label]) => (
@@ -208,18 +275,22 @@ export default function StudyWorkPanel() {
           <p className={styles.emptyHint}>
             {filter === 'problem_set'
               ? 'Add a problem set and track it problem by problem.'
-              : 'Anything you add — or ask the Co-Pilot to add — shows up here.'}
+              : filter === 'reminder'
+                ? 'Reminders you add here or in the Calendar\u2019s Tasks tab both land in this one list.'
+                : 'Anything you add \u2014 or ask the Co-Pilot to add \u2014 shows up here.'}
           </p>
         </div>
       )}
 
       <ul className={styles.list}>
         {visible.map(a => {
-          const kind = a.kind ?? 'task'
-          const due  = dueLabel(a.dueDate)
-          const prog = progressOf(a)
-          const open = expanded === a.id
-          const done = a.status === 'completed'
+          const kind  = kindOf(a)
+          const dated = hasDueDate(a)
+          const due   = dated ? dueLabel(a.dueDate) : null
+          const prog  = progressOf(a)
+          const open  = expanded === a.id
+          const done  = isDone(a)
+          const editing = editingId === a.id
 
           return (
             <li
@@ -227,6 +298,62 @@ export default function StudyWorkPanel() {
               className={`${styles.row} ${done ? styles.rowDone : ''}`}
               data-priority={a.priority}
             >
+              {editing ? (
+                /* The row becomes the form. Correcting a title should
+                   not cost a dialog. */
+                <div
+                  className={styles.editRow}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') { setEditingId(null); setEditError(null) }
+                  }}
+                >
+                  <input
+                    className={styles.editTitle}
+                    value={draft.title}
+                    onChange={e => { setDraft(d => ({ ...d, title: e.target.value })); setEditError(null) }}
+                    onKeyDown={e => { if (e.key === 'Enter') void saveEdit(a) }}
+                    aria-label="Title"
+                    maxLength={200}
+                    autoFocus
+                  />
+                  <input
+                    type="date"
+                    className={styles.editField}
+                    value={draft.dueDate}
+                    onChange={e => setDraft(d => ({ ...d, dueDate: e.target.value }))}
+                    aria-label="Due date — clear it to remove the deadline"
+                  />
+                  <select
+                    className={styles.editField}
+                    value={draft.priority}
+                    onChange={e => setDraft(d => ({ ...d, priority: e.target.value as Priority }))}
+                    aria-label="Priority"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                  <input
+                    className={styles.editField}
+                    value={draft.courseId}
+                    onChange={e => setDraft(d => ({ ...d, courseId: e.target.value }))}
+                    placeholder="Course"
+                    aria-label="Course"
+                  />
+                  <button type="button" className={styles.editSave} onClick={() => void saveEdit(a)}>
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.editCancel}
+                    onClick={() => { setEditingId(null); setEditError(null) }}
+                  >
+                    Cancel
+                  </button>
+                  {editError && <span className={styles.editError} role="alert">{editError}</span>}
+                </div>
+              ) : (
               <div className={styles.rowMain}>
                 <button
                   type="button"
@@ -246,15 +373,52 @@ export default function StudyWorkPanel() {
                 >
                   <span className={styles.rowTitle}>{a.title}</span>
                   <span className={styles.rowMeta}>
-                    {kind === 'problem_set' && <span className={styles.kindTag}>SET</span>}
+                    {KIND_BADGE[kind] && <span className={styles.kindTag}>{KIND_BADGE[kind]}</span>}
                     {a.courseId && <span className={styles.course}>{a.courseId}</span>}
-                    <span className={styles[`due_${due.tone}`]}>{due.text}</span>
+                    {due
+                      ? <span className={styles[`due_${due.tone}`]}>{due.text}</span>
+                      : <span className={styles.due_ok}>No deadline</span>}
                     {prog && (
                       <span className={styles.progress}>{prog.done}/{prog.total}</span>
                     )}
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  onClick={() => beginEdit(a)}
+                  aria-label={`Edit ${a.title}`}
+                  title="Edit"
+                >
+                  ✎
+                </button>
+
+                {confirmDelete === a.id ? (
+                  /* Delete asks first, in place — an explicit second
+                     press you can see, keyed to this row so a primed
+                     delete can never land on a different one. */
+                  <span className={styles.confirmRow} role="alert">
+                    <button type="button" className={styles.confirmYes} onClick={() => void removeTask(a)}>
+                      Delete
+                    </button>
+                    <button type="button" className={styles.confirmNo} onClick={() => setConfirmDelete(null)}>
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.rowAction}
+                    onClick={() => { setConfirmDelete(a.id ?? null); setEditingId(null) }}
+                    aria-label={`Delete ${a.title}`}
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
+              )}
 
               {open && prog && (
                 <ul className={styles.problems}>
@@ -296,19 +460,27 @@ export default function StudyWorkPanel() {
 
 function Composer({ onCreate }: {
   onCreate: (i: {
-    title: string; dueDate: string; kind: 'task' | 'problem_set'
+    title: string; dueDate: string; kind: TaskKind
     priority: Priority; courseId: string; problemCount: number; body: string
   }) => void
 }) {
   const [title, setTitle]   = useState('')
-  const [kind,  setKind]    = useState<'task' | 'problem_set'>('task')
+  const [kind,  setKind]    = useState<TaskKind>('task')
   const [due,   setDue]     = useState(toLocalDateStr(new Date()))
   const [prio,  setPrio]    = useState<Priority>('medium')
   const [course, setCourse] = useState('')
   const [count, setCount]   = useState(6)
   const [body,  setBody]    = useState('')
 
-  const valid = title.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(due)
+  /*
+   * A deadline is optional.
+   *
+   * It used to be required, which made "remember to email the registrar"
+   * unrepresentable — you had to invent a date for it. An undated item
+   * is unscheduled, and the list is built to show that plainly rather
+   * than to refuse it.
+   */
+  const valid = title.trim().length > 0 && (due === '' || /^\d{4}-\d{2}-\d{2}$/.test(due))
 
   return (
     <form
@@ -320,14 +492,14 @@ function Composer({ onCreate }: {
       }}
     >
       <div className={styles.kindToggle} role="group" aria-label="Kind">
-        {(['task', 'problem_set'] as const).map(k => (
+        {(['reminder', 'task', 'problem_set'] as const).map(k => (
           <button
             key={k} type="button"
             className={`${styles.kindBtn} ${kind === k ? styles.kindBtnOn : ''}`}
             onClick={() => setKind(k)}
             aria-pressed={kind === k}
           >
-            {k === 'task' ? 'Task' : 'Problem set'}
+            {k === 'reminder' ? 'Reminder' : k === 'task' ? 'Task' : 'Problem set'}
           </button>
         ))}
       </div>
@@ -336,7 +508,11 @@ function Composer({ onCreate }: {
         className={styles.input}
         value={title}
         onChange={e => setTitle(e.target.value)}
-        placeholder={kind === 'problem_set' ? 'e.g. PSet 4 — Rigid bodies' : 'What needs doing?'}
+        placeholder={
+          kind === 'problem_set' ? 'e.g. PSet 4 — Rigid bodies'
+            : kind === 'reminder' ? 'e.g. Email the registrar'
+            : 'What needs doing?'
+        }
         aria-label="Title"
         autoFocus
       />
@@ -355,7 +531,12 @@ function Composer({ onCreate }: {
       <div className={styles.composerRow}>
         <label className={styles.field}>
           <span>Due</span>
-          <input type="date" value={due} onChange={e => setDue(e.target.value)} />
+          <input
+            type="date"
+            value={due}
+            onChange={e => setDue(e.target.value)}
+            title="Optional — clear it for something with no deadline"
+          />
         </label>
         <label className={styles.field}>
           <span>Priority</span>
@@ -382,7 +563,7 @@ function Composer({ onCreate }: {
       </div>
 
       <button type="submit" className={styles.primaryBtn} disabled={!valid}>
-        Add {kind === 'problem_set' ? 'problem set' : 'task'}
+        Add {kind === 'problem_set' ? 'problem set' : kind === 'reminder' ? 'reminder' : 'task'}
       </button>
     </form>
   )

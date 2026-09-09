@@ -13,7 +13,7 @@ import {
 import { useToast } from '@/lib/ToastContext'
 import Icon, { type IconName } from '@/components/ui/Icon'
 import styles from './BotanistView.module.css'
-import { toLocalDateStr } from '@/utils/localDate'
+import { toLocalDateStr, daysSinceLocalDate } from '@/utils/localDate'
 
 /* ── Image downscaler ─────────────────────────────────────────
    Reads a user-selected image file, scales it to fit within MAX_DIM,
@@ -83,11 +83,9 @@ const PLANT_CATALOG: PlantCatalogEntry[] = [
 
 const today = () => toLocalDateStr(new Date())
 
-function daysSince(dateStr: string): number {
-  const last = new Date(dateStr); last.setHours(0,0,0,0)
-  const now  = new Date();        now.setHours(0,0,0,0)
-  return Math.floor((now.getTime() - last.getTime()) / 86_400_000)
-}
+/* Calendar days, parsed locally — see daysSinceLocalDate for the two
+   ways the obvious version gets this wrong. */
+const daysSince = (dateStr: string): number => daysSinceLocalDate(dateStr)
 
 const LIGHT_LABEL: Record<LightRequirement, { icon: IconName; text: string }> = {
   'full-sun':       { icon: 'sun',      text: 'Full Sun' },

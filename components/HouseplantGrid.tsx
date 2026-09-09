@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import type { Houseplant } from '@/types/botany'
 import styles from './HouseplantGrid.module.css'
-import { todayISO } from '@/utils/localDate'
+import { todayISO, daysSinceLocalDate } from '@/utils/localDate'
 
 /* ── Default seed collection ─────────────────────────────────────── */
 
@@ -20,13 +20,9 @@ const SEED_PLANTS: Omit<Houseplant, 'id'>[] = [
 
 /* ── Dryness computation ─────────────────────────────────────────── */
 
-function daysSince(dateStr: string): number {
-  const last = new Date(dateStr)
-  const now  = new Date()
-  last.setHours(0, 0, 0, 0)
-  now.setHours(0, 0, 0, 0)
-  return Math.floor((now.getTime() - last.getTime()) / 86_400_000)
-}
+/* Calendar days, parsed locally — see daysSinceLocalDate for the two
+   ways the obvious version gets this wrong. */
+const daysSince = (dateStr: string): number => daysSinceLocalDate(dateStr)
 
 interface PlantState {
   days:      number

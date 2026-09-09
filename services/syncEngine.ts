@@ -231,6 +231,9 @@ export class ZenithSyncEngine {
 
     /* ── assignments: creating ────────────────────────────── */
     safeDb.assignments.hook('creating', (_primKey, obj: Assignment) => {
+      /* Reminders came from a local-only table and stay that way —
+         see the note on the same gate in services/syncBroker.ts. */
+      if (obj.kind === 'reminder') return
       if (!isUrgent(obj.priority)) return
 
       // Inject the cloud UUID onto the record AS it is stored — this means
@@ -251,6 +254,8 @@ export class ZenithSyncEngine {
     safeDb.assignments.hook(
       'updating',
       (modifications: Partial<Assignment>, primKey: unknown, obj: Assignment) => {
+        if ((modifications.kind ?? obj?.kind) === 'reminder') return
+
         // Resolve the effective priority after the update
         const effectivePriority = (modifications.priority ?? obj?.priority)
         if (!isUrgent(effectivePriority)) return
