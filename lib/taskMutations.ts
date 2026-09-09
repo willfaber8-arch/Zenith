@@ -13,6 +13,7 @@
  */
 
 import { db, type Assignment, type ProblemItem, type Priority, type AssignmentStatus } from '@/lib/db'
+import { advanceOnComplete } from '@/utils/taskRepeat'
 
 /* ── Creating ────────────────────────────────────────────────── */
 
@@ -55,6 +56,9 @@ export interface TaskPatch {
   priority?: Priority
   courseId?: string
   notes?:    string
+  /** A RepeatPreset, or undefined to stop it repeating — which Dexie
+   *  writes as a removal, so the field goes rather than reading 'none'. */
+  repeat?:   string | undefined
 }
 
 /**
@@ -74,10 +78,36 @@ export function isDone(a: { status: string }): boolean {
   return a.status === 'completed'
 }
 
-export async function setDone(a: Assignment, done: boolean): Promise<void> {
-  if (!db || a.id == null) return
+/**
+ * Tick or untick a task.
+ *
+ * A repeating task is not completed by ticking it — it moves to its
+ * next date and stays open. Marking it done would take a standing
+ * commitment off the list entirely, which is the opposite of what a
+ * recurring chore is for.
+ *
+ * Returns the date it moved to, when it moved, so the caller can say so.
+ */
+export async function setDone(
+  a: Assignment, done: boolean,
+): Promise<{ repeatedTo: string } | null> {
+  if (!db || a.id == null) return null
+
+  if (done) {
+    const advanced = advanceOnComplete(a)
+    if (advanced) {
+      await db.assignments.update(a.id, {
+        dueDate: advanced.dueDate,
+        status:  'pending' as AssignmentStatus,
+        updatedAt: Date.now(),
+      })
+      return { repeatedTo: advanced.dueDate }
+    }
+  }
+
   const status: AssignmentStatus = done ? 'completed' : 'pending'
   await db.assignments.update(a.id, { status, updatedAt: Date.now() })
+  return null
 }
 
 /**

@@ -2928,3 +2928,19 @@
 }
 
 .confirmNo:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* A repeating task reads as a standing commitment rather than a one-off:
+   ticking it moves it on instead of finishing it, so the row says so. */
+.taskRepeatTag {
+  flex-shrink: 0;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

@@ -57,6 +57,9 @@ import {
 } from '@/lib/taskMutations'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
+import {
+  presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
+} from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
@@ -1549,6 +1552,7 @@ function TasksPanel() {
   /* Which task is open for editing, and the draft being typed into it. */
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
   const [taskDraft, setTaskDraft] = useState<TaskDraft>({ title: '', dueDate: '', categoryId: 0 })
+  const [repeatDraft, setRepeatDraft] = useState<RepeatPreset>('none')
   const [taskEditError, setTaskEditError] = useState<string | null>(null)
 
   /* Renaming a list — the same gap one level up: lists could be made
@@ -1571,6 +1575,7 @@ function TasksPanel() {
       dueDate:    hasDueDate(item) ? item.dueDate : '',
       categoryId: item.listId ?? UNFILED_KEY,
     })
+    setRepeatDraft(presetOf(item))
   }
 
   const cancelEditTask = () => { setEditingTaskId(null); setTaskEditError(null) }
@@ -1580,6 +1585,9 @@ function TasksPanel() {
     if (!result.ok) { setTaskEditError(result.reason); return }
     const listId = taskDraft.categoryId === UNFILED_KEY ? undefined : taskDraft.categoryId
     await updateTask(item.id!, {
+      /* 'none' is stored as absent rather than as the word: a task
+         that does not repeat should carry no repeat field at all. */
+      repeat:  repeatDraft === 'none' ? undefined : repeatDraft,
       title:   result.patch.title,
       /* dueDate is a required column, so "no deadline" is the empty
          string here — not an absent key, which would leave yesterday's
@@ -1600,7 +1608,10 @@ function TasksPanel() {
   }
 
   const handleToggleTask = async (item: Assignment) => {
-    await setDone(item, !isDone(item))
+    const moved = await setDone(item, !isDone(item))
+    /* A repeating task does not disappear when ticked, it moves — say
+       where, or it looks like the tick did nothing. */
+    if (moved) toast(`“${item.title}” — next due ${moved.repeatedTo}.`, 'success')
   }
 
   /*
@@ -1829,6 +1840,16 @@ function TasksPanel() {
                           />
                           <select
                             className={styles.taskEditList}
+                            value={repeatDraft}
+                            onChange={e => setRepeatDraft(e.target.value as RepeatPreset)}
+                            aria-label="Repeat"
+                          >
+                            {REPEAT_PRESETS.map(r => (
+                              <option key={r} value={r}>{REPEAT_LABEL[r]}</option>
+                            ))}
+                          </select>
+                          <select
+                            className={styles.taskEditList}
                             value={taskDraft.categoryId}
                             onChange={e => setTaskDraft(d => ({ ...d, categoryId: Number(e.target.value) }))}
                             aria-label="Move to list"
@@ -1878,6 +1899,11 @@ function TasksPanel() {
                           </button>
                           {KIND_BADGE[kind] && (
                             <span className={styles.taskKindTag} data-kind={kind}>{KIND_BADGE[kind]}</span>
+                          )}
+                          {REPEAT_BADGE[presetOf(item)] && (
+                            <span className={styles.taskRepeatTag} title={REPEAT_LABEL[presetOf(item)]}>
+                              ↻ {REPEAT_BADGE[presetOf(item)]}
+                            </span>
                           )}
                           {item.courseId && (
                             <span className={styles.taskCourseTag}>{item.courseId}</span>

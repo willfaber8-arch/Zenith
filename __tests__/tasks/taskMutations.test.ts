@@ -183,3 +183,63 @@ describe('deleting', () => {
     expect(rows.find(r => r.title === 'in B')?.listId).toBe(b)
   })
 })
+
+/* ══════════════════════════════════════════════════════════════
+   Repeating tasks
+   ══════════════════════════════════════════════════════════════ */
+
+describe('ticking a repeating task', () => {
+  const seedRepeating = async (repeat: string, dueDate: string): Promise<number> =>
+    await db.assignments.add({
+      title: 'Bins', dueDate, courseId: '', status: 'pending',
+      priority: 'medium', kind: 'reminder', repeat,
+      createdAt: Date.now(), updatedAt: Date.now(),
+    } as never) as number
+
+  /*
+   * A standing commitment must not be tickable off the list. Marking it
+   * completed would remove the very thing it exists to keep bringing
+   * back.
+   */
+  it('moves it to the next date instead of completing it', async () => {
+    const id = await seedRepeating('weekly', '2026-09-08')
+    const res = await setDone((await get(id))!, true)
+
+    const row = await get(id)
+    expect(row?.status).toBe('pending')       // still open
+    expect(row?.dueDate).not.toBe('2026-09-08')
+    expect(res?.repeatedTo).toBe(row?.dueDate)
+  })
+
+  it('reports where it moved to, so the caller can say so', async () => {
+    const id = await seedRepeating('daily', '2030-01-01')
+    const res = await setDone((await get(id))!, true)
+    expect(res?.repeatedTo).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('leaves a one-off task completing normally', async () => {
+    const id = await createReminder({ title: 'Once' })
+    const res = await setDone((await get(id!))!, true)
+    expect(res).toBeNull()
+    expect((await get(id!))?.status).toBe('completed')
+  })
+
+  /* Un-ticking is never a repeat: it is undoing a tick. */
+  it('does not advance when un-ticking', async () => {
+    const id = await seedRepeating('weekly', '2026-09-08')
+    await db.assignments.update(id, { status: 'completed' })
+    const res = await setDone((await get(id))!, false)
+    expect(res).toBeNull()
+    expect((await get(id))?.dueDate).toBe('2026-09-08')
+    expect((await get(id))?.status).toBe('pending')
+  })
+
+  /* A repeating task with no date has nothing to advance from — better
+     to complete it than to invent a schedule for it. */
+  it('completes a dateless repeating task rather than inventing a date', async () => {
+    const id = await seedRepeating('weekly', '')
+    const res = await setDone((await get(id))!, true)
+    expect(res).toBeNull()
+    expect((await get(id))?.status).toBe('completed')
+  })
+})

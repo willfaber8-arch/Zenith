@@ -104,6 +104,13 @@ export interface Assignment {
    *  work arriving from the Co-Pilot or from a note has no list to be
    *  filed into, and should not have to invent one to exist. */
   listId?:     number           // * indexed
+  /* ── Repeating tasks (v46) ───────────────────────────────────── */
+  /** A RepeatPreset from utils/taskRepeat — 'weekly', 'weekdays', … .
+   *  Absent means it happens once. Not indexed: nothing queries by it,
+   *  and it is read from a row already in hand. One row that moves
+   *  rather than many rows generated ahead — a chore is one thing whose
+   *  next date changes, not fifty-two separate obligations. */
+  repeat?:     string
 }
 
 /**
