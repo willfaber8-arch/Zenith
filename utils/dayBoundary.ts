@@ -18,8 +18,15 @@ import { toLocalDateStr } from '@/utils/localDate'
 
 export const DAY_CUTOFF_KEY = 'zenith_day_cutoff_v1'
 
-/** Hours past midnight that still belong to the previous day. */
-export const DEFAULT_CUTOFF_HOUR = 0
+/**
+ * Hours past midnight that still belong to the previous day.
+ *
+ * 4am by default. The feature exists because finishing a session at 2am
+ * and having it count as tomorrow breaks a streak you actually earned,
+ * and leaving that off until someone finds a setting means the common
+ * case stays broken. Set it to 0 for a plain midnight rollover.
+ */
+export const DEFAULT_CUTOFF_HOUR = 4
 export const MAX_CUTOFF_HOUR = 11
 
 /**
@@ -31,7 +38,14 @@ export const MAX_CUTOFF_HOUR = 11
  */
 export function loadCutoffHour(): number {
   try {
-    return clampCutoff(Number(localStorage.getItem(DAY_CUTOFF_KEY)))
+    const raw = localStorage.getItem(DAY_CUTOFF_KEY)
+    /*
+     * A missing key means "never chosen", which is the default — not
+     * zero. Number(null) is 0, so reading it without this check would
+     * have made the default midnight no matter what it was set to.
+     */
+    if (raw === null || raw === '') return DEFAULT_CUTOFF_HOUR
+    return clampCutoff(Number(raw))
   } catch {
     return DEFAULT_CUTOFF_HOUR
   }
