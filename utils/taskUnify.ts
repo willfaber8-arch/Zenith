@@ -101,7 +101,9 @@ export function kindOf(a: { kind?: string }): TaskKind {
  * undated reminder sorts and compares as if it were due in antiquity.
  * Without this guard every dateless task reads as overdue.
  */
-export function hasDueDate(a: { dueDate?: string | null }): boolean {
+export function hasDueDate<T extends { dueDate?: string | null }>(
+  a: T,
+): a is T & { dueDate: string } {
   return typeof a.dueDate === 'string' && a.dueDate.length > 0
 }
 

@@ -216,3 +216,28 @@ describe('when a date-only deadline passes', () => {
     expect(dueEndOfDayMs('not a date')).toBeNull()
   })
 })
+
+/*
+ * A narrowing guard, not just a boolean.
+ *
+ * `dueDate` is optional on several of the row shapes this is called
+ * with, so a plain boolean left every call site casting or re-checking.
+ * Returning a type predicate makes "we know it has a date" survive into
+ * the branch, which is where the mistakes were being made.
+ */
+describe('hasDueDate as a type guard', () => {
+  it('narrows an optional dueDate to a string', () => {
+    const row: { dueDate?: string } = { dueDate: '2026-09-09' }
+    if (hasDueDate(row)) {
+      /* Compiles only because the guard narrowed it. */
+      expect(row.dueDate.slice(0, 4)).toBe('2026')
+    } else {
+      throw new Error('expected the guard to pass')
+    }
+  })
+
+  it('rejects an absent one', () => {
+    const row: { dueDate?: string } = {}
+    expect(hasDueDate(row)).toBe(false)
+  })
+})
