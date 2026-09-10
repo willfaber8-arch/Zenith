@@ -9,7 +9,8 @@
  *
  * Recovery ladder:
  *   1st crash  → "Reinitialize OS Engine" — resets error state, re-renders children
- *   2nd crash  → "Flush State & Restart" — wipes ZenithOS IndexedDB, navigates to /
+ *   2nd crash  → offers a backup download, then an armed "Delete my local
+ *                data" that says what it deletes and asks before doing it
  *
  * Mount this around any subtree that touches IDB, WebRTC, or the AI gateway.
  * The root usage wraps AppContent in layout.tsx so no crash can escape to the browser.
@@ -32,6 +33,10 @@ interface State {
   errorInfo: ErrorInfo | null
   /** Counts re-render attempts — used to escalate to the hard-reset path */
   attempts:  number
+  /** The destructive button asks before it acts; this is the armed state. */
+  armed:     boolean
+  /** 'idle' | 'working' | 'done' | 'failed' for the backup download */
+  backup:    'idle' | 'working' | 'done' | 'failed'
 }
 
 /* ── Class component ───────────────────────────────────────────── */
@@ -43,6 +48,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     error:     null,
     errorInfo: null,
     attempts:  0,
+    armed:     false,
+    backup:    'idle',
   }
 
   /* Synchronously derive error state so the recovery UI renders in the
@@ -73,9 +80,27 @@ export default class ErrorBoundary extends Component<Props, State> {
     }))
   }
 
+  /*
+   * Offered before the destructive button, because the thing most likely
+   * to be worth saving is the thing this screen is about to delete. The
+   * export runs against a database that has just crashed the app, so it
+   * is allowed to fail — and says so rather than pretending it worked.
+   */
+  private downloadBackup = async () => {
+    this.setState({ backup: 'working' })
+    try {
+      const { exportLocalDatabaseToJson } = await import('@/utils/dbExporter')
+      await exportLocalDatabaseToJson()
+      this.setState({ backup: 'done' })
+    } catch {
+      this.setState({ backup: 'failed' })
+    }
+  }
+
   private flushAndRestart = () => {
-    /* Wipe the local database so a corrupted row can't re-crash the app.
-       Navigating via replace() removes the broken state from history.   */
+    /* Deletes every note, task, habit and calendar entry held locally.
+       Only reachable from the armed state, after the second crash, with
+       a backup offered first — see the button below.                    */
     if (typeof window !== 'undefined') {
       try {
         window.indexedDB.deleteDatabase('ZenithOS')
@@ -91,7 +116,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children
 
-    const { attempts, error } = this.state
+    const { attempts, error, armed, backup } = this.state
     const escalated           = attempts >= 2
 
     return (
@@ -108,7 +133,9 @@ export default class ErrorBoundary extends Component<Props, State> {
             {this.props.moduleLabel
               ? `The "${this.props.moduleLabel}" module encountered an unexpected error.`
               : 'A downstream component encountered an unexpected error.'}{' '}
-            Your locally stored data is intact.
+            {escalated
+              ? 'Your locally stored data has not been touched.'
+              : 'Your locally stored data is intact.'}
           </p>
 
           {/* Recovery actions */}
@@ -123,15 +150,64 @@ export default class ErrorBoundary extends Component<Props, State> {
           ) : (
             <>
               <p className={styles.escalationNotice}>
-                Recovery failed after {attempts} attempts — a full state flush is required.
+                Recovery failed after {attempts} attempts. A crash this
+                persistent is usually a single unreadable row, and deleting
+                the local database clears it — along with every note, task,
+                habit and calendar entry stored on this device. There is no
+                undo, so take a copy first.
               </p>
+
               <button
                 type="button"
-                className={styles.dangerBtn}
-                onClick={this.flushAndRestart}
+                className={styles.primaryBtn}
+                onClick={this.downloadBackup}
+                disabled={backup === 'working'}
               >
-                Flush State &amp; Restart
+                {backup === 'working' ? 'Saving a copy…'
+                  : backup === 'done'   ? 'Saved — download it again'
+                  : backup === 'failed' ? 'Could not save a copy — try again'
+                  : 'Download a backup first'}
               </button>
+
+              {backup === 'failed' && (
+                <p className={styles.escalationNotice}>
+                  The export failed, which can happen when the database is
+                  the thing that is broken. Deleting it now would lose that
+                  data for good.
+                </p>
+              )}
+
+              {/*
+                Two presses, deliberately. The first only changes the label,
+                so the press that actually deletes is one the reader has
+                seen the consequence of.
+              */}
+              {!armed ? (
+                <button
+                  type="button"
+                  className={styles.dangerBtn}
+                  onClick={() => this.setState({ armed: true })}
+                >
+                  Delete my local data
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.dangerBtn}
+                    onClick={this.flushAndRestart}
+                  >
+                    Delete everything permanently
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={() => this.setState({ armed: false })}
+                  >
+                    Keep my data
+                  </button>
+                </>
+              )}
             </>
           )}
 

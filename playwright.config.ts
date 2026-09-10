@@ -20,8 +20,6 @@
 
 import { defineConfig, devices } from '@playwright/test'
 
-import { SENTINEL_KEY } from './lib/dataResetVersion'
-
 export default defineConfig({
 
   /* ── Test discovery ─────────────────────────────────────────── */
@@ -49,25 +47,6 @@ export default defineConfig({
   /* ── Shared browser settings ────────────────────────────────── */
   use: {
     baseURL:    'http://localhost:3000',
-
-    /*
-     * Every test gets a clean browser profile, which to Zenith looks like
-     * a brand-new device — so DataResetGate fired on all of them, clearing
-     * localStorage (including the session the test had just injected),
-     * deleting both IndexedDB databases and reloading. Whatever
-     * page.evaluate was mid-flight died with "Execution context was
-     * destroyed", and the tests that survived were testing a wiped app.
-     *
-     * Seeding the sentinel says what is true of any device a real user has
-     * already opened Zenith on: the one-time wipe has been done.
-     */
-    storageState: {
-      cookies: [],
-      origins: [{
-        origin:       'http://localhost:3000',
-        localStorage: [{ name: SENTINEL_KEY, value: 'done' }],
-      }],
-    },
     trace:      'retain-on-failure',    // trace.zip only on failure
     screenshot: 'only-on-failure',      // PNG only on failure
     video:      'retain-on-failure',    // video only on failure
