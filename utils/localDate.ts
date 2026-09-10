@@ -80,3 +80,31 @@ export function fromLocalDateStr(iso: string): Date {
   if (!m) return new Date(NaN)
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
+
+/**
+ * Whole days from a `YYYY-MM-DD` key to today, counted as calendar days.
+ *
+ * Two mistakes this exists to stop making, both of which were live in
+ * the plant tracker:
+ *
+ *   `new Date("2026-09-09")` is UTC midnight, so west of Greenwich it
+ *   lands on the previous evening. Snapping that to local midnight
+ *   yields the day *before* the one written down, and a plant watered
+ *   this morning reports a day since watering — every day, for every
+ *   user in the Americas.
+ *
+ *   Dividing the gap by 86,400,000 assumes every day is 24 hours. Twice
+ *   a year one is 23 or 25, and `Math.floor` turns a 23-hour gap into
+ *   zero days. Rounding is right here precisely because both ends are
+ *   local midnights: the true answer is always a whole number, and the
+ *   only thing division introduces is the hour that daylight saving
+ *   took away.
+ *
+ * Negative when the date is in the future.
+ */
+export function daysSinceLocalDate(iso: string, now: Date = new Date()): number {
+  const from = fromLocalDateStr(iso)
+  if (Number.isNaN(from.getTime())) return NaN
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000)
+}

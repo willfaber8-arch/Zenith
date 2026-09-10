@@ -21,11 +21,20 @@
 
 name: CI · Validate & Deploy
 
+# The default branch of this repository is `master`. Listing only `main`
+# meant every push and every pull request went unvalidated: the type
+# check and the Playwright suite below have not run on a change in a
+# long time, and a green tick on a pull request was Vercel's preview
+# deploy on its own — a pipeline that never runs is worse than no
+# pipeline, because it still looks like one.
+#
+# The deploy stages further down stay gated on `refs/heads/main`, so
+# this turns validation back on without changing what deploys or when.
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 # Cancel any in-flight run for the same branch when a newer push arrives.
 # Prevents simultaneous deploys from a rapid succession of commits.
@@ -88,6 +97,46 @@ jobs:
         # Only chromium is installed — matching the single project in playwright.config.ts.
         run: npx playwright install --with-deps chromium
 
+      # The build above and the dev server below both use `.next`, and they
+      # cannot share it. `next build` inlines NEXT_PUBLIC_* values into the
+      # chunks it writes; `next dev` then starts with NEXT_PUBLIC_E2E=1 and
+      # reuses what it finds, so the browser would be served a mixture of
+      # chunks built under two different environments.
+      - name: Clear the production build before starting the dev server
+        run: rm -rf .next
+
+      # `next dev` compiles routes on demand, and the first request pays
+      # for the whole app. Playwright's own readiness check only waits
+      # for the server to answer, which happens well before the client
+      # chunks are built — so the first spec to run was racing a cold
+      # compile, timing out, and taking every test in its file down with
+      # it through `mode: 'serial'`.
+      #
+      # Warming it here means the suite starts against a compiled app.
+      # Measured locally: the same suite that timed out cold ran 15 of
+      # 17 green in 26 seconds warm.
+      - name: Warm the dev server before the suite
+        # NEXT_PUBLIC_E2E is inlined at compile time, so it has to be set
+        # for the process that runs `next dev` — declared here rather than
+        # as an inline prefix so there is one obvious place it comes from.
+        env:
+          NEXT_PUBLIC_E2E: '1'
+        run: |
+          npm run dev > /tmp/zenith-dev.log 2>&1 &
+          echo "waiting for the dev server to answer"
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000 && break
+            sleep 2
+          done
+          # A curl warms the server route and nothing else. Only a browser
+          # fetches and executes the client bundle, which is what the tests
+          # actually wait for — and it can check the bridge is really there.
+          node scripts/warm-e2e-server.mjs
+
+      - name: Dev server log if the warm-up failed
+        if: failure()
+        run: tail -50 /tmp/zenith-dev.log
+
       - name: Run E2E test suite
         # playwright.config.ts handles the webServer lifecycle: it boots
         # `npm run dev` with NEXT_PUBLIC_E2E=1, mounts TestBridge on window.__zenith,
@@ -108,8 +157,8 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}
           path: |
-            tests/playwright-report/
-            tests/playwright-results/
+            playwright-report/
+            playwright-results/
           retention-days: 14
 
       # ── Stage 5 · Production deployment (main branch push only) ───────

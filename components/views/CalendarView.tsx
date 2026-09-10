@@ -34,6 +34,7 @@ import {
 } from '@/lib/calendarMutations'
 import EventDetailPopover from '@/components/EventDetailPopover'
 import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
+import { normaliseTaskEdit, isNoOpEdit, MAX_TITLE, type TaskDraft } from '@/utils/taskEdit'
 import {
   loadLocked, saveLocked, loadHourSpan, saveHourSpan, type HourSpan,
 } from '@/utils/calendarPrefs'
@@ -47,7 +48,21 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
-import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type TodoItem } from '@/lib/db'
+import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem } from '@/lib/db'
+import {
+  kindOf, hasDueDate, isOverdue, isOpen, groupByList, KIND_BADGE, type TaskKind,
+} from '@/utils/taskUnify'
+import {
+  createReminder, updateTask, setDone, isDone, deleteList, toggleProblem, setSubtasks,
+} from '@/lib/taskMutations'
+import {
+  addSubtask, removeSubtask, parseSubtaskLines, itemNoun, type SubtaskLike,
+} from '@/utils/subtasks'
+import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
+import {
+  presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
+} from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
@@ -1382,6 +1397,17 @@ function EmptyCalendar({ onOpenFeedPanel }: { onOpenFeedPanel: () => void }) {
 
 /* ── TasksPanel ────────────────────────────────────────────── */
 
+/**
+ * The value standing in for "no list" in the list <select> and in the
+ * per-list add-task state.
+ *
+ * `todo_categories` ids are auto-increment and therefore always ≥ 1, so
+ * 0 can never collide with a real list. A sentinel is needed because the
+ * <option> value has to be a string either way — using '' would make
+ * Number('') collapse to 0 anyway, just less visibly.
+ */
+const UNFILED_KEY = 0
+
 const DEFAULT_CATEGORIES = [
   { name: 'Short Term', sortOrder: 0 },
   { name: 'Long Term',  sortOrder: 1 },
@@ -1427,99 +1453,280 @@ function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
   )
 }
 
+/**
+ * TasksPanel — the one list.
+ *
+ * This tab used to read `todo_items`, a table only it could see, while
+ * course work and problem sets lived in `assignments` behind Study
+ * Shield. Whether a thing you had to do was findable here depended
+ * entirely on which screen you were looking at when you wrote it down.
+ *
+ * Both now come from `assignments`. Reminders, tasks and problem sets
+ * are three kinds of one thing, grouped into the lists you make, and
+ * this panel and Study Shield are two windows onto the same table
+ * rather than two lists that disagree.
+ */
 function TasksPanel() {
-  const categories = useLiveQuery(
+  const { toast } = useToast()
+  const undoableDelete = useUndoableDelete()
+
+  const lists = useLiveQuery(
     () => db?.todo_categories.orderBy('id').toArray() ?? Promise.resolve([]),
     [],
   ) as TodoCategory[] | undefined
 
-  const items = useLiveQuery(
-    () => db?.todo_items.orderBy('id').toArray() ?? Promise.resolve([]),
+  const rows = useLiveQuery(
+    () => db?.assignments.toArray() ?? Promise.resolve([]),
     [],
-  ) as TodoItem[] | undefined
+  ) as Assignment[] | undefined
 
-  /* Seed default categories once */
+  /* Seed default lists once */
   useEffect(() => {
-    if (!db || categories === undefined) return
-    if (categories.length === 0) {
+    if (!db || lists === undefined) return
+    if (lists.length === 0) {
       void db.todo_categories.bulkAdd(
         DEFAULT_CATEGORIES.map(c => ({ ...c, createdAt: Date.now() }))
       )
     }
-  }, [categories])
+  }, [lists])
+
+  const [kindFilter, setKindFilter] = useState<TaskKind | 'all'>('all')
+  const [showDone,   setShowDone]   = useState(false)
 
   const [addingCategory,   setAddingCategory]   = useState(false)
   const [newCatName,       setNewCatName]       = useState('')
-  /* per-category add-task state: categoryId → { title, dueDate } */
+  /* per-list add-task state: listId → { title, dueDate }. UNFILED_KEY
+     stands in for the unfiled group, which can be added to as well. */
   const [addTaskState, setAddTaskState] = useState<Record<number, { title: string; dueDate: string }>>({})
 
-  const getTaskState = (catId: number) =>
-    addTaskState[catId] ?? { title: '', dueDate: '' }
+  const getTaskState = (key: number) =>
+    addTaskState[key] ?? { title: '', dueDate: '' }
 
-  const setTaskField = (catId: number, field: 'title' | 'dueDate', value: string) =>
+  const setTaskField = (key: number, field: 'title' | 'dueDate', value: string) =>
     setAddTaskState(prev => ({
       ...prev,
-      [catId]: { ...getTaskState(catId), [field]: value },
+      [key]: { ...getTaskState(key), [field]: value },
     }))
 
-  /* Append dictated speech to a category's task title (race-safe on prev). */
-  const appendTaskTitle = (catId: number, text: string) =>
+  /* Append dictated speech to a list's task title (race-safe on prev). */
+  const appendTaskTitle = (key: number, text: string) =>
     setAddTaskState(prev => {
-      const cur = prev[catId] ?? { title: '', dueDate: '' }
+      const cur = prev[key] ?? { title: '', dueDate: '' }
       const sep = cur.title && !cur.title.endsWith(' ') ? ' ' : ''
-      return { ...prev, [catId]: { ...cur, title: cur.title + sep + text } }
+      return { ...prev, [key]: { ...cur, title: cur.title + sep + text } }
     })
 
   const handleAddCategory = async () => {
     const name = newCatName.trim()
     if (!name || !db) return
-    await db.todo_categories.add({ name, sortOrder: (categories?.length ?? 0), createdAt: Date.now() })
+    await db.todo_categories.add({ name, sortOrder: (lists?.length ?? 0), createdAt: Date.now() })
     setNewCatName('')
     setAddingCategory(false)
   }
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!db) return
-    await db.todo_items.where('categoryId').equals(id).delete()
-    await db.todo_categories.delete(id)
+  /*
+   * Deleting a list no longer deletes the work in it.
+   *
+   * The old table cascaded — removing a heading destroyed everything
+   * filed under it silently. Its tasks become unfiled instead, and the
+   * count is reported so the change is visible rather than assumed.
+   */
+  const handleDeleteCategory = async (id: number, name: string) => {
+    const moved = await deleteList(id)
+    toast(
+      moved === 0
+        ? `List "${name}" removed.`
+        : `List "${name}" removed — ${moved} ${moved === 1 ? 'task is' : 'tasks are'} now unfiled.`,
+      'info',
+    )
   }
 
-  const handleAddTask = async (catId: number) => {
-    const { title, dueDate } = getTaskState(catId)
-    if (!title.trim() || !db) return
-    await db.todo_items.add({
-      categoryId: catId,
-      title: title.trim(),
-      completed: 0,
-      dueDate: dueDate || undefined,
-      createdAt: Date.now(),
+  const handleAddTask = async (key: number) => {
+    const { title, dueDate } = getTaskState(key)
+    if (!title.trim()) return
+    await createReminder({
+      title,
+      dueDate,
+      listId: key === UNFILED_KEY ? undefined : key,
     })
-    setAddTaskState(prev => ({ ...prev, [catId]: { title: '', dueDate: '' } }))
+    setAddTaskState(prev => ({ ...prev, [key]: { title: '', dueDate: '' } }))
   }
 
-  const handleToggleTask = async (item: TodoItem) => {
-    if (!db) return
-    await db.todo_items.update(item.id!, { completed: item.completed === 0 ? 1 : 0 })
+  /* Which task is open for editing, and the draft being typed into it. */
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [taskDraft, setTaskDraft] = useState<TaskDraft>({ title: '', dueDate: '', categoryId: 0 })
+  const [repeatDraft, setRepeatDraft] = useState<RepeatPreset>('none')
+  const [taskEditError, setTaskEditError] = useState<string | null>(null)
+
+  /* Renaming a list — the same gap one level up: lists could be made
+     and destroyed but never corrected. */
+  const [editingCatId, setEditingCatId] = useState<number | null>(null)
+  const [catDraft, setCatDraft] = useState('')
+
+  /* Arming lives in <ConfirmDelete>, which also guarantees only one
+     row is armed at a time — with per-row state, arming a second left
+     the first armed too. */
+
+  /* Which task is open, showing its steps. */
+  const [expanded, setExpanded] = useState<number | null>(null)
+  /* Per-task text for the "add a step" box. */
+  const [stepDrafts, setStepDrafts] = useState<Record<number, string>>({})
+
+  const handleAddStep = async (item: Assignment, pasted?: string) => {
+    const text = pasted ?? stepDrafts[item.id!] ?? ''
+    if (!text.trim()) return
+    /* A pasted list becomes one step per line — people paste the
+       bullets along with it, so those are stripped. */
+    const lines = parseSubtaskLines(text)
+    let items = (item.problems ?? []) as SubtaskLike[]
+    for (const line of lines) {
+      const r = addSubtask(items, line)
+      if (!r.ok) { toast(r.reason, 'error'); break }
+      items = r.items
+    }
+    await setSubtasks(item, items as ProblemItem[])
+    setStepDrafts(d => ({ ...d, [item.id!]: '' }))
   }
 
-  const handleDeleteTask = async (id: number) => {
-    if (!db) return
-    await db.todo_items.delete(id)
+  const beginEditTask = (item: Assignment) => {
+    setEditingTaskId(item.id!)
+    setTaskEditError(null)
+    setTaskDraft({
+      title:      item.title,
+      dueDate:    hasDueDate(item) ? item.dueDate : '',
+      categoryId: item.listId ?? UNFILED_KEY,
+    })
+    setRepeatDraft(presetOf(item))
+  }
+
+  const cancelEditTask = () => { setEditingTaskId(null); setTaskEditError(null) }
+
+  const handleSaveTask = async (item: Assignment) => {
+    const result = normaliseTaskEdit(taskDraft)
+    if (!result.ok) { setTaskEditError(result.reason); return }
+    const listId = taskDraft.categoryId === UNFILED_KEY ? undefined : taskDraft.categoryId
+    await updateTask(item.id!, {
+      /* 'none' is stored as absent rather than as the word: a task
+         that does not repeat should carry no repeat field at all. */
+      repeat:  repeatDraft === 'none' ? undefined : repeatDraft,
+      title:   result.patch.title,
+      /* dueDate is a required column, so "no deadline" is the empty
+         string here — not an absent key, which would leave yesterday's
+         date quietly surviving an edit that looked like it removed it. */
+      dueDate: result.patch.dueDate ?? '',
+      listId,
+    })
+    cancelEditTask()
+  }
+
+  const handleRenameCategory = async (id: number) => {
+    const name = catDraft.trim()
+    /* An empty name would leave a list nobody can identify, so a blank
+       rename is a cancel rather than a destructive save. */
+    if (!name || !db) { setEditingCatId(null); return }
+    await db.todo_categories.update(id, { name })
+    setEditingCatId(null)
+  }
+
+  const handleToggleTask = async (item: Assignment) => {
+    const moved = await setDone(item, !isDone(item))
+    /* A repeating task does not disappear when ticked, it moves — say
+       where, or it looks like the tick did nothing. */
+    if (moved) toast(`“${item.title}” — next due ${moved.repeatedTo}.`, 'success')
+  }
+
+  /*
+   * Deleting a task offers it straight back.
+   *
+   * The armed second press stays: it catches the misclick before it
+   * happens, and the undo catches the one you only notice afterwards.
+   * They protect against different mistakes, and neither costs anything
+   * when you did mean it.
+   */
+  const handleDeleteTask = async (item: Assignment) => {
+    await undoableDelete({
+      table:   'assignments',
+      keys:    [item.id!],
+      message: `“${item.title}” deleted.`,
+    })
+  }
+
+  const handleToggleProblem = async (a: Assignment, problemId: string) => {
+    const { justCompleted } = await toggleProblem(a, problemId)
+    if (justCompleted) toast(`"${a.title}" complete.`, 'success')
   }
 
   const today = toLocalDateStr(new Date())
 
-  if (categories === undefined || items === undefined) return null
+  const all = useMemo(() => rows ?? [], [rows])
+
+  const counts = useMemo(() => ({
+    reminder:    all.filter(a => kindOf(a) === 'reminder'    && isOpen(a)).length,
+    task:        all.filter(a => kindOf(a) === 'task'        && isOpen(a)).length,
+    problem_set: all.filter(a => kindOf(a) === 'problem_set' && isOpen(a)).length,
+    overdue:     all.filter(a => isOverdue(a, today)).length,
+  }), [all, today])
+
+  const visible = useMemo(
+    () => all.filter(a => {
+      if (kindFilter !== 'all' && kindOf(a) !== kindFilter) return false
+      return showDone ? true : isOpen(a)
+    }),
+    [all, kindFilter, showDone],
+  )
+
+  const groups = useMemo(
+    () => groupByList(visible, lists ?? []),
+    [visible, lists],
+  )
+
+  if (lists === undefined || rows === undefined) return null
+
+  const totalShown = visible.length
 
   return (
     <div className={styles.tasksPanel}>
       <div className={styles.tasksPanelHeader}>
-        <p className={styles.tasksPanelTitle}>To-Do Lists</p>
-        {!addingCategory && (
-          <button type="button" className={styles.addCategoryBtn} onClick={() => setAddingCategory(true)}>
-            + New List
+        {/* No panel heading. The tab above already says Tasks, and a
+            heading reading "TASKS" immediately left of a filter chip
+            reading "TASKS" invites you to click the wrong one. */}
+        <div className={styles.taskFilters} role="tablist" aria-label="Filter tasks by kind">
+          {([
+            ['all',         'All',           totalShown],
+            ['reminder',    'Reminders',     counts.reminder],
+            ['task',        'Tasks',         counts.task],
+            ['problem_set', 'Problem Sets',  counts.problem_set],
+          ] as [TaskKind | 'all', string, number][]).map(([id, label, n]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={kindFilter === id}
+              className={`${styles.taskFilter} ${kindFilter === id ? styles.taskFilterOn : ''}`}
+              onClick={() => setKindFilter(id)}
+            >
+              {label}{id !== 'all' && n > 0 ? ` · ${n}` : ''}
+            </button>
+          ))}
+        </div>
+        <div className={styles.taskToolbarRight}>
+          {counts.overdue > 0 && (
+            <span className={styles.taskOverdueChip}>{counts.overdue} overdue</span>
+          )}
+          <button
+            type="button"
+            className={styles.taskGhostBtn}
+            onClick={() => setShowDone(s => !s)}
+            aria-pressed={showDone}
+          >
+            {showDone ? 'Hide done' : 'Show done'}
           </button>
-        )}
+          {!addingCategory && (
+            <button type="button" className={styles.addCategoryBtn} onClick={() => setAddingCategory(true)}>
+              + New List
+            </button>
+          )}
+        </div>
       </div>
 
       {addingCategory && (
@@ -1545,61 +1752,268 @@ function TasksPanel() {
         </div>
       )}
 
-      {categories.length === 0 && !addingCategory && (
+      {lists.length === 0 && !addingCategory && (
         <p className={styles.tasksEmpty}>No lists yet. Click &ldquo;+ New List&rdquo; to get started.</p>
       )}
 
-      {categories.map(cat => {
-        const catItems = items.filter(i => i.categoryId === cat.id)
-        const openCount = catItems.filter(i => i.completed === 0).length
-        const taskState = getTaskState(cat.id!)
+      {groups.map(group => {
+        const cat      = group.list as TodoCategory | null
+        const key      = cat?.id ?? UNFILED_KEY
+        const catItems = group.items
+        const openCount = catItems.filter(i => isOpen(i)).length
+        const taskState = getTaskState(key)
 
         return (
-          <div key={cat.id} className={styles.taskCategory}>
+          <div key={key} className={styles.taskCategory}>
             <div className={styles.taskCategoryHeader}>
-              <span className={styles.taskCategoryName}>{cat.name}</span>
+              {cat === null ? (
+                /* Unfiled is a heading, not a list: it cannot be renamed
+                   or removed because it is where things go when they have
+                   no list, including when a list is deleted. */
+                <span className={styles.taskCategoryUnfiled}>Unfiled</span>
+              ) : editingCatId === cat.id ? (
+                <input
+                  type="text"
+                  className={styles.catRenameInput}
+                  value={catDraft}
+                  onChange={e => setCatDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  void handleRenameCategory(cat.id!)
+                    if (e.key === 'Escape') setEditingCatId(null)
+                  }}
+                  onBlur={() => void handleRenameCategory(cat.id!)}
+                  aria-label={`Rename list ${cat.name}`}
+                  maxLength={60}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.taskCategoryName}
+                  onClick={() => { setEditingCatId(cat.id!); setCatDraft(cat.name) }}
+                  title="Rename this list"
+                >
+                  {cat.name}
+                </button>
+              )}
               <span className={styles.taskCategoryCount}>{openCount} open</span>
-              <button
-                type="button"
-                className={styles.deleteCategoryBtn}
-                onClick={() => void handleDeleteCategory(cat.id!)}
-                aria-label={`Delete list ${cat.name}`}
-                title="Delete list"
-              >
-                ✕
-              </button>
+              {cat !== null && (
+                <ConfirmDelete
+                  label={`list ${cat.name}`}
+                  question="Its tasks become unfiled."
+                  onConfirm={() => handleDeleteCategory(cat.id!, cat.name)}
+                  className={styles.deleteCategoryBtn}
+                />
+              )}
             </div>
 
             {catItems.length > 0 && (
               <ul className={styles.taskList}>
                 {catItems.map(item => {
-                  const isOverdue = item.completed === 0 && item.dueDate && item.dueDate < today
+                  const kind    = kindOf(item)
+                  const overdue = isOverdue(item, today)
+                  const done    = isDone(item)
+                  const prog    = item.problems?.length
+                    ? { done: item.problems.filter(p => p.done).length, total: item.problems.length }
+                    : null
+                  const isExpanded = expanded === item.id
+
                   return (
                     <li key={item.id} className={styles.taskItem}>
-                      <button
-                        type="button"
-                        className={`${styles.taskCheckbox} ${item.completed === 1 ? styles.taskCheckboxDone : ''}`}
-                        onClick={() => void handleToggleTask(item)}
-                        aria-label={item.completed === 1 ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        {item.completed === 1 && <span className={styles.taskCheckMark}>✓</span>}
-                      </button>
-                      <span className={`${styles.taskTitle} ${item.completed === 1 ? styles.taskTitleDone : ''}`}>
-                        {item.title}
-                      </span>
-                      {item.dueDate && (
-                        <span className={`${styles.taskDueDate} ${isOverdue ? styles.taskDueDateOverdue : ''}`}>
-                          {isOverdue ? '⚠ ' : ''}{item.dueDate}
-                        </span>
+                      {editingTaskId === item.id ? (
+                        /*
+                          The row becomes the form, rather than opening a
+                          dialog over it — a to-do list is a place for
+                          quick corrections, and a modal for fixing a
+                          typo is more ceremony than the change deserves.
+                        */
+                        <div
+                          className={styles.taskEditRow}
+                          /*
+                            Escape is handled for the whole row, not just
+                            the text fields. After a refused save the
+                            focus is on the Save button, and an Escape
+                            bound only to the inputs left the row stuck
+                            open with no obvious way out.
+                          */
+                          onKeyDown={e => { if (e.key === 'Escape') cancelEditTask() }}
+                        >
+                          <input
+                            type="text"
+                            className={styles.taskEditTitle}
+                            value={taskDraft.title}
+                            onChange={e => {
+                              setTaskDraft(d => ({ ...d, title: e.target.value }))
+                              setTaskEditError(null)
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleSaveTask(item) }}
+                            maxLength={MAX_TITLE}
+                            aria-label="Task title"
+                            autoFocus
+                          />
+                          <input
+                            type="date"
+                            className={styles.taskEditDate}
+                            value={taskDraft.dueDate}
+                            onChange={e => setTaskDraft(d => ({ ...d, dueDate: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleSaveTask(item) }}
+                            aria-label="Due date — clear it to remove the deadline"
+                          />
+                          <select
+                            className={styles.taskEditList}
+                            value={repeatDraft}
+                            onChange={e => setRepeatDraft(e.target.value as RepeatPreset)}
+                            aria-label="Repeat"
+                          >
+                            {REPEAT_PRESETS.map(r => (
+                              <option key={r} value={r}>{REPEAT_LABEL[r]}</option>
+                            ))}
+                          </select>
+                          <select
+                            className={styles.taskEditList}
+                            value={taskDraft.categoryId}
+                            onChange={e => setTaskDraft(d => ({ ...d, categoryId: Number(e.target.value) }))}
+                            aria-label="Move to list"
+                          >
+                            {lists.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                            <option value={UNFILED_KEY}>Unfiled</option>
+                          </select>
+                          <button
+                            type="button"
+                            className={styles.taskEditSave}
+                            onClick={() => void handleSaveTask(item)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.taskEditCancel}
+                            onClick={cancelEditTask}
+                          >
+                            Cancel
+                          </button>
+                          {taskEditError && (
+                            <span className={styles.taskEditError} role="alert">{taskEditError}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={`${styles.taskCheckbox} ${done ? styles.taskCheckboxDone : ''}`}
+                            onClick={() => void handleToggleTask(item)}
+                            aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+                          >
+                            {done && <span className={styles.taskCheckMark}>✓</span>}
+                          </button>
+                          {/* The title is the edit affordance: clicking what
+                              you want to change is where the hand goes. */}
+                          <button
+                            type="button"
+                            className={`${styles.taskTitle} ${done ? styles.taskTitleDone : ''}`}
+                            onClick={() => beginEditTask(item)}
+                            title="Click to edit"
+                          >
+                            {item.title}
+                          </button>
+                          {KIND_BADGE[kind] && (
+                            <span className={styles.taskKindTag} data-kind={kind}>{KIND_BADGE[kind]}</span>
+                          )}
+                          {REPEAT_BADGE[presetOf(item)] && (
+                            <span className={styles.taskRepeatTag} title={REPEAT_LABEL[presetOf(item)]}>
+                              ↻ {REPEAT_BADGE[presetOf(item)]}
+                            </span>
+                          )}
+                          {item.courseId && (
+                            <span className={styles.taskCourseTag}>{item.courseId}</span>
+                          )}
+                          {/* Every task can be broken into steps, so the
+                              control is always here; it just reads as a
+                              count once there are any. */}
+                          <button
+                            type="button"
+                            className={styles.taskProgress}
+                            onClick={() => setExpanded(isExpanded ? null : (item.id ?? null))}
+                            aria-expanded={isExpanded}
+                            aria-label={prog
+                              ? `${prog.done} of ${prog.total} ${itemNoun(kind)}s done — ${isExpanded ? 'collapse' : 'expand'}`
+                              : `Add steps to ${item.title}`}
+                            title={prog ? undefined : 'Break this into steps'}
+                          >
+                            {prog ? `${prog.done}/${prog.total}` : '⋯'}
+                          </button>
+                          {hasDueDate(item) && (
+                            <span className={`${styles.taskDueDate} ${overdue ? styles.taskDueDateOverdue : ''}`}>
+                              {overdue ? '⚠ ' : ''}{item.dueDate}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.editTaskBtn}
+                            onClick={() => beginEditTask(item)}
+                            aria-label={`Edit ${item.title}`}
+                            title="Edit task"
+                          >
+                            ✎
+                          </button>
+                          <ConfirmDelete
+                            label={item.title}
+                            onConfirm={() => handleDeleteTask(item)}
+                            className={styles.deleteTaskBtn}
+                          />
+                        </>
                       )}
-                      <button
-                        type="button"
-                        className={styles.deleteTaskBtn}
-                        onClick={() => void handleDeleteTask(item.id!)}
-                        aria-label="Delete task"
-                      >
-                        ✕
-                      </button>
+
+                      {isExpanded && (
+                        <ul className={styles.taskProblems}>
+                          {(item.problems ?? []).map(p => (
+                            <li key={p.id} className={styles.taskProblemRow}>
+                              <label className={styles.taskProblem}>
+                                <input
+                                  type="checkbox"
+                                  checked={p.done}
+                                  onChange={() => void handleToggleProblem(item, p.id)}
+                                />
+                                <span className={p.done ? styles.taskProblemDone : ''}>{p.label}</span>
+                              </label>
+                              <ConfirmDelete
+                                label={p.label}
+                                onConfirm={() => setSubtasks(item, removeSubtask(item.problems, p.id) as ProblemItem[])}
+                                className={styles.taskProblemDelete}
+                              />
+                            </li>
+                          ))}
+                          <li>
+                            <input
+                              type="text"
+                              className={styles.addStepInput}
+                              placeholder={`Add a ${itemNoun(kind)}…`}
+                              aria-label={`Add a ${itemNoun(kind)} to ${item.title}`}
+                              value={stepDrafts[item.id!] ?? ''}
+                              onChange={e => setStepDrafts(d => ({ ...d, [item.id!]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') void handleAddStep(item) }}
+                              /*
+                                A single-line input silently flattens a
+                                pasted list: the browser strips the
+                                newlines before React ever sees them, so
+                                "book flights / book hotel / renew
+                                passport" arrives as one step with the
+                                bullets still in it. Reading the
+                                clipboard here is what makes pasting a
+                                list actually produce a list.
+                              */
+                              onPaste={e => {
+                                const text = e.clipboardData.getData('text')
+                                if (!text.includes('\n')) return   // ordinary paste
+                                e.preventDefault()
+                                void handleAddStep(item, text)
+                              }}
+                            />
+                          </li>
+                        </ul>
+                      )}
                     </li>
                   )
                 })}
@@ -1612,22 +2026,22 @@ function TasksPanel() {
                 className={styles.addTaskInput}
                 placeholder="Add a task…"
                 value={taskState.title}
-                onChange={e => setTaskField(cat.id!, 'title', e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') void handleAddTask(cat.id!) }}
+                onChange={e => setTaskField(key, 'title', e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handleAddTask(key) }}
               />
-              <TaskVoiceButton onText={text => appendTaskTitle(cat.id!, text)} />
+              <TaskVoiceButton onText={text => appendTaskTitle(key, text)} />
               <input
                 type="date"
                 className={styles.addTaskDateInput}
                 value={taskState.dueDate}
-                onChange={e => setTaskField(cat.id!, 'dueDate', e.target.value)}
+                onChange={e => setTaskField(key, 'dueDate', e.target.value)}
                 aria-label="Optional due date"
                 title="Optional due date"
               />
               <button
                 type="button"
                 className={styles.addTaskSubmit}
-                onClick={() => void handleAddTask(cat.id!)}
+                onClick={() => void handleAddTask(key)}
                 disabled={!taskState.title.trim()}
               >
                 Add
@@ -2409,8 +2823,21 @@ function NewEventModal({
     const startMs = allDay
       ? new Date(date + 'T00:00:00').getTime()
       : new Date(`${date}T${start}:00`).getTime()
+
+    /*
+     * An all-day event ends at the next local midnight, stepped by
+     * date component rather than by adding 86,400,000 ms.
+     *
+     * Twice a year a day is 23 or 25 hours long. Adding a fixed day of
+     * milliseconds to the clocks-forward Sunday ends the event at 1am
+     * on Monday, so it bleeds into the next day in the grid; on the
+     * clocks-back Sunday it ends at 11pm and stops an hour short.
+     */
     const endMs = allDay
-      ? startMs + 86_400_000
+      ? (() => {
+          const d = new Date(startMs)
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
+        })()
       : Math.max(startMs + 900_000, new Date(`${date}T${end}:00`).getTime())
     return { startMs, endMs }
   }

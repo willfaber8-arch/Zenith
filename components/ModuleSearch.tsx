@@ -1,20 +1,36 @@
 'use client'
 
 /**
- * ModuleSearch — Topbar module finder.
+ * ModuleSearch — Topbar finder, for modules and for what is in them.
  *
- * A compact search field in the Topbar that lets users jump to any of Zenith's
- * modules by name OR by what they mean ("budget" → Subscriptions, "trail"
- * → Trail Hunter). Results come from `searchModules()` over a keyword index.
+ * It used to match module *names* only, so typing "chapter 3" found
+ * nothing: no module is called that, and the thing you were looking for
+ * was a task, a note or an event. Modules still come first — they are
+ * the fast path, and they resolve instantly from a static index — but
+ * underneath them are matches from the database itself.
  *
- * Keyboard: ⌘K / Ctrl+K focuses it from anywhere · ↑/↓ move the selection ·
- * Enter navigates · Escape clears & blurs. Click-outside closes the dropdown.
+ * The two halves behave differently on purpose. Modules are synchronous
+ * and appear as you type; content is a pass over several tables, so it
+ * is debounced and arrives a moment later, under a heading that says
+ * what it is. A results list that reorders itself under the cursor
+ * after you have already started moving down it is worse than one that
+ * grows at the bottom.
+ *
+ * Keyboard: `/` focuses it from anywhere (unless you are already typing
+ * somewhere) · ↑/↓ move the selection · Enter navigates · Escape clears
+ * and blurs. Click-outside closes the dropdown. ⌘K opens the command
+ * palette instead — see components/CommandPalette.
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNav } from '@/lib/NavContext'
 import { searchModules, type ModuleEntry } from '@/lib/moduleSearch'
+import { searchContent, KIND_LABEL, MIN_QUERY, type ContentResult } from '@/lib/contentSearch'
 import styles from './ModuleSearch.module.css'
+
+/** Long enough that typing a word does not run a scan per keystroke,
+ *  short enough that results feel like they were already there. */
+const DEBOUNCE_MS = 160
 
 const CATEGORY_LABEL: Record<string, string> = {
   essentials: 'Essentials',
@@ -31,20 +47,64 @@ export default function ModuleSearch() {
   const rootRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const results = useMemo(() => searchModules(query), [query])
+  const modules = useMemo(() => searchModules(query), [query])
+  const [content, setContent] = useState<ContentResult[]>([])
+
+  /*
+   * Content results, debounced.
+   *
+   * `runId` is what keeps a slow query from overwriting a fast one that
+   * came after it: two scans in flight can finish in either order, and
+   * without the guard the list can settle on results for a prefix of
+   * what you actually typed.
+   */
+  const runRef = useRef(0)
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < MIN_QUERY) { setContent([]); return }
+    const id = ++runRef.current
+    const t = setTimeout(() => {
+      void searchContent(q).then(rows => {
+        if (runRef.current === id) setContent(rows)
+      })
+    }, DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [query])
+
+  /* One flat list for the keyboard: modules first, then content. Arrow
+     keys should not have to know there are two sections. */
+  const results = useMemo(
+    () => [
+      ...modules.map(m => ({ sort: 'module' as const, module: m })),
+      ...content.map(c => ({ sort: 'content' as const, content: c })),
+    ],
+    [modules, content],
+  )
 
   /* Reset highlight whenever the result set changes. */
   useEffect(() => { setActiveIdx(0) }, [query])
 
-  /* ⌘K / Ctrl+K focuses the finder from anywhere in the app. */
+  /*
+   * `/` focuses the finder from anywhere — but only when nothing else
+   * has the caret, or typing a slash into a note would jump the focus
+   * out of what you were writing.
+   *
+   * ⌘K used to land here. It belongs to the command palette now: two
+   * handlers on one key meant both fired, focusing this box behind an
+   * overlay that had just covered it.
+   */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        inputRef.current?.focus()
-        inputRef.current?.select()
-        setOpen(true)
-      }
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = document.activeElement as HTMLElement | null
+      const typing = !!el && (
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+      )
+      if (typing) return
+      e.preventDefault()
+      inputRef.current?.focus()
+      inputRef.current?.select()
+      setOpen(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -60,12 +120,19 @@ export default function ModuleSearch() {
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  const goTo = useCallback((m: ModuleEntry) => {
-    navigate(m.id, m.category)
+  const goTo = useCallback((view: ModuleEntry['id'], category: ModuleEntry['category']) => {
+    navigate(view, category)
     setQuery('')
+    setContent([])
     setOpen(false)
     inputRef.current?.blur()
   }, [navigate])
+
+  type Row = (typeof results)[number]
+  const openRow = useCallback((row: Row) => {
+    if (row.sort === 'module') goTo(row.module.id, row.module.category)
+    else                       goTo(row.content.view, row.content.category)
+  }, [goTo])
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
@@ -84,7 +151,7 @@ export default function ModuleSearch() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       const target = results[activeIdx] ?? results[0]
-      if (target) goTo(target)
+      if (target) openRow(target)
     }
   }
 
@@ -98,7 +165,7 @@ export default function ModuleSearch() {
           ref={inputRef}
           type="text"
           className={styles.input}
-          placeholder="Find a module…"
+          placeholder="Search Zenith…"
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
@@ -107,7 +174,7 @@ export default function ModuleSearch() {
           aria-expanded={showDropdown}
           aria-controls="module-search-results"
           aria-autocomplete="list"
-          aria-label="Find a Zenith module"
+          aria-label="Search modules and your content"
         />
         {query
           ? (
@@ -126,29 +193,61 @@ export default function ModuleSearch() {
       {showDropdown && (
         <div className={styles.panel} id="module-search-results" role="listbox">
           {results.length === 0 ? (
-            <p className={styles.empty}>No modules match &ldquo;{query.trim()}&rdquo;.</p>
+            <p className={styles.empty}>
+              {query.trim().length < MIN_QUERY
+                ? 'Keep typing…'
+                : `Nothing matches “${query.trim()}”.`}
+            </p>
           ) : (
             <ul className={styles.list}>
-              {results.map((m, i) => (
-                <li key={m.id} role="option" aria-selected={i === activeIdx}>
-                  <button
-                    type="button"
-                    className={`${styles.result} ${i === activeIdx ? styles.resultActive : ''}`}
-                    onClick={() => goTo(m)}
-                    onMouseEnter={() => setActiveIdx(i)}
-                  >
-                    <span className={styles.resultBody}>
-                      <span className={styles.resultLabel}>{m.label}</span>
-                      <span className={styles.resultHint}>{m.hint}</span>
-                    </span>
-                    {m.category && (
-                      <span className={styles.resultCat} data-cat={m.category}>
-                        {CATEGORY_LABEL[m.category]}
-                      </span>
+              {results.map((row, i) => {
+                /* The heading is rendered by the first row of each
+                   section rather than as its own list item, so the
+                   arrow keys never land on something you cannot open. */
+                const isFirstContent =
+                  row.sort === 'content' && (results[i - 1]?.sort !== 'content')
+
+                return (
+                  <li key={row.sort === 'module' ? `m:${row.module.id}` : row.content.key}
+                      role="option" aria-selected={i === activeIdx}>
+                    {isFirstContent && (
+                      <p className={styles.sectionHeading} aria-hidden="true">In your Zenith</p>
                     )}
-                  </button>
-                </li>
-              ))}
+                    <button
+                      type="button"
+                      className={`${styles.result} ${i === activeIdx ? styles.resultActive : ''}`}
+                      onClick={() => openRow(row)}
+                      onMouseEnter={() => setActiveIdx(i)}
+                    >
+                      {row.sort === 'module' ? (
+                        <>
+                          <span className={styles.resultBody}>
+                            <span className={styles.resultLabel}>{row.module.label}</span>
+                            <span className={styles.resultHint}>{row.module.hint}</span>
+                          </span>
+                          {row.module.category && (
+                            <span className={styles.resultCat} data-cat={row.module.category}>
+                              {CATEGORY_LABEL[row.module.category]}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.resultBody}>
+                            <span className={styles.resultLabel}>{row.content.title}</span>
+                            <span className={styles.resultHint}>
+                              {row.content.snippet || row.content.meta || KIND_LABEL[row.content.kind]}
+                            </span>
+                          </span>
+                          <span className={styles.resultKind} data-kind={row.content.kind}>
+                            {KIND_LABEL[row.content.kind]}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

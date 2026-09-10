@@ -11,6 +11,7 @@ import {
   type HabitWithCompletion,
 } from '@/lib/hooks/useHabits'
 import { wateringInfo, computeGardenStats } from '@/utils/botanyStats'
+import { hasDueDate } from '@/utils/taskUnify'
 import type { PlantLogEntry } from '@/types/botany'
 import Icon from '@/components/ui/Icon'
 import styles                 from './OutlookView.module.css'
@@ -121,12 +122,21 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
     [events, todayStr],
   )
 
+  /*
+   * Undated work is not due today.
+   *
+   * Since the to-do list was folded into `assignments` (db v46) a task
+   * may have no deadline, stored as the empty string — and `'' <= today`
+   * is true, so a plain comparison would put every dateless reminder on
+   * today's list and count it as overdue. "Today" has to mean today or
+   * it stops being worth opening.
+   */
   const todayTasks = useMemo(
     () => assignments
       .filter(a => {
         if (a.status === 'completed') return false
-        const d = (a.dueDate ?? '').slice(0, 10)
-        return d <= todayStr
+        if (!hasDueDate(a)) return false
+        return a.dueDate.slice(0, 10) <= todayStr
       })
       .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? '')),
     [assignments, todayStr],
@@ -135,7 +145,7 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
   const scheduledHabits = habits.filter(h => isHabitScheduledOn(h, todayStr))
   const habitsDone      = scheduledHabits.filter(h => h.todayDone).length
   const habitsPct       = scheduledHabits.length > 0 ? habitsDone / scheduledHabits.length : 0
-  const overdueCount    = todayTasks.filter(a => (a.dueDate ?? '').slice(0, 10) < todayStr).length
+  const overdueCount    = todayTasks.filter(a => hasDueDate(a) && a.dueDate.slice(0, 10) < todayStr).length
 
   async function markDone(id: number) {
     await db?.assignments.update(id, { status: 'completed' })
@@ -332,7 +342,10 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
     const map = new Map<string, AsmtRow[]>()
     for (const a of assignments) {
       if (a.status === 'completed') continue
-      const iso = (a.dueDate ?? '').slice(0, 10)
+      /* Undated work belongs to no day in a week view — '' would sort
+         before every date and be swept onto today as overdue. */
+      if (!hasDueDate(a)) continue
+      const iso = a.dueDate.slice(0, 10)
       const key = iso < todayStr ? todayStr : iso
       if (!days.find(d => d.iso === key)) continue
       if (!map.has(key)) map.set(key, [])

@@ -56,6 +56,15 @@ export async function buildBackupPayload(): Promise<MasterBackupPayload> {
    * since this is a one-shot user-triggered action.
    */
   for (const table of db.tables) {
+    /*
+     * The automatic local snapshots are left out of an exported file.
+     * Each one already holds a copy of everything else, so including
+     * them would put three near-complete copies of the database inside
+     * a fourth — a file several times larger than the data it is
+     * backing up, holding nothing the file does not already have.
+     */
+    if (table.name === 'db_snapshots') continue
+
     try {
       tables[table.name] = await table.toArray()
     } catch {

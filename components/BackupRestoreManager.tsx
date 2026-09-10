@@ -19,14 +19,22 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { exportLocalDatabaseToJson }     from '@/utils/dbExporter'
-import { importJsonToLocalDatabase }     from '@/utils/dbImporter'
-import type { ImportResult }             from '@/utils/dbImporter'
+import { importJsonToLocalDatabase, inspectBackup } from '@/utils/dbImporter'
+import type { ImportResult, BackupSummary }        from '@/utils/dbImporter'
 import styles from './BackupRestoreManager.module.css'
 
 /* ── Local state machine ──────────────────────────────────────── */
 
 type ExportStatus = 'idle' | 'working' | 'done'
-type ImportStatus = 'idle' | 'working' | 'done' | 'error'
+/*
+ * `armed` exists because restoring is not an edit, it is a replacement:
+ * every table is cleared before the backup is written. Choosing a file
+ * used to do that immediately — the file picker's OK button was the
+ * point of no return for every note, habit and event in the database,
+ * and nothing said so. The file is read and described first now, and
+ * the replacement waits for a second, deliberate press.
+ */
+type ImportStatus = 'idle' | 'armed' | 'working' | 'done' | 'error'
 
 /* ══════════════════════════════════════════════════════════════════
    BackupRestoreManager
@@ -41,6 +49,10 @@ export default function BackupRestoreManager() {
   const [importStatus, setImportStatus] = useState<ImportStatus>('idle')
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importError,  setImportError  ] = useState<string>('')
+
+  /* The chosen file, held between reading it and being told to use it. */
+  const [pending,     setPending]     = useState<BackupSummary | null>(null)
+  const pendingJsonRef                = useRef<string | null>(null)
 
   /* ── Export ─────────────────────────────────────────────────── */
 
@@ -71,19 +83,26 @@ export default function BackupRestoreManager() {
       /* Reset so the same file can be re-selected after an error */
       if (fileInputRef.current) fileInputRef.current.value = ''
 
-      setImportStatus('working')
       setImportResult(null)
       setImportError('')
 
       const reader = new FileReader()
-      reader.onload = async (ev) => {
-        const jsonString = ev.target?.result as string
+      /*
+       * Reads and validates only. Nothing is written until the summary
+       * below has been shown and confirmed, so a mis-picked file costs
+       * a glance rather than everything.
+       */
+      reader.onload = () => {
+        const jsonString = String(reader.result ?? '')
         try {
-          const result = await importJsonToLocalDatabase(jsonString)
-          setImportResult(result)
-          setImportStatus('done')
+          const summary = inspectBackup(jsonString)
+          pendingJsonRef.current = jsonString
+          setPending(summary)
+          setImportStatus('armed')
         } catch (err) {
-          setImportError((err as Error).message ?? 'Restore failed — unknown error.')
+          pendingJsonRef.current = null
+          setPending(null)
+          setImportError((err as Error).message ?? 'Could not read that file.')
           setImportStatus('error')
         }
       }
@@ -96,8 +115,33 @@ export default function BackupRestoreManager() {
     [],
   )
 
+  /** The second press: this is the one that replaces everything. */
+  const confirmRestore = useCallback(async () => {
+    const jsonString = pendingJsonRef.current
+    if (!jsonString) return
+    setImportStatus('working')
+    try {
+      const result = await importJsonToLocalDatabase(jsonString)
+      setImportResult(result)
+      setImportStatus('done')
+    } catch (err) {
+      setImportError((err as Error).message ?? 'Restore failed — unknown error.')
+      setImportStatus('error')
+    } finally {
+      pendingJsonRef.current = null
+      setPending(null)
+    }
+  }, [])
+
+  const cancelRestore = useCallback(() => {
+    pendingJsonRef.current = null
+    setPending(null)
+    setImportStatus('idle')
+  }, [])
+
   const triggerFilePicker = useCallback(() => {
     if (importStatus === 'working') return
+    if (importStatus === 'armed') return
     fileInputRef.current?.click()
   }, [importStatus])
 
@@ -203,7 +247,9 @@ export default function BackupRestoreManager() {
           >
             {importStatus === 'working'
               ? 'Restoring…'
-              : 'Restore from File'}
+              : importStatus === 'armed'
+                ? 'Waiting for confirmation…'
+                : 'Restore from File'}
           </button>
           <input
             ref={fileInputRef}
@@ -216,6 +262,36 @@ export default function BackupRestoreManager() {
         </div>
 
       </div>
+
+      {/* ── The confirmation ───────────────────────────────────
+          Both halves of the trade are named: what is in the file, and
+          that everything currently here goes. A warning that does not
+          say what you are losing is a warning you click through. */}
+      {importStatus === 'armed' && pending && (
+        <div className={styles.confirmPanel} role="alertdialog" aria-label="Confirm restore">
+          <p className={styles.confirmTitle}>Replace everything with this backup?</p>
+          <p className={styles.confirmBody}>
+            Taken {new Date(pending.exportedAt).toLocaleString()} ·{' '}
+            {pending.rowCount.toLocaleString()} rows across {pending.tableCount}{' '}
+            {pending.tableCount === 1 ? 'table' : 'tables'}
+            {pending.largest.length > 0 && (
+              <> — largest: {pending.largest.map(t => `${t.name} (${t.rows})`).join(', ')}</>
+            )}
+          </p>
+          <p className={styles.confirmWarn}>
+            Everything currently in Zenith is cleared first. This cannot be undone,
+            so export a backup of what you have now if you might want it back.
+          </p>
+          <div className={styles.confirmActions}>
+            <button className={styles.confirmYes} onClick={() => void confirmRestore()}>
+              Replace everything
+            </button>
+            <button className={styles.confirmNo} onClick={cancelRestore}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Status strip ───────────────────────────────────────── */}
       <div

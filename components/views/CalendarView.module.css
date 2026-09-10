@@ -1520,6 +1520,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-4);
+  /* Title, kind filters and the right-hand controls. On a narrow pane
+     the filters wrap to their own line rather than squeezing the
+     buttons past the point of being readable. */
+  flex-wrap: wrap;
 }
 
 .tasksPanelTitle {
@@ -1676,6 +1680,9 @@
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   transition: background var(--dur-fast);
+  /* An expanded problem set puts its problems on a second line inside
+     the same row, so the row has to be allowed to wrap. */
+  flex-wrap: wrap;
 }
 
 .taskItem:hover {
@@ -2559,4 +2566,420 @@
   font-family: var(--font-mono);
   font-size:   0.66rem;
   color:       var(--accent-purple);
+}
+
+/* ══════════════════════════════════════════════════════════
+   Editing a task in place
+   ══════════════════════════════════════════════════════════ */
+
+/*
+ * The title is a button now, because clicking the thing you want to
+ * change is where the hand goes. It has to keep looking like text —
+ * a to-do list full of buttons reads as a toolbar.
+ */
+.taskTitle {
+  flex:        1;
+  min-width:   0;
+  padding:     0;
+  border:      none;
+  background:  transparent;
+  text-align:  left;
+  font-family: var(--font-body);
+  font-size:   0.8125rem;
+  color:       var(--text-primary);
+  cursor:      text;
+  border-radius: var(--r-sm);
+  /* Kept from the original rule — a long task must still ellipsise
+     rather than pushing the date and buttons off the row. */
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.taskTitle:hover {
+  background:  var(--bg-hover);
+  box-shadow:  0 0 0 4px var(--bg-hover);
+}
+
+.editTaskBtn,
+.deleteTaskBtn {
+  flex:        0 0 auto;
+  width:       22px;
+  height:      22px;
+  border:      none;
+  background:  transparent;
+  color:       var(--text-dark);
+  font-size:   0.72rem;
+  line-height: 1;
+  cursor:      pointer;
+  border-radius: var(--r-sm);
+  opacity:     0;
+  transition:  opacity var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+/* Hidden until the row is hovered, so a long list stays quiet at rest;
+   always shown to keyboard users, who have no hover to reveal them. */
+.taskItem:hover .editTaskBtn,
+.taskItem:hover .deleteTaskBtn,
+.editTaskBtn:focus-visible,
+.deleteTaskBtn:focus-visible { opacity: 1; }
+
+.editTaskBtn:hover   { color: var(--accent-purple); background: var(--bg-hover); }
+.deleteTaskBtn:hover { color: #f87171; background: rgba(248, 113, 113, 0.08); }
+
+@media (pointer: coarse) {
+  /* No hover to reveal them, and a 22px target is already tight. */
+  .editTaskBtn, .deleteTaskBtn { opacity: 1; width: 30px; height: 30px; }
+}
+
+.taskEditRow {
+  display:     flex;
+  flex-wrap:   wrap;
+  align-items: center;
+  gap:         var(--sp-2);
+  width:       100%;
+}
+
+.taskEditTitle {
+  flex:          1 1 12rem;
+  min-width:     0;
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid rgba(124, 149, 255, 0.40);
+  background:    var(--bg-main);
+  color:         var(--text-primary);
+  font-family:   var(--font-body);
+  font-size:     0.82rem;
+}
+
+.taskEditDate,
+.taskEditList {
+  flex:          0 0 auto;
+  padding:       var(--sp-2);
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    var(--bg-main);
+  color:         var(--text-muted);
+  font-family:   var(--font-mono);
+  font-size:     0.72rem;
+  color-scheme:  dark;
+}
+
+.taskEditTitle:focus,
+.taskEditDate:focus,
+.taskEditList:focus { outline: none; border-color: rgba(124, 149, 255, 0.60); }
+
+.taskEditSave,
+.taskEditCancel {
+  flex:          0 0 auto;
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border:        1px solid var(--border-subtle);
+  background:    transparent;
+  color:         var(--text-muted);
+  font-size:     0.74rem;
+  cursor:        pointer;
+}
+
+.taskEditSave:hover   { border-color: var(--accent-purple-dim); color: var(--accent-purple); }
+.taskEditCancel:hover { color: var(--text-primary); }
+
+.taskEditError {
+  flex-basis: 100%;
+  font-size:  0.72rem;
+  color:      #f87171;
+}
+
+/* The list name is a rename affordance, styled as the heading it is. */
+.taskCategoryName {
+  padding:     2px var(--sp-2);
+  margin-left: calc(var(--sp-2) * -1);
+  border:      none;
+  background:  transparent;
+  font:        inherit;
+  color:       inherit;
+  text-align:  left;
+  cursor:      text;
+  border-radius: var(--r-sm);
+}
+
+.taskCategoryName:hover { background: var(--bg-hover); }
+
+.catRenameInput {
+  flex:          1;
+  min-width:     0;
+  padding:       2px var(--sp-2);
+  border-radius: var(--r-sm);
+  border:        1px solid rgba(124, 149, 255, 0.40);
+  background:    var(--bg-main);
+  color:         var(--text-primary);
+  font-family:   var(--font-display);
+  font-size:     0.9rem;
+  font-weight:   700;
+}
+
+.catRenameInput:focus { outline: none; border-color: rgba(124, 149, 255, 0.60); }
+
+
+/* ══════════════════════════════════════════════════════════════
+   ONE TASK LIST — kind filters, badges, problems, confirmations
+   ══════════════════════════════════════════════════════════════ */
+
+.taskFilters {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1 1 auto;
+}
+
+.taskFilter {
+  padding: var(--sp-1) var(--sp-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.taskFilter:hover { color: var(--text-muted); background: var(--bg-hover); }
+
+.taskFilterOn {
+  color: var(--accent-purple);
+  background: var(--bg-active);
+  border-color: var(--accent-purple-dim);
+}
+
+.taskToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.taskOverdueChip {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: 99px;
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #f87171;
+}
+
+.taskGhostBtn {
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.taskGhostBtn:hover { color: var(--text-muted); border-color: var(--accent-purple-dim); }
+
+/* Unfiled is a heading, not a list — no rename, no delete. */
+.taskCategoryUnfiled {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+/* What kind of thing this row is. Reminders get no badge — they are the
+   plain default, and labelling the common case just adds noise. */
+.taskKindTag {
+  flex-shrink: 0;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  border: 1px solid transparent;
+}
+
+/*
+ * The two badges differ by weight, not by hue.
+ *
+ * The first version used --accent-purple for tasks and --accent-green
+ * for problem sets. Under an applied cosmetic theme --accent-purple is
+ * whatever that theme says it is, and on the default one both resolved
+ * to nearly the same green — two badges side by side carrying no
+ * distinction at all. Checked in the browser, not assumed from the
+ * token names.
+ */
+.taskKindTag[data-kind='task'] {
+  color: var(--text-dark);
+  border-color: var(--border-subtle);
+  background: transparent;
+}
+
+.taskKindTag[data-kind='problem_set'] {
+  color: var(--cat-accent, var(--accent-green));
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.taskCourseTag {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+}
+
+.taskProgress {
+  flex-shrink: 0;
+  padding: 1px var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.taskProgress:hover { border-color: rgba(82, 204, 163, 0.45); color: var(--accent-green); }
+
+.taskProblems {
+  list-style: none;
+  margin: var(--sp-2) 0 var(--sp-1) var(--sp-8);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  /* The row is a flex line; the expanded problems need a line of their
+     own beneath it rather than a column beside the title. */
+  flex-basis: 100%;
+  animation: panelScaleIn 0.18s var(--ease-expo) both;
+}
+
+.taskProblem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.taskProblemDone {
+  text-decoration: line-through;
+  color: var(--text-dark);
+}
+
+/* ── Arming a destructive action ────────────────────────────────
+   Delete asks first, in place. An explicit second press you can see
+   beats a hidden two-step you have to already know about — and it is
+   keyed to one row, so a primed delete can never land on another. */
+.confirmRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  animation: panelScaleIn 0.14s var(--ease-expo) both;
+}
+
+.confirmLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dark);
+}
+
+.confirmYes,
+.confirmNo {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.confirmYes {
+  border: 1px solid rgba(248, 113, 113, 0.40);
+  color: #f87171;
+}
+
+.confirmYes:hover { background: rgba(248, 113, 113, 0.12); }
+
+.confirmNo {
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.confirmNo:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* A repeating task reads as a standing commitment rather than a one-off:
+   ticking it moves it on instead of finishing it, so the row says so. */
+.taskRepeatTag {
+  flex-shrink: 0;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Steps within a task ─────────────────────────────────────────
+   Any task can be broken down, not only a problem set — the storage
+   was never problem-set-shaped, only the wording was. */
+
+.taskProblemRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.taskProblemRow .taskProblem { flex: 1 1 auto; min-width: 0; }
+
+.taskProblemDelete { opacity: 0; }
+.taskProblemRow:hover .taskProblemDelete,
+.taskProblemDelete:focus-visible { opacity: 1; }
+
+@media (pointer: coarse) {
+  /* No hover to reveal it with. */
+  .taskProblemDelete { opacity: 1; }
+}
+
+.addStepInput {
+  width: 100%;
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+}
+
+.addStepInput::placeholder { color: var(--text-dark); }
+.addStepInput:focus {
+  outline: none;
+  border-bottom-color: var(--accent-purple-dim);
 }

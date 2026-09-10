@@ -8,7 +8,7 @@
     "start": "next start",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report tests/playwright-report"
+    "test:e2e:report": "playwright show-report playwright-report"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

@@ -10,6 +10,7 @@
 'use client'
 
 import { db } from '@/lib/db'
+import { createReminder } from '@/lib/taskMutations'
 import type { Priority } from '@/lib/db'
 import type { BillingCycle } from '@/types/finance'
 import type { ReadingStatus, LibraryBook } from '@/types/bookTracker'
@@ -584,13 +585,11 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
         })
       }
 
-      await db.todo_items.add({
-        categoryId,
-        title,
-        completed: 0,
-        dueDate,
-        createdAt: Date.now(),
-      })
+      /* Writes to the one task list (db v46). `todo_items` no longer
+         backs any view, so adding there would file the to-do somewhere
+         nothing renders — the Co-Pilot's whole value is that what it
+         adds turns up where you look. */
+      await createReminder({ title, dueDate, listId: categoryId })
       return `Added to-do "${title}"${dueDate ? ` (due ${dueDate})` : ''}.`
     }
 

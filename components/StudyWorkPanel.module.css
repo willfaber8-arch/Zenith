@@ -249,3 +249,133 @@
   resize: vertical;
 }
 .bodyInput:focus-visible { outline: none; border-color: var(--cat-accent, var(--accent-purple)); }
+
+/* ══════════════════════════════════════════════════════════════
+   CORRECTING AND REMOVING WORK
+
+   Work arrives here by hand, from the Co-Pilot and from filed notes.
+   It could be created and ticked off but never corrected, and never
+   removed at all — which is hardest on exactly the rows nobody typed.
+   ══════════════════════════════════════════════════════════════ */
+
+.rowAction {
+  flex-shrink: 0;
+  width: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-dark); font-size: 0.72rem;
+  border-left: 1px solid var(--border-subtle);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth),
+              background var(--dur-fast) var(--ease-smooth);
+}
+
+/* Revealed on hover, but never hidden from the keyboard: an action you
+   can only reach with a pointer is an action a keyboard user does not
+   have. */
+.row:hover .rowAction,
+.rowAction:focus-visible { opacity: 1; }
+
+.rowAction:hover { color: var(--accent-purple); background: var(--bg-hover); }
+.rowAction:last-child:hover { color: #f87171; background: rgba(248, 113, 113, 0.08); }
+
+@media (pointer: coarse) {
+  /* A touch screen has no hover to reveal them with, so a control
+     hidden until hover is a control that does not exist there. */
+  .rowAction { opacity: 1; width: 40px; }
+}
+
+/* ── The row as a form ───────────────────────────────────────── */
+
+.editRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+}
+
+.editTitle {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+
+.editField {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  /* Native date and select widgets render their own chrome light unless
+     told the surface is dark. */
+  color-scheme: dark;
+}
+
+.editTitle:focus,
+.editField:focus { outline: none; border-color: var(--accent-purple-dim); }
+
+.editSave,
+.editCancel {
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.editSave:hover   { color: var(--accent-purple); border-color: var(--accent-purple-dim); }
+.editCancel:hover { color: var(--text-primary); }
+
+.editError {
+  flex-basis: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #f87171;
+}
+
+/* ── Arming a delete ─────────────────────────────────────────── */
+
+.confirmRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding: 0 var(--sp-3);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.confirmYes,
+.confirmNo {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.confirmYes { border: 1px solid rgba(248, 113, 113, 0.40); color: #f87171; }
+.confirmYes:hover { background: rgba(248, 113, 113, 0.12); }
+
+.confirmNo { border: 1px solid var(--border-subtle); color: var(--text-muted); }
+.confirmNo:hover { color: var(--text-primary); background: var(--bg-hover); }

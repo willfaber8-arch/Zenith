@@ -53,6 +53,7 @@ export type { CardioRun, BaseInventory, BaseUpgrade } from '@/types/cardioGame'
 import type { LibraryBook, LibraryShelf, ReadingSession } from '@/types/bookTracker'
 import type { StrengthSession, WorkoutPlan } from '@/types/weightroom'
 import { toLocalDateStr } from '@/utils/localDate'
+import { toReminder } from '@/utils/taskUnify'
 export type { LibraryBook, ReadingSession } from '@/types/bookTracker'
 
 
@@ -86,7 +87,7 @@ export interface Assignment {
   /** Absent means 'task'. Problem sets are a kind of assignment rather
    *  than a parallel entity, so there stays one task list, one
    *  notification stream and one badge count. */
-  kind?:       'task' | 'problem_set'   // * indexed
+  kind?:       'task' | 'problem_set' | 'reminder'   // * indexed
   /** Markdown + LaTeX body, rendered when kind is 'problem_set'. */
   body?:       string
   /** Per-problem breakdown, so partial progress is real progress. */
@@ -97,6 +98,19 @@ export interface Assignment {
    *  note and the task stay linked rather than inferring the connection
    *  from a category string. */
   sourceNoteId?: number
+  /* ── One task list (v46) ─────────────────────────────────────── */
+  /** FK → TodoCategory.id — which user-made list this sits in.
+   *  Absent means unfiled, which is a real place rather than an error:
+   *  work arriving from the Co-Pilot or from a note has no list to be
+   *  filed into, and should not have to invent one to exist. */
+  listId?:     number           // * indexed
+  /* ── Repeating tasks (v46) ───────────────────────────────────── */
+  /** A RepeatPreset from utils/taskRepeat — 'weekly', 'weekdays', … .
+   *  Absent means it happens once. Not indexed: nothing queries by it,
+   *  and it is read from a row already in hand. One row that moves
+   *  rather than many rows generated ahead — a chore is one thing whose
+   *  next date changes, not fifty-two separate obligations. */
+  repeat?:     string
 }
 
 /**
@@ -272,6 +286,14 @@ export interface QuickNote {
    * unless the user says so.
    */
   privateFromAi?: boolean
+  /**
+   * Which folder holds this note, if any.
+   *
+   * Absent means unfiled, which is a normal state rather than an error —
+   * a note you jot down in a hurry should not demand a decision about
+   * where it belongs before you can write it.
+   */
+  folderId?:  number   // * indexed (v45) — FK → NoteFolder.id
   /** Task text already filed from this note — prevents re-offering. */
   createdTasks?: string[]
   /** Per-note consent for to-do detection. Global policy in localStorage. */
@@ -549,6 +571,44 @@ export interface LocalCalendar {
  * TodoCategory — a user-created list category for the Calendar To-Do panel.
  * Default categories are "Short Term" and "Long Term".
  */
+/**
+ * NoteFolder — a user-made grouping for notes.
+ *
+ * Distinct from `QuickNote.category`, which is a fixed internal set
+ * ('lecture' | 'idea' | 'ref'), and from `tags`, which are freeform and
+ * many-per-note. A folder is the one place a note lives, which is what
+ * makes it useful for finding things rather than describing them.
+ */
+export interface NoteFolder {
+  id:        number   // * PK — auto-increment
+  name:      string   // * indexed
+  sortOrder: number   //   render order (lower first)
+  createdAt: number   //   Unix ms
+}
+
+/**
+ * DbSnapshot — an automatic copy of the whole database, kept locally.
+ *
+ * The export button only helps someone who remembered to press it, and
+ * the people who most need a way back are the ones who did not. A
+ * snapshot is taken quietly once a day so "yesterday" is always
+ * available without anyone having planned for it.
+ *
+ * The payload is the same shape the export writes, stored as a string
+ * rather than a nested object: IndexedDB would otherwise structure-clone
+ * every row of every table on each read, and this is only ever read
+ * whole.
+ */
+export interface DbSnapshot {
+  id:            string   // * PK — explicit UUID
+  takenAt:       number   // * indexed — Unix ms; newest-first ordering
+  schemaVersion: number
+  /** Rows across every table, for showing what a snapshot holds. */
+  rowCount:      number
+  /** Serialised MasterBackupPayload. */
+  payload:       string
+}
+
 export interface TodoCategory {
   id:        number   // * PK — auto-increment
   name:      string   // * indexed — category display name
@@ -637,6 +697,7 @@ class ZenithDatabase extends Dexie {
   habits!:                  EntityTable<Habit,                  'id'>
   habitCompletions!:        EntityTable<HabitCompletion,        'id'>
   workouts!:                EntityTable<Workout,                'id'>
+  noteFolders!:             EntityTable<NoteFolder,             'id'>
   quickNotes!:              EntityTable<QuickNote,              'id'>
   customBookmarks!:         EntityTable<CustomBookmark,         'id'>
   userProfile!:             EntityTable<UserProfile,            'id'>
@@ -676,6 +737,7 @@ class ZenithDatabase extends Dexie {
   reading_sessions!:            EntityTable<ReadingSession,           'id'>
   todo_categories!:             EntityTable<TodoCategory,             'id'>
   todo_items!:                  EntityTable<TodoItem,                 'id'>
+  db_snapshots!:                EntityTable<DbSnapshot,               'id'>
   localCalendars!:              EntityTable<LocalCalendar,            'id'>
   cube_solves!:                 EntityTable<CubeSolve,                'id'>
   kindle_clippings!:            EntityTable<KindleClipping,           'id'>
@@ -1405,6 +1467,63 @@ class ZenithDatabase extends Dexie {
     this.version(44).stores({
       calendarEvents:
         '++id, feedId, uid, seriesUid, title, startMs, allDay, is1159, category, locallyEdited',
+    })
+
+    /*
+     * Version 45 — folders for notes.
+     *
+     * Notes had a fixed internal category and freeform tags, neither of
+     * which answers "where do I keep this". A folder is the one place a
+     * note lives; `folderId` is indexed so a folder's contents and counts
+     * come from a query rather than a scan of every note.
+     */
+    this.version(45).stores({
+      noteFolders: '++id, name, sortOrder, createdAt',
+      quickNotes:  '++id, title, updatedAt, category, archived, pinned, folderId',
+    })
+
+    /*
+     * Version 46 — one task list.
+     *
+     * Zenith kept two task systems that could not see each other:
+     * `todo_items` behind the Calendar's Tasks tab, and `assignments`
+     * behind Work Due. A thing you had to do lived in one or the other
+     * depending on which screen you happened to be on when you wrote it
+     * down, and neither list could tell you what the other held.
+     *
+     * `assignments` absorbs to-do items as a third `kind`. The rows move
+     * here rather than being copied, because two lists that disagree is
+     * worse than either list alone — and `listId` carries the list they
+     * were in, so "Short Term" and "Long Term" survive the move.
+     *
+     * The upgrade is one transaction: every item arrives, or none does
+     * and the old table is untouched.
+     */
+    this.version(46).stores({
+      assignments:
+        '++id, title, dueDate, courseId, status, priority, category, supabaseId, kind, listId',
+    }).upgrade(async tx => {
+      const items = await tx.table('todo_items').toArray()
+      if (items.length === 0) return
+
+      await tx.table('assignments').bulkAdd(items.map(toReminder))
+
+      /*
+       * Emptied, not dropped. Keeping the store means an install that
+       * somehow runs this twice finds nothing to move the second time,
+       * and a row can never be counted in both lists at once.
+       */
+      await tx.table('todo_items').clear()
+    })
+
+    /*
+     * Version 47 — automatic local snapshots.
+     *
+     * `takenAt` is indexed so the newest is a query rather than a scan
+     * of payloads; nothing else about a snapshot is ever filtered on.
+     */
+    this.version(47).stores({
+      db_snapshots: 'id, takenAt',
     })
   }
 }

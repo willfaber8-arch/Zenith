@@ -39,9 +39,9 @@ export default defineConfig({
     ['list'],                         // concise pass/fail output in terminal
     ['html', {
       open:         'never',          // don't auto-open in CI
-      outputFolder: 'tests/playwright-report',
+      outputFolder: 'playwright-report',
     }],
-    ['junit', { outputFile: 'tests/playwright-results/junit.xml' }],
+    ['junit', { outputFile: 'playwright-results/junit.xml' }],
   ],
 
   /* ── Shared browser settings ────────────────────────────────── */
@@ -57,16 +57,54 @@ export default defineConfig({
   },
 
   /* ── Output directories ─────────────────────────────────────── */
-  outputDir: 'tests/playwright-results',
+  /*
+   * At the repository root, deliberately — NOT under tests/.
+   *
+   * `next dev` watches tests/, so every trace, video and screenshot
+   * Playwright wrote there triggered a rebuild. A page load that lands
+   * while a chunk is being rewritten gets a half-written app/layout.js,
+   * which throws `SyntaxError: Invalid or unexpected token` with no
+   * stack, so React never hydrates and window.__zenith never appears.
+   * The test then fails, writes its own artifacts, and starts the next
+   * rebuild — one real failure cascaded into every test after it.
+   *
+   * Measured: a write under tests/ produces a recompile; the same write
+   * at the repository root produces none.
+   */
+  outputDir: 'playwright-results',
 
   /* ── Test timeout ───────────────────────────────────────────── */
-  timeout: 45_000,    // generous ceiling for slow CI environments
+  /*
+   * 180s, because the setup hooks wait up to 120s on their own.
+   *
+   * This was 45s, which is shorter than the `toBeVisible({ timeout:
+   * 120_000 })` calls inside the beforeAll hooks that wait for a cold
+   * `next dev` compile — so the hook was killed while its own wait was
+   * still legitimately running, and every test in the file reported a
+   * missing sidebar. The specs also try to raise it themselves via
+   * `test.describe.configure({ timeout })`, which is not an option that
+   * function accepts: it is ignored silently, and the project default
+   * stays in force.
+   */
+  timeout: 180_000,
 
   /* ── Browser projects ───────────────────────────────────────── */
   projects: [
     {
       name: 'chromium',
-      use:  { ...devices['Desktop Chrome'] },
+      use:  {
+        ...devices['Desktop Chrome'],
+        /*
+         * CI runs `playwright install chromium`, so the bundled build is
+         * always there and this stays undefined. Some sandboxes ship a
+         * different Chromium and no way to download one; pointing at it
+         * is the difference between running the suite locally and not
+         * being able to check anything before pushing.
+         */
+        launchOptions: process.env.PW_CHROMIUM_PATH
+          ? { executablePath: process.env.PW_CHROMIUM_PATH }
+          : {},
+      },
     },
   ],
 
@@ -74,7 +112,22 @@ export default defineConfig({
   webServer: {
     command:             'npm run dev',
     url:                 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI, // reuse in dev, fresh in CI
+    /*
+     * Reuse whatever is already listening, in CI as well as locally.
+     *
+     * This was `!process.env.CI` — fresh server in CI — which is the
+     * usual advice and is wrong here. `next dev` compiles on demand,
+     * and Playwright's readiness check only waits for the server to
+     * answer, not for the app to be built. The first spec was racing a
+     * cold compile, timing out, and taking its whole file down with it
+     * through `mode: 'serial'`.
+     *
+     * The workflow now starts the server and loads the page twice
+     * before this runs, so by the time the suite starts the app is
+     * compiled. Refusing to reuse it would start a second server on an
+     * occupied port and throw all of that away.
+     */
+    reuseExistingServer: true,
     timeout:             120_000,
 
     /*

@@ -343,11 +343,17 @@ export async function POST(req: NextRequest): Promise<Response> {
   /* 2 — Parse and validate body */
   let messages: ChatMessage[]
   let contextPayload: string | undefined
+  let clientToday: string | undefined
   try {
     const body = await req.json()
     messages       = Array.isArray(body.messages) ? body.messages : []
     contextPayload = typeof body.contextPayload === 'string'
       ? body.contextPayload
+      : undefined
+    /* The caller's calendar day. Validated shape, not trusted content —
+       it only ever reaches the model as a date string. */
+    clientToday = typeof body.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.today)
+      ? body.today
       : undefined
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
@@ -377,7 +383,17 @@ export async function POST(req: NextRequest): Promise<Response> {
    *   after the persona instructions so the model has full situational
    *   awareness.  We NEVER return this block to the client.
    */
-  const todayIso = new Date().toISOString().slice(0, 10)
+  /*
+   * The date is the caller's, not this server's.
+   *
+   * This ran `new Date().toISOString().slice(0,10)` — the server's UTC
+   * day. The server is in UTC and the person is not: someone in
+   * Auckland asking at 10am on the 10th was told today was the 9th, so
+   * "remind me tomorrow" landed on the day they were already having.
+   * The client sends its own local date; UTC is only the fallback for a
+   * caller that doesn't.
+   */
+  const todayIso = clientToday ?? new Date().toISOString().slice(0, 10)
   const systemPrompt = (contextPayload
     ? `${SYSTEM_BASE}\n\n${contextPayload}`
     : SYSTEM_BASE) + toolsSystemNote(todayIso)

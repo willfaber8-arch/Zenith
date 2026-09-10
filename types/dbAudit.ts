@@ -100,10 +100,22 @@ export const ASSIGNMENTS_DESCRIPTOR: TableDescriptor = {
     allowedValues: ['low', 'medium', 'high', 'critical'] as const,
     default:      'medium',
   },
-  // Legacy field — only validate / strip if present on the row
+  /*
+   * A free-text grouping label, checked for type only.
+   *
+   * This carried allowedValues ['Academic', 'Life'] — values from a
+   * schema the app has not written since. Everything it writes now
+   * ('scholastic' from Study Shield, 'life' from a reminder) failed the
+   * check, and with no default configured the recovery value was the
+   * first allowed entry, so the first-run audit relabelled every
+   * assignment in the database "Academic". A repair pass reports
+   * success either way, which is what made it invisible.
+   *
+   * Enumerating this field again would need the enum to be the actual
+   * source of truth for what gets written, which it never was.
+   */
   category: {
     type:          'string',
-    allowedValues: ['Academic', 'Life'] as const,
     optionalLegacy: true,
   },
 }

@@ -32,6 +32,7 @@ import {
 } from '@/lib/notificationCenter'
 import { wateringInfo } from '@/utils/botanyStats'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { dueEndOfDayMs } from '@/utils/taskUnify'
 
 /* ── Local date helpers ────────────────────────────────────────── */
 
@@ -186,8 +187,9 @@ export function useNotificationCenter(): NotificationCenterApi {
 
     for (const a of assignments) {
       if (a.status === 'completed') continue
-      const dueMs = new Date(a.dueDate ?? '').getTime()
-      if (Number.isNaN(dueMs)) continue
+      /* End of the local day, not UTC midnight — see dueEndOfDayMs. */
+      const dueMs = dueEndOfDayMs(a.dueDate)
+      if (dueMs === null) continue
 
       if (dueMs > now && dueMs <= now + LEAD) {
         const hrs = (dueMs - now) / 3_600_000

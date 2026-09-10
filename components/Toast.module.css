@@ -12,6 +12,11 @@
   flex-direction: column-reverse;   /* newest on top */
   gap: var(--sp-2);
   align-items: flex-end;
+  /*
+   * Click-through, so a stack of notifications in the corner never
+   * blocks the page underneath it. Anything inside that is meant to be
+   * pressed has to opt back in — see .action.
+   */
   pointer-events: none;
 }
 
@@ -64,3 +69,44 @@
   from { opacity: 1; transform: translateX(0)    scale(1);    }
   to   { opacity: 0; transform: translateX(24px) scale(0.94); }
 }
+
+/* ── A toast that offers to undo ───────────────────────────────
+   A message about something destructive is the wrong shape if it only
+   reports: the moment you realise you did not mean it is the moment
+   the message is on screen. */
+
+.message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.action {
+  /*
+   * Opts back in to pointer events, which the container turns off.
+   *
+   * Without this the button is visible, styled, keyboard-focusable —
+   * and silently unclickable, because the click passes straight through
+   * to the page behind it. That was invisible while toasts only ever
+   * reported things; the moment one carried an Undo, it became an offer
+   * that could not be taken. Only the button opts in, so the rest of
+   * the toast stays click-through and the page behind it stays usable.
+   */
+  pointer-events: auto;
+  flex-shrink: 0;
+  margin-left: var(--sp-3);
+  padding: 2px var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.action:hover { background: var(--bg-active); color: var(--text-primary); }

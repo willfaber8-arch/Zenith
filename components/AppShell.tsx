@@ -179,6 +179,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     transition: isStudyModeActive
       ? `transform 380ms ${EASE_OUT}, opacity 280ms ease`
       : `transform 380ms ${EASE_IN},  opacity 280ms ease`,
+    /*
+     * Positioned so the topbar's dropdowns can paint over the page.
+     *
+     * The transform above makes this wrapper its own stacking context,
+     * which traps everything inside it — the search panel asks for
+     * z-index 320 and still lost to the greeting heading, because the
+     * view below is a later sibling in its own stacking context and
+     * this one had no z-index at all to be compared on. The result was
+     * search results with page text drawn through them.
+     *
+     * 20 sits above the viewport and well below the sidebar (100) and
+     * the study cockpit (200), which both still need to cover the bar.
+     */
+    position: 'relative',
+    zIndex:   20,
   }), [isStudyModeActive])
 
   /* ── Mobile drawer behaviour ────────────────────────────────────

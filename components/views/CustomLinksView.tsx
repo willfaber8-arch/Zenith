@@ -7,6 +7,7 @@ import { useLiveQuery }  from 'dexie-react-hooks'
 import { db }            from '@/lib/db'
 import type { CustomBookmark } from '@/lib/db'
 import Icon from '@/components/ui/Icon'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './CustomLinksView.module.css'
 
 /* ── Favicon helper ──────────────────────────────────────────── */
@@ -228,14 +229,11 @@ function LinkCard({ bookmark, onDelete, onEdit }: LinkCardProps) {
         >
           ✎
         </button>
-        <button
-          type="button"
+        <ConfirmDelete
+          label={bookmark.label}
+          onConfirm={() => onDelete(bookmark.id)}
           className={`${styles.cardActionBtn} ${styles.cardDeleteBtn}`}
-          onClick={() => onDelete(bookmark.id)}
-          aria-label="Delete link"
-        >
-          ✕
-        </button>
+        />
       </div>
     </div>
   )

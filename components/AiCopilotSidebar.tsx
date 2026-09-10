@@ -23,6 +23,7 @@ import {
   type JSX, type KeyboardEvent, type ChangeEvent,
 } from 'react'
 import { setupSystemNote } from '@/lib/copilotTools'
+import { todayISO }        from '@/utils/localDate'
 import { useCopilot }     from '@/lib/CopilotContext'
 import { useAuth }        from '@/lib/AuthContext'
 import { useToast }       from '@/lib/ToastContext'
@@ -597,6 +598,10 @@ export default function AiCopilotSidebar() {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body:    JSON.stringify({
           messages:       history,
+          /* Our calendar day, not the server's. The route runs in UTC,
+             and a model told the wrong date files "tomorrow" on the
+             wrong day for anyone far enough east or west of it. */
+          today:          todayISO(),
           // Setup mode appends its interview instructions to the compiled
           // workspace context rather than replacing it — the model still
           // needs to see what the user already has before asking about it.

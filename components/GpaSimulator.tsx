@@ -31,6 +31,7 @@ import {
   type GradeKey, type GpaTier, type ScaleType,
 } from '@/utils/gpaMath'
 import type { GpaScale } from '@/config/universities'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './GpaSimulator.module.css'
 
 /* ── Constants ───────────────────────────────────────────────── */
@@ -402,15 +403,17 @@ function SemesterCard({
           )}
         </div>
 
-        {/* Delete semester button */}
-        <button
-          type="button"
+        {/* Deleting a semester takes every course in it — a term of
+            grades, with nothing that puts them back. */}
+        <ConfirmDelete
+          label={semester.name}
+          question={courses.length > 0
+            ? `Its ${courses.length} ${courses.length === 1 ? 'course goes' : 'courses go'} too.`
+            : undefined}
+          glyph="×"
+          onConfirm={() => onDeleteSemester(semester.id!)}
           className={styles.cardDeleteBtn}
-          onClick={e => { e.stopPropagation(); onDeleteSemester(semester.id!) }}
-          aria-label={`Delete ${semester.name}`}
-        >
-          ×
-        </button>
+        />
       </div>
 
       {/* Collapsible body — CSS grid-template-rows trick */}

@@ -22,6 +22,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }  from '@/lib/db'
 import type { CourseIntensityProfile, DailyStrainVector } from '@/types/academics'
 import { computeCognitiveLoad, buildWeeklyStrainMatrix } from '@/utils/stressMatrix'
+import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './CognitiveLoadMap.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
 
@@ -105,13 +106,12 @@ function CourseCard({
             <span className={styles.clsNumber}>{cls.composite}</span>
             <span className={styles.clsLabel}>CLS</span>
           </div>
-          <button
+          <ConfirmDelete
+            label={profile.courseCode}
+            glyph="×"
+            onConfirm={() => onDelete(profile.id!)}
             className={styles.deleteBtn}
-            onClick={() => onDelete(profile.id!)}
-            aria-label={`Remove ${profile.courseCode}`}
-          >
-            ×
-          </button>
+          />
         </div>
       </div>
 

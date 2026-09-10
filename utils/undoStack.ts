@@ -15,8 +15,15 @@
  * new one. Nothing here touches Dexie.
  */
 
-/** Which table an entry's rows belong to. */
-export type UndoTable = 'calendarEvents' | 'personalEvents'
+/**
+ * Which table an entry's rows belong to.
+ *
+ * A table name rather than a fixed union: this started as calendar-only,
+ * but "I did not mean to delete that" is not a calendar-specific
+ * feeling, and every table in Zenith is reached the same way. The
+ * restoring half looks the table up by name at write time.
+ */
+export type UndoTable = string
 
 export interface UndoEntry<Row = Record<string, unknown>> {
   id:    string

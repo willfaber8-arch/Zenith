@@ -1,0 +1,158 @@
+/* ══════════════════════════════════════════════════════════════
+   LocalSnapshots — automatic local copies, and the way back.
+   ══════════════════════════════════════════════════════════════ */
+
+.root {
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-1);
+}
+
+.desc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 58ch;
+}
+
+.takeBtn {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.takeBtn:hover:not(:disabled) {
+  color: var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+.takeBtn:disabled { opacity: 0.5; cursor: default; }
+
+.empty {
+  margin-top: var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dark);
+}
+
+.list {
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+}
+
+.when {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dark);
+}
+
+.restoreBtn,
+.dropBtn { flex-shrink: 0; }
+
+.restoreBtn {
+  padding: 1px var(--sp-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.restoreBtn:hover:not(:disabled) {
+  color: var(--accent-purple);
+  border-color: var(--accent-purple-dim);
+}
+
+/* ── Arming a restore ────────────────────────────────────────── */
+
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  animation: snapConfirmIn 0.16s var(--ease-expo) both;
+}
+
+@keyframes snapConfirmIn {
+  from { opacity: 0; transform: translateX(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.confirmText {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: #f0b4b4;
+}
+
+.yes,
+.no {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.yes { border: 1px solid rgba(248, 113, 113, 0.40); color: #f87171; }
+.yes:hover { background: rgba(248, 113, 113, 0.12); }
+
+.no { border: 1px solid var(--border-subtle); color: var(--text-muted); }
+.no:hover { color: var(--text-primary); background: var(--bg-hover); }
