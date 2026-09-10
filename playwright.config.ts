@@ -20,6 +20,8 @@
 
 import { defineConfig, devices } from '@playwright/test'
 
+import { SENTINEL_KEY } from './lib/dataResetVersion'
+
 export default defineConfig({
 
   /* ── Test discovery ─────────────────────────────────────────── */
@@ -39,14 +41,33 @@ export default defineConfig({
     ['list'],                         // concise pass/fail output in terminal
     ['html', {
       open:         'never',          // don't auto-open in CI
-      outputFolder: 'tests/playwright-report',
+      outputFolder: 'playwright-report',
     }],
-    ['junit', { outputFile: 'tests/playwright-results/junit.xml' }],
+    ['junit', { outputFile: 'playwright-results/junit.xml' }],
   ],
 
   /* ── Shared browser settings ────────────────────────────────── */
   use: {
     baseURL:    'http://localhost:3000',
+
+    /*
+     * Every test gets a clean browser profile, which to Zenith looks like
+     * a brand-new device — so DataResetGate fired on all of them, clearing
+     * localStorage (including the session the test had just injected),
+     * deleting both IndexedDB databases and reloading. Whatever
+     * page.evaluate was mid-flight died with "Execution context was
+     * destroyed", and the tests that survived were testing a wiped app.
+     *
+     * Seeding the sentinel says what is true of any device a real user has
+     * already opened Zenith on: the one-time wipe has been done.
+     */
+    storageState: {
+      cookies: [],
+      origins: [{
+        origin:       'http://localhost:3000',
+        localStorage: [{ name: SENTINEL_KEY, value: 'done' }],
+      }],
+    },
     trace:      'retain-on-failure',    // trace.zip only on failure
     screenshot: 'only-on-failure',      // PNG only on failure
     video:      'retain-on-failure',    // video only on failure
@@ -57,7 +78,21 @@ export default defineConfig({
   },
 
   /* ── Output directories ─────────────────────────────────────── */
-  outputDir: 'tests/playwright-results',
+  /*
+   * At the repository root, deliberately — NOT under tests/.
+   *
+   * `next dev` watches tests/, so every trace, video and screenshot
+   * Playwright wrote there triggered a rebuild. A page load that lands
+   * while a chunk is being rewritten gets a half-written app/layout.js,
+   * which throws `SyntaxError: Invalid or unexpected token` with no
+   * stack, so React never hydrates and window.__zenith never appears.
+   * The test then fails, writes its own artifacts, and starts the next
+   * rebuild — one real failure cascaded into every test after it.
+   *
+   * Measured: a write under tests/ produces a recompile; the same write
+   * at the repository root produces none.
+   */
+  outputDir: 'playwright-results',
 
   /* ── Test timeout ───────────────────────────────────────────── */
   /*
@@ -78,7 +113,19 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use:  { ...devices['Desktop Chrome'] },
+      use:  {
+        ...devices['Desktop Chrome'],
+        /*
+         * CI runs `playwright install chromium`, so the bundled build is
+         * always there and this stays undefined. Some sandboxes ship a
+         * different Chromium and no way to download one; pointing at it
+         * is the difference between running the suite locally and not
+         * being able to check anything before pushing.
+         */
+        launchOptions: process.env.PW_CHROMIUM_PATH
+          ? { executablePath: process.env.PW_CHROMIUM_PATH }
+          : {},
+      },
     },
   ],
 

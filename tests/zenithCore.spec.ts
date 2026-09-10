@@ -115,7 +115,9 @@ test.describe('Suite 1 — Auth Gate bypass & workspace initialization', () => {
          assignments table, so it proves the widget layer mounted *and*
          that it can see the database. */
       await expect(
-        page.getByRole('button', { name: 'Open work' }),
+        /* exact — a substring match on 'Open Work' would also resolve to
+           the Workouts widget's 'Open Workouts'. */
+        page.getByRole('button', { name: 'Open Work Due', exact: true }),
       ).toBeVisible({ timeout: 15_000 })
     },
   )
@@ -194,7 +196,8 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
        * so the useLiveQuery subscription must fire and the count must
        * move without a reload.
        */
-      const workDue = page.getByRole('button', { name: 'Open work' })
+      /* exact — see S1-T2. */
+      const workDue = page.getByRole('button', { name: 'Open Work Due', exact: true })
       await expect(workDue).toBeVisible({ timeout: 10_000 })
       await expect(workDue.getByText(/\d+\s*open/)).toBeVisible({ timeout: 5_000 })
     },

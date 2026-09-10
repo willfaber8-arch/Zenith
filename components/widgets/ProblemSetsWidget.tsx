@@ -64,7 +64,10 @@ export default function ProblemSetsWidget() {
       role="button"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate('study-shield', 'essentials') }}
-      aria-label="Open work"
+      /* Matches the visible "Work Due" heading. "Open work" alone was
+         announced almost identically to the Workouts widget's
+         "Open Workouts", and did not name the thing on screen. */
+      aria-label="Open Work Due"
     >
       <div className={styles.cardHeader}>
         <span>Work Due</span>

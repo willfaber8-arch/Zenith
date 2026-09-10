@@ -100,14 +100,8 @@ jobs:
       # The build above and the dev server below both use `.next`, and they
       # cannot share it. `next build` inlines NEXT_PUBLIC_* values into the
       # chunks it writes; `next dev` then starts with NEXT_PUBLIC_E2E=1 and
-      # reuses what it finds, so the browser is served a mixture of chunks
-      # built under two different environments. The result is a
-      # "SyntaxError: Invalid or unexpected token" with no stack, an empty
-      # page, and every single test timing out waiting for a sidebar.
-      #
-      # That is why this suite has never passed. It was invisible because
-      # the workflow triggered on a branch this repository does not use, so
-      # nothing ever ran it.
+      # reuses what it finds, so the browser would be served a mixture of
+      # chunks built under two different environments.
       - name: Clear the production build before starting the dev server
         run: rm -rf .next
 
@@ -122,13 +116,26 @@ jobs:
       # Measured locally: the same suite that timed out cold ran 15 of
       # 17 green in 26 seconds warm.
       - name: Warm the dev server before the suite
+        # NEXT_PUBLIC_E2E is inlined at compile time, so it has to be set
+        # for the process that runs `next dev` — declared here rather than
+        # as an inline prefix so there is one obvious place it comes from.
+        env:
+          NEXT_PUBLIC_E2E: '1'
         run: |
-          NEXT_PUBLIC_E2E=1 npm run dev > /tmp/zenith-dev.log 2>&1 &
+          npm run dev > /tmp/zenith-dev.log 2>&1 &
           echo "waiting for the dev server to answer"
-          npx --yes wait-on -t 120000 http://localhost:3000
-          echo "compiling the app (first request builds it)"
-          curl -sS --max-time 240 -o /dev/null -w "first load: %{http_code} in %{time_total}s\n" http://localhost:3000
-          curl -sS --max-time 120 -o /dev/null -w "second load: %{http_code} in %{time_total}s\n" http://localhost:3000
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000 && break
+            sleep 2
+          done
+          # A curl warms the server route and nothing else. Only a browser
+          # fetches and executes the client bundle, which is what the tests
+          # actually wait for — and it can check the bridge is really there.
+          node scripts/warm-e2e-server.mjs
+
+      - name: Dev server log if the warm-up failed
+        if: failure()
+        run: tail -50 /tmp/zenith-dev.log
 
       - name: Run E2E test suite
         # playwright.config.ts handles the webServer lifecycle: it boots
@@ -150,8 +157,8 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}
           path: |
-            tests/playwright-report/
-            tests/playwright-results/
+            playwright-report/
+            playwright-results/
           retention-days: 14
 
       # ── Stage 5 · Production deployment (main branch push only) ───────

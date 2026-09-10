@@ -15,9 +15,9 @@
 
 import { useEffect } from 'react'
 
-const WIPE_VERSION = 'v1'
-const SENTINEL_KEY = 'zenith_data_wiped_' + WIPE_VERSION
-const KNOWN_DBS    = ['ZenithOS', 'ZenithGamesOS']
+import { SENTINEL_KEY } from '@/lib/dataResetVersion'
+
+const KNOWN_DBS = ['ZenithOS', 'ZenithGamesOS']
 
 export default function DataResetGate() {
   useEffect(() => {
