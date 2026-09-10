@@ -20,6 +20,7 @@ import {
   db, type Assignment, type AssignmentStatus, type Priority, type ProblemItem,
 } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
+import DoneRetentionNote from '@/components/ui/DoneRetentionNote'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
 import { kindOf, hasDueDate, isOpen, KIND_BADGE, type TaskKind } from '@/utils/taskUnify'
 import {
@@ -265,6 +266,8 @@ export default function StudyWorkPanel() {
           </button>
         </div>
       </div>
+
+      {showDone && <DoneRetentionNote />}
 
       {composing && <Composer onCreate={create} />}
 

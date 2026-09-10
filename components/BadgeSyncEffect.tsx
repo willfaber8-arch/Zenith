@@ -9,7 +9,9 @@
  *      session — safe to call repeatedly (no-op if row exists).
  *   2. Subscribes to live assignment counts and pushes badge numbers
  *      into NavBadgeContext so sidebar pills stay reactive.
- *   3. Takes the daily local snapshot, if one is due.
+ *   3. Takes the daily local snapshot, if one is due, and then tidies
+ *      away finished tasks past their retention window — in that order,
+ *      so anything the sweep removes is inside a snapshot first.
  *
  * Returns null — this component produces no DOM output.
  */
@@ -20,6 +22,7 @@ import { seedUserProfile }           from '@/lib/db'
 import { useLiveAssignmentBadges }   from '@/lib/hooks/useLiveAssignmentBadges'
 import { warn }                      from '@/lib/logger'
 import { takeSnapshot }              from '@/utils/dbSnapshots'
+import { sweepCompletedTasks }       from '@/utils/taskRetention'
 
 export default function BadgeSyncEffect() {
   const { session } = useAuth()
@@ -43,9 +46,20 @@ export default function BadgeSyncEffect() {
 
     const run = () => {
       if (cancelled) return
-      void takeSnapshot().catch(
-        err => warn('BadgeSyncEffect', 'daily snapshot failed', err),
-      )
+      /*
+       * Order matters, and is the reason these are chained rather than
+       * fired together. The sweep deletes finished tasks permanently;
+       * running it after the snapshot means the last few days of them
+       * are still sitting in a snapshot if the window turns out to be
+       * shorter than someone wanted. A failed snapshot does not block
+       * the sweep — the tasks it would remove were already a week old,
+       * and leaving the list to grow forever because a copy could not
+       * be written trades one small problem for a permanent one.
+       */
+      void takeSnapshot()
+        .catch(err => warn('BadgeSyncEffect', 'daily snapshot failed', err))
+        .then(() => { if (!cancelled) return sweepCompletedTasks() })
+        .catch(err => warn('BadgeSyncEffect', 'done-task sweep failed', err))
     }
 
     const w = window as unknown as {

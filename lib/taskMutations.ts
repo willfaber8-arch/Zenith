@@ -105,9 +105,39 @@ export async function setDone(
     }
   }
 
+  const now = Date.now()
   const status: AssignmentStatus = done ? 'completed' : 'pending'
-  await db.assignments.update(a.id, { status, updatedAt: Date.now() })
+  /*
+   * Unticking clears the stamp. Dexie deletes a key set to undefined,
+   * so a task put back on the list stops counting down to removal
+   * rather than keeping the clock it was on before.
+   */
+  await db.assignments.update(a.id, {
+    status,
+    completedAt: done ? now : undefined,
+    updatedAt:   now,
+  })
   return null
+}
+
+/**
+ * Tick a task off when all you have is its id.
+ *
+ * Three screens used to write `{ status: 'completed' }` straight to the
+ * row instead, which is the drift this file exists to prevent: they
+ * recorded no completion time, so nothing knew when to tidy them away,
+ * and ticking a repeating task there *finished* it rather than moving
+ * it to its next date — the opposite of what setDone does two screens
+ * over. Loading the row first costs one indexed read and makes all of
+ * them behave the same.
+ */
+export async function markDoneById(
+  id: number,
+): Promise<{ repeatedTo: string } | null> {
+  if (!db) return null
+  const row = await db.assignments.get(id)
+  if (!row) return null
+  return setDone(row, true)
 }
 
 /**
@@ -127,12 +157,22 @@ export async function toggleProblem(
   const allDone = problems.every(p => p.done)
   const justCompleted = allDone && a.status !== 'completed'
 
+  const reopened = !allDone && a.status === 'completed'
+
   await db.assignments.update(a.id, {
     problems,
-    ...(justCompleted ? { status: 'completed' as AssignmentStatus } : {}),
+    ...(justCompleted ? {
+      status: 'completed' as AssignmentStatus,
+      completedAt: Date.now(),
+    } : {}),
     /* Un-ticking a problem in a finished set reopens it, or the set
-       claims to be done while visibly holding an unfinished problem. */
-    ...(!allDone && a.status === 'completed' ? { status: 'pending' as AssignmentStatus } : {}),
+       claims to be done while visibly holding an unfinished problem.
+       Reopening clears the completion stamp too, so a set that is back
+       on the list is not still counting down to being tidied away. */
+    ...(reopened ? {
+      status: 'pending' as AssignmentStatus,
+      completedAt: undefined,
+    } : {}),
     updatedAt: Date.now(),
   })
 

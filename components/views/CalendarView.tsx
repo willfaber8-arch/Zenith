@@ -60,6 +60,7 @@ import {
 } from '@/utils/subtasks'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
+import DoneRetentionNote from '@/components/ui/DoneRetentionNote'
 import {
   presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
 } from '@/utils/taskRepeat'
@@ -1728,6 +1729,8 @@ function TasksPanel() {
           )}
         </div>
       </div>
+
+      {showDone && <DoneRetentionNote />}
 
       {addingCategory && (
         <div className={styles.newCategoryRow}>

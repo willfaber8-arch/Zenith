@@ -16,6 +16,7 @@
 
 import { useCallback }       from 'react'
 import { useNav }            from '@/lib/NavContext'
+import { markDoneById } from '@/lib/taskMutations'
 import { useToast }          from '@/lib/ToastContext'
 import { db }                from '@/lib/db'
 import type { TargetType, CtxTargetData } from '@/lib/ContextMenuContext'
@@ -136,7 +137,7 @@ export function CustomContextMenu({
             label: 'Mark Complete',
             onClick: async () => {
               try {
-                await db.assignments.update(id, { status: 'completed' as const })
+                await markDoneById(id)
                 toast('Task marked complete.', 'success')
               } catch {
                 toast('Could not update task.', 'error')
