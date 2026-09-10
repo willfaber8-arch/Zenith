@@ -630,13 +630,25 @@ export default function NotesView() {
             two-pane layout is already tight, and a rail of folders would
             squeeze the list that actually holds the writing.
           */}
-          <div className={styles.folderStrip} role="tablist" aria-label="Note folders">
+          {/*
+            A group of toggles, not a tablist.
+            
+            It was `role="tablist"` with `role="tab"` chips, which axe
+            flagged as a critical `aria-required-children` violation: a
+            tablist may only contain tabs, and this strip also holds the
+            per-folder delete buttons, the rename input and "+ Folder".
+            
+            The role was wrong on its own terms too. Tabs control tab
+            panels, and these chips filter one list that is always
+            there — which is what `aria-pressed` on a toggle button
+            says, and what a screen reader can act on.
+          */}
+          <div className={styles.folderStrip} role="group" aria-label="Filter notes by folder">
             {([ALL_NOTES, UNFILED] as const).map(k => (
               <button
                 key={k}
                 type="button"
-                role="tab"
-                aria-selected={folderSel === k}
+                aria-pressed={folderSel === k}
                 className={`${styles.folderChip} ${folderSel === k ? styles.folderChipOn : ''}`}
                 onClick={() => setFolderSel(k)}
               >
@@ -665,8 +677,7 @@ export default function NotesView() {
                 <span key={f.id} className={styles.folderChipWrap}>
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={folderSel === f.id}
+                    aria-pressed={folderSel === f.id}
                     className={`${styles.folderChip} ${folderSel === f.id ? styles.folderChipOn : ''}`}
                     onClick={() => setFolderSel(f.id)}
                     onDoubleClick={() => { setRenamingFolderId(f.id); setFolderDraft(f.name) }}

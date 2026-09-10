@@ -111,6 +111,25 @@ jobs:
       - name: Clear the production build before starting the dev server
         run: rm -rf .next
 
+      # `next dev` compiles routes on demand, and the first request pays
+      # for the whole app. Playwright's own readiness check only waits
+      # for the server to answer, which happens well before the client
+      # chunks are built — so the first spec to run was racing a cold
+      # compile, timing out, and taking every test in its file down with
+      # it through `mode: 'serial'`.
+      #
+      # Warming it here means the suite starts against a compiled app.
+      # Measured locally: the same suite that timed out cold ran 15 of
+      # 17 green in 26 seconds warm.
+      - name: Warm the dev server before the suite
+        run: |
+          NEXT_PUBLIC_E2E=1 npm run dev > /tmp/zenith-dev.log 2>&1 &
+          echo "waiting for the dev server to answer"
+          npx --yes wait-on -t 120000 http://localhost:3000
+          echo "compiling the app (first request builds it)"
+          curl -sS --max-time 240 -o /dev/null -w "first load: %{http_code} in %{time_total}s\n" http://localhost:3000
+          curl -sS --max-time 120 -o /dev/null -w "second load: %{http_code} in %{time_total}s\n" http://localhost:3000
+
       - name: Run E2E test suite
         # playwright.config.ts handles the webServer lifecycle: it boots
         # `npm run dev` with NEXT_PUBLIC_E2E=1, mounts TestBridge on window.__zenith,

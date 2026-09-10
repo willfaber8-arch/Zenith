@@ -86,7 +86,22 @@ export default defineConfig({
   webServer: {
     command:             'npm run dev',
     url:                 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI, // reuse in dev, fresh in CI
+    /*
+     * Reuse whatever is already listening, in CI as well as locally.
+     *
+     * This was `!process.env.CI` — fresh server in CI — which is the
+     * usual advice and is wrong here. `next dev` compiles on demand,
+     * and Playwright's readiness check only waits for the server to
+     * answer, not for the app to be built. The first spec was racing a
+     * cold compile, timing out, and taking its whole file down with it
+     * through `mode: 'serial'`.
+     *
+     * The workflow now starts the server and loads the page twice
+     * before this runs, so by the time the suite starts the app is
+     * compiled. Refusing to reuse it would start a second server on an
+     * occupied port and throw all of that away.
+     */
+    reuseExistingServer: true,
     timeout:             120_000,
 
     /*
