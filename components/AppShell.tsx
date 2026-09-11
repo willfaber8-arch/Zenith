@@ -121,33 +121,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   /* Right-click context menu state */
-  const [ctxMenu, setCtxMenu] = useState<{
-    x: number; y: number; linkId: string; linkLabel: string
-  } | null>(null)
-
   /* Show hidden items management panel */
   const [showHiddenMgr, setShowHiddenMgr] = useState(false)
 
   /* Customize sidebar panel */
   const [showCustomize, setShowCustomize] = useState(false)
-
-  /* Listen for right-click events bubbled from NavLinkItem */
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ev = e as CustomEvent<{ x: number; y: number; id: string; label: string }>
-      setCtxMenu({ x: ev.detail.x, y: ev.detail.y, linkId: ev.detail.id, linkLabel: ev.detail.label })
-    }
-    document.addEventListener('zenith:nav-ctx', handler)
-    return () => document.removeEventListener('zenith:nav-ctx', handler)
-  }, [])
-
-  /* Close context menu on click outside */
-  useEffect(() => {
-    if (!ctxMenu) return
-    const handler = () => setCtxMenu(null)
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
-  }, [ctxMenu])
 
   /* ── Study mode transition styles ──────────────────────────
    * The sidebar translates left, the topbar translates up.
@@ -578,30 +556,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Context menu (right-click on nav item) ──────────── */}
-      {ctxMenu && (
-        <div
-          className={styles.ctxMenu}
-          style={{ top: ctxMenu.y, left: ctxMenu.x }}
-          role="menu"
-          aria-label={`Options for ${ctxMenu.linkLabel}`}
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className={styles.ctxMenuItem}
-            role="menuitem"
-            onClick={() => {
-              hideItem(ctxMenu.linkId)
-              toast(`"${ctxMenu.linkLabel}" hidden from sidebar.`, 'info')
-              setCtxMenu(null)
-            }}
-          >
-            <span aria-hidden="true">⊖</span> Hide from sidebar
-          </button>
-        </div>
-      )}
-
       {/* ── Hidden items management panel ───────────────────── */}
       {showHiddenMgr && (
         <>
@@ -897,17 +851,6 @@ function NavLinkItem({
   onHide:        () => void
   colorOverride?: string
 }) {
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Dispatch a custom event so the parent can show the menu
-    const event = new CustomEvent('zenith:nav-ctx', {
-      detail: { x: e.clientX, y: e.clientY, id: link.id, label: link.label },
-      bubbles: true,
-    })
-    e.currentTarget.dispatchEvent(event)
-  }
-
   const effectiveColor = colorOverride ?? link.color
 
   return (
@@ -916,7 +859,6 @@ function NavLinkItem({
         type="button"
         className={`${styles.navItem} ${styles.navItemIndented} ${active ? styles.navItemActive : ''}`}
         onClick={onClick}
-        onContextMenu={handleContextMenu}
         data-tour={`nav-${link.id}`}
         style={{
           '--item-hover-bg':  hexToRgba(effectiveColor, 0.12),

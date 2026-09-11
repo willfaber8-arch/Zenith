@@ -13,6 +13,7 @@
  */
 
 import { db, type Assignment, type ProblemItem, type Priority, type AssignmentStatus } from '@/lib/db'
+import { type TaskKind } from '@/utils/taskUnify'
 import { advanceOnComplete } from '@/utils/taskRepeat'
 
 /* ── Creating ────────────────────────────────────────────────── */
@@ -21,25 +22,46 @@ export interface NewReminder {
   title:   string
   dueDate?: string
   listId?:  number
+  /**
+   * What kind of thing this is. Defaults to 'task'.
+   *
+   * It used to be hardcoded to 'reminder' here, and the Calendar's add
+   * row is the only caller, so *everything* typed into Zenith's main
+   * task list arrived as a reminder — including problem sets, which
+   * then vanished from the Problem sets filter the moment they were
+   * created. Reminders are meant to be the small standing things, not
+   * the bucket everything falls into.
+   */
+  kind?:     TaskKind
+  courseId?: string
+  priority?: Priority
 }
 
 /**
- * A plain to-do. No course, no priority to choose — a reminder should
- * cost one line of typing, or it does not get written down.
+ * Add something to the one task list.
+ *
+ * A reminder should still cost one line of typing — course and priority
+ * stay optional, and the defaults are the ones a quick capture wants.
  */
 export async function createReminder(input: NewReminder): Promise<number | null> {
   if (!db) return null
   const title = input.title.trim()
   if (!title) return null
-  const now = Date.now()
+  const now  = Date.now()
+  const kind = input.kind ?? 'task'
   const id = await db.assignments.add({
     title,
     dueDate:  input.dueDate?.trim() || '',
-    courseId: '',
+    courseId: input.courseId?.trim() ?? '',
     status:   'pending',
-    priority: 'medium',
-    category: 'life',
-    kind:     'reminder',
+    priority: input.priority ?? 'medium',
+    /* Course work is scholastic; a standing personal reminder is not.
+       The Study Shield badge counts the former only. */
+    category: kind === 'reminder' ? 'life' : 'scholastic',
+    kind,
+    /* A problem set with no problems yet still belongs in the set view,
+       so the field exists from the start rather than on first edit. */
+    ...(kind === 'problem_set' ? { problems: [] } : {}),
     ...(input.listId != null ? { listId: input.listId } : {}),
     createdAt: now,
     updatedAt: now,

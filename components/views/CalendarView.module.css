@@ -1847,6 +1847,54 @@
   flex-shrink: 0;
 }
 
+/*
+ * Which kind the add row will create. Three short chips rather than a
+ * select: the row already holds a title, a mic, a date and Add, and a
+ * dropdown here would mean a click to see the options and another to
+ * pick one for something you change constantly.
+ */
+.addTaskKind {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-main);
+}
+
+.addTaskKindBtn {
+  padding: 0 var(--sp-2);
+  min-height: 26px;
+  border: none;
+  border-radius: calc(var(--r-md) - 3px);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-smooth),
+              color var(--dur-fast) var(--ease-smooth);
+}
+
+.addTaskKindBtn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+.addTaskKindBtn:focus-visible {
+  outline: 2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: -1px;
+}
+
+.addTaskKindOn {
+  background: var(--cat-accent, var(--accent-purple));
+  color: var(--bg-main);
+  font-weight: 600;
+}
+
+.addTaskKindOn:hover {
+  background: var(--cat-accent, var(--accent-purple));
+  color: var(--bg-main);
+}
+
 .addTaskSubmit {
   padding: 4px 10px;
   background: rgba(124,149,255,0.10);
