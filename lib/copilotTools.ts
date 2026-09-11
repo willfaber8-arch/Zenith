@@ -261,12 +261,34 @@ export const COPILOT_TOOLS: ToolDef[] = [
   },
   {
     name:        'add_todo',
-    description: 'Add a to-do task item to the Calendar task list.',
+    description:
+      'Add something to the one task list, which holds three kinds of thing. '
+      + 'Pick the kind deliberately: "reminder" is a small standing personal thing '
+      + '("take the bins out"), "task" is a single piece of work, "problem_set" is '
+      + 'course work tracked problem by problem. Defaults to task. Anything can '
+      + 'carry steps and can repeat.',
     required:    ['title'],
     params: {
-      title:    { type: 'string', description: 'Task description, e.g. "Call the dentist"' },
-      category: { type: 'string', description: 'Category/list name, e.g. "Errands", "Study", "Short Term"' },
+      title:    { type: 'string', description: 'What it is, e.g. "Call the dentist"' },
+      category: { type: 'string', description: 'Which list to file it in, e.g. "Errands", "Study", "Short Term"' },
       dueDate:  { type: 'string', description: 'Optional due date YYYY-MM-DD' },
+      kind: {
+        type: 'string',
+        description: 'reminder = small standing thing; task = a piece of work; problem_set = course work with problems',
+        enum: ['reminder', 'task', 'problem_set'],
+      },
+      course: { type: 'string', description: 'Optional course code this belongs to, e.g. "MATH 2930"' },
+      repeat: {
+        type: 'string',
+        description: 'Make it recurring. Ticking a repeating item moves it to its next date instead of completing it.',
+        enum: ['daily', 'weekdays', 'weekly', 'fortnightly', 'monthly', 'yearly'],
+      },
+      steps: {
+        type: 'string',
+        description:
+          'Optional checklist, comma-separated — e.g. "1, 2, 3" for a problem set '
+          + 'or "book flights, book hotel" for a task. Ticking the last one closes the item.',
+      },
     },
   },
   {
@@ -440,7 +462,7 @@ export function toolsSystemNote(todayIso: string): string {
   return `
 
 ACTION CAPABILITIES:
-You can manage the user's entire Zenith workspace via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, update_book (enrich an existing Library book with researched genre/pages/year/series/synopsis/rating), add_recipe, set_dashboard_widget (show/hide home widgets), set_profile (name / university / major), save_dashboard_preset (snapshot current widget config under a name), load_dashboard_preset (apply a saved preset by name), add_vocab_word (add a flashcard to Polyglot Vault), and add_todo (add a task to the Calendar to-do list). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
+You can manage the user's entire Zenith workspace via tools: create_habit, add_calendar_event, log_cardio, create_note, add_assignment, add_link, add_subscription, add_plant, log_mood, add_book, update_book (enrich an existing Library book with researched genre/pages/year/series/synopsis/rating), add_recipe, set_dashboard_widget (show/hide home widgets), set_profile (name / university / major), save_dashboard_preset (snapshot current widget config under a name), load_dashboard_preset (apply a saved preset by name), add_vocab_word (add a flashcard to Polyglot Vault), and add_todo (add a reminder, task or problem set to the one task list, with optional steps and repeat). When the user asks you to create, add, log, schedule, customise, or set up anything, CALL the matching tool(s) immediately — do NOT ask for permission first and do NOT merely describe how to do it manually.
 
 BATCH SETUP: You can and should emit MULTIPLE tool calls in a single response when the user asks for several things at once (e.g. "set up my dashboard for finals week" → several set_dashboard_widget calls followed by save_dashboard_preset to lock it in). The user sees one confirmation card listing every proposed action and approves them all at once, so batching is preferred over many back-and-forth turns.
 

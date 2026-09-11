@@ -65,6 +65,7 @@ import {
   presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
 } from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
+import CourseManager from '@/components/CourseManager'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -2671,6 +2672,9 @@ export default function CalendarView() {
           <UniversityScheduleReplicator
             onDone={() => setShowSchedule(false)}
           />
+
+          {/* Courses are made here, so this is where they come off. */}
+          <CourseManager />
           <div className={styles.cognitiveLoadSection}>
             <div className={styles.cognitiveLoadHeader}>
               <span className={styles.cognitiveLoadEyebrow}>Course Load · Cognitive Forecast</span>

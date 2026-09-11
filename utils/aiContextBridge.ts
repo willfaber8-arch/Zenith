@@ -107,6 +107,28 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   /* ── 1. Assignments ─────────────────────────────────────────── */
   const allAssignments: Assignment[] = await db.assignments.toArray()
 
+  /*
+   * The lists people file work into, so the Co-Pilot can say "in Short
+   * Term" rather than "listId 3" — and so it can file new work into a
+   * list the user already has instead of inventing one.
+   */
+  const listById = new Map<number, string>()
+  try {
+    for (const c of await db.todo_categories.toArray()) {
+      if (c.id != null) listById.set(c.id, c.name)
+    }
+  } catch { /* an older database without the table is not fatal */ }
+
+  const byKind = { reminder: 0, task: 0, problem_set: 0 }
+  const courseSet = new Set<string>()
+  for (const a of allAssignments) {
+    const k = a.kind === 'reminder' ? 'reminder'
+      : a.kind === 'problem_set' ? 'problem_set' : 'task'
+    byKind[k] += 1
+    if (a.courseId?.trim()) courseSet.add(a.courseId.trim())
+  }
+  const courseTags = [...courseSet].sort()
+
   const completed = allAssignments.filter(
     a => a.status === 'completed' && a.dueDate >= cutoff,
   )
@@ -178,6 +200,51 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
   lines.push(`Overdue:                   ${overdue.length}`)
   lines.push(`Active (pending/in-flight): ${pending.length}`)
 
+  /*
+   * One list holds three kinds of thing, and the Co-Pilot could not see
+   * which was which — so "what problem sets do I have?" was
+   * unanswerable from a context that listed every row identically. The
+   * kind, the step progress and whether something repeats are what
+   * separates a standing chore from a set with two problems left.
+   */
+  const kindLabel = (a: Assignment): string =>
+    a.kind === 'problem_set' ? 'problem set'
+      : a.kind === 'reminder' ? 'reminder'
+        : 'task'
+
+  const steps = (a: Assignment): string => {
+    if (!a.problems || a.problems.length === 0) return ''
+    const done = a.problems.filter(p => p.done).length
+    return ` | steps: ${done}/${a.problems.length}`
+  }
+
+  const listName = (a: Assignment): string => {
+    const name = a.listId != null ? listById.get(a.listId) : undefined
+    return name ? ` | list: ${name}` : ''
+  }
+
+  const describeTask = (a: Assignment): string =>
+    `  [${a.priority.toUpperCase()}] "${a.title}" (${kindLabel(a)})`
+    + (a.courseId ? ` | course: ${a.courseId}` : '')
+    + ` | due: ${a.dueDate || 'no deadline'}`
+    + steps(a)
+    + listName(a)
+    + (a.repeat ? ` | repeats: ${a.repeat}` : '')
+
+  lines.push('')
+  lines.push(
+    `By kind — reminders: ${byKind.reminder}, tasks: ${byKind.task}, `
+    + `problem sets: ${byKind.problem_set}`,
+  )
+  lines.push(
+    'Reminders are small standing things; tasks and problem sets are course work. '
+    + 'Anything can carry steps, and a repeating item moves to its next date when ticked '
+    + 'rather than being completed.',
+  )
+  if (courseTags.length > 0) {
+    lines.push(`Courses in use: ${courseTags.join(', ')}`)
+  }
+
   if (overdue.length > 0) {
     lines.push('')
     lines.push('Overdue items (highest priority first):')
@@ -189,10 +256,7 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
       .slice(0, MAX_OVERDUE_IN_PROMPT)
       .forEach(a => {
         const note = truncate(a.notes, MAX_NOTE_CHARS)
-        lines.push(
-          `  [${a.priority.toUpperCase()}] "${a.title}" | course: ${a.courseId} | due: ${a.dueDate || "no deadline"}` +
-          (note ? ` | note: "${note}"` : ''),
-        )
+        lines.push(describeTask(a) + (note ? ` | note: "${note}"` : ''))
       })
   }
 
@@ -200,9 +264,7 @@ export async function compileUserContextPayload(): Promise<UserContextPayload> {
     lines.push('')
     lines.push('Upcoming tasks (chronological):')
     pending.slice(0, MAX_PENDING_IN_PROMPT).forEach(a => {
-      lines.push(
-        `  [${a.priority.toUpperCase()}] "${a.title}" | ${a.courseId} | due: ${a.dueDate} | status: ${a.status}`,
-      )
+      lines.push(describeTask(a) + ` | status: ${a.status}`)
     })
   }
 
