@@ -1,6 +1,7 @@
 'use client'
 
 import { playHabitProgress } from '@/lib/habitSounds'
+import { markDoneById } from '@/lib/taskMutations'
 import { useState, useMemo }  from 'react'
 import { useLiveQuery }       from 'dexie-react-hooks'
 import { db }                 from '@/lib/db'
@@ -148,7 +149,9 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
   const overdueCount    = todayTasks.filter(a => hasDueDate(a) && a.dueDate.slice(0, 10) < todayStr).length
 
   async function markDone(id: number) {
-    await db?.assignments.update(id, { status: 'completed' })
+    /* Goes through the shared mutation so a repeating task advances to
+       its next date here exactly as it does in the task panels. */
+    await markDoneById(id)
   }
 
   return (
@@ -355,7 +358,9 @@ function WeekPanel({ habits, increment, events, assignments }: PanelProps) {
   }, [assignments, days, todayStr])
 
   async function markDone(id: number) {
-    await db?.assignments.update(id, { status: 'completed' })
+    /* Goes through the shared mutation so a repeating task advances to
+       its next date here exactly as it does in the task panels. */
+    await markDoneById(id)
   }
 
   // Weekly plant-care roll-up

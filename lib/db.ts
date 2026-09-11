@@ -111,6 +111,15 @@ export interface Assignment {
    *  rather than many rows generated ahead — a chore is one thing whose
    *  next date changes, not fifty-two separate obligations. */
   repeat?:     string
+  /* ── Tidying done work away (retention) ──────────────────────── */
+  /** When this was ticked off, in Unix ms. Absent while it is open.
+   *
+   *  `updatedAt` cannot stand in for this: editing the title of a
+   *  finished task would push its removal a week further out, and a
+   *  task finished long ago but touched yesterday would look fresh.
+   *  Not indexed — the sweep already narrows on `status` first, and the
+   *  completed set is small enough to filter in memory. */
+  completedAt?: number
 }
 
 /**

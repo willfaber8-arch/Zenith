@@ -50,7 +50,14 @@ tr:hover .reveal,
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  flex-shrink: 0;
+  /* Wider than the trigger it replaces, so it needs to be allowed to
+     take that width rather than be squeezed back to it — and to wrap
+     onto its own line in a narrow row instead of leaving the page. */
+  flex: 0 1 auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: var(--sp-1);
   animation: confirmIn 0.14s var(--ease-expo) both;
 }
 

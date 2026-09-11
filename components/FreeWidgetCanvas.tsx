@@ -833,7 +833,7 @@ export default function FreeWidgetCanvas() {
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (
-    <div className={styles.canvas} ref={canvasRef} data-ctx-type="WALLPAPER">
+    <div className={styles.canvas} ref={canvasRef}>
 
       {/* ── Draggable items ───────────────────────────────────── */}
       {visibleKeys.map(key => {
@@ -849,9 +849,6 @@ export default function FreeWidgetCanvas() {
         return (
           <div
             key={key}
-            data-ctx-type="WIDGET"
-            data-ctx-id={key}
-            data-ctx-label={ITEM_LABELS[key]}
             className={[
               styles.item,
               isDrag         ? styles.itemDragging       : '',

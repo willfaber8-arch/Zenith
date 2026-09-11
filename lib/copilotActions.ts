@@ -10,7 +10,8 @@
 'use client'
 
 import { db } from '@/lib/db'
-import { createReminder } from '@/lib/taskMutations'
+import { createReminder, setSubtasks, updateTask } from '@/lib/taskMutations'
+import { type TaskKind } from '@/utils/taskUnify'
 import type { Priority } from '@/lib/db'
 import type { BillingCycle } from '@/types/finance'
 import type { ReadingStatus, LibraryBook } from '@/types/bookTracker'
@@ -589,8 +590,48 @@ export async function executeCopilotAction(action: CopilotAction): Promise<strin
          backs any view, so adding there would file the to-do somewhere
          nothing renders — the Co-Pilot's whole value is that what it
          adds turns up where you look. */
-      await createReminder({ title, dueDate, listId: categoryId })
-      return `Added to-do "${title}"${dueDate ? ` (due ${dueDate})` : ''}.`
+      /*
+       * The kind matters: filing a problem set as a reminder puts it
+       * where the Problem sets filter will not find it, which is the
+       * exact bug the add row had. Default to a task, never a reminder.
+       */
+      const rawKind = str(a.kind).trim()
+      const kind: TaskKind =
+        rawKind === 'reminder' || rawKind === 'problem_set' ? rawKind : 'task'
+
+      const id = await createReminder({
+        title, dueDate, kind, listId: categoryId,
+        courseId: str(a.course).trim() || undefined,
+      })
+
+      /* Accepts the comma-separated string the tool asks for, and an
+         array too — a model that sends one anyway should not silently
+         lose the steps. */
+      const stepLabels = (Array.isArray(a.steps)
+        ? (a.steps as unknown[]).map(v => str(v))
+        : str(a.steps).split(','))
+        .map(v => v.trim())
+        .filter(Boolean)
+      const repeat = str(a.repeat).trim()
+
+      if (id != null && (stepLabels.length > 0 || repeat)) {
+        const row = await db.assignments.get(id)
+        if (row) {
+          if (stepLabels.length > 0) {
+            await setSubtasks(row, stepLabels.map((label, i) => ({
+              id: `s${i + 1}_${Date.now().toString(36)}`, label, done: false,
+            })))
+          }
+          if (repeat) await updateTask(id, { repeat })
+        }
+      }
+
+      const kindWord = kind === 'problem_set' ? 'problem set' : kind
+      return `Added ${kindWord} "${title}"`
+        + (dueDate ? ` (due ${dueDate})` : '')
+        + (stepLabels.length > 0 ? ` with ${stepLabels.length} steps` : '')
+        + (repeat ? `, repeating ${repeat}` : '')
+        + '.'
     }
 
     /* ── Sidebar module visibility ──────────────────────────────── */

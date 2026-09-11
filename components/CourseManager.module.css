@@ -1,0 +1,65 @@
+.block {
+  margin-top:    var(--sp-6);
+  padding:       var(--sp-5);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background:    var(--surface-card);
+}
+
+.heading {
+  margin:      0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size:   0.95rem;
+  color:       var(--text-primary);
+}
+
+.subtitle, .empty {
+  margin:      0 0 var(--sp-4);
+  font-family: var(--font-body);
+  font-size:   0.78rem;
+  line-height: 1.6;
+  color:       var(--text-muted);
+}
+
+.empty { margin-bottom: 0; }
+
+.list {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-1);
+  margin:         0;
+  padding:        0;
+  list-style:     none;
+}
+
+.row {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--sp-3);
+  padding:       var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  transition:    background var(--dur-fast) var(--ease-smooth);
+  /* The confirmation is wider than the button it replaces. */
+  flex-wrap:     wrap;
+  row-gap:       var(--sp-2);
+}
+
+.row:hover { background: var(--bg-hover); }
+
+.code {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size:   0.76rem;
+  color:       var(--text-primary);
+}
+
+.detail {
+  flex:          1;
+  min-width:     0;
+  font-family:   var(--font-body);
+  font-size:     0.7rem;
+  color:         var(--text-dark);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}

@@ -565,7 +565,14 @@ export default function MinesweeperCore({
 
   /* ── Render ──────────────────────────────────────────────────── */
   return (
-    <div className={styles.gameRoot} data-ctx-suppress="true">
+    /* Right-click places a flag, so the browser menu must not open
+       over the board. Handled here rather than through a global
+       interceptor: this is the only place in Zenith where a right
+       click means something other than "open the browser menu". */
+    <div
+      className={styles.gameRoot}
+      onContextMenu={(e: React.MouseEvent<HTMLDivElement>) => e.preventDefault()}
+    >
 
       {/* ── Difficulty selector (before the first click) ──────── */}
       {phase === 'waiting' && (

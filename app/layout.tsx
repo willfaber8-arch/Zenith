@@ -48,7 +48,6 @@ import { ToastProvider }      from '@/lib/ToastContext'
 import { StudyModeProvider }  from '@/lib/StudyModeContext'
 import { CopilotProvider }         from '@/lib/CopilotContext'
 import CommandPalette             from '@/components/CommandPalette'
-import { ContextMenuProvider }    from '@/lib/ContextMenuContext'
 import ThemeBackground   from '@/components/ThemeBackground'
 import CosmosCanvas      from '@/components/CosmosCanvas'
 import AppContent        from '@/components/AppContent'
@@ -169,7 +168,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                  */}
                 <StudyModeProvider>
                     <CopilotProvider>
-                      <ContextMenuProvider>
                         <ThemeApplicator />
                         <NumberInputSelect />
                         <ThemeBackground />
@@ -185,7 +183,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <GuidedTour />
                         <OnboardingCinematic />
                         {process.env.NEXT_PUBLIC_E2E === '1' && <TestBridge />}
-                      </ContextMenuProvider>
                     </CopilotProvider>
                 </StudyModeProvider>
               </ToastProvider>

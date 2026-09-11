@@ -132,9 +132,19 @@ export default function ConfirmDelete({
     )
   }
 
+  /*
+   * The caller's className deliberately does NOT reach here.
+   *
+   * It describes the resting trigger — and a trigger is usually a fixed
+   * square, `width: 22px` in the task rows. Applying it to the armed
+   * panel squeezed the question and both buttons into that square, so
+   * the confirmation rendered as a clipped "Del…" at the edge of the
+   * row. Any caller passing a sized button class got the same, which is
+   * why this is fixed once here rather than at each call site.
+   */
   return (
     <span
-      className={`${styles.armed} ${className}`}
+      className={styles.armed}
       role="alert"
       /* Escape belongs to the whole group, not to one button: after
          arming, focus can be on either control, and an Escape bound to

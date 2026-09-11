@@ -42,6 +42,7 @@ import { setBgPreviewId, clearBgPreview, subscribeBgPreview, getBgPreviewId } fr
 import FocusAudioPlayer          from '@/components/FocusAudioPlayer'
 import BackupRestoreManager       from '@/components/BackupRestoreManager'
 import LocalSnapshots            from '@/components/LocalSnapshots'
+import DoneTaskRetention         from '@/components/DoneTaskRetention'
 import CloudSnapshotManager       from '@/components/CloudSnapshotManager'
 import { LegalModal, type LegalDocId } from '@/components/legal/LegalDocs'
 import EcosystemWrapped           from '@/components/EcosystemWrapped'
@@ -1249,6 +1250,8 @@ export default function SettingsView() {
           <BackupRestoreManager />
 
           <LocalSnapshots />
+
+          <DoneTaskRetention />
 
           {/* ── Reset the library ───────────────────────────────────
               Shelves and cover art are additive, so an existing library

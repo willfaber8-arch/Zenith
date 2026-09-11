@@ -1,0 +1,39 @@
+.note {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  margin:      var(--sp-2) 0 var(--sp-3);
+  font-family: var(--font-body);
+  font-size:   0.72rem;
+  line-height: 1.5;
+  color:       var(--text-dark);
+}
+
+.dot {
+  flex:          0 0 auto;
+  width:         5px;
+  height:        5px;
+  border-radius: 50%;
+  background:    var(--cat-accent, var(--accent-purple));
+  opacity:       0.55;
+}
+
+.link {
+  padding:       0;
+  border:        none;
+  background:    none;
+  font-family:   inherit;
+  font-size:     inherit;
+  color:         var(--cat-accent, var(--accent-purple));
+  cursor:        pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover { opacity: 0.8; }
+
+.link:focus-visible {
+  outline:        2px solid var(--cat-accent, var(--accent-purple));
+  outline-offset: 2px;
+  border-radius:  var(--r-sm);
+}

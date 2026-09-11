@@ -24,14 +24,44 @@ const newList = async (name: string): Promise<number> =>
 
 const get = async (id: number): Promise<Assignment | undefined> => db.assignments.get(id)
 
-describe('creating a reminder', () => {
-  it('stores it as a reminder in the given list', async () => {
+describe('creating something in the one list', () => {
+  it('stores a reminder in the given list when one is asked for', async () => {
     const list = await newList('Short Term')
-    const id = await createReminder({ title: 'Buy stamps', listId: list })
+    const id = await createReminder({ title: 'Buy stamps', kind: 'reminder', listId: list })
     const row = await get(id!)
     expect(row?.kind).toBe('reminder')
     expect(row?.listId).toBe(list)
     expect(row?.status).toBe('pending')
+  })
+
+  /*
+   * The kind used to be hardcoded to 'reminder' here, and this is the
+   * only creation path the Calendar's add row uses — so everything
+   * typed into Zenith arrived as a reminder, and a problem set
+   * disappeared from the Problem sets filter the moment it was made.
+   * Reminders are the small standing things you pick deliberately.
+   */
+  it('defaults to a task, not a reminder', async () => {
+    const id  = await createReminder({ title: 'Read chapter 3' })
+    const row = await get(id!)
+    expect(row?.kind).toBe('task')
+  })
+
+  it('keeps a problem set a problem set', async () => {
+    const id  = await createReminder({ title: 'PSet 4', kind: 'problem_set' })
+    const row = await get(id!)
+    expect(row?.kind).toBe('problem_set')
+    /* Ready for its first problem without needing an edit to exist. */
+    expect(row?.problems).toEqual([])
+  })
+
+  it('files course work as scholastic and a reminder as life', async () => {
+    const set  = await get((await createReminder({ title: 'PSet 5', kind: 'problem_set' }))!)
+    const task = await get((await createReminder({ title: 'Lab report', kind: 'task' }))!)
+    const rem  = await get((await createReminder({ title: 'Bins out', kind: 'reminder' }))!)
+    expect(set?.category).toBe('scholastic')
+    expect(task?.category).toBe('scholastic')
+    expect(rem?.category).toBe('life')
   })
 
   it('accepts one with no deadline and no list', async () => {
@@ -250,7 +280,7 @@ describe('ticking a repeating task', () => {
 
 describe('giving a task steps', () => {
   it('stores them on an ordinary reminder, not just a problem set', async () => {
-    const id = await createReminder({ title: 'Plan the trip' })
+    const id = await createReminder({ title: 'Plan the trip', kind: 'reminder' })
     await setSubtasks((await get(id!))!, [
       { id: 's1', label: 'book flights', done: false },
       { id: 's2', label: 'book hotel',   done: false },

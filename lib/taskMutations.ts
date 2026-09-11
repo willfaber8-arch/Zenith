@@ -13,6 +13,7 @@
  */
 
 import { db, type Assignment, type ProblemItem, type Priority, type AssignmentStatus } from '@/lib/db'
+import { type TaskKind } from '@/utils/taskUnify'
 import { advanceOnComplete } from '@/utils/taskRepeat'
 
 /* ── Creating ────────────────────────────────────────────────── */
@@ -21,25 +22,46 @@ export interface NewReminder {
   title:   string
   dueDate?: string
   listId?:  number
+  /**
+   * What kind of thing this is. Defaults to 'task'.
+   *
+   * It used to be hardcoded to 'reminder' here, and the Calendar's add
+   * row is the only caller, so *everything* typed into Zenith's main
+   * task list arrived as a reminder — including problem sets, which
+   * then vanished from the Problem sets filter the moment they were
+   * created. Reminders are meant to be the small standing things, not
+   * the bucket everything falls into.
+   */
+  kind?:     TaskKind
+  courseId?: string
+  priority?: Priority
 }
 
 /**
- * A plain to-do. No course, no priority to choose — a reminder should
- * cost one line of typing, or it does not get written down.
+ * Add something to the one task list.
+ *
+ * A reminder should still cost one line of typing — course and priority
+ * stay optional, and the defaults are the ones a quick capture wants.
  */
 export async function createReminder(input: NewReminder): Promise<number | null> {
   if (!db) return null
   const title = input.title.trim()
   if (!title) return null
-  const now = Date.now()
+  const now  = Date.now()
+  const kind = input.kind ?? 'task'
   const id = await db.assignments.add({
     title,
     dueDate:  input.dueDate?.trim() || '',
-    courseId: '',
+    courseId: input.courseId?.trim() ?? '',
     status:   'pending',
-    priority: 'medium',
-    category: 'life',
-    kind:     'reminder',
+    priority: input.priority ?? 'medium',
+    /* Course work is scholastic; a standing personal reminder is not.
+       The Study Shield badge counts the former only. */
+    category: kind === 'reminder' ? 'life' : 'scholastic',
+    kind,
+    /* A problem set with no problems yet still belongs in the set view,
+       so the field exists from the start rather than on first edit. */
+    ...(kind === 'problem_set' ? { problems: [] } : {}),
     ...(input.listId != null ? { listId: input.listId } : {}),
     createdAt: now,
     updatedAt: now,
@@ -105,9 +127,39 @@ export async function setDone(
     }
   }
 
+  const now = Date.now()
   const status: AssignmentStatus = done ? 'completed' : 'pending'
-  await db.assignments.update(a.id, { status, updatedAt: Date.now() })
+  /*
+   * Unticking clears the stamp. Dexie deletes a key set to undefined,
+   * so a task put back on the list stops counting down to removal
+   * rather than keeping the clock it was on before.
+   */
+  await db.assignments.update(a.id, {
+    status,
+    completedAt: done ? now : undefined,
+    updatedAt:   now,
+  })
   return null
+}
+
+/**
+ * Tick a task off when all you have is its id.
+ *
+ * Three screens used to write `{ status: 'completed' }` straight to the
+ * row instead, which is the drift this file exists to prevent: they
+ * recorded no completion time, so nothing knew when to tidy them away,
+ * and ticking a repeating task there *finished* it rather than moving
+ * it to its next date — the opposite of what setDone does two screens
+ * over. Loading the row first costs one indexed read and makes all of
+ * them behave the same.
+ */
+export async function markDoneById(
+  id: number,
+): Promise<{ repeatedTo: string } | null> {
+  if (!db) return null
+  const row = await db.assignments.get(id)
+  if (!row) return null
+  return setDone(row, true)
 }
 
 /**
@@ -127,12 +179,22 @@ export async function toggleProblem(
   const allDone = problems.every(p => p.done)
   const justCompleted = allDone && a.status !== 'completed'
 
+  const reopened = !allDone && a.status === 'completed'
+
   await db.assignments.update(a.id, {
     problems,
-    ...(justCompleted ? { status: 'completed' as AssignmentStatus } : {}),
+    ...(justCompleted ? {
+      status: 'completed' as AssignmentStatus,
+      completedAt: Date.now(),
+    } : {}),
     /* Un-ticking a problem in a finished set reopens it, or the set
-       claims to be done while visibly holding an unfinished problem. */
-    ...(!allDone && a.status === 'completed' ? { status: 'pending' as AssignmentStatus } : {}),
+       claims to be done while visibly holding an unfinished problem.
+       Reopening clears the completion stamp too, so a set that is back
+       on the list is not still counting down to being tidied away. */
+    ...(reopened ? {
+      status: 'pending' as AssignmentStatus,
+      completedAt: undefined,
+    } : {}),
     updatedAt: Date.now(),
   })
 

@@ -60,10 +60,12 @@ import {
 } from '@/utils/subtasks'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
+import DoneRetentionNote from '@/components/ui/DoneRetentionNote'
 import {
   presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
 } from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
+import CourseManager from '@/components/CourseManager'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -71,6 +73,18 @@ import { outlookComposeUrl, type ExternalCalendarEvent } from '@/lib/microsoftCa
 import Icon from '@/components/ui/Icon'
 import styles from './CalendarView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
+
+/*
+ * What the add row can create. Short labels because the row is already
+ * title + voice + date + Add; a three-word control each would push the
+ * date picker off a narrow screen.
+ */
+const NEW_TASK_KINDS: { id: TaskKind; label: string; short: string }[] = [
+  { id: 'task',         label: 'Task',        short: 'Task' },
+  { id: 'problem_set',  label: 'Problem set', short: 'Set'  },
+  { id: 'reminder',     label: 'Reminder',    short: 'Rem'  },
+]
+
 
 /* ── Personal event color presets (mirrors habits color picker) ── */
 const EVENT_COLORS = [
@@ -916,6 +930,16 @@ const GRID_BOTTOM_PAD = 24   // breathing room under the grid
 export function visibleHourRange(
   events: CalendarEvent[],
   span: HourSpan = 'fit',
+  /**
+   * The hour to keep drawn whatever the events say — the current hour,
+   * when the week on screen is this one.
+   *
+   * Without it the grid draws only the hours holding something, so at
+   * 11pm on a day whose last event ended at 4pm the current-time line
+   * has nowhere to be and the view is showing you this morning. Opening
+   * a calendar should land you where you are.
+   */
+  nowHour?: number,
 ): { startH: number; endH: number } {
   /* The full day, so nothing is out of reach: you cannot drag an event
      to 11pm through an hour the grid does not draw. */
@@ -923,6 +947,11 @@ export function visibleHourRange(
 
   let min = DEFAULT_START_H
   let max = DEFAULT_END_H
+
+  if (nowHour != null) {
+    min = Math.min(min, nowHour)
+    max = Math.max(max, nowHour + 1)
+  }
 
   for (const e of events) {
     if (e.allDay === 1 || e.is1159 === 1) continue
@@ -951,7 +980,20 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
     return n.getHours() * 60 + n.getMinutes()
   })
 
-  const { startH, endH } = useMemo(() => visibleHourRange(events, hourSpan), [events, hourSpan])
+  /* Today's date, so the grid only bends around "now" on the week that
+     actually contains it — next week should open on its own events. */
+  const weekHasToday = useMemo(() => {
+    const today = new Date()
+    return weekDays.some(d =>
+      d.getFullYear() === today.getFullYear()
+      && d.getMonth() === today.getMonth()
+      && d.getDate()  === today.getDate())
+  }, [weekDays])
+
+  const { startH, endH } = useMemo(
+    () => visibleHourRange(events, hourSpan, weekHasToday ? Math.floor(nowMins / 60) : undefined),
+    [events, hourSpan, weekHasToday, nowMins],
+  )
   const hoursShown = Math.max(1, endH - startH)
 
   const [hourPx, setHourPx] = useState(MAX_HOUR_PX)
@@ -1010,6 +1052,51 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
   const gridHeight = hoursShown * hourPx
   const nowOffset  = (nowMins / 60 - startH) * hourPx
   const nowVisible = nowMins / 60 >= startH && nowMins / 60 <= endH
+
+  /*
+   * Open where you are.
+   *
+   * The grid usually fits and does not scroll at all, but on a short
+   * viewport, or on the full-day span, the hour height clamps at its
+   * floor and the box scrolls inside its frame — landing at the top,
+   * which at 4pm means looking at breakfast.
+   *
+   * This runs on mount and when the week or the hour height changes,
+   * never on the minute tick: nudging the view out from under someone
+   * once a minute is worse than the scroll it saves. `hasScrolled`
+   * keeps it to once per week shown, so scrolling away stays scrolled
+   * away.
+   */
+  const scrolledForRef = useRef<string>('')
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el || !weekHasToday) return
+
+    const key = `${weekDays[0]?.toDateString() ?? ''}|${hourPx}|${startH}`
+    if (scrolledForRef.current === key) return
+
+    /* Wait a frame: hourPx has just changed, so the rows are still the
+       previous height and scrollHeight would be measured against them. */
+    const id = requestAnimationFrame(() => {
+      const node = wrapRef.current
+      if (!node) return
+      if (node.scrollHeight <= node.clientHeight) {
+        /* It fits. Nothing to scroll, and "now" is already on screen. */
+        scrolledForRef.current = key
+        return
+      }
+      const header = node.querySelector(`.${styles.weekDayHeader}`)?.clientHeight ?? 0
+      /* A little earlier than now, so the current-time line sits just
+         inside the frame rather than flush against the header. */
+      const lead   = 30
+      const offset = ((nowMins - lead) / 60 - startH) * hourPx
+      node.scrollTop = Math.max(0, Math.round(offset - header / 2))
+      scrolledForRef.current = key
+    })
+    return () => cancelAnimationFrame(id)
+    /* nowMins is read, not depended on — see the note above. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekHasToday, weekDays, hourPx, startH])
 
   /* Sub-hour guides only earn their keep when there is room for them. */
   const showHalfGuides = hourPx >= 40
@@ -1497,15 +1584,32 @@ function TasksPanel() {
   const [newCatName,       setNewCatName]       = useState('')
   /* per-list add-task state: listId → { title, dueDate }. UNFILED_KEY
      stands in for the unfiled group, which can be added to as well. */
-  const [addTaskState, setAddTaskState] = useState<Record<number, { title: string; dueDate: string }>>({})
+  const [addTaskState, setAddTaskState] =
+    useState<Record<number, { title: string; dueDate: string; kind?: TaskKind }>>({})
 
-  const getTaskState = (key: number) =>
-    addTaskState[key] ?? { title: '', dueDate: '' }
+  /*
+   * The kind starts as whichever filter you are looking at, so adding a
+   * problem set while viewing Problem sets does not need a second
+   * decision — and falls back to 'task' on All. Reminders are the small
+   * standing things you choose deliberately, not the default everything
+   * lands in.
+   */
+  const getTaskState = (key: number) => {
+    const draft = addTaskState[key]
+    const fallbackKind: TaskKind = kindFilter === 'all' ? 'task' : kindFilter
+    return {
+      title:   draft?.title   ?? '',
+      dueDate: draft?.dueDate ?? '',
+      kind:    draft?.kind    ?? fallbackKind,
+    }
+  }
 
-  const setTaskField = (key: number, field: 'title' | 'dueDate', value: string) =>
+  const setTaskField = (
+    key: number, field: 'title' | 'dueDate' | 'kind', value: string,
+  ) =>
     setAddTaskState(prev => ({
       ...prev,
-      [key]: { ...getTaskState(key), [field]: value },
+      [key]: { ...getTaskState(key), [field]: value as string & TaskKind },
     }))
 
   /* Append dictated speech to a list's task title (race-safe on prev). */
@@ -1542,14 +1646,17 @@ function TasksPanel() {
   }
 
   const handleAddTask = async (key: number) => {
-    const { title, dueDate } = getTaskState(key)
+    const { title, dueDate, kind } = getTaskState(key)
     if (!title.trim()) return
     await createReminder({
       title,
       dueDate,
+      kind,
       listId: key === UNFILED_KEY ? undefined : key,
     })
-    setAddTaskState(prev => ({ ...prev, [key]: { title: '', dueDate: '' } }))
+    /* The kind is deliberately kept, not reset: adding three problem
+       sets in a row should not mean re-picking it three times. */
+    setAddTaskState(prev => ({ ...prev, [key]: { title: '', dueDate: '', kind } }))
   }
 
   /* Which task is open for editing, and the draft being typed into it. */
@@ -1728,6 +1835,8 @@ function TasksPanel() {
           )}
         </div>
       </div>
+
+      {showDone && <DoneRetentionNote />}
 
       {addingCategory && (
         <div className={styles.newCategoryRow}>
@@ -2038,6 +2147,20 @@ function TasksPanel() {
                 aria-label="Optional due date"
                 title="Optional due date"
               />
+              <div className={styles.addTaskKind} role="group" aria-label="What kind of item">
+                {NEW_TASK_KINDS.map(({ id, label, short }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${styles.addTaskKindBtn} ${taskState.kind === id ? styles.addTaskKindOn : ''}`}
+                    aria-pressed={taskState.kind === id}
+                    title={label}
+                    onClick={() => setTaskField(key, 'kind', id)}
+                  >
+                    {short}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 className={styles.addTaskSubmit}
@@ -2549,6 +2672,9 @@ export default function CalendarView() {
           <UniversityScheduleReplicator
             onDone={() => setShowSchedule(false)}
           />
+
+          {/* Courses are made here, so this is where they come off. */}
+          <CourseManager />
           <div className={styles.cognitiveLoadSection}>
             <div className={styles.cognitiveLoadHeader}>
               <span className={styles.cognitiveLoadEyebrow}>Course Load · Cognitive Forecast</span>
