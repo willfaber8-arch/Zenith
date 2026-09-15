@@ -3248,3 +3248,11 @@
   min-width: 0;
   overflow: hidden;
 }
+
+/* With the title gone, the header is a row of controls — centre them
+   against each other rather than against a baseline that is no longer
+   there, and let it sit flush with the tab bar below. */
+.wrapGrid .header {
+  align-items: center;
+  justify-content: flex-end;
+}

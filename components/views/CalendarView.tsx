@@ -2656,6 +2656,9 @@ export default function CalendarView() {
   const goToPrevDay = () => setDayDate(d => stepDay(d, -1))
   const goToNextDay = () => setDayDate(d => stepDay(d, 1))
 
+  /* The two views that draw an hour grid, and so want the room. */
+  const isGridView = calTab === 'personal' && (view === 'week' || view === 'day')
+
   const shownDays = useMemo(
     () => view === 'day' ? [dayDate] : weekDays,
     [view, dayDate, weekDays],
@@ -2704,17 +2707,31 @@ export default function CalendarView() {
         styles.wrap,
         /* The time grid wants the height and width the page chrome was
            taking; the other tabs do not. */
-        calTab === 'personal' && (view === 'week' || view === 'day') ? styles.wrapGrid : '',
+        isGridView ? styles.wrapGrid : '',
         'anim-scale-in',
       ].filter(Boolean).join(' ')}
     >
 
       {/* ── Page header ──────────────────────────────────── */}
       <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <p className={styles.eyebrow}>Life · Universal Calendar</p>
-          <h1 className={styles.title}>Calendar</h1>
-        </div>
+        {/*
+         * On the grid views the title block is dropped.
+         *
+         * "Calendar", above a calendar, under a breadcrumb that already
+         * says Universal Calendar, was sixty pixels of the window
+         * spent saying what the screen plainly is — and every pixel
+         * above the grid is one the grid does not get, which is what
+         * held an hour at its minimum height. The heading still exists
+         * for anything reading the page rather than looking at it.
+         */}
+        {isGridView ? (
+          <h1 className="sr-only">Calendar</h1>
+        ) : (
+          <div className={styles.headerLeft}>
+            <p className={styles.eyebrow}>Life · Universal Calendar</p>
+            <h1 className={styles.title}>Calendar</h1>
+          </div>
+        )}
 
         <div className={styles.headerRight}>
           {/* View mode toggle */}
