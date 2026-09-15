@@ -40,23 +40,47 @@ export function isPersonal(event: { feedId: number }): boolean {
 }
 
 /**
+ * The `personalEvents` row id behind a grid event.
+ *
+ * The grid negates personal ids so they cannot collide with imported
+ * ones in the same list — see the mapping in CalendarView. Everything
+ * here writes to the table, which knows only the positive id, so the
+ * sign has to come off exactly once and this is where.
+ *
+ * It was not coming off at all: deleting your own event called
+ * `personalEvents.delete(-3)`, which matches nothing and reports
+ * success, so the popover said "Event deleted" and the event stayed
+ * exactly where it was.
+ */
+function personalRowId(event: CalendarEvent): number | null {
+  return event.id != null ? Math.abs(event.id) : null
+}
+
+/**
  * True when this event is one of several occurrences of a repeat.
  *
  * Drives whether the UI has to ask "this event or all events" at all —
  * asking about a one-off is noise.
  */
 export async function seriesSize(event: CalendarEvent): Promise<number> {
-  if (!db || isPersonal(event) || !event.seriesUid) return 1
-  return db.calendarEvents.where('seriesUid').equals(event.seriesUid).count()
+  if (!db || !event.seriesUid) return 1
+  /* Your own repeats and imported ones are both rows sharing a
+     seriesUid; only the table they live in differs. */
+  return isPersonal(event)
+    ? db.personalEvents.where('seriesUid').equals(event.seriesUid).count()
+    : db.calendarEvents.where('seriesUid').equals(event.seriesUid).count()
 }
 
 /** Every row this operation should touch, given the chosen scope. */
 async function targetIds(event: CalendarEvent, scope: EditScope): Promise<number[]> {
   if (!db) return []
-  if (scope === 'this' || isPersonal(event) || !event.seriesUid) {
-    return event.id != null ? [event.id] : []
+  if (scope === 'this' || !event.seriesUid) {
+    const one = isPersonal(event) ? personalRowId(event) : event.id
+    return one != null ? [one] : []
   }
-  const rows = await db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
+  const rows = isPersonal(event)
+    ? await db.personalEvents.where('seriesUid').equals(event.seriesUid).toArray()
+    : await db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
   return rows.map(r => r.id).filter((id): id is number => id != null)
 }
 
@@ -75,16 +99,27 @@ export async function applyEventPatch(
 ): Promise<number> {
   if (!db) return 0
 
-  if (isPersonal(event)) {
-    if (event.id == null) return 0
-    await db.personalEvents.update(event.id, patch as Partial<PersonalEvent>)
-    return 1
-  }
-
   const ids = await targetIds(event, scope)
   if (ids.length === 0) return 0
 
   const { startMs, endMs, ...shared } = patch
+
+  if (isPersonal(event)) {
+    let n = 0
+    for (const id of ids) {
+      /* Times belong to the occurrence you touched, never to the
+         series — moving every Tuesday seminar to Wednesday by editing
+         one of them is not what editing one of them means. */
+      const body: Partial<PersonalEvent> = id === personalRowId(event)
+        ? { ...shared, ...(startMs !== undefined ? { startMs } : {}),
+                       ...(endMs   !== undefined ? { endMs   } : {}) }
+        : { ...shared }
+      if (Object.keys(body).length === 0) continue
+      await db.personalEvents.update(id, body)
+      n++
+    }
+    return n
+  }
   let touched = 0
 
   for (const id of ids) {
@@ -109,14 +144,14 @@ export async function removeEvent(
 ): Promise<number> {
   if (!db) return 0
 
-  if (isPersonal(event)) {
-    if (event.id == null) return 0
-    await db.personalEvents.delete(event.id)
-    return 1
-  }
-
   const ids = await targetIds(event, scope)
   if (ids.length === 0) return 0
+
+  if (isPersonal(event)) {
+    await db.personalEvents.bulkDelete(ids)
+    return ids.length
+  }
+
   await db.calendarEvents.bulkDelete(ids)
   return ids.length
 }

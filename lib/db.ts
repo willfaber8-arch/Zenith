@@ -549,6 +549,17 @@ export interface PersonalEvent {
   allDay:       number    // * indexed — 0 | 1
   color:        string    //   hex accent, e.g. '#7c95ff'
   category:     string    // * indexed — 'personal'|'scholastic'|'exam'|'life'|'general'
+  /**
+   * Groups the occurrences of a repeating event. Absent on a one-off.
+   *
+   * The repeat is expanded into concrete rows at creation and this is
+   * what ties them together — the same mechanism imported events use,
+   * so "this event" and "all events" behave identically whichever kind
+   * you clicked.
+   */
+  seriesUid?:   string    // * indexed
+  /** The preset that produced the series, for display. */
+  repeat?:      string
   description?: string
   createdAt:    number    //   Unix ms
   calendarId?:  number    //   FK → LocalCalendar.id (which local calendar it belongs to)
@@ -1533,6 +1544,23 @@ class ZenithDatabase extends Dexie {
      */
     this.version(47).stores({
       db_snapshots: 'id, takenAt',
+    })
+
+    /*
+     * Version 48 — repeating personal events.
+     *
+     * `seriesUid` groups the occurrences of one repeat, exactly as it
+     * already does for imported events, so "this event" and "all
+     * events" mean the same thing on both and lib/calendarMutations.ts
+     * stays the only place that decides which rows an edit reaches.
+     *
+     * Occurrences are concrete rows rather than a rule evaluated at
+     * read time: every existing view, drag, undo and export works on
+     * rows, and a second representation is how a calendar starts
+     * disagreeing with itself about what is on Tuesday.
+     */
+    this.version(48).stores({
+      personalEvents: '++id, title, startMs, allDay, category, seriesUid',
     })
   }
 }

@@ -64,10 +64,11 @@ import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import DoneRetentionNote from '@/components/ui/DoneRetentionNote'
 import {
-  presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, type RepeatPreset,
+  presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, isRepeatPreset, type RepeatPreset,
 } from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CourseManager from '@/components/CourseManager'
+import { createPersonalEvent } from '@/lib/personalEventSeries'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -991,35 +992,26 @@ export function visibleHourRange(
      to 11pm through an hour the grid does not draw. */
   if (span === 'full') return { startH: 0, endH: 24 }
 
+  /*
+   * The window is the range, not a clamp on one.
+   *
+   * This used to start from a default working day and stretch it to the
+   * events, then clamp that to the window — so "show my day from 8am
+   * until 12am" drew 8am to 9pm, because the default end was 8pm and
+   * nothing was scheduled later to pull it down. The control says which
+   * hours to show; drawing fewer than it names is the control lying.
+   *
+   * Events no longer widen it either. Anything falling outside is
+   * listed above the grid by eventsOutsideWindow, which is what makes
+   * the window safe to take literally.
+   */
+  void events
+  void nowHour
+  void DEFAULT_START_H
+  void DEFAULT_END_H
+
   const win = clampDayWindow(window)
-
-  let min = Math.max(win.startH, DEFAULT_START_H)
-  let max = Math.min(win.endH,   DEFAULT_END_H)
-  if (min >= max) { min = win.startH; max = win.endH }
-
-  if (nowHour != null && nowHour >= win.startH && nowHour < win.endH) {
-    min = Math.min(min, nowHour)
-    max = Math.max(max, nowHour + 1)
-  }
-
-  for (const e of events) {
-    if (e.allDay === 1 || e.is1159 === 1) continue
-    const s = new Date(e.startMs)
-    const t = new Date(e.endMs)
-    const sh = s.getHours()
-    const eh = t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours()
-    /* Only stretch for what falls inside the waking window; anything
-       outside it is surfaced separately rather than reopening the
-       hours the user asked not to see. */
-    if (eh <= win.startH || sh >= win.endH) continue
-    min = Math.min(min, Math.max(sh, win.startH))
-    max = Math.max(max, Math.min(eh, win.endH))
-  }
-
-  return {
-    startH: Math.max(win.startH, Math.floor(min) - 1),
-    endH:   Math.min(win.endH,   Math.ceil(max)  + 1),
-  }
+  return { startH: win.startH, endH: win.endH }
 }
 
 /**
@@ -2479,6 +2471,11 @@ export default function CalendarView() {
            saved and then never shown — the grid reads this shape, not
            the stored row. */
         timeZone:    pe.timeZone,
+        /* Carried across, or nothing downstream can tell that this is one
+           occurrence of a repeat — the popover would not offer "this one
+           or all of them", and a series delete would take a single row. */
+        seriesUid:   pe.seriesUid,
+        repeat:      pe.repeat,
         _color:      pe.color ?? cal?.color,   // event colour (defaults to its calendar's)
       } as CalendarEvent & { _color?: string }))
   }, [personalEventsRaw, localCalendars])
@@ -2626,10 +2623,15 @@ export default function CalendarView() {
   }, [detail, toast])
 
   /* Personal event CRUD */
-  const handleAddEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
+  const handleAddEvent = useCallback(async (
+    data: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset,
+  ) => {
     if (!db) return
-    await db.personalEvents.add(data as PersonalEvent)
-  }, [])
+    const { count } = await createPersonalEvent(data, repeat)
+    if (count > 1) {
+      toast(`Added ${count} occurrences of "${data.title}".`, 'success')
+    }
+  }, [toast])
 
   const handleEditEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
     if (!db || !editEvent?.id) return
@@ -3204,7 +3206,7 @@ function NewEventModal({
   msConfigured, msConnected, onAddToOutlook, onPushMicrosoft,
 }: {
   onClose:  () => void
-  onSave:   (e: Omit<PersonalEvent, 'id'>) => void
+  onSave:   (e: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset) => void
   initial?: PersonalEvent
   localCalendars: LocalCalendar[]
   msConfigured:    boolean
@@ -3231,6 +3233,15 @@ function NewEventModal({
   const [desc,    setDesc]    = useState(initial?.description ?? '')
   /* '' means "no tag" — read it in my own zone, like every other event. */
   const [zone,    setZone]    = useState(initial?.timeZone ?? '')
+  /*
+   * Editing an occurrence never re-expands the series — changing "every
+   * Tuesday" into "every day" from inside one Tuesday would have to
+   * delete and rewrite rows you may have already moved by hand. The
+   * picker is for creating; an existing event shows what it is.
+   */
+  const [repeat,  setRepeat]  = useState<RepeatPreset>(
+    isRepeatPreset(initial?.repeat) ? initial.repeat : 'none',
+  )
   const [calendarId, setCalendarId] = useState<number | undefined>(
     initial?.calendarId ?? localCalendars[0]?.id,
   )
@@ -3292,7 +3303,7 @@ function NewEventModal({
       timeZone:    zone || undefined,
       createdAt:   Date.now(),
       calendarId,
-    })
+    }, initial ? 'none' : repeat)
     onClose()
   }
 
@@ -3369,6 +3380,36 @@ function NewEventModal({
                 {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
             </div>
+          </div>
+
+          <div className={styles.evField}>
+            <label className={styles.evLabel} htmlFor="ev-repeat">Repeats</label>
+            {initial ? (
+              <p className={styles.evRepeatNote}>
+                {isRepeatPreset(initial.repeat) && initial.repeat !== 'none'
+                  ? `Part of a ${REPEAT_LABEL[initial.repeat].toLowerCase()} series. Changing how often it repeats means making a new one.`
+                  : 'Happens once.'}
+              </p>
+            ) : (
+              <>
+                <select
+                  id="ev-repeat"
+                  className={styles.evInput}
+                  value={repeat}
+                  onChange={e => setRepeat(e.target.value as RepeatPreset)}
+                >
+                  {REPEAT_PRESETS.map(r => (
+                    <option key={r} value={r}>{REPEAT_LABEL[r]}</option>
+                  ))}
+                </select>
+                {repeat !== 'none' && (
+                  <p className={styles.evRepeatNote}>
+                    Written out for the next two years. Delete or edit any one of
+                    them and you will be asked whether you mean that one or all.
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div className={styles.evField}>
