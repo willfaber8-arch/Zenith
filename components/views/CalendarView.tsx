@@ -30,7 +30,7 @@ import {
   deltaMinutesFromPx, deltaDaysFromPx, applyMove, applyResize, clampToVisibleDay,
 } from '@/utils/calendarInteraction'
 import {
-  applyEventPatch, removeEvent, commitDrag, seriesSize, type EditScope,
+  applyEventPatch, removeEvent, commitDrag, seriesSize, isPersonal, type EditScope,
 } from '@/lib/calendarMutations'
 import EventDetailPopover from '@/components/EventDetailPopover'
 import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
@@ -68,7 +68,7 @@ import {
 } from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CourseManager from '@/components/CourseManager'
-import { createPersonalEvent } from '@/lib/personalEventSeries'
+import { createPersonalEvent, repeatExistingEvent } from '@/lib/personalEventSeries'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -2633,11 +2633,16 @@ export default function CalendarView() {
     }
   }, [toast])
 
-  const handleEditEvent = useCallback(async (data: Omit<PersonalEvent, 'id'>) => {
+  const handleEditEvent = useCallback(async (
+    data: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset,
+  ) => {
     if (!db || !editEvent?.id) return
-    await db.personalEvents.update(editEvent.id, data)
+    const { count } = await repeatExistingEvent(editEvent.id, data, repeat)
+    if (count > 1) {
+      toast(`"${data.title}" now repeats — ${count} occurrences.`, 'success')
+    }
     setEditEvent(null)
-  }, [editEvent])
+  }, [editEvent, toast])
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -3103,13 +3108,30 @@ export default function CalendarView() {
       {editTarget && (
         <NewEventModal
           onClose={() => setEditTarget(null)}
-          onSave={async data => {
+          onSave={async (data, repeat) => {
             const target = editTarget
             setEditTarget(null)
             if (!target) return
             try {
               const snap = await captureUndo(target, 'this', 'edit')
               if (snap) setUndoStack(st => pushUndo(st, snap))
+
+              /*
+               * Asking a one-off to repeat is not a patch — it writes
+               * the rest of the series — so it goes through the creator
+               * rather than applyEventPatch, which only ever touches
+               * the rows that already exist.
+               */
+              if (isPersonal(target) && !target.seriesUid
+                  && repeat !== 'none' && target.id != null) {
+                const { count } = await repeatExistingEvent(
+                  Math.abs(target.id), data as Omit<PersonalEvent, 'id'>, repeat)
+                toast(count > 1
+                  ? `"${data.title}" now repeats — ${count} occurrences.`
+                  : 'Event updated.', 'success')
+                return
+              }
+
               await applyEventPatch(target, {
                 title:       data.title,
                 startMs:     data.startMs,
@@ -3135,6 +3157,11 @@ export default function CalendarView() {
             category:    editTarget.category,
             description: editTarget.description,
             timeZone:    editTarget.timeZone,
+            /* Carried through, or the form says "Happens once" about an
+               event that repeats — and offers a picker that would make
+               a second series out of one already in a series. */
+            seriesUid:   editTarget.seriesUid,
+            repeat:      (editTarget as CalendarEvent & { repeat?: string }).repeat,
             createdAt:   Date.now(),
           } as PersonalEvent}
           localCalendars={localCalendars}
@@ -3242,6 +3269,17 @@ function NewEventModal({
   const [repeat,  setRepeat]  = useState<RepeatPreset>(
     isRepeatPreset(initial?.repeat) ? initial.repeat : 'none',
   )
+
+  /*
+   * Already one of several occurrences. Re-expanding from inside one of
+   * them would have to rewrite rows you may have moved by hand, so the
+   * form says what it is rather than offering a picker that cannot
+   * honestly do what it looks like it does. A one-off is different:
+   * making it repeat is exactly what the picker is for, and not
+   * offering it there meant an event made yesterday could never be made
+   * to repeat at all.
+   */
+  const inSeries = Boolean(initial?.seriesUid)
   const [calendarId, setCalendarId] = useState<number | undefined>(
     initial?.calendarId ?? localCalendars[0]?.id,
   )
@@ -3303,7 +3341,7 @@ function NewEventModal({
       timeZone:    zone || undefined,
       createdAt:   Date.now(),
       calendarId,
-    }, initial ? 'none' : repeat)
+    }, inSeries ? 'none' : repeat)
     onClose()
   }
 
@@ -3384,11 +3422,11 @@ function NewEventModal({
 
           <div className={styles.evField}>
             <label className={styles.evLabel} htmlFor="ev-repeat">Repeats</label>
-            {initial ? (
+            {inSeries ? (
               <p className={styles.evRepeatNote}>
-                {isRepeatPreset(initial.repeat) && initial.repeat !== 'none'
-                  ? `Part of a ${REPEAT_LABEL[initial.repeat].toLowerCase()} series. Changing how often it repeats means making a new one.`
-                  : 'Happens once.'}
+                {isRepeatPreset(initial?.repeat) && initial.repeat !== 'none'
+                  ? `Part of a ${REPEAT_LABEL[initial.repeat].toLowerCase()} series. To change how often it repeats, delete it and make a new one.`
+                  : 'Part of a repeating series.'}
               </p>
             ) : (
               <>
