@@ -7,7 +7,7 @@
  */
 
 import { db, type PersonalEvent, type CalendarEvent } from '@/lib/db'
-import { createPersonalEvent, MAX_EVENT_OCCURRENCES } from '@/lib/personalEventSeries'
+import { createPersonalEvent, repeatExistingEvent, MAX_EVENT_OCCURRENCES } from '@/lib/personalEventSeries'
 import { removeEvent, applyEventPatch, seriesSize, PERSONAL_FEED_ID } from '@/lib/calendarMutations'
 
 const at = (y: number, m: number, d: number, h: number) => new Date(y, m, d, h).getTime()
@@ -139,5 +139,57 @@ describe('editing and deleting an occurrence', () => {
        not what editing one of them means. */
     expect(rows.filter(r => new Date(r.startMs).getHours() === 12)).toHaveLength(1)
     expect(rows.filter(r => new Date(r.startMs).getHours() === 10).length).toBeGreaterThan(1)
+  })
+})
+
+/*
+ * The picker used to appear only while creating, so an event made
+ * yesterday could never be made to repeat — you had to delete it and
+ * type it again. That is the shape of a missing feature, and it is what
+ * someone means when they say there is no repeat option on their events.
+ */
+describe('making an event you already have repeat', () => {
+  it('keeps the original row as the first occurrence', async () => {
+    await createPersonalEvent(base(), 'none')
+    const original = (await db.personalEvents.toArray())[0]
+
+    const res = await repeatExistingEvent(original.id, base(), 'weekly')
+    expect(res.count).toBeGreaterThan(1)
+
+    /* Its id survives, so undo snapshots still point at something real. */
+    const kept = await db.personalEvents.get(original.id)
+    expect(kept).toBeDefined()
+    expect(kept?.seriesUid).toBe(res.seriesUid)
+    expect(kept?.startMs).toBe(original.startMs)
+  })
+
+  it('puts every occurrence in one series', async () => {
+    await createPersonalEvent(base(), 'none')
+    const original = (await db.personalEvents.toArray())[0]
+    await repeatExistingEvent(original.id, base(), 'weekly')
+
+    const rows = await db.personalEvents.toArray()
+    expect(new Set(rows.map(r => r.seriesUid)).size).toBe(1)
+    expect(rows.every(r => r.repeat === 'weekly')).toBe(true)
+  })
+
+  it('carries an edit made in the same save across the whole series', async () => {
+    await createPersonalEvent(base(), 'none')
+    const original = (await db.personalEvents.toArray())[0]
+    await repeatExistingEvent(original.id, base({ title: 'Renamed' }), 'weekly')
+
+    const rows = await db.personalEvents.toArray()
+    expect(rows.every(r => r.title === 'Renamed')).toBe(true)
+  })
+
+  it('just updates the row when no repeat is asked for', async () => {
+    await createPersonalEvent(base(), 'none')
+    const original = (await db.personalEvents.toArray())[0]
+
+    const res = await repeatExistingEvent(original.id, base({ title: 'Still one' }), 'none')
+    expect(res.count).toBe(1)
+    expect(await db.personalEvents.count()).toBe(1)
+    expect((await db.personalEvents.get(original.id))?.title).toBe('Still one')
+    expect((await db.personalEvents.get(original.id))?.seriesUid).toBeUndefined()
   })
 })

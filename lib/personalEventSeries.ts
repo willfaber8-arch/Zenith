@@ -94,3 +94,67 @@ export async function createPersonalEvent(
   await db.personalEvents.bulkAdd(rows)
   return { count: rows.length, seriesUid }
 }
+
+/**
+ * Turn an event you already made into a repeating one.
+ *
+ * The picker used to appear only while creating, so an event made
+ * yesterday could never be made to repeat — you had to delete it and
+ * type it again. That is the shape of a missing feature, not a
+ * decision, and it is what someone means when they say there is no
+ * repeat option on their events.
+ *
+ * The original row is kept as the first occurrence rather than deleted
+ * and rewritten, so its id survives: undo snapshots, and anything else
+ * holding onto it, still point at something real.
+ */
+export async function repeatExistingEvent(
+  rowId: number,
+  data:  Omit<PersonalEvent, 'id'>,
+  repeat: string,
+  opts: { until?: number } = {},
+): Promise<CreateResult> {
+  if (!db) return { count: 0 }
+
+  const preset: RepeatPreset | null =
+    isRepeatPreset(repeat) && repeat !== 'none' ? repeat : null
+  const rule = preset ? ruleFor(preset) : null
+
+  if (!rule) {
+    await db.personalEvents.update(rowId, data as Partial<PersonalEvent>)
+    return { count: 1 }
+  }
+
+  const start = new Date(data.startMs)
+  const horizonMs = new Date(
+    start.getFullYear() + SERIES_HORIZON_YEARS, start.getMonth(), start.getDate(),
+  ).getTime()
+
+  const occurrences = expandOccurrences(
+    data.startMs, data.endMs,
+    opts.until !== undefined ? { ...rule, until: opts.until } : rule,
+    [],
+    { maxOccurrences: MAX_EVENT_OCCURRENCES, horizonMs },
+  )
+
+  if (occurrences.length <= 1) {
+    await db.personalEvents.update(rowId, data as Partial<PersonalEvent>)
+    return { count: 1 }
+  }
+
+  const seriesUid = newSeriesUid()
+
+  /* The one you edited becomes occurrence one, keeping its id. */
+  const [first, ...rest] = occurrences
+  await db.personalEvents.update(rowId, {
+    ...data, startMs: first.startMs, endMs: first.endMs, seriesUid, repeat: preset,
+  } as Partial<PersonalEvent>)
+
+  if (rest.length > 0) {
+    await db.personalEvents.bulkAdd(rest.map(o => ({
+      ...data, startMs: o.startMs, endMs: o.endMs, seriesUid, repeat: preset,
+    })) as PersonalEvent[])
+  }
+
+  return { count: occurrences.length, seriesUid }
+}
