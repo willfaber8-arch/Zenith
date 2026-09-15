@@ -37,6 +37,8 @@ import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
 import { normaliseTaskEdit, isNoOpEdit, MAX_TITLE, type TaskDraft } from '@/utils/taskEdit'
 import {
   loadLocked, saveLocked, loadHourSpan, saveHourSpan, type HourSpan,
+  loadDayWindow, saveDayWindow, clampDayWindow, describeDayWindow, formatHour12,
+  DEFAULT_DAY_WINDOW, type DayWindow,
 } from '@/utils/calendarPrefs'
 import { pushUndo, popUndo, peekUndo, describeUndo, type UndoEntry } from '@/utils/undoStack'
 import { captureUndo, applyUndo, type CalRow } from '@/lib/calendarUndo'
@@ -145,6 +147,13 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
+/** "Friday, 11 September" — a day view needs to say which day. */
+function formatDayLabel(d: Date): string {
+  return d.toLocaleDateString(undefined, {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+}
+
 function isToday(d: Date): boolean {
   return isSameDay(d, new Date())
 }
@@ -179,8 +188,22 @@ function formatTime(ms: number): string {
    ══════════════════════════════════════════════════════════════ */
 
 function getEventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
-  const start = day.getTime()
-  const end   = start + DAY_MS
+  /*
+   * Normalised here rather than assumed of the caller.
+   *
+   * This took `day.getTime()` directly, which is correct only because
+   * getWeekDays happens to hand back midnights. The day view passes the
+   * day you are looking at, and the first version of it passed `new
+   * Date()` — so the window ran from 3:30pm to 3:30pm the next day, and
+   * the column showed this evening plus tomorrow afternoon while hiding
+   * everything before now. An implicit contract that one caller in two
+   * satisfies is not a contract.
+   */
+  const startOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate())
+  const start = startOfDay.getTime()
+  /* Stepped by date component: a day is 23 or 25 hours twice a year. */
+  const end = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime()
+  void DAY_MS
   return events.filter(e => e.startMs >= start && e.startMs < end)
 }
 
@@ -670,7 +693,12 @@ function DeadlineBanners({ weekDays, events, feeds }: DeadlineBannersProps) {
         <span className={styles.bannerSectionLabel}>11:59 PM Deadlines</span>
       </div>
 
-      <div className={styles.bannerRow} role="list">
+      <div
+        className={styles.bannerRow}
+        role="list"
+        /* Matches the grid below it — one column in day view, seven in week. */
+        style={{ ['--day-cols' as string]: String(weekDays.length) }}
+      >
         <div className={styles.bannerGutter} aria-hidden="true" />
         {bannersByDay.map((dayBanners, i) => (
           <div
@@ -902,6 +930,10 @@ interface WeekGridProps {
   /** When locked, events open on click but cannot be dragged or resized. */
   locked:   boolean
   hourSpan: HourSpan
+  /** The hours to draw. Everything else is surfaced above the grid. */
+  dayWindow: DayWindow
+  /** Jump to the whole day when something sits outside the window. */
+  onShowFullDay: () => void
 }
 
 /*
@@ -913,8 +945,14 @@ interface WeekGridProps {
  * the hours nothing happens in, and let the remaining ones shrink to
  * whatever room is actually on screen.
  */
-const MIN_HOUR_PX     = 26   // below this the pills stop being readable
-const MAX_HOUR_PX     = 64   // above this a sparse week looks stretched
+const MIN_HOUR_PX     = 34   // below this the pills stop being readable
+/*
+ * Raised from 64. With the sleeping hours no longer drawn there are
+ * eight fewer rows to fit, and the old ceiling meant that space was
+ * simply left blank under the grid rather than given to the hours that
+ * hold something — which was the complaint.
+ */
+const MAX_HOUR_PX     = 124
 const DEFAULT_START_H = 8
 const DEFAULT_END_H   = 20
 const GRID_BOTTOM_PAD = 24   // breathing room under the grid
@@ -940,15 +978,26 @@ export function visibleHourRange(
    * a calendar should land you where you are.
    */
   nowHour?: number,
+  /**
+   * The hours the user is awake. Everything outside it is not drawn, so
+   * the hours that are get the height back — which is the entire reason
+   * the grid was too small to read. Events inside the skipped hours are
+   * never silently dropped: `eventsOutsideWindow` finds them and the
+   * grid puts them in a strip above itself.
+   */
+  window: DayWindow = DEFAULT_DAY_WINDOW,
 ): { startH: number; endH: number } {
   /* The full day, so nothing is out of reach: you cannot drag an event
      to 11pm through an hour the grid does not draw. */
   if (span === 'full') return { startH: 0, endH: 24 }
 
-  let min = DEFAULT_START_H
-  let max = DEFAULT_END_H
+  const win = clampDayWindow(window)
 
-  if (nowHour != null) {
+  let min = Math.max(win.startH, DEFAULT_START_H)
+  let max = Math.min(win.endH,   DEFAULT_END_H)
+  if (min >= max) { min = win.startH; max = win.endH }
+
+  if (nowHour != null && nowHour >= win.startH && nowHour < win.endH) {
     min = Math.min(min, nowHour)
     max = Math.max(max, nowHour + 1)
   }
@@ -957,18 +1006,51 @@ export function visibleHourRange(
     if (e.allDay === 1 || e.is1159 === 1) continue
     const s = new Date(e.startMs)
     const t = new Date(e.endMs)
-    min = Math.min(min, s.getHours())
-    /* Round the end hour up so an event finishing at 15:20 keeps its tail. */
-    max = Math.max(max, t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours())
+    const sh = s.getHours()
+    const eh = t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours()
+    /* Only stretch for what falls inside the waking window; anything
+       outside it is surfaced separately rather than reopening the
+       hours the user asked not to see. */
+    if (eh <= win.startH || sh >= win.endH) continue
+    min = Math.min(min, Math.max(sh, win.startH))
+    max = Math.max(max, Math.min(eh, win.endH))
   }
 
   return {
-    startH: Math.max(0,  Math.floor(min) - 1),
-    endH:   Math.min(24, Math.ceil(max)  + 1),
+    startH: Math.max(win.startH, Math.floor(min) - 1),
+    endH:   Math.min(win.endH,   Math.ceil(max)  + 1),
   }
 }
 
-function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }: WeekGridProps) {
+/**
+ * Events that fall in the hours the grid is not drawing.
+ *
+ * Hiding your sleeping hours is only safe if nothing can hide with
+ * them. A 3am alarm, a flight, a night shift — these are exactly the
+ * things that matter most and would be exactly the things lost.
+ */
+export function eventsOutsideWindow(
+  events: CalendarEvent[],
+  days: Date[],
+  window: DayWindow = DEFAULT_DAY_WINDOW,
+): CalendarEvent[] {
+  const win = clampDayWindow(window)
+  if (win.startH === 0 && win.endH === 24) return []
+
+  const dayKeys = new Set(days.map(d => d.toDateString()))
+
+  return events.filter(e => {
+    if (e.allDay === 1 || e.is1159 === 1) return false
+    const s = new Date(e.startMs)
+    if (!dayKeys.has(s.toDateString())) return false
+    const t  = new Date(e.endMs)
+    const sh = s.getHours()
+    const eh = t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours()
+    return eh <= win.startH || sh >= win.endH
+  }).sort((a, b) => a.startMs - b.startMs)
+}
+
+function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan, dayWindow, onShowFullDay }: WeekGridProps) {
   /* Measured, because a day column's width depends on the sidebar, the
      viewport and whether a scrollbar is showing — a sideways drag has to
      be read against the real column, not an assumed one. */
@@ -991,8 +1073,18 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
   }, [weekDays])
 
   const { startH, endH } = useMemo(
-    () => visibleHourRange(events, hourSpan, weekHasToday ? Math.floor(nowMins / 60) : undefined),
-    [events, hourSpan, weekHasToday, nowMins],
+    () => visibleHourRange(
+      events, hourSpan,
+      weekHasToday ? Math.floor(nowMins / 60) : undefined,
+      dayWindow,
+    ),
+    [events, hourSpan, weekHasToday, nowMins, dayWindow],
+  )
+
+  /* Anything the window is hiding, so it can be shown rather than lost. */
+  const outside = useMemo(
+    () => hourSpan === 'full' ? [] : eventsOutsideWindow(events, weekDays, dayWindow),
+    [events, weekDays, dayWindow, hourSpan],
   )
   const hoursShown = Math.max(1, endH - startH)
 
@@ -1102,12 +1194,53 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
   const showHalfGuides = hourPx >= 40
 
   return (
+    <>
+      {/*
+       * Nothing disappears with the sleeping hours.
+       *
+       * Skipping them is only safe if what falls inside them is still
+       * reachable — a 3am alarm or an early flight is exactly the thing
+       * that matters most and would be exactly the thing lost.
+       */}
+      {outside.length > 0 && (
+        <div className={styles.outsideStrip} role="note">
+          <span className={styles.outsideLabel}>
+            Outside your hours
+          </span>
+          <ul className={styles.outsideList}>
+            {outside.slice(0, 4).map(e => (
+              <li key={`${e.id}-${e.startMs}`}>
+                <button
+                  type="button"
+                  className={styles.outsideItem}
+                  style={{ ['--pill' as string]: feedMap.get(e.feedId)?.color ?? 'var(--accent-purple)' }}
+                  onClick={ev => onOpen(e, (ev.currentTarget as HTMLElement).getBoundingClientRect())}
+                >
+                  <span className={styles.outsideTime}>{new Date(e.startMs).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+                  {e.title}
+                </button>
+              </li>
+            ))}
+            {outside.length > 4 && (
+              <li className={styles.outsideMore}>+{outside.length - 4} more</li>
+            )}
+          </ul>
+          <button type="button" className={styles.outsideShowAll} onClick={onShowFullDay}>
+            Show the whole day
+          </button>
+        </div>
+      )}
+
     <div
       className={styles.weekWrapper}
       ref={wrapRef}
       role="grid"
-      aria-label="Week calendar grid"
-      style={{ ['--hour-px' as string]: `${hourPx}px`, maxHeight: maxH ? `${maxH}px` : undefined }}
+      aria-label={weekDays.length === 1 ? 'Day calendar grid' : 'Week calendar grid'}
+      style={{
+        ['--hour-px' as string]: `${hourPx}px`,
+        ['--day-cols' as string]: String(weekDays.length),
+        maxHeight: maxH ? `${maxH}px` : undefined,
+      }}
     >
       {/* Sticky day-header row */}
       <div className={styles.weekDayHeader} role="row">
@@ -1123,7 +1256,9 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
             role="columnheader"
             aria-label={FORMAT_WEEKDAY_FULL.format(day)}
           >
-            <span className={styles.dayName}>{DAY_NAMES[i]}</span>
+            {/* From the date, not the column index — in day view there
+                is one column and index 0 is not always a Monday. */}
+            <span className={styles.dayName}>{DAY_NAMES[(day.getDay() + 6) % 7]}</span>
             <span className={styles.dayNumber}>{day.getDate()}</span>
           </div>
         ))}
@@ -1163,15 +1298,33 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
         {/* 7 day columns */}
         {weekDays.map((day, colIdx) => {
           const dayEvents = getEventsForDay(events, day)
-          const timedEvts = dayEvents.filter(e => e.is1159 !== 1 && e.allDay !== 1)
-          const weekend   = colIdx >= 5
+          /*
+           * Only what the drawn hours actually cover. Without this an
+           * event at 4am with the grid starting at 8am is positioned at
+           * a negative offset — it escapes upward over the header while
+           * also appearing in the strip above, so the same flight is on
+           * screen twice and one of them is in the wrong place.
+           *
+           * An event that starts before the window but runs into it is
+           * kept and clipped, which is what you want of a 7am–10am
+           * lecture on a grid that opens at 8.
+           */
+          const timedEvts = dayEvents.filter(e => {
+            if (e.is1159 === 1 || e.allDay === 1) return false
+            const st = new Date(e.startMs)
+            const en = new Date(e.endMs)
+            const startHour = st.getHours() + st.getMinutes() / 60
+            const endHour   = en.getMinutes() > 0 ? en.getHours() + 1 : en.getHours()
+            return endHour > startH && startHour < endH
+          })
+          const weekend   = day.getDay() === 0 || day.getDay() === 6
 
           return (
             <div
               key={colIdx}
               className={[
                 styles.dayColumn,
-                colIdx === todayIdx ? styles.dayColumnToday : '',
+                isToday(day) ? styles.dayColumnToday : '',
                 weekend ? styles.dayColumnWeekend : '',
               ].filter(Boolean).join(' ')}
               style={{ height: `${gridHeight}px` }}
@@ -1230,6 +1383,7 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan }:
         })}
       </div>
     </div>
+    </>
   )
 }
 
@@ -1440,7 +1594,7 @@ function MonthGrid({ year, month, events, feeds, onDayClick }: MonthGridProps) {
    SECTION 4 — CalendarView (default export)
    ══════════════════════════════════════════════════════════════ */
 
-type ViewMode = 'week' | 'month' | 'agenda'
+type ViewMode = 'day' | 'week' | 'month' | 'agenda'
 
 /* ── EmptyPersonal ─────────────────────────────────────────── */
 
@@ -2406,12 +2560,15 @@ export default function CalendarView() {
   /* Locked by default: most visits are to read the calendar, and a drag
      is one gesture away from moving a class to the wrong week. */
   const [locked,   setLocked]   = useState(true)
-  const [hourSpan, setHourSpan] = useState<HourSpan>('full')
+  const [hourSpan, setHourSpan] = useState<HourSpan>('fit')
+  const [dayWindow, setDayWindow] = useState<DayWindow>(DEFAULT_DAY_WINDOW)
+  const [windowOpen, setWindowOpen] = useState(false)
   const [undoStack, setUndoStack] = useState<UndoEntry<CalRow>[]>([])
 
   useEffect(() => {
     setLocked(loadLocked())
     setHourSpan(loadHourSpan())
+    setDayWindow(loadDayWindow())
   }, [])
 
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
@@ -2482,6 +2639,28 @@ export default function CalendarView() {
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
+  /*
+   * Day view is the same grid with one column. Reusing WeekGrid rather
+   * than writing a second one keeps dragging, the now-line, the hour
+   * window and the overlap maths identical — a separate day component
+   * is how the two end up disagreeing about what an event looks like.
+   */
+  const [dayDate, setDayDate] = useState<Date>(() => {
+    const n = new Date()
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate())
+  })
+  /* Stepped by date component, never by ±86,400,000ms — a day is 23 or
+     25 hours twice a year. */
+  const stepDay = (base: Date, delta: number) =>
+    new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta)
+  const goToPrevDay = () => setDayDate(d => stepDay(d, -1))
+  const goToNextDay = () => setDayDate(d => stepDay(d, 1))
+
+  const shownDays = useMemo(
+    () => view === 'day' ? [dayDate] : weekDays,
+    [view, dayDate, weekDays],
+  )
+
   /* Week navigation */
   const goToPrev = useCallback(() => {
     setWeekStart(prev => new Date(prev.getTime() - 7 * DAY_MS))
@@ -2520,7 +2699,15 @@ export default function CalendarView() {
   const hasFeedDot = feeds.length > 0
 
   return (
-    <div className={`${styles.wrap} anim-scale-in`}>
+    <div
+      className={[
+        styles.wrap,
+        /* The time grid wants the height and width the page chrome was
+           taking; the other tabs do not. */
+        calTab === 'personal' && (view === 'week' || view === 'day') ? styles.wrapGrid : '',
+        'anim-scale-in',
+      ].filter(Boolean).join(' ')}
+    >
 
       {/* ── Page header ──────────────────────────────────── */}
       <header className={styles.header}>
@@ -2532,7 +2719,7 @@ export default function CalendarView() {
         <div className={styles.headerRight}>
           {/* View mode toggle */}
           <div className={styles.viewToggle} role="group" aria-label="Calendar view">
-            {(['week', 'month', 'agenda'] as ViewMode[]).map(v => (
+            {(['day', 'week', 'month', 'agenda'] as ViewMode[]).map(v => (
               <button
                 key={v}
                 type="button"
@@ -2602,6 +2789,75 @@ export default function CalendarView() {
               Course Schedule
             </button>
             {/*
+              The hours the grid draws. Everyone's day has a shape, and
+              rendering the eight hours you are asleep is what made the
+              other sixteen too small to read.
+            */}
+            <div className={styles.dayHoursWrap}>
+              <button
+                type="button"
+                className={styles.dayHoursBtn}
+                onClick={() => setWindowOpen(o => !o)}
+                aria-expanded={windowOpen}
+                title="Choose the hours the calendar draws"
+              >
+                <Icon name="clock" size={13} />
+                {describeDayWindow(dayWindow)}
+              </button>
+              {windowOpen && (
+                <div className={styles.dayHoursPanel} role="dialog" aria-label="Hours shown">
+                  <p className={styles.dayHoursTitle}>Show my day from</p>
+                  <div className={styles.dayHoursRow}>
+                    <label className={styles.dayHoursField}>
+                      <span>Up at</span>
+                      <select
+                        value={dayWindow.startH}
+                        onChange={e => {
+                          const next = clampDayWindow({
+                            ...dayWindow, startH: Number(e.target.value),
+                          })
+                          setDayWindow(next); saveDayWindow(next)
+                        }}
+                      >
+                        {Array.from({ length: 21 }, (_, h) => (
+                          <option key={h} value={h}>{formatHour12(h)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.dayHoursField}>
+                      <span>Until</span>
+                      <select
+                        value={dayWindow.endH}
+                        onChange={e => {
+                          const next = clampDayWindow({
+                            ...dayWindow, endH: Number(e.target.value),
+                          })
+                          setDayWindow(next); saveDayWindow(next)
+                        }}
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i + 1)
+                          .filter(h => h >= dayWindow.startH + 4)
+                          .map(h => (
+                            <option key={h} value={h}>{formatHour12(h)}</option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p className={styles.dayHoursNote}>
+                    The hours outside this are not drawn, so the ones inside get
+                    the room. Anything scheduled in them still shows in a strip
+                    above the grid — nothing is hidden, only moved.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.dayHoursDone}
+                    onClick={() => setWindowOpen(false)}
+                  >Done</button>
+                </div>
+              )}
+            </div>
+
+            {/*
               Locked by default. Reading a calendar is the common case
               and dragging is destructive-by-accident, so editing is
               something you switch on rather than something you tiptoe
@@ -2657,16 +2913,6 @@ export default function CalendarView() {
         )}
       </div>
 
-      {/* ── Calendar switcher chips (quick show/hide) ──── */}
-      {calTab === 'personal' && (
-        <CalendarSwitcher
-          localCalendars={localCalendars}
-          feeds={feeds}
-          onToggleLocal={toggleLocalCalendar}
-          onToggleFeed={toggleFeedVisibility}
-        />
-      )}
-
       {calTab === 'personal' && showSchedule && (
         <div className={styles.scheduleTabContent}>
           <UniversityScheduleReplicator
@@ -2695,26 +2941,62 @@ export default function CalendarView() {
       {calTab === 'personal' && <>
 
       {/* ── Week / Month navigation bar ───────────────── */}
-      {(view === 'week' || view === 'month') && (
+      {(view === 'week' || view === 'month' || view === 'day') && (
         <nav
           className={styles.weekNav}
-          aria-label={view === 'month' ? 'Month navigation' : 'Week navigation'}
+          aria-label={
+            view === 'month' ? 'Month navigation'
+              : view === 'day' ? 'Day navigation' : 'Week navigation'}
         >
           <button
             type="button"
             className={styles.weekNavBtn}
-            onClick={view === 'month' ? goToPrevMonth : goToPrev}
-            aria-label={view === 'month' ? 'Previous month' : 'Previous week'}
+            onClick={
+              view === 'month' ? goToPrevMonth
+                : view === 'day' ? goToPrevDay : goToPrev}
+            aria-label={
+              view === 'month' ? 'Previous month'
+                : view === 'day' ? 'Previous day' : 'Previous week'}
           >←</button>
           <span className={styles.weekRange} aria-live="polite">
-            {view === 'month' ? formatMonthRange(monthStart) : formatWeekRange(weekStart)}
+            {view === 'month' ? formatMonthRange(monthStart)
+              : view === 'day' ? formatDayLabel(dayDate)
+                : formatWeekRange(weekStart)}
           </span>
           <button
             type="button"
             className={styles.weekNavBtn}
-            onClick={view === 'month' ? goToNextMonth : goToNext}
-            aria-label={view === 'month' ? 'Next month' : 'Next week'}
+            onClick={
+              view === 'month' ? goToNextMonth
+                : view === 'day' ? goToNextDay : goToNext}
+            aria-label={
+              view === 'month' ? 'Next month'
+                : view === 'day' ? 'Next day' : 'Next week'}
           >→</button>
+          {view === 'day' && !isToday(dayDate) && (
+            <button
+              type="button"
+              className={styles.todayBtn}
+              onClick={() => {
+                const n = new Date()
+                setDayDate(new Date(n.getFullYear(), n.getMonth(), n.getDate()))
+              }}
+            >Today</button>
+          )}
+
+          {/*
+            The visibility chips used to have a row of their own, which
+            cost the grid a line of height for four short pills. The
+            navigation row was half empty; they live here now.
+          */}
+          <div className={styles.navSwitcher}>
+            <CalendarSwitcher
+              localCalendars={localCalendars}
+              feeds={feeds}
+              onToggleLocal={toggleLocalCalendar}
+              onToggleFeed={toggleFeedVisibility}
+            />
+          </div>
           {view === 'week' && !isCurrentWeek && (
             <button type="button" className={styles.todayBtn} onClick={goToToday}>Today</button>
           )}
@@ -2725,26 +3007,28 @@ export default function CalendarView() {
       )}
 
       {/* ── 11:59 deadline banners (week view) ───────── */}
-      {view === 'week' && allEvents.length > 0 && (
-        <DeadlineBanners weekDays={weekDays} events={allEvents} feeds={allFeeds} />
+      {(view === 'week' || view === 'day') && allEvents.length > 0 && (
+        <DeadlineBanners weekDays={shownDays} events={allEvents} feeds={allFeeds} />
       )}
 
       {/* ── Main content area ─────────────────────────── */}
-      {view === 'week' ? (
+      {(view === 'week' || view === 'day') ? (
         allEvents.length === 0 ? (
           calTab === 'personal'
             ? <EmptyPersonal onAdd={() => setShowNewEvent(true)} />
             : <EmptyCalendar onOpenFeedPanel={() => setShowCalMgr(true)} />
         ) : (
           <WeekGrid
-            key={gridKey}
-            weekDays={weekDays}
+            key={`${gridKey}-${view}`}
+            weekDays={shownDays}
             events={allEvents}
             feeds={allFeeds}
             onOpen={handleOpenEvent}
             onDrag={handleDragEvent}
             locked={locked}
             hourSpan={hourSpan}
+            dayWindow={dayWindow}
+            onShowFullDay={() => { setHourSpan('full'); saveHourSpan('full') }}
           />
         )
       ) : view === 'month' ? (

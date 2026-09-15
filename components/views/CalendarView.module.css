@@ -24,6 +24,26 @@
   gap: var(--sp-5);
 }
 
+/*
+ * The time grid gets the room back.
+ *
+ * Everything above the grid is height the grid does not get, and with
+ * the default page chrome it was 382px of a 900px window — which is why
+ * an hour clamped at its minimum and the whole calendar read as too
+ * small. A grid also wants width: a week is seven columns, and 1140px
+ * of a 1440px screen left two hundred pixels of nothing on either side.
+ */
+.wrapGrid {
+  max-width: min(1600px, 100%);
+  padding-top: var(--sp-5);
+  padding-bottom: var(--sp-6);
+  gap: var(--sp-3);
+}
+
+.wrapGrid .title {
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+}
+
 /* ── Page header ──────────────────────────────────────────── */
 
 .header {
@@ -451,7 +471,7 @@
 /* The 7-column banner row — one cell per day */
 .bannerRow {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: var(--gutter-w, 62px) repeat(var(--day-cols, 7), 1fr);
   min-height: 40px;
   padding: var(--sp-2) 0;
 }
@@ -535,7 +555,7 @@
 /* Sticky day-header row inside the scroll container */
 .weekDayHeader {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: var(--gutter-w, 62px) repeat(var(--day-cols, 7), 1fr);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -568,7 +588,7 @@
 
 .dayNumber {
   font-family: var(--font-display);
-  font-size: 1.0625rem;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
   color: var(--text-muted);
@@ -600,7 +620,7 @@
 /* Main time grid */
 .timeGrid {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: var(--gutter-w, 62px) repeat(var(--day-cols, 7), 1fr);
   /* Row height comes from --hour-px, set per render to fit the viewport. */
   /* Positioned so the now-time label anchors to the grid rather than
      escaping to whichever ancestor happened to be positioned. */
@@ -615,6 +635,7 @@
 
 .hourLabel {
   height: var(--hour-px, 60px);
+  font-size: 0.74rem;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -718,13 +739,13 @@
   left: 3px;
   right: 3px;
   border-radius: var(--r-sm);
-  padding: 3px 6px;
+  padding: 5px 8px;
   overflow: hidden;
   cursor: default;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-height: 14px;
+  min-height: 18px;
   z-index: 2;
   transition:
     filter    var(--dur-fast),
@@ -750,7 +771,7 @@
 }
 
 .eventPillTitle {
-  font-size: 0.625rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #fff;
   line-height: 1.3;
@@ -1004,7 +1025,7 @@
   .bannerRow,
   .weekDayHeader,
   .timeGrid {
-    grid-template-columns: 34px repeat(7, 1fr);
+    grid-template-columns: var(--gutter-w, 44px) repeat(var(--day-cols, 7), 1fr);
   }
 
   .weekDayHeaderCell {
@@ -3030,4 +3051,200 @@
 .addStepInput:focus {
   outline: none;
   border-bottom-color: var(--accent-purple-dim);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Events in the hours the grid is not drawing.
+
+   Skipping your sleeping hours is only safe if nothing can hide with
+   them, so anything scheduled in there is listed here instead — a 3am
+   alarm or an early flight is exactly the thing that matters most and
+   would be exactly the thing lost.
+   ══════════════════════════════════════════════════════════════ */
+
+.outsideStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+
+.outsideLabel {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.outsideList {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outsideItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  max-width: 100%;
+  padding: 3px var(--sp-2);
+  border: none;
+  border-left: 3px solid var(--pill, var(--accent-purple));
+  border-radius: var(--r-sm);
+  background: var(--bg-hover);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+
+.outsideItem:hover { background: var(--bg-active); }
+
+.outsideItem:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 1px;
+}
+
+.outsideTime {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.outsideMore {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-dark);
+}
+
+.outsideShowAll {
+  flex-shrink: 0;
+  padding: 3px var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.outsideShowAll:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* ── Which hours the grid draws ─────────────────────────────── */
+
+.dayHoursWrap { position: relative; }
+
+.dayHoursBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-smooth),
+              background var(--dur-fast) var(--ease-smooth);
+}
+
+.dayHoursBtn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+.dayHoursBtn:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 2px;
+}
+
+.dayHoursPanel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  z-index: 40;
+  width: 280px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  animation: scaleIn var(--dur-fast) var(--ease-expo) both;
+}
+
+.dayHoursTitle {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.dayHoursRow { display: flex; gap: var(--sp-3); }
+
+.dayHoursField {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--text-dark);
+}
+
+.dayHoursField select {
+  padding: var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--bg-main);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.dayHoursNote {
+  margin: var(--sp-3) 0 0;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  line-height: 1.55;
+  color: var(--text-dark);
+}
+
+.dayHoursDone {
+  width: 100%;
+  margin-top: var(--sp-3);
+  padding: var(--sp-2);
+  border: 1px solid var(--accent-purple-dim);
+  border-radius: var(--r-md);
+  background: var(--bg-active);
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.dayHoursDone:hover { background: var(--accent-purple); color: var(--bg-main); }
+
+/* The visibility chips, folded onto the navigation row. */
+.navSwitcher {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
 }
