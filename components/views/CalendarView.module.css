@@ -3256,3 +3256,12 @@
   align-items: center;
   justify-content: flex-end;
 }
+
+/* What a repeat will do, said before it does it. */
+.evRepeatNote {
+  margin: var(--sp-2) 0 0;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+}
