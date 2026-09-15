@@ -991,35 +991,26 @@ export function visibleHourRange(
      to 11pm through an hour the grid does not draw. */
   if (span === 'full') return { startH: 0, endH: 24 }
 
+  /*
+   * The window is the range, not a clamp on one.
+   *
+   * This used to start from a default working day and stretch it to the
+   * events, then clamp that to the window — so "show my day from 8am
+   * until 12am" drew 8am to 9pm, because the default end was 8pm and
+   * nothing was scheduled later to pull it down. The control says which
+   * hours to show; drawing fewer than it names is the control lying.
+   *
+   * Events no longer widen it either. Anything falling outside is
+   * listed above the grid by eventsOutsideWindow, which is what makes
+   * the window safe to take literally.
+   */
+  void events
+  void nowHour
+  void DEFAULT_START_H
+  void DEFAULT_END_H
+
   const win = clampDayWindow(window)
-
-  let min = Math.max(win.startH, DEFAULT_START_H)
-  let max = Math.min(win.endH,   DEFAULT_END_H)
-  if (min >= max) { min = win.startH; max = win.endH }
-
-  if (nowHour != null && nowHour >= win.startH && nowHour < win.endH) {
-    min = Math.min(min, nowHour)
-    max = Math.max(max, nowHour + 1)
-  }
-
-  for (const e of events) {
-    if (e.allDay === 1 || e.is1159 === 1) continue
-    const s = new Date(e.startMs)
-    const t = new Date(e.endMs)
-    const sh = s.getHours()
-    const eh = t.getMinutes() > 0 ? t.getHours() + 1 : t.getHours()
-    /* Only stretch for what falls inside the waking window; anything
-       outside it is surfaced separately rather than reopening the
-       hours the user asked not to see. */
-    if (eh <= win.startH || sh >= win.endH) continue
-    min = Math.min(min, Math.max(sh, win.startH))
-    max = Math.max(max, Math.min(eh, win.endH))
-  }
-
-  return {
-    startH: Math.max(win.startH, Math.floor(min) - 1),
-    endH:   Math.min(win.endH,   Math.ceil(max)  + 1),
-  }
+  return { startH: win.startH, endH: win.endH }
 }
 
 /**

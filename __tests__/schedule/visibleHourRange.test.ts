@@ -11,13 +11,6 @@
 import { visibleHourRange, eventsOutsideWindow } from '@/components/views/CalendarView'
 import type { CalendarEvent } from '@/lib/db'
 
-/*
- * The grid now draws only the hours you are awake for, so these cases —
- * which are about the range following the events — pass the whole day
- * as the window. The window's own behaviour is covered separately at
- * the bottom of this file.
- */
-const ALL_DAY = { startH: 0, endH: 24 }
 
 /** An event on 2026-09-07 between two local wall-clock times. */
 function evt(startH: number, startM: number, endH: number, endM: number,
@@ -32,59 +25,63 @@ function evt(startH: number, startM: number, endH: number, endM: number,
 }
 
 describe('visibleHourRange', () => {
-  it('falls back to a working day when there is nothing on', () => {
-    // An empty week should not be a sliver, nor a full 24 hours.
-    const { startH, endH } = visibleHourRange([], 'fit', undefined, ALL_DAY)
-    expect(startH).toBe(7)
-    expect(endH).toBe(21)
-    expect(endH - startH).toBeLessThan(24)
+  /*
+   * The range used to follow the events: start at a default working
+   * day, stretch to whatever was scheduled, then clamp to the window.
+   * That is why "show my day from 8am until 12am" drew 8am to 9pm —
+   * the default end was 8pm and nothing was on later to pull it down.
+   *
+   * The window is the range now. A control that names its hours and
+   * then draws fewer of them is a control that lies, and the events
+   * that fall outside are listed above the grid rather than dragging
+   * it open, which is what makes taking it literally safe.
+   */
+  it('draws exactly the hours the window names', () => {
+    expect(visibleHourRange([], 'fit', undefined, { startH: 8, endH: 24 }))
+      .toEqual({ startH: 8, endH: 24 })
+    expect(visibleHourRange([], 'fit', undefined, { startH: 6, endH: 18 }))
+      .toEqual({ startH: 6, endH: 18 })
   })
 
-  it('opens earlier for an early class', () => {
-    const { startH } = visibleHourRange([evt(6, 30, 7, 45)], 'fit', undefined, ALL_DAY)
-    expect(startH).toBe(5)          // padded one hour before
-  })
-
-  it('extends for a late class', () => {
-    const { endH } = visibleHourRange([evt(20, 0, 21, 30)], 'fit', undefined, ALL_DAY)
-    expect(endH).toBeGreaterThanOrEqual(22)
-  })
-
-  it('keeps the tail of an event that ends mid-hour', () => {
-    // Rounding 15:20 down to 15 would cut the last twenty minutes off.
-    const { endH } = visibleHourRange([evt(14, 0, 15, 20)], 'fit', undefined, ALL_DAY)
-    expect(endH).toBeGreaterThanOrEqual(17)
-  })
-
-  it('never runs past the ends of the day', () => {
-    const { startH, endH } = visibleHourRange([evt(0, 5, 23, 55)], 'fit', undefined, ALL_DAY)
-    expect(startH).toBe(0)
+  it('does not shrink to the events inside it', () => {
+    // One 9am meeting must not collapse an evening you asked to see.
+    const { startH, endH } = visibleHourRange(
+      [evt(9, 0, 10, 0)], 'fit', undefined, { startH: 8, endH: 24 })
+    expect(startH).toBe(8)
     expect(endH).toBe(24)
   })
 
-  it('ignores all-day and 11:59 deadline events', () => {
-    // Those are drawn in their own banner rows, so letting a 23:59
-    // deadline stretch the grid to midnight would undo the whole point.
-    const { startH, endH } = visibleHourRange([
-      evt(9, 0, 10, 0),
-      evt(23, 59, 23, 59, { is1159: 1 }),
-      evt(0, 0, 23, 59, { allDay: 1 }),
-    ], 'fit', undefined, ALL_DAY)
-    expect(startH).toBe(7)
+  it('does not stretch past it for a late event either', () => {
+    const { endH } = visibleHourRange(
+      [evt(22, 0, 23, 30)], 'fit', undefined, { startH: 8, endH: 21 })
     expect(endH).toBe(21)
   })
 
-  it('spans from the earliest start to the latest end', () => {
-    const { startH, endH } = visibleHourRange([
-      evt(9, 5, 9, 55), evt(14, 30, 15, 45), evt(7, 0, 8, 0),
-    ], 'fit', undefined, ALL_DAY)
-    expect(startH).toBe(6)
-    expect(endH).toBeGreaterThanOrEqual(17)
+  it('is unmoved by all-day and 11:59 deadline events', () => {
+    // Those have their own banner row above the grid.
+    expect(visibleHourRange([
+      evt(23, 59, 23, 59, { is1159: 1 }),
+      evt(0, 0, 23, 59, { allDay: 1 }),
+    ], 'fit', undefined, { startH: 8, endH: 22 }))
+      .toEqual({ startH: 8, endH: 22 })
   })
 
-  it('always returns a span of at least one hour', () => {
-    const { startH, endH } = visibleHourRange([evt(12, 0, 12, 30)], 'fit', undefined, ALL_DAY)
-    expect(endH).toBeGreaterThan(startH)
+  it('shows the whole day when asked, whatever the window says', () => {
+    expect(visibleHourRange([], 'full', undefined, { startH: 9, endH: 17 }))
+      .toEqual({ startH: 0, endH: 24 })
+  })
+
+  it('refuses a window too small to be a day', () => {
+    // Four hours is the floor; a one-hour "day" is a broken setting,
+    // not a preference worth honouring.
+    const { startH, endH } = visibleHourRange([], 'fit', undefined, { startH: 9, endH: 10 })
+    expect(endH - startH).toBeGreaterThanOrEqual(4)
+  })
+
+  it('never runs past the ends of the day', () => {
+    const { startH, endH } = visibleHourRange([], 'fit', undefined, { startH: -3, endH: 99 })
+    expect(startH).toBeGreaterThanOrEqual(0)
+    expect(endH).toBeLessThanOrEqual(24)
   })
 })
 
