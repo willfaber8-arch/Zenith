@@ -14,7 +14,19 @@
  *   average-of-N (aoN) trims the single best and single worst effective
  *   times, then means the remaining N-2. A DNF is always "worst". If two or
  *   more DNFs remain after removing one worst, the average is a DNF (null).
- *   mean-of-3 (mo3) and session mean require every solve to be non-DNF.
+ *   mean-of-3 (mo3) requires every solve in its window to be non-DNF.
+ *
+ * COMPETITION AVERAGES vs SESSION SUMMARY
+ *   Those WCA rules are about a single attempt at an average, where one DNF
+ *   genuinely invalidates the result. They are the wrong rule for a summary
+ *   of everything you have ever solved: `mean` and `worst` used to go DNF
+ *   the moment a single solve anywhere in the session was a DNF, and stay
+ *   that way forever — one missed solve in March and the session mean is
+ *   "DNF" in June, which tells you nothing you did not already know.
+ *
+ *   So `mean` and `worst` describe the solves that finished, and the DNFs
+ *   are reported next to them as their own count and a success rate. The
+ *   aoN family keeps the WCA rules, because there they are correct.
  */
 
 export type Penalty = 'OK' | 'PLUS2' | 'DNF'
@@ -115,24 +127,55 @@ export function best(solves: StatSolve[]): number | null {
 }
 
 /**
- * Worst (slowest) time. A DNF counts as worst → returns null (infinite).
- * If no DNF present, returns the slowest finite time.
+ * Worst (slowest) time among the solves that finished.
+ *
+ * A DNF used to be "the worst possible time", so this returned null and the
+ * UI printed DNF — permanently, from the first DNF onward. As a statement
+ * about a single attempt that is right; as a session summary it hides your
+ * actual slowest solve forever in exchange for repeating something the DNF
+ * counter already says.
+ *
+ * null only when nothing finished.
  */
 export function worst(solves: StatSolve[]): number | null {
-  if (solves.length === 0) return null
-  let w = 0
+  let w: number | null = null
   for (const s of solves) {
     const e = effectiveMs(s)
-    if (e === null) return null   // a DNF is the worst possible
-    if (e > w) w = e
+    if (e === null) continue
+    if (w === null || e > w) w = e
   }
   return w
 }
 
 /**
- * Session mean of every solve. Any DNF → null (mean is undefined with a DNF).
+ * Mean of the solves that finished — the session average.
+ *
+ * DNFs are skipped rather than poisoning the result, for the same reason as
+ * `worst` above. They are not lost: `penaltyCount(solves, 'DNF')` and
+ * `successRate` sit beside this in the UI and say exactly how many there
+ * were.
+ *
+ * null only when nothing finished.
  */
 export function mean(solves: StatSolve[]): number | null {
+  let sum = 0
+  let n = 0
+  for (const s of solves) {
+    const e = effectiveMs(s)
+    if (e === null) continue
+    sum += e
+    n += 1
+  }
+  return n === 0 ? null : sum / n
+}
+
+/**
+ * Mean that a single DNF invalidates — the WCA rule for mean-of-3.
+ *
+ * This is what `mean` used to be, kept for the one place it belongs: a
+ * competition-style average where the attempt either stands or does not.
+ */
+export function strictMean(solves: StatSolve[]): number | null {
   if (solves.length === 0) return null
   let sum = 0
   for (const s of solves) {
@@ -159,9 +202,9 @@ export function average(solves: StatSolve[], n: number): number | null {
   if (solves.length < n) return null
   const window = solves.slice(solves.length - n)
 
-  // Small windows (mo3): strict mean, DNF-intolerant.
+  // Small windows (mo3): strict mean, DNF-intolerant — the WCA rule.
   if (n < 5) {
-    return mean(window)
+    return strictMean(window)
   }
 
   const effs = window.map(effectiveMs)   // (number | null)[]
