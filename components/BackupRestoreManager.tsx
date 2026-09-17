@@ -274,6 +274,15 @@ export default function BackupRestoreManager() {
             Taken {new Date(pending.exportedAt).toLocaleString()} ·{' '}
             {pending.rowCount.toLocaleString()} rows across {pending.tableCount}{' '}
             {pending.tableCount === 1 ? 'table' : 'tables'}
+            {/* An archive from before these were backed up reports zero,
+                which is worth seeing before you replace everything with
+                it — it means your theme and Arcade stay as they are. */}
+            {pending.gamesRowCount > 0 && (
+              <>, {pending.gamesRowCount.toLocaleString()} Arcade rows</>
+            )}
+            {pending.settingsCount > 0 && (
+              <>, {pending.settingsCount} customisation{pending.settingsCount === 1 ? '' : 's'}</>
+            )}
             {pending.largest.length > 0 && (
               <> — largest: {pending.largest.map(t => `${t.name} (${t.rows})`).join(', ')}</>
             )}
