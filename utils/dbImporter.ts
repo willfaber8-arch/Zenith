@@ -21,7 +21,8 @@
  */
 
 import { db } from '@/lib/db'
-import type { MasterBackupPayload } from './dbExporter'
+import { gamesDb } from '@/lib/gamesDb'
+import { SETTINGS_EXCLUDED, type MasterBackupPayload } from './dbExporter'
 
 /* ── Tables excluded from restore (cleared, not repopulated) ─────── */
 
@@ -59,6 +60,12 @@ export type ImportResult = {
   clearedTables:    string[]
   /** Total row count written across all restored tables. */
   totalRowsWritten: number
+  /** Arcade tables restored from the second database. */
+  restoredGamesTables: string[]
+  /** Rows written into the Arcade database. */
+  gamesRowsWritten:    number
+  /** Customisations written back into localStorage. */
+  settingsRestored:    number
 }
 
 /* ── Validation ──────────────────────────────────────────────────── */
@@ -91,6 +98,10 @@ export type BackupSummary = {
   rowCount:      number
   /** The largest tables, for a recognisable "yes, that's my data" check. */
   largest:       { name: string; rows: number }[]
+  /** Arcade rows in the file — 0 for a backup taken before format 2. */
+  gamesRowCount: number
+  /** Customisations in the file — 0 for a backup taken before format 2. */
+  settingsCount: number
 }
 
 /**
@@ -133,12 +144,17 @@ export function inspectBackup(jsonString: string): BackupSummary {
 
   const raw = payload as MasterBackupPayload & { schemaVersion?: unknown }
 
+  const gamesRowCount = Object.values(raw.gamesTables ?? {})
+    .reduce((n, rows) => n + (Array.isArray(rows) ? rows.length : 0), 0)
+
   return {
     exportedAt:    raw.exportedAt,
     schemaVersion: typeof raw.schemaVersion === 'number' ? raw.schemaVersion : null,
     tableCount:    counts.length,
     rowCount:      counts.reduce((n, c) => n + c.rows, 0),
     largest:       counts.slice(0, 4),
+    gamesRowCount,
+    settingsCount: Object.keys(raw.settings ?? {}).length,
   }
 }
 
@@ -177,9 +193,12 @@ export async function importJsonToLocalDatabase(
   }
 
   /* ── Build result accumulators ──────────────────────────────── */
-  const restoredTables:   string[] = []
-  const clearedTables:    string[] = []
-  let   totalRowsWritten           = 0
+  const restoredTables:      string[] = []
+  const clearedTables:       string[] = []
+  const restoredGamesTables: string[] = []
+  let   totalRowsWritten              = 0
+  let   gamesRowsWritten              = 0
+  let   settingsRestored              = 0
 
   /* ── Atomic transaction across all tables ───────────────────── */
   /*
@@ -230,6 +249,48 @@ export async function importJsonToLocalDatabase(
     }
   })
 
+  /* ── The Arcade's database ─────────────────────────────────── */
+  /*
+   * A second Dexie instance, so it needs its own transaction. Skipped
+   * entirely when the file predates format 2 — clearing it on the
+   * strength of a backup that never contained it would delete an
+   * Arcade the backup was never asked to replace.
+   */
+  const games = (payload as MasterBackupPayload).gamesTables
+  if (gamesDb && games && typeof games === 'object') {
+    await gamesDb.transaction('rw', gamesDb.tables, async () => {
+      for (const table of gamesDb.tables) {
+        const rows = games[table.name]
+        if (!Array.isArray(rows)) continue
+        await table.clear()
+        if (rows.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (table as any).bulkPut(rows)
+          gamesRowsWritten += rows.length
+        }
+        restoredGamesTables.push(table.name)
+      }
+    })
+  }
+
+  /* ── The customisations ────────────────────────────────────── */
+  /*
+   * Written over, never swept: keys absent from the backup are left
+   * alone rather than deleted. A restore replacing your theme is the
+   * point; a restore silently dropping a setting that did not exist
+   * when the backup was taken is a small, untraceable loss, and
+   * localStorage is exactly where this app has been bitten by
+   * enthusiastic clearing before.
+   */
+  const settings = (payload as MasterBackupPayload).settings
+  if (settings && typeof settings === 'object' && typeof window !== 'undefined') {
+    for (const [key, value] of Object.entries(settings)) {
+      if (SETTINGS_EXCLUDED.has(key)) continue
+      if (typeof value !== 'string') continue
+      try { localStorage.setItem(key, value); settingsRestored++ } catch { /* full or blocked */ }
+    }
+  }
+
   /* ── Signal non-Dexie consumers ────────────────────────────── */
   /*
    * Dexie useLiveQuery hooks re-fire automatically after the transaction
@@ -239,5 +300,8 @@ export async function importJsonToLocalDatabase(
    */
   window.dispatchEvent(new CustomEvent('zenith:db-restored'))
 
-  return { restoredTables, clearedTables, totalRowsWritten }
+  return {
+    restoredTables, clearedTables, totalRowsWritten,
+    restoredGamesTables, gamesRowsWritten, settingsRestored,
+  }
 }

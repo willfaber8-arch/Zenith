@@ -15,6 +15,7 @@
  */
 
 import { db } from '@/lib/db'
+import { gamesDb } from '@/lib/gamesDb'
 
 /* ── Backup envelope ─────────────────────────────────────────────── */
 
@@ -27,9 +28,76 @@ export type MasterBackupPayload = {
   schemaVersion: number
   /** Map of tableName → serialised row array for every registered table. */
   tables:        { [tableName: string]: unknown[] }
+
+  /* ── Added in format version 2 ──────────────────────────────────
+   * All three optional, so a version 1 file still imports: the fields
+   * are simply absent and the importer skips them.
+   */
+
+  /** ZenithGamesOS db.verno at export time. */
+  gamesSchemaVersion?: number
+  /**
+   * The Arcade's database, which is a second Dexie instance entirely
+   * (`ZenithGamesOS`). It was not in the backup at all, so credits,
+   * resources, the biosphere, crucible jobs and the skill tree did not
+   * survive a restore or reach another browser profile.
+   */
+  gamesTables?: { [tableName: string]: unknown[] }
+  /**
+   * Everything kept in localStorage under the `zenith_` prefix — which
+   * is where nearly every customisation lives: the theme, widget
+   * positions, sizes and order, dashboard presets, which nav items are
+   * hidden, calendar hours, cube-timer options, and around a hundred
+   * more. None of it was backed up, so "restore" gave you your data
+   * back with someone else's settings.
+   */
+  settings?: { [key: string]: string }
 }
 
-const BACKUP_FORMAT_VERSION = 1
+const BACKUP_FORMAT_VERSION = 2
+
+/** Only Zenith's own keys — the origin is shared with other software. */
+export const SETTINGS_PREFIX = 'zenith_'
+
+/**
+ * Settings that must not travel between browser profiles or devices.
+ *
+ * Everything else under the prefix is a preference and belongs in the
+ * backup. These two are facts about *this* browser:
+ *
+ *   zenith_snapshot_meta_v1 — this profile's cloud-sync watermark.
+ *     Restoring another profile's would make this one believe it is in
+ *     sync when it has never pushed, and the next pull would look like
+ *     a conflict that is not there.
+ *   zenith_session_active — who is signed in on this device.
+ */
+export const SETTINGS_EXCLUDED: ReadonlySet<string> = new Set([
+  'zenith_snapshot_meta_v1',
+  'zenith_session_active',
+])
+
+/**
+ * Read the customisations out of localStorage.
+ *
+ * Enumerated by prefix rather than from a list of known keys: there are
+ * well over a hundred of them and a hardcoded list would be missing the
+ * newest one the day after it was written — which is exactly the kind
+ * of gap that makes a backup quietly incomplete.
+ */
+export function collectSettings(): { [key: string]: string } {
+  const out: { [key: string]: string } = {}
+  if (typeof window === 'undefined') return out
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key || !key.startsWith(SETTINGS_PREFIX)) continue
+      if (SETTINGS_EXCLUDED.has(key)) continue
+      const value = localStorage.getItem(key)
+      if (value !== null) out[key] = value
+    }
+  } catch { /* storage unavailable — an empty set is honest */ }
+  return out
+}
 
 /* ══════════════════════════════════════════════════════════════════
    buildBackupPayload
@@ -73,11 +141,33 @@ export async function buildBackupPayload(): Promise<MasterBackupPayload> {
     }
   }
 
+  /*
+   * The Arcade lives in its own Dexie database. Reading it in the same
+   * loop is not possible — different instance, different tables — so it
+   * gets its own pass, guarded because a browser that has never opened
+   * the Arcade has no such database to read.
+   */
+  const gamesTables: { [tableName: string]: unknown[] } = {}
+  let gamesSchemaVersion = 0
+  if (gamesDb) {
+    gamesSchemaVersion = gamesDb.verno
+    for (const table of gamesDb.tables) {
+      try {
+        gamesTables[table.name] = await table.toArray()
+      } catch {
+        gamesTables[table.name] = []
+      }
+    }
+  }
+
   return {
     version:       BACKUP_FORMAT_VERSION,
     exportedAt:    Date.now(),
     schemaVersion: db.verno,
     tables,
+    gamesSchemaVersion,
+    gamesTables,
+    settings:      collectSettings(),
   }
 }
 

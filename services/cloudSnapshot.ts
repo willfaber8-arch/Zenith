@@ -24,7 +24,7 @@
  */
 
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase'
-import { buildBackupPayload }                      from '@/utils/dbExporter'
+import { buildBackupPayload, collectSettings }     from '@/utils/dbExporter'
 import { importJsonToLocalDatabase }               from '@/utils/dbImporter'
 
 /* ── Constants ────────────────────────────────────────────────────── */
@@ -61,11 +61,44 @@ export type SnapshotMeta = {
   lastSyncedAt:      string | null
   /** Unix ms of the most recent local DB mutation observed in this profile. */
   lastLocalChangeAt: number | null
+  /**
+   * Fingerprint of the customisations as they were at the last sync.
+   *
+   * Dexie hooks catch database edits, but nearly every customisation —
+   * the theme, widget layout, hidden nav items, calendar hours — lives
+   * in localStorage, which has no hook to fire. Changing only a setting
+   * left the profile looking clean, so a push never ran and the setting
+   * never reached the cloud however many times you changed it.
+   *
+   * Comparing a fingerprint on demand catches that without intercepting
+   * every write to localStorage.
+   */
+  settingsFingerprint: string | null
 }
 
 const EMPTY_META: SnapshotMeta = {
-  lastSyncedAt:      null,
-  lastLocalChangeAt: null,
+  lastSyncedAt:        null,
+  lastLocalChangeAt:   null,
+  settingsFingerprint: null,
+}
+
+/**
+ * A cheap, stable hash of every backed-up setting.
+ *
+ * Stored rather than the settings themselves: the point is only to tell
+ * "same as at last sync" from "different", and keeping a second copy of
+ * a hundred keys in the same storage they live in would be silly.
+ */
+export function settingsFingerprint(): string {
+  const entries = Object.entries(collectSettings()).sort(([a], [b]) => a.localeCompare(b))
+  let h = 5381
+  for (const [k, v] of entries) {
+    const pair = `${k}=${v};`
+    for (let i = 0; i < pair.length; i++) {
+      h = ((h << 5) + h + pair.charCodeAt(i)) | 0
+    }
+  }
+  return `${entries.length}:${(h >>> 0).toString(36)}`
 }
 
 /**
@@ -101,6 +134,10 @@ export function getSnapshotMeta(): SnapshotMeta {
         typeof parsed.lastSyncedAt === 'string' ? parsed.lastSyncedAt : null,
       /* The volatile stamp wins while a throttled flush is still pending. */
       lastLocalChangeAt: Math.max(stored ?? 0, _volatileChangeAt ?? 0) || null,
+      /* Absent on a profile that last synced before settings were
+         backed up — null means "no baseline", not "no changes". */
+      settingsFingerprint:
+        typeof parsed.settingsFingerprint === 'string' ? parsed.settingsFingerprint : null,
     }
   } catch {
     return { ...EMPTY_META }
@@ -152,6 +189,17 @@ export function markLocalChange(): void {
  * Compares the local change stamp against the remote watermark we last synced.
  */
 export function hasUnpushedLocalChanges(meta: SnapshotMeta = getSnapshotMeta()): boolean {
+  /*
+   * A changed setting counts, and is checked first: it is the case the
+   * Dexie hooks cannot see at all. Only once something has been synced
+   * is the comparison meaningful — before that the database stamp below
+   * already decides.
+   */
+  if (meta.lastSyncedAt && meta.settingsFingerprint !== null
+      && settingsFingerprint() !== meta.settingsFingerprint) {
+    return true
+  }
+
   if (meta.lastLocalChangeAt == null) return false
   if (!meta.lastSyncedAt)             return true
   const syncedMs = Date.parse(meta.lastSyncedAt)
@@ -238,6 +286,22 @@ export function startSnapshotChangeTracking(): void {
       }
     }
   }).catch(() => { /* db unavailable — snapshot stays manual-only */ })
+
+  /*
+   * The Arcade is a second Dexie database, and it was not tracked at
+   * all: earning credits or unlocking a biosphere left the profile
+   * looking clean, so none of it was ever pushed.
+   */
+  void import('@/lib/gamesDb').then(({ gamesDb }) => {
+    if (!gamesDb) return
+    for (const table of gamesDb.tables) {
+      try {
+        table.hook('creating', () => { markLocalChange() })
+        table.hook('updating', () => { markLocalChange(); return undefined })
+        table.hook('deleting', () => { markLocalChange() })
+      } catch { /* non-fatal, as above */ }
+    }
+  }).catch(() => { /* Arcade DB unavailable — nothing to track */ })
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -389,6 +453,9 @@ export async function pushSnapshot(): Promise<SnapshotResult> {
   setSnapshotMeta({
     lastSyncedAt:      updatedAt,
     lastLocalChangeAt: stampNow === stampAtCapture ? null : stampNow,
+    /* The settings that just went up become the baseline the next
+       dirty-check compares against. */
+    settingsFingerprint: settingsFingerprint(),
   })
 
   return { ok: true, updatedAt }
@@ -448,8 +515,13 @@ export async function pullSnapshot(): Promise<SnapshotResult> {
     return { ok: false, error: (err as Error).message || 'Restore failed.' }
   }
 
-  /* Local now mirrors the remote row exactly — clean watermark. */
-  setSnapshotMeta({ lastSyncedAt: row.updated_at, lastLocalChangeAt: null })
+  /* Local now mirrors the remote row exactly — clean watermark, and the
+     settings just written are the new baseline. */
+  setSnapshotMeta({
+    lastSyncedAt:        row.updated_at,
+    lastLocalChangeAt:   null,
+    settingsFingerprint: settingsFingerprint(),
+  })
 
   return { ok: true, updatedAt: row.updated_at }
 }
