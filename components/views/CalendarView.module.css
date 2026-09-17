@@ -1190,6 +1190,19 @@
   border-radius: var(--r-xl);
   padding: var(--sp-6);
   animation: scaleIn 220ms var(--ease-expo) both;
+  /*
+   * Never taller than the window.
+   *
+   * A centred panel with no height cap does not overflow downward — it
+   * overflows *equally at both ends*, and being fixed it cannot be
+   * scrolled to, so the top of the form and the buttons at the bottom
+   * are simply unreachable. dvh rather than vh because on mobile the
+   * browser chrome counts.
+   */
+  max-height: calc(100vh - var(--sp-8));
+  max-height: calc(100dvh - var(--sp-8));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @keyframes scaleIn {

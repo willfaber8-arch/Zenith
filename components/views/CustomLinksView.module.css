@@ -318,6 +318,12 @@
   display:       flex;
   flex-direction: column;
   overflow:      hidden;
+  /* The backdrop centres this and does not scroll, so a tall form would
+     be clipped at both ends by the overflow above. Cap the card and let
+     the body scroll — header and footer stay put, which is where the
+     Save button is. */
+  max-height:    calc(100vh - var(--sp-8));
+  max-height:    calc(100dvh - var(--sp-8));
 }
 
 .modalHeader {
@@ -360,6 +366,9 @@
   display:        flex;
   flex-direction: column;
   gap:            var(--sp-4);
+  min-height:     0;      /* or the flex child refuses to shrink and scroll */
+  overflow-y:     auto;
+  overscroll-behavior: contain;
 }
 
 .fieldLabel {

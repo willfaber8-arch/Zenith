@@ -548,11 +548,30 @@ body {
   .anim-fade-in {
     animation: fadeIn  var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
   }
+  /*
+   * `backwards`, not `both`.
+   *
+   * `both` holds the final keyframe after the animation ends, and these
+   * two end on a transform — scale(1) and translateY(0). Those are
+   * identity transforms that change nothing visually and yet leave the
+   * element with a computed `transform`, and ANY transform makes an
+   * element the containing block for `position: fixed` descendants.
+   *
+   * So every view wearing one of these quietly became the viewport as
+   * far as its modals were concerned: the new-event form was centred on
+   * the page wrapper rather than the window, and its top was cut off
+   * above the screen with no way to scroll to it.
+   *
+   * `backwards` still applies the opening frame before the animation
+   * starts — which is what stops the flash of un-animated content — and
+   * then lets the element return to its own styles, where there is no
+   * transform. The animation looks identical; the trap is gone.
+   */
   .anim-scale-in {
-    animation: scaleIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
+    animation: scaleIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) backwards;
   }
   .anim-slide-in {
-    animation: slideIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) both;
+    animation: slideIn var(--dur-slow) var(--ease-expo) var(--anim-delay, 0s) backwards;
   }
 
   /* Stagger delay modifiers — override --anim-delay per element */
