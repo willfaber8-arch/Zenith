@@ -121,6 +121,12 @@
     border-top: 1px solid var(--border-subtle);
     background: var(--surface-card);
     animation: sheetRise 260ms var(--ease-expo) both;
+    /* Anchored to the bottom, so a sheet taller than the screen runs off
+       the top where nothing can reach it. */
+    max-height: calc(100vh - var(--sp-8));
+    max-height: calc(100dvh - var(--sp-8));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .sheetGrip {
