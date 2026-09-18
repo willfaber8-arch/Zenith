@@ -1,14 +1,15 @@
 /**
  * lib/taskMutations.ts — every write to the one task list.
  *
- * Two screens show the same tasks now: the Calendar's Tasks tab and
- * Study Shield's work panel. Both can complete, edit, refile and delete,
- * and if each implemented that itself they would drift — one would learn
- * that finishing the last problem finishes the set and the other would
- * not, and which behaviour you got would depend on which screen you
- * happened to be looking at.
+ * There is one screen now — the Calendar's Tasks tab — but the writes
+ * stay here rather than moving into it. They are also reached by the
+ * Co-Pilot, the dashboard widgets, the roadmap generator and the
+ * retention sweep, and a rule like "finishing the last problem finishes
+ * the set" has to hold however the work was completed. Two screens used
+ * to share this file for the same reason; that reason did not leave
+ * with the second screen.
  *
- * So the writes live here once. The panels decide what to show; this
+ * So the writes live here once. Callers decide what to show; this
  * decides what happens.
  */
 
@@ -56,7 +57,7 @@ export async function createReminder(input: NewReminder): Promise<number | null>
     status:   'pending',
     priority: input.priority ?? 'medium',
     /* Course work is scholastic; a standing personal reminder is not.
-       The Study Shield badge counts the former only. */
+       The category drives filtering and the audit, not the badge. */
     category: kind === 'reminder' ? 'life' : 'scholastic',
     kind,
     /* A problem set with no problems yet still belongs in the set view,

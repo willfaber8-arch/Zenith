@@ -1656,10 +1656,18 @@
   border-radius: var(--r-lg);
 }
 
+/*
+ * The count sits beside its heading, not across the box from it.
+ *
+ * With `space-between` the row's spare width went between the children,
+ * so a named list (heading, count, delete) put the count in the middle
+ * while Unfiled (heading, count) flung it to the far right — the same
+ * element landing in two places depending on whether the list could be
+ * deleted. The slack goes to the delete control instead.
+ */
 .taskCategoryHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-3);
 }
 
@@ -1800,33 +1808,54 @@
   color: #ff8fa3;
 }
 
-/* Add task row */
-.addTaskRow {
+/*
+ * The one composer, pinned above the lists.
+ *
+ * It used to be a dashed row at the foot of each list box, which is the
+ * right weight for something repeated six times and the wrong weight
+ * for the single entry point for everything you have to do. It reads as
+ * a solid card now, and it wraps rather than squeezing: eight controls
+ * compressed onto one line on a laptop is how a date input ends up two
+ * characters wide.
+ */
+.composeRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--cat-card, var(--surface-card));
+  transition: border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.composeRow:focus-within {
+  border-color: var(--cat-accent, var(--accent-purple));
+}
+
+/* The title takes the slack; everything else is sized to its content.
+   A 220px floor keeps it from collapsing to nothing when the row wraps. */
+.composeTitle {
+  flex: 1 1 220px;
+  min-width: 0;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
-  border: 1px dashed var(--border-subtle);
-  transition: border-color var(--dur-fast);
-}
-
-.addTaskRow:focus-within {
-  border-color: var(--accent-purple-dim);
-}
-
-.addTaskInput {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
+  border: 1px solid transparent;
+  background: var(--bg-main);
   outline: none;
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 0.8125rem;
+  font-size: 0.85rem;
+  transition: border-color var(--dur-fast) var(--ease-smooth);
 }
 
-.addTaskInput::placeholder {
+.composeTitle:focus {
+  border-color: var(--accent-purple-dim);
+}
+
+.composeTitle::placeholder {
   color: var(--text-dark);
 }
 
@@ -1869,26 +1898,51 @@
   50%      { box-shadow: 0 0 0 5px rgba(248, 113, 113, 0); }
 }
 
-.addTaskDateInput {
-  background: transparent;
-  border: none;
+/*
+ * Dates, priority, course and list share one control style so the row
+ * reads as a single instrument rather than five borrowed widgets.
+ */
+.composeField {
+  flex: 0 0 auto;
+  min-height: 30px;
+  max-width: 132px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-main);
   outline: none;
-  color: var(--text-dark);
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   cursor: pointer;
   color-scheme: dark;
-  flex-shrink: 0;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+
+.composeField:hover,
+.composeField:focus {
+  border-color: var(--accent-purple-dim);
+  color: var(--text-primary);
+}
+
+.composeCourse {
+  max-width: 96px;
+  font-family: var(--font-body);
+  cursor: text;
+}
+
+.composeCourse::placeholder {
+  color: var(--text-dark);
 }
 
 /*
- * Which kind the add row will create. Three short chips rather than a
- * select: the row already holds a title, a mic, a date and Add, and a
- * dropdown here would mean a click to see the options and another to
- * pick one for something you change constantly.
+ * Which kind the composer will create. Three short chips rather than a
+ * select: it is the field changed most often, and a dropdown costs a
+ * click to see the options and another to pick one.
  */
-.addTaskKind {
+.composeKind {
   display: flex;
+  flex: 0 0 auto;
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--border-subtle);
@@ -1896,7 +1950,7 @@
   background: var(--bg-main);
 }
 
-.addTaskKindBtn {
+.composeKindBtn {
   padding: 0 var(--sp-2);
   min-height: 26px;
   border: none;
@@ -1911,26 +1965,29 @@
               color var(--dur-fast) var(--ease-smooth);
 }
 
-.addTaskKindBtn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.composeKindBtn:hover { color: var(--text-primary); background: var(--bg-hover); }
 
-.addTaskKindBtn:focus-visible {
+.composeKindBtn:focus-visible {
   outline: 2px solid var(--cat-accent, var(--accent-purple));
   outline-offset: -1px;
 }
 
-.addTaskKindOn {
+.composeKindOn {
   background: var(--cat-accent, var(--accent-purple));
   color: var(--bg-main);
   font-weight: 600;
 }
 
-.addTaskKindOn:hover {
+.composeKindOn:hover {
   background: var(--cat-accent, var(--accent-purple));
   color: var(--bg-main);
 }
 
-.addTaskSubmit {
-  padding: 4px 10px;
+.composeSubmit {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 6px 14px;
+  min-height: 30px;
   background: rgba(124,149,255,0.10);
   border: 1px solid var(--accent-purple-dim);
   border-radius: var(--r-md);
@@ -1945,12 +2002,12 @@
   transition: background var(--dur-fast), color var(--dur-fast);
 }
 
-.addTaskSubmit:hover:not(:disabled) {
+.composeSubmit:hover:not(:disabled) {
   background: rgba(124,149,255,0.18);
   color: #fff;
 }
 
-.addTaskSubmit:disabled {
+.composeSubmit:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -3277,4 +3334,16 @@
   font-size: 0.68rem;
   line-height: 1.5;
   color: var(--text-dark);
+}
+
+/*
+ * The goal decomposer's slot in the Tasks tab.
+ *
+ * It arrived from Study Shield carrying its own card styling, so this
+ * only has to give it room and an entrance — wrapping it in a second
+ * card would double the border.
+ */
+.roadmapSlot {
+  margin-bottom: var(--sp-4);
+  animation: fadeIn var(--dur-base) var(--ease-smooth);
 }

@@ -221,11 +221,14 @@ ZENITH ESSENTIALS (category: 'essentials', tint: #0d1020)
   SCHOLASTIC
     · University Hub    (view: 'uni-hub')         — 5 tabs: University Resources | Major Resources |
                                                              GPA Calculator | Cognitive Load | Finances
-    · Study Shield      (view: 'study-shield')    — 3 tabs: AI Study | Focus Protocol | Focus Rooms
+    · Study Shield      (view: 'study-shield')    — 4 tabs: Review | AI Study | Focus Protocol | Focus Rooms
+                                                     (study tools only — the Work list and Task Roadmap
+                                                      moved to the Calendar's Tasks tab)
     · Polyglot Vault    (view: 'vocab-builder')   — SM-2 spaced-repetition vocab builder; IDB v19
   LIFE
     · Habits             (view: 'habits')          — advanced habit tracker (side-by-side analytics)
-    · Universal Calendar (view: 'calendar')        — Personal tab + iCal Feeds tab
+    · Universal Calendar (view: 'calendar')        — Calendar tab + Tasks tab; Tasks is the ONLY task list
+                                                     (reminders, tasks, problem sets, lists, roadmap)
     · Workouts           (view: 'workouts')        — cardio log + Vitality Points + Cozy Biome builder
     · Meal Planning      (view: 'meal-planning')   — 4-tab: Weekly Planner | Recipes | Budget | Kitchen Setup
     · Mental Wellness    (view: 'wellness')        — mood logging + monthly mood history calendar
@@ -275,8 +278,8 @@ navigate('home', null)                   // returns to home, resets bg tint
 
 ```ts
 const { setBadge } = useNavBadge()
-setBadge('study-shield', 3)   // shows "3" pill on Study Shield nav item
-setBadge('study-shield', 0)   // clears the badge
+setBadge('calendar', 3)       // shows "3" pill on Universal Calendar nav item
+setBadge('calendar', 0)       // clears the badge
 ```
 
 ---
@@ -1022,6 +1025,8 @@ const { habits, total, completedToday, percentage, todayISO } = useHabitProgress
 90. **Habit days roll over at the configured cutoff, not midnight** — `utils/dayBoundary.ts` owns this. Habit-facing code calls `currentDayISO()` (or `todayISO()` from `lib/hooks/useHabits`, or `effectiveDateISO()` when the clock is passed in); non-habit features keep using `toLocalDateStr` and roll over at midnight, which is correct for them. `addHabitProgress`'s default date also respects the cutoff so a 2am auto-sync from a workout lands on the same day a manual tap would. The date is stepped by its *component*, never by subtracting 86,400,000 ms — a day is 23 or 25 hours twice a year; use `addDaysISO`/`diffDaysISO` from `utils/localDate` for day-key arithmetic. When the window is open the Habits view says so; a setting that silently rewrites what "today" means reads as a bug.
 
 91. **Every *reader* of the habit day has to agree with the writer** — the cutoff was half-applied for a while: `addHabitProgress` wrote a 1am tick under yesterday's key while the grit chart, the trend series, the dashboard ring, the stats page, the daily checklist and the week strip all asked the calendar what day it was. They looked for the tick on a date it was never written to, so from the outside the tick did nothing. `computeCompletionSeries`, `detectBrokenStreaks` and `calculateMovingGritScore` all take the anchor day as a parameter, defaulting to `currentDayISO()` — pass the hook's `today` explicitly wherever a query range and a series have to end on the same date. `detectBrokenStreaks` is the one that matters most: its caller writes `streakCount: 0` on what it returns, so a calendar-anchored gap destroyed a live streak three hours before the day was over. For anything stamped with a *time* rather than a date key (focus sessions), use `dayBoundsMs()` instead — cutoff to cutoff, so the session finished at 00:05 still counts towards the day it was earned in.
+
+92. **There is one task list, and it is the Calendar's Tasks tab** — `assignments` holds reminders, tasks and problem sets alike, and exactly one screen writes to it. Study Shield's `StudyWorkPanel` was a second window onto the same table and is gone; so is its Task Roadmap tab, which now lives behind the `✦ Roadmap` toggle in the Tasks toolbar. Do not add another task view: the whole point is that there is one answer to "where do I write this down?". Creation goes through a **single composer** pinned above the lists — never an add-row per list, which is how the draft you were typing became invisible state deciding where the task landed. The list is a *field* on that composer (`ComposeDraft.listId`, `UNFILED_KEY = 0` for unfiled), and title and date clear after an add while kind, priority, course and list are deliberately kept. All writes still go through `lib/taskMutations.ts`. The sidebar badge follows the list: `setBadge('calendar', …)` in `useLiveAssignmentBadges`, counting all three kinds. Deep-link to the tab with `requestCalendarTab('tasks')` from `lib/calendarNavState` — navigating to `calendar` alone lands on the week grid.
 
 83. **WebRTC sync is ephemeral + temporal-evaluated** — `useFriendsNetwork` uses PeerJS for one-shot data exchange on connection open; the connection may close after the exchange. Snapshots are stored persistently in IDB (`peer_leaderboard_snapshots`) but are evaluated at receive time via `evaluateTemporalSnapshot()` which zeros `weeklyStudyMinutes` if the snapshot is > 7 days old and `monthlyStudyMinutes` if > 30 days old. `SELF_ID = 'self'` is the reserved PK for the user's own snapshot row — never use a real PeerJS ID as the self key. The gamesDb profile is always keyed `'active_user'` (not `1`); use `gdb.user_profile_config.get('active_user')` to read cosmetic points.
 

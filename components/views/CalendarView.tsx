@@ -50,7 +50,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
-import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem } from '@/lib/db'
+import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem, type Priority } from '@/lib/db'
 import {
   kindOf, hasDueDate, isOverdue, isOpen, groupByList, KIND_BADGE, type TaskKind,
 } from '@/utils/taskUnify'
@@ -63,6 +63,10 @@ import {
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import DoneRetentionNote from '@/components/ui/DoneRetentionNote'
+import RoadmapGeneratorButton from '@/components/RoadmapGeneratorButton'
+import {
+  peekCalendarTab, consumeCalendarTab, subscribeCalendarTab, type CalendarTab,
+} from '@/lib/calendarNavState'
 import {
   presetOf, REPEAT_PRESETS, REPEAT_LABEL, REPEAT_BADGE, isRepeatPreset, type RepeatPreset,
 } from '@/utils/taskRepeat'
@@ -1646,6 +1650,21 @@ const DEFAULT_CATEGORIES = [
   { name: 'Long Term',  sortOrder: 1 },
 ]
 
+/**
+ * The single add-task draft.
+ *
+ * `kind: null` means "whatever the filter is showing"; choosing one
+ * pins it so a run of problem sets does not need re-picking each time.
+ */
+interface ComposeDraft {
+  title:    string
+  dueDate:  string
+  kind:     TaskKind | null
+  priority: Priority
+  courseId: string
+  listId:   number
+}
+
 /* ── Voice dictation button for the add-task row ───────────────── */
 
 function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
@@ -1694,10 +1713,11 @@ function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
  * Shield. Whether a thing you had to do was findable here depended
  * entirely on which screen you were looking at when you wrote it down.
  *
- * Both now come from `assignments`. Reminders, tasks and problem sets
- * are three kinds of one thing, grouped into the lists you make, and
- * this panel and Study Shield are two windows onto the same table
- * rather than two lists that disagree.
+ * They were merged into `assignments`, which left two screens onto one
+ * table — better, but still two answers to "where do I write this
+ * down?". Study Shield's work panel is gone now and this is the only
+ * one. Reminders, tasks and problem sets are three kinds of one thing,
+ * grouped into the lists you make, with a single composer above them.
  */
 function TasksPanel() {
   const { toast } = useToast()
@@ -1725,45 +1745,54 @@ function TasksPanel() {
 
   const [kindFilter, setKindFilter] = useState<TaskKind | 'all'>('all')
   const [showDone,   setShowDone]   = useState(false)
+  /*
+   * The goal decomposer, moved here from Study Shield.
+   *
+   * It writes into this same table, so living behind a different view
+   * meant the one screen that shows your work was not the screen that
+   * could generate it. Collapsed by default — it is something you reach
+   * for at the start of a project, not every time you open the tab.
+   */
+  const [showRoadmap, setShowRoadmap] = useState(false)
 
   const [addingCategory,   setAddingCategory]   = useState(false)
   const [newCatName,       setNewCatName]       = useState('')
-  /* per-list add-task state: listId → { title, dueDate }. UNFILED_KEY
-     stands in for the unfiled group, which can be added to as well. */
-  const [addTaskState, setAddTaskState] =
-    useState<Record<number, { title: string; dueDate: string; kind?: TaskKind }>>({})
+
+  /*
+   * One composer, not one per list.
+   *
+   * There used to be an add-row at the foot of every list, which meant
+   * the number of places to type a task grew with the number of lists
+   * and each one held its own half-finished draft. Which box you had
+   * started typing in was the only thing that decided where the task
+   * landed, and it was invisible until you pressed Enter. The list is a
+   * field on the form now, so there is one place to write something
+   * down and the filing is a choice you can see.
+   */
+  const [compose, setCompose] = useState<ComposeDraft>({
+    title: '', dueDate: '', kind: null, priority: 'medium',
+    courseId: '', listId: UNFILED_KEY,
+  })
 
   /*
    * The kind starts as whichever filter you are looking at, so adding a
    * problem set while viewing Problem sets does not need a second
    * decision — and falls back to 'task' on All. Reminders are the small
    * standing things you choose deliberately, not the default everything
-   * lands in.
+   * lands in. `null` means "follow the filter"; picking one pins it.
    */
-  const getTaskState = (key: number) => {
-    const draft = addTaskState[key]
-    const fallbackKind: TaskKind = kindFilter === 'all' ? 'task' : kindFilter
-    return {
-      title:   draft?.title   ?? '',
-      dueDate: draft?.dueDate ?? '',
-      kind:    draft?.kind    ?? fallbackKind,
-    }
-  }
+  const composeKind: TaskKind =
+    compose.kind ?? (kindFilter === 'all' ? 'task' : kindFilter)
 
-  const setTaskField = (
-    key: number, field: 'title' | 'dueDate' | 'kind', value: string,
-  ) =>
-    setAddTaskState(prev => ({
-      ...prev,
-      [key]: { ...getTaskState(key), [field]: value as string & TaskKind },
-    }))
+  const setComposeField = <K extends keyof ComposeDraft>(
+    field: K, value: ComposeDraft[K],
+  ) => setCompose(prev => ({ ...prev, [field]: value }))
 
-  /* Append dictated speech to a list's task title (race-safe on prev). */
-  const appendTaskTitle = (key: number, text: string) =>
-    setAddTaskState(prev => {
-      const cur = prev[key] ?? { title: '', dueDate: '' }
-      const sep = cur.title && !cur.title.endsWith(' ') ? ' ' : ''
-      return { ...prev, [key]: { ...cur, title: cur.title + sep + text } }
+  /* Append dictated speech to the title (race-safe on prev). */
+  const appendTaskTitle = (text: string) =>
+    setCompose(prev => {
+      const sep = prev.title && !prev.title.endsWith(' ') ? ' ' : ''
+      return { ...prev, title: prev.title + sep + text }
     })
 
   const handleAddCategory = async () => {
@@ -1791,18 +1820,21 @@ function TasksPanel() {
     )
   }
 
-  const handleAddTask = async (key: number) => {
-    const { title, dueDate, kind } = getTaskState(key)
-    if (!title.trim()) return
+  const handleAddTask = async () => {
+    if (!compose.title.trim()) return
     await createReminder({
-      title,
-      dueDate,
-      kind,
-      listId: key === UNFILED_KEY ? undefined : key,
+      title:    compose.title,
+      dueDate:  compose.dueDate,
+      kind:     composeKind,
+      priority: compose.priority,
+      courseId: compose.courseId,
+      listId:   compose.listId === UNFILED_KEY ? undefined : compose.listId,
     })
-    /* The kind is deliberately kept, not reset: adding three problem
-       sets in a row should not mean re-picking it three times. */
-    setAddTaskState(prev => ({ ...prev, [key]: { title: '', dueDate: '', kind } }))
+    /* Kind, priority, course and list are deliberately kept, not reset:
+       filing three problem sets for one course in a row should not mean
+       re-picking all four of those three times. Only what is unique to
+       the item just added is cleared. */
+    setCompose(prev => ({ ...prev, title: '', dueDate: '' }))
   }
 
   /* Which task is open for editing, and the draft being typed into it. */
@@ -1974,6 +2006,15 @@ function TasksPanel() {
           >
             {showDone ? 'Hide done' : 'Show done'}
           </button>
+          <button
+            type="button"
+            className={styles.taskGhostBtn}
+            onClick={() => setShowRoadmap(r => !r)}
+            aria-pressed={showRoadmap}
+            title="Break a goal into steps with AI"
+          >
+            {showRoadmap ? 'Hide roadmap' : '✦ Roadmap'}
+          </button>
           {!addingCategory && (
             <button type="button" className={styles.addCategoryBtn} onClick={() => setAddingCategory(true)}>
               + New List
@@ -1983,6 +2024,106 @@ function TasksPanel() {
       </div>
 
       {showDone && <DoneRetentionNote />}
+
+      {showRoadmap && (
+        <div className={styles.roadmapSlot}>
+          <RoadmapGeneratorButton />
+        </div>
+      )}
+
+      {/*
+        * The one place to write something down.
+        *
+        * Everything the old per-list rows could do, plus the priority
+        * and course that previously only existed in Study Shield — so
+        * work added here no longer arrives permanently Medium and
+        * untagged. The list is a field rather than a location, which is
+        * what lets there be one of these instead of one per box.
+        */}
+      <div className={styles.composeRow}>
+        <input
+          type="text"
+          className={styles.composeTitle}
+          placeholder="Add a task…"
+          value={compose.title}
+          onChange={e => setComposeField('title', e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') void handleAddTask() }}
+          aria-label="What needs doing"
+          maxLength={200}
+        />
+        <TaskVoiceButton onText={appendTaskTitle} />
+
+        <div className={styles.composeKind} role="group" aria-label="What kind of item">
+          {NEW_TASK_KINDS.map(({ id, label, short }) => (
+            <button
+              key={id}
+              type="button"
+              className={`${styles.composeKindBtn} ${composeKind === id ? styles.composeKindOn : ''}`}
+              aria-pressed={composeKind === id}
+              title={label}
+              onClick={() => setComposeField('kind', id)}
+            >
+              {short}
+            </button>
+          ))}
+        </div>
+
+        <input
+          type="date"
+          className={styles.composeField}
+          value={compose.dueDate}
+          onChange={e => setComposeField('dueDate', e.target.value)}
+          aria-label="Due date — optional"
+          title="Optional due date"
+        />
+
+        <select
+          className={styles.composeField}
+          value={compose.priority}
+          onChange={e => setComposeField('priority', e.target.value as Priority)}
+          aria-label="Priority"
+          title="Priority"
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+
+        <input
+          type="text"
+          className={`${styles.composeField} ${styles.composeCourse}`}
+          value={compose.courseId}
+          onChange={e => setComposeField('courseId', e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') void handleAddTask() }}
+          placeholder="Course"
+          aria-label="Course — optional"
+          title="Optional course tag"
+          maxLength={40}
+        />
+
+        <select
+          className={styles.composeField}
+          value={compose.listId}
+          onChange={e => setComposeField('listId', Number(e.target.value))}
+          aria-label="Which list to file this in"
+          title="Which list to file this in"
+        >
+          <option value={UNFILED_KEY}>Unfiled</option>
+          {(lists ?? []).map(l => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className={styles.composeSubmit}
+          onClick={() => void handleAddTask()}
+          disabled={!compose.title.trim()}
+        >
+          Add
+        </button>
+      </div>
 
       {addingCategory && (
         <div className={styles.newCategoryRow}>
@@ -1998,7 +2139,15 @@ function TasksPanel() {
             }}
             autoFocus
           />
-          <button type="button" className={styles.newCategoryConfirm} onClick={() => void handleAddCategory()}>
+          {/* Named, not just labelled "Add": the composer's own Add
+              button is on screen at the same time, and two controls
+              announced identically is a coin toss from the keyboard. */}
+          <button
+            type="button"
+            className={styles.newCategoryConfirm}
+            onClick={() => void handleAddCategory()}
+            aria-label="Add list"
+          >
             Add
           </button>
           <button type="button" className={styles.newCategoryCancel} onClick={() => { setAddingCategory(false); setNewCatName('') }}>
@@ -2016,7 +2165,6 @@ function TasksPanel() {
         const key      = cat?.id ?? UNFILED_KEY
         const catItems = group.items
         const openCount = catItems.filter(i => isOpen(i)).length
-        const taskState = getTaskState(key)
 
         return (
           <div key={key} className={styles.taskCategory}>
@@ -2275,50 +2423,15 @@ function TasksPanel() {
               </ul>
             )}
 
-            <div className={styles.addTaskRow}>
-              <input
-                type="text"
-                className={styles.addTaskInput}
-                placeholder="Add a task…"
-                value={taskState.title}
-                onChange={e => setTaskField(key, 'title', e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') void handleAddTask(key) }}
-              />
-              <TaskVoiceButton onText={text => appendTaskTitle(key, text)} />
-              <input
-                type="date"
-                className={styles.addTaskDateInput}
-                value={taskState.dueDate}
-                onChange={e => setTaskField(key, 'dueDate', e.target.value)}
-                aria-label="Optional due date"
-                title="Optional due date"
-              />
-              <div className={styles.addTaskKind} role="group" aria-label="What kind of item">
-                {NEW_TASK_KINDS.map(({ id, label, short }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`${styles.addTaskKindBtn} ${taskState.kind === id ? styles.addTaskKindOn : ''}`}
-                    aria-pressed={taskState.kind === id}
-                    title={label}
-                    onClick={() => setTaskField(key, 'kind', id)}
-                  >
-                    {short}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className={styles.addTaskSubmit}
-                onClick={() => void handleAddTask(key)}
-                disabled={!taskState.title.trim()}
-              >
-                Add
-              </button>
-            </div>
           </div>
         )
       })}
+
+      {groups.every(g => g.items.length === 0) && lists.length > 0 && (
+        <p className={styles.tasksEmpty}>
+          {showDone ? 'Nothing here yet.' : 'Nothing outstanding.'}
+        </p>
+      )}
     </div>
   )
 }
@@ -2377,7 +2490,14 @@ export default function CalendarView() {
    * calendar a click further away. It is an action under the calendar
    * now, opened from the button beside "New Event".
    */
-  const [calTab,        setCalTab]        = useState<'personal' | 'tasks'>('personal')
+  /* Opens on whichever tab was asked for — the Work Due widget links
+     straight to Tasks — and on Personal when nothing asked. */
+  const [calTab,        setCalTab]        = useState<CalendarTab>(
+    () => peekCalendarTab() ?? 'personal',
+  )
+
+  useEffect(() => { consumeCalendarTab() }, [])
+  useEffect(() => subscribeCalendarTab(setCalTab), [])
   const [showSchedule,  setShowSchedule]  = useState(false)
   const [showNewEvent,  setShowNewEvent]  = useState(false)
   const [editEvent,     setEditEvent]     = useState<PersonalEvent | null>(null)

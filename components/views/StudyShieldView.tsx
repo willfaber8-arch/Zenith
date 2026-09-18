@@ -9,12 +9,19 @@ import MultiplayerLobby             from '@/components/MultiplayerLobby'
 import { useStudyMode }             from '@/lib/StudyModeContext'
 import { markdownToHtml }           from '@/utils/markdownToHtml'
 import type { StudyAiResponse, StudySession, PracticeQuestion } from '@/types/studyAi'
-import RoadmapGeneratorButton       from '@/components/RoadmapGeneratorButton'
 import styles from './StudyShieldView.module.css'
-import StudyWorkPanel from '@/components/StudyWorkPanel'
 import StudyReviewPanel from '@/components/StudyReviewPanel'
 
-type Tab = 'work' | 'review' | 'ai-study' | 'focus-protocol' | 'focus-rooms' | 'roadmap'
+/*
+ * Work and the Task Roadmap both left for the Universal Calendar.
+ *
+ * They read and wrote the same `assignments` table the Calendar's Tasks
+ * tab does, so there were two screens onto one set of work — and which
+ * one you happened to be on decided where you wrote something down and
+ * whether you could see it afterwards. Study Shield is the study tools;
+ * what you have to do lives in one place now.
+ */
+type Tab = 'review' | 'ai-study' | 'focus-protocol' | 'focus-rooms'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -142,7 +149,7 @@ function PracticeTestPanel({ questions }: { questions: PracticeQuestion[] }) {
    ════════════════════════════════════════════════════════════════ */
 
 export default function StudyShieldView() {
-  const [activeTab, setActiveTab] = useState<Tab>('work')
+  const [activeTab, setActiveTab] = useState<Tab>('review')
   const [session, setSession]     = useState<StudySession | null>(null)
   const { enterStudyWorkspace }   = useStudyMode()
 
@@ -210,21 +217,17 @@ export default function StudyShieldView() {
   /* ── Render ────────────────────────────────────────────────── */
 
   const TAB_LABELS: Record<Tab, string> = {
-    'work':           'Work',
     'review':         'Review',
     'ai-study':       'AI Study',
     'focus-protocol': 'Focus Protocol',
     'focus-rooms':    'Focus Rooms',
-    'roadmap':        'Task Roadmap',
   }
 
   const subtitles: Record<Tab, string> = {
-    'work':           'Everything due — tasks and problem sets in one list.',
     'review':         'Finished problem sets, returning on a spaced schedule.',
     'ai-study':       'Paste lecture notes — Zenith AI returns a structured summary and flashcard deck.',
     'focus-protocol': 'Enter deep work mode with a full-screen Pomodoro cockpit.',
     'focus-rooms':    'Create a P2P focus room and sync Pomodoro timers with peers via WebRTC.',
-    'roadmap':        'Describe a large goal — the AI decomposes it into sequential assignment milestones and injects them instantly.',
   }
 
   return (
@@ -243,15 +246,6 @@ export default function StudyShieldView() {
             {TAB_LABELS[tab]}
           </button>
         ))}
-      </div>
-
-      {/* ── AI Study tab ─────────────────────────────────────── */}
-      {/* Work comes first: it is the thing with deadlines attached, and
-          it is the view the assignments table never had. */}
-      <div className={activeTab === 'work' ? styles.tabPane : styles.tabPaneHidden}>
-        <div className="anim-fade-in">
-          <StudyWorkPanel />
-        </div>
       </div>
 
       <div className={activeTab === 'review' ? styles.tabPane : styles.tabPaneHidden}>
@@ -383,13 +377,6 @@ export default function StudyShieldView() {
       {/* ── Focus Rooms tab ──────────────────────────────────── */}
       <div className={activeTab === 'focus-rooms' ? styles.tabPane : styles.tabPaneHidden}>
         <MultiplayerLobby />
-      </div>
-
-      {/* ── Task Roadmap tab ─────────────────────────────────── */}
-      <div className={activeTab === 'roadmap' ? styles.tabPane : styles.tabPaneHidden}>
-        <div className="anim-fade-in">
-          <RoadmapGeneratorButton />
-        </div>
       </div>
 
     </div>

@@ -46,7 +46,7 @@ export const MODULE_INDEX: ModuleEntry[] = [
     keywords: ['habit', 'routine', 'streak', 'daily', 'tracker', 'goals', 'water', 'reading'] },
   { id: 'calendar', label: 'Universal Calendar', category: 'essentials',
     hint: 'Events, iCal feeds, deadlines & to-do lists',
-    keywords: ['schedule', 'events', 'ical', 'deadlines', 'tasks', 'todo', 'to-do', 'agenda', 'appointments', 'meetings', 'reminders', 'class schedule'] },
+    keywords: ['schedule', 'events', 'ical', 'deadlines', 'tasks', 'todo', 'to-do', 'agenda', 'appointments', 'meetings', 'reminders', 'class schedule', 'problem sets', 'assignments', 'homework', 'work due', 'roadmap'] },
   { id: 'workouts', label: 'Workouts', category: 'essentials',
     hint: 'Cardio log, Vitality Points & cozy biome',
     keywords: ['cardio', 'exercise', 'gym', 'run', 'running', 'fitness', 'vitality', 'biome', 'training', 'workout'] },
