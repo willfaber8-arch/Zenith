@@ -1,6 +1,7 @@
 'use client'
 
 import { loadCutoffHour, isInGraceWindow } from '@/utils/dayBoundary'
+import { formatAmount, parseAmount } from '@/utils/habitAmount'
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   useHabits,
@@ -211,7 +212,7 @@ function HabitRow({
               ].filter(Boolean).join(' ')}
               onClick={(e) => onIncrement(habit.id, e)}
               aria-label={isAtMost
-                ? `Log one against ${habit.name} — ${Math.max(0, habit.targetCompletions - habit.todayCount)} left of ${habit.targetCompletions}`
+                ? `Log one against ${habit.name} — ${formatAmount(Math.max(0, habit.targetCompletions - habit.todayCount))} left of ${formatAmount(habit.targetCompletions)}`
                 : `Add completion for ${habit.name}`}
             >
               {/*
@@ -225,7 +226,9 @@ function HabitRow({
                 ? (isWarning
                     ? <Icon name="alert" size={13} />
                     : <span className={styles.limitLeft}>
-                        {Math.max(0, habit.targetCompletions - habit.todayCount)}
+                        {/* Formatted: a limit of 2 with 0.5 logged is
+                            "1.5 left", not "1.5000000000000002 left". */}
+                        {formatAmount(Math.max(0, habit.targetCompletions - habit.todayCount))}
                       </span>)
                 : (habit.todayDone ? '✓' : '+')}
             </button>
@@ -248,7 +251,7 @@ function HabitRow({
             )}
           </div>
           <span className={styles.habitMeta}>
-            {isAtMost ? '≤' : ''}{habit.todayCount}/{habit.targetCompletions}
+            {isAtMost ? '≤' : ''}{formatAmount(habit.todayCount)}/{formatAmount(habit.targetCompletions)}
             {habit.stepLabel ? ` ${habit.stepLabel}` : ''}
             {' · '}
             {freqLabel(habit)}
@@ -381,10 +384,25 @@ function HabitModal({
   const [useCustom,  setUseCustom]  = useState(
     !!(initial?.category && !PRESET_CATEGORIES.includes(initial.category))
   )
-  // Step model: each click adds stepAmount; done when count >= goal
-  const [stepAmount, setStepAmount] = useState<number>(initStepAmount)
+  /*
+   * Step model: each tap adds stepAmount; done when count >= goal.
+   *
+   * Both amounts are held as the raw text of their field, not as
+   * numbers. Coercing on every keystroke is what made the step field
+   * impossible to edit: clearing it gave "", Number("") is 0, the
+   * clamp turned that into 1, and 1 went back into the box as fast as
+   * it could be deleted. It also made a decimal unreachable, because
+   * you cannot type "0.5" without passing through "0" first.
+   */
+  const [stepText,   setStepText]   = useState<string>(formatAmount(initStepAmount))
   const [stepUnit,   setStepUnit]   = useState(initial?.stepLabel ?? '')
-  const [goal,       setGoal]       = useState<number>(initial?.targetCompletions ?? 0)
+  const [goalText,   setGoalText]   = useState<string>(
+    initial?.targetCompletions ? formatAmount(initial.targetCompletions) : '',
+  )
+
+  /* null while the field is empty or half-typed ("0.", "."). */
+  const stepAmount = parseAmount(stepText) ?? 0
+  const goal       = parseAmount(goalText) ?? 0
   const [goalType,   setGoalType]   = useState<'at_least' | 'at_most'>(initial?.goalType ?? 'at_least')
   const [autoSource, setAutoSource] = useState<string>(initial?.autoSource ?? '')
 
@@ -637,13 +655,28 @@ function HabitModal({
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label className={styles.labelSub} htmlFor="habit-step">Each tap adds</label>
+                {/*
+                  * `inputMode="decimal"` over `type="number"`: a number
+                  * input with the default step of 1 rejects "0.5" in its
+                  * own validation, and its spinner arrows move in whole
+                  * units. This takes the text and parses it, so half a
+                  * mile is as typeable as one.
+                  */}
                 <input
                   id="habit-step"
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="decimal"
                   className={`${styles.input} ${styles.inputSmall}`}
-                  value={stepAmount}
-                  onChange={e => setStepAmount(Math.max(1, Number(e.target.value)))}
+                  placeholder="1"
+                  value={stepText}
+                  onChange={e => setStepText(e.target.value)}
+                  onBlur={() => setStepText(t =>
+                    /* Left empty, it means one tap is one unit — the
+                       default it always had. Filled in, it is tidied to
+                       what will actually be stored. */
+                    parseAmount(t) ? formatAmount(parseAmount(t)!) : '1',
+                  )}
+                  aria-label="How much each tap adds"
                 />
               </div>
               <div className={styles.field}>
@@ -661,19 +694,24 @@ function HabitModal({
                 <label className={styles.labelSub} htmlFor="habit-goal">Daily goal</label>
                 <input
                   id="habit-goal"
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="decimal"
                   className={`${styles.input} ${styles.inputSmall}`}
                   placeholder="e.g. 20"
-                  value={goal === 0 ? '' : goal}
-                  onChange={e => setGoal(Math.max(0, Number(e.target.value)))}
+                  value={goalText}
+                  onChange={e => setGoalText(e.target.value)}
+                  onBlur={() => setGoalText(t => {
+                    const n = parseAmount(t)
+                    return n ? formatAmount(n) : ''
+                  })}
                   required
+                  aria-label="Daily goal"
                 />
               </div>
             </div>
             {clicksNeeded > 0 && (
               <p className={styles.stepHint}>
-                {clicksNeeded} tap{clicksNeeded !== 1 ? 's' : ''} to reach {goal}{stepUnit ? ` ${stepUnit}` : ''}
+                {clicksNeeded} tap{clicksNeeded !== 1 ? 's' : ''} to reach {formatAmount(goal)}{stepUnit ? ` ${stepUnit}` : ''}
               </p>
             )}
           </div>
@@ -749,15 +787,18 @@ export default function HabitsView() {
   )
 
   /* 30-day completion log — drives the partial-aware analytics trend. */
-  const thirtyDaysAgo = isoForDayOffset(-29)
+  const thirtyDaysAgo = isoForDayOffset(-29, today)
   const completions30 = useLiveQuery(
     () => db?.habitCompletions.where('date').between(thirtyDaysAgo, today, true, true).toArray()
        ?? Promise.resolve([]),
     [thirtyDaysAgo, today],
     [],
   )
+  /* Anchored on the habit day the hook is using, not re-derived: the
+     query range and the series have to end on the same date or the last
+     point is a day the completions query never fetched. */
   const gritPoints = (allHabits && allHabits.length > 0)
-    ? computeCompletionSeries(allHabits, completions30 ?? [], 30)
+    ? computeCompletionSeries(allHabits, completions30 ?? [], 30, today)
     : []
 
   /* First-run: auto-load the General starter pack (once, only when empty). */
@@ -774,7 +815,7 @@ export default function HabitsView() {
   useEffect(() => {
     if (reconciledRef.current || !allHabits || allHabits.length === 0 || !db) return
     reconciledRef.current = true
-    const broken = detectBrokenStreaks(allHabits)
+    const broken = detectBrokenStreaks(allHabits, today)
     if (broken.length === 0) return
     void (async () => {
       for (const b of broken) {
@@ -796,7 +837,7 @@ export default function HabitsView() {
         'info',
       )
     })()
-  }, [allHabits, toast])
+  }, [allHabits, toast, today])
 
   /* Recomputed on render; the window closes on its own once the hour passes. */
   const graceNote = useMemo(() => {

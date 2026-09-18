@@ -10,7 +10,7 @@ import { requestGamesTab } from '@/lib/gamesNavState'
 import EcosystemWrapped from '@/components/EcosystemWrapped'
 import Icon from '@/components/ui/Icon'
 import styles from './StatsView.module.css'
-import { toLocalDateStr } from '@/utils/localDate'
+import { currentDayISO } from '@/utils/dayBoundary'
 
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -61,7 +61,9 @@ export default function StatsView() {
   const goToShop = () => { requestGamesTab('shop'); navigate('games', 'creator') }
 
   /* ── Computed habit stats ─────────────────────────────────── */
-  const todayISO = toLocalDateStr(new Date())
+  /* Habit rows are keyed by the habit day, so the lookup has to use it
+     too — otherwise "completed today" reads zero during the grace window. */
+  const todayISO = currentDayISO()
   const todayCompletions = completions.filter(c => c.date === todayISO)
   const habitsCompletedToday = habits.filter(h =>
     todayCompletions.find(c => c.habitId === h.id && c.count >= (h.targetCompletions ?? 1)),

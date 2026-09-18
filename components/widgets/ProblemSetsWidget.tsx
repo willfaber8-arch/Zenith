@@ -3,13 +3,14 @@
  *
  * Reads the same `assignments` table the urgent-tasks widget does, but
  * scoped to outstanding work with its per-problem progress — the thing
- * the Work tab exists to make visible.
+ * the Calendar's Tasks tab exists to make visible.
  */
 
 'use client'
 
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Assignment } from '@/lib/db'
+import { requestCalendarTab } from '@/lib/calendarNavState'
 import { useNav } from '@/lib/NavContext'
 import { todayISO } from '@/utils/localDate'
 import { hasDueDate } from '@/utils/taskUnify'
@@ -60,10 +61,17 @@ export default function ProblemSetsWidget() {
   return (
     <div
       className={`${styles.card} ${styles.clickable}`}
-      onClick={() => navigate('study-shield', 'essentials')}
+      /* The work list moved to the Calendar's Tasks tab; the widget
+         follows it, and asks for that tab rather than dropping you on
+         the week grid. */
+      onClick={() => { requestCalendarTab('tasks'); navigate('calendar', 'essentials') }}
       role="button"
       tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate('study-shield', 'essentials') }}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          requestCalendarTab('tasks'); navigate('calendar', 'essentials')
+        }
+      }}
       /* Matches the visible "Work Due" heading. "Open work" alone was
          announced almost identically to the Workouts widget's
          "Open Workouts", and did not name the thing on screen. */

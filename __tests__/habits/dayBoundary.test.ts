@@ -9,7 +9,8 @@
 
 import {
   effectiveDateISO, isInGraceWindow, clampCutoff, describeCutoff,
-  loadCutoffHour, saveCutoffHour, DEFAULT_CUTOFF_HOUR, MAX_CUTOFF_HOUR,
+  loadCutoffHour, saveCutoffHour, dayBoundsMs,
+  DEFAULT_CUTOFF_HOUR, MAX_CUTOFF_HOUR,
 } from '@/utils/dayBoundary'
 
 const at = (y: number, m: number, d: number, h: number, min = 0) =>
@@ -120,5 +121,41 @@ describe('describeCutoff', () => {
   it('says plainly what the setting does', () => {
     expect(describeCutoff(0)).toMatch(/midnight/i)
     expect(describeCutoff(4)).toMatch(/day before/i)
+  })
+})
+
+
+describe('dayBoundsMs', () => {
+  it('runs cutoff to cutoff, not midnight to midnight', () => {
+    const [start, end] = dayBoundsMs(at(2026, 9, 8, 14, 0), 4)
+
+    expect(new Date(start)).toEqual(at(2026, 9, 8, 4, 0))
+    expect(new Date(end + 1)).toEqual(at(2026, 9, 9, 4, 0))
+  })
+
+  it('keeps a 00:05 session inside the day it was earned in', () => {
+    // The session that finishes just after midnight. Counted by the
+    // calendar day it would fall into tomorrow and today's tally would
+    // drop to zero at the moment the work was done.
+    const justAfterMidnight = at(2026, 9, 9, 0, 5)
+    const [start, end] = dayBoundsMs(justAfterMidnight, 4)
+
+    expect(justAfterMidnight.getTime()).toBeGreaterThanOrEqual(start)
+    expect(justAfterMidnight.getTime()).toBeLessThanOrEqual(end)
+    expect(new Date(start)).toEqual(at(2026, 9, 8, 4, 0))
+  })
+
+  it('is the plain calendar day when no cutoff is set', () => {
+    const [start, end] = dayBoundsMs(at(2026, 9, 8, 14, 0), 0)
+
+    expect(new Date(start)).toEqual(at(2026, 9, 8, 0, 0))
+    expect(new Date(end + 1)).toEqual(at(2026, 9, 9, 0, 0))
+  })
+
+  it('covers the whole day with no gap between consecutive days', () => {
+    const [, endOfEighth]   = dayBoundsMs(at(2026, 9, 8, 14, 0), 4)
+    const [startOfNinth]    = dayBoundsMs(at(2026, 9, 9, 14, 0), 4)
+
+    expect(startOfNinth - endOfEighth).toBe(1)
   })
 })

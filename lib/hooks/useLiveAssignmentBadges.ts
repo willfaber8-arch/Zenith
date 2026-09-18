@@ -16,7 +16,7 @@ import { useNavBadge }  from '@/lib/NavBadgeContext'
 
 /**
  * Returns the live count of active (non-completed) assignments
- * and keeps the study-shield sidebar badge in sync as a side-effect.
+ * and keeps the Calendar's sidebar badge in sync as a side-effect.
  */
 export function useLiveAssignmentBadges(): number {
   const { setBadge } = useNavBadge()
@@ -26,19 +26,17 @@ export function useLiveAssignmentBadges(): number {
     async (): Promise<number> => {
       if (!db) return 0
       /*
-       * Reminders are excluded on purpose.
+       * Reminders are counted now, where they used to be excluded.
        *
-       * The to-do list was folded into this table (db v46), so it now
-       * holds groceries alongside problem sets. This badge sits on
-       * Study Shield, and a study badge that counts "buy stamps" stops
-       * meaning anything — you learn to ignore it, which is worse than
-       * not having it. Reminders are counted in the Tasks tab, where
-       * they live.
+       * The exclusion existed because the badge sat on Study Shield: a
+       * study badge counting "buy stamps" stops meaning anything. The
+       * badge sits on the Calendar now, which is the one place all
+       * three kinds live, so leaving reminders out would under-report
+       * the tab's own list — the opposite problem.
        */
       return db.assignments
         .where('status')
         .anyOf(['pending', 'in_progress', 'overdue'])
-        .filter(a => a.kind !== 'reminder')
         .count()
     },
     [],
@@ -47,7 +45,10 @@ export function useLiveAssignmentBadges(): number {
 
   /* ── Sync to sidebar badge ─────────────────────────────────── */
   useEffect(() => {
-    setBadge('study-shield', activeCount ?? 0)
+    /* Follows the work: the Tasks tab moved to the Calendar, and a
+       badge pointing at a view that no longer has a task list is just
+       a number you cannot act on. */
+    setBadge('calendar', activeCount ?? 0)
   }, [activeCount, setBadge])
 
   return activeCount ?? 0

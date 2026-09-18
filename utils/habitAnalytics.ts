@@ -8,28 +8,21 @@
  * to a binary done/not-done.
  *
  * Pure module — no React / Dexie imports. Callers pass the rows in.
+ *
+ * ── WHICH DAY IS "TODAY" ──────────────────────────────────────────────
+ * The series is anchored on the *habit* day, not the calendar day. With a
+ * late cutoff configured, a tick at 01:00 is written under yesterday's key;
+ * a chart anchored on the calendar day would put its final point on a date
+ * that has no rows yet, so the score would sit flat at zero however much
+ * work had just been logged. The anchor is a parameter so the awkward hours
+ * can be tested without waiting for 3am.
  */
 
 import type { Habit, HabitCompletion } from '@/lib/db'
 import type { GritDataPoint } from '@/utils/gritScore'
 import { isHabitScheduledOn } from '@/utils/habitSchedule'
-import { toLocalDateStr } from '@/utils/localDate'
-
-/* ── Date helpers (local ISO YYYY-MM-DD) ──────────────────────── */
-
-function isoForOffset(offset: number): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + offset)
-  return toLocalDateStr(d)
-}
-
-function daysSince(iso: string | null): number {
-  if (!iso) return Infinity
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const then  = new Date(iso + 'T12:00:00'); then.setHours(0, 0, 0, 0)
-  return Math.round((today.getTime() - then.getTime()) / 86_400_000)
-}
+import { addDaysISO, diffDaysISO, fromLocalDateStr } from '@/utils/localDate'
+import { currentDayISO } from '@/utils/dayBoundary'
 
 /* ── Completion fraction series ───────────────────────────────── */
 
@@ -48,6 +41,7 @@ export function computeCompletionSeries(
   habits: Habit[],
   completions: HabitCompletion[],
   days = 30,
+  todayISO: string = currentDayISO(),
 ): GritDataPoint[] {
   if (habits.length === 0) return []
 
@@ -60,8 +54,8 @@ export function computeCompletionSeries(
   const points: GritDataPoint[] = []
 
   for (let offset = -(days - 1); offset <= 0; offset++) {
-    const iso  = isoForOffset(offset)
-    const date = new Date(iso + 'T12:00:00')
+    const iso  = addDaysISO(todayISO, offset)
+    const date = fromLocalDateStr(iso)
     const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
     let sum = 0
@@ -105,14 +99,29 @@ export interface BrokenStreak {
  * least one scheduled day was missed). Yesterday (gap === 1) is still
  * "alive" — the user can complete today to continue.
  *
+ * The gap is measured against the habit day, which matters more here than
+ * anywhere else: the caller writes `streakCount: 0` on what this returns.
+ * Anchored on the calendar day, a habit last completed the day before
+ * would read as two days stale at 01:00 and have a live streak destroyed
+ * three hours before the user's day was actually over.
+ *
  * Pure detection only — the caller decides how to surface + reset.
  */
-export function detectBrokenStreaks(habits: Habit[]): BrokenStreak[] {
+export function detectBrokenStreaks(
+  habits: Habit[],
+  todayISO: string = currentDayISO(),
+): BrokenStreak[] {
   const broken: BrokenStreak[] = []
   for (const h of habits) {
     if (h.id == null) continue
     if (h.streakCount <= 0) continue
-    if (daysSince(h.lastCompletedDate) >= 2) {
+    if (!h.lastCompletedDate) {
+      broken.push({ habitId: h.id, name: h.name, lostStreak: h.streakCount })
+      continue
+    }
+    const gap = diffDaysISO(h.lastCompletedDate, todayISO)
+    if (Number.isNaN(gap)) continue
+    if (gap >= 2) {
       broken.push({ habitId: h.id, name: h.name, lostStreak: h.streakCount })
     }
   }

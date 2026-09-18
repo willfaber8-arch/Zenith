@@ -11,7 +11,7 @@
 
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Habit } from '@/lib/db'
-import { toLocalDateStr } from '@/utils/localDate'
+import { currentDayISO } from '@/utils/dayBoundary'
 
 export interface HabitProgressResult {
   /** All tracked habits, ordered by streak desc */
@@ -27,8 +27,14 @@ export interface HabitProgressResult {
 }
 
 export function useHabitProgress(): HabitProgressResult {
-  /* Compute once at call time — stays stable within a render */
-  const todayISO = toLocalDateStr(new Date())
+  /*
+   * The habit day, not the calendar day.
+   *
+   * A tick at 01:00 is written under yesterday's key by design, so a ring
+   * comparing against the calendar day read every habit as untouched and
+   * sat at 0% until 4am — the one time of night it is least deserved.
+   */
+  const todayISO = currentDayISO()
 
   const habits = useLiveQuery(
     async (): Promise<Habit[]> => {

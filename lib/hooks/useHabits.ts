@@ -7,6 +7,7 @@ import { addHabitProgress } from '@/lib/habitSync'
 import { isHabitScheduledOn as scheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { limitStreak } from '@/utils/habitLimit'
 import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
+import { addDaysISO } from '@/utils/localDate'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -22,13 +23,17 @@ export function todayISO(): string {
   return effectiveDateISO(new Date(), typeof window !== 'undefined' ? loadCutoffHour() : 0)
 }
 
-export function isoForDayOffset(offset: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + offset)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+/**
+ * `offset` days from the habit day — not from the calendar day.
+ *
+ * These keys are what the week strip renders and what the completions
+ * query is bounded by. Anchored on the calendar day they disagreed with
+ * `today` during the grace window: the strip's last cell was a day the
+ * hook considered still in the future, and the 30-day range ended a day
+ * short of the point the chart was about to draw.
+ */
+export function isoForDayOffset(offset: number, anchorISO: string = todayISO()): string {
+  return addDaysISO(anchorISO, offset)
 }
 
 export function dayOfWeekForISO(iso: string): number {
@@ -73,8 +78,8 @@ export interface NewHabitInput {
 
 /* ── Week dates helper ────────────────────────────────────── */
 
-export function getWeekDates(): string[] {
-  return Array.from({ length: 7 }, (_, i) => isoForDayOffset(i - 6))
+export function getWeekDates(anchorISO: string = todayISO()): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDaysISO(anchorISO, i - 6))
 }
 
 /* ── Hook ─────────────────────────────────────────────────── */
@@ -92,7 +97,7 @@ export function useHabits() {
    */
   const cutoffHour = typeof window !== 'undefined' ? loadCutoffHour() : 0
   const today      = effectiveDateISO(new Date(), cutoffHour)
-  const weekDates = getWeekDates()
+  const weekDates = getWeekDates(today)
 
   const habits = useLiveQuery(
     () => db?.habits.toArray() ?? Promise.resolve([]),

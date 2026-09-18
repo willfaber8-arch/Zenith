@@ -31,6 +31,7 @@ import { db, type Habit } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
 import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { toLocalDateStr } from '@/utils/localDate'
+import { roundAmount } from '@/utils/habitAmount'
 import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
 
 /* ── Source registry ──────────────────────────────────────────── */
@@ -113,7 +114,17 @@ export async function addHabitProgress(
     .first()
 
   const prevCount = existing?.count ?? 0
-  const newCount  = prevCount + amount   // no cap — user can tap past goal
+  /*
+   * Rounded, because steps can be fractional.
+   *
+   * A step of 0.1 taken ten times sums to 0.9999999999999999 in binary
+   * floating point, which is less than a goal of 1 — the habit would
+   * read as finished and refuse to complete, and the streak would never
+   * increment. Snapping to the stored precision on every write keeps
+   * ten tenths worth exactly one. No cap: tapping past the goal is
+   * allowed and is how the over-goal streak is earned.
+   */
+  const newCount  = roundAmount(prevCount + amount)
 
   if (existing?.id != null) {
     await db.habitCompletions.update(existing.id, { count: newCount })
