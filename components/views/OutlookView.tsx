@@ -12,6 +12,7 @@ import {
   type HabitWithCompletion,
 } from '@/lib/hooks/useHabits'
 import { wateringInfo, computeGardenStats } from '@/utils/botanyStats'
+import { formatAmount } from '@/utils/habitAmount'
 import { hasDueDate } from '@/utils/taskUnify'
 import type { PlantLogEntry } from '@/types/botany'
 import Icon from '@/components/ui/Icon'
@@ -217,8 +218,8 @@ function TodayPanel({ habits, increment, events, assignments }: PanelProps) {
               const pct   = h.todayCount / h.targetCompletions
               const color = h.color ?? '#7c95ff'
               const label = h.stepLabel
-                ? `${h.todayCount}/${h.targetCompletions} ${h.stepLabel}`
-                : h.todayDone ? 'Done' : `${h.todayCount}/${h.targetCompletions}`
+                ? `${formatAmount(h.todayCount)}/${formatAmount(h.targetCompletions)} ${h.stepLabel}`
+                : h.todayDone ? 'Done' : `${formatAmount(h.todayCount)}/${formatAmount(h.targetCompletions)}`
               return (
                 <li key={h.id} className={`${styles.habitRow} ${h.todayDone ? styles.habitDone : ''}`}>
                   <HabitRing pct={pct} color={color} />
