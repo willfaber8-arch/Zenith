@@ -32,6 +32,7 @@ import {
 } from '@/lib/notificationCenter'
 import { wateringInfo } from '@/utils/botanyStats'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import { currentDayISO, dayBoundsMs } from '@/utils/dayBoundary'
 import { dueEndOfDayMs } from '@/utils/taskUnify'
 
 /* ── Local date helpers ────────────────────────────────────────── */
@@ -80,6 +81,18 @@ export function useNotificationCenter(): NotificationCenterApi {
 
   const [start, end] = todayBounds()
   const iso = todayISO()
+  /*
+   * Habit rows are keyed by the habit day and everything else here by the
+   * calendar day, so the two cannot share one binding. Due dates, the
+   * plant pings and the once-a-day summary all mean the date on the wall
+   * calendar; the habit checklist means the day the user is still in, and
+   * reading it off the calendar showed every habit as untouched between
+   * midnight and the cutoff however many had just been ticked.
+   */
+  const habitIso = currentDayISO()
+  /* Focus sessions are stamped with a time, not a date key, so the same
+     distinction applies to them by timestamp instead. */
+  const [habitStart, habitEnd] = dayBoundsMs()
 
   /* ── Live IDB reads for the daily summary ──────────────────── */
 
@@ -98,17 +111,18 @@ export function useNotificationCenter(): NotificationCenterApi {
     [start, end], [],
   )
   const todayCompletions = useLiveQuery(
-    () => db?.habitCompletions.where('date').equals(iso).toArray() ?? Promise.resolve([]),
-    [iso], [],
+    () => db?.habitCompletions.where('date').equals(habitIso).toArray() ?? Promise.resolve([]),
+    [habitIso], [],
   )
   const habits = useLiveQuery(
     () => db?.habits.toArray() ?? Promise.resolve([]),
     [], [],
   )
   const focusToday = useLiveQuery(
-    () => db?.pomodoroSessions.where('completedAt').between(start, end, true, true).toArray()
+    () => db?.pomodoroSessions.where('completedAt')
+      .between(habitStart, habitEnd, true, true).toArray()
        ?? Promise.resolve([]),
-    [start, end], [],
+    [habitStart, habitEnd], [],
   )
   const moodToday = useLiveQuery(
     () => db?.mentalHealthLogs.where('logDate').equals(iso).toArray() ?? Promise.resolve([]),

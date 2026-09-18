@@ -4,33 +4,33 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db }           from '@/lib/db'
 import { useNav }       from '@/lib/NavContext'
 import styles from './Widget.module.css'
-import { toLocalDateStr } from '@/utils/localDate'
+import { dayBoundsMs } from '@/utils/dayBoundary'
 
 export default function StudyStreakWidget() {
   const { navigate } = useNav()
 
-  const today = toLocalDateStr(new Date())
-  const weekAgo = (() => {
-    const d = new Date()
+  /*
+   * "Sessions today" runs cutoff to cutoff, not midnight to midnight.
+   *
+   * Counted by the calendar day, a session finished at 00:05 reset the
+   * number to zero at the moment it was earned — the user watched the
+   * count they had just added to go back to nothing mid-study.
+   */
+  const [todayStart, todayEnd] = dayBoundsMs()
+  const weekStart = (() => {
+    const d = new Date(todayStart)
     d.setDate(d.getDate() - 6)
-    return toLocalDateStr(d)
+    return d.getTime()
   })()
 
   const sessions = useLiveQuery(
     () => db?.pomodoroSessions
       .where('completedAt')
-      .between(
-        new Date(weekAgo + 'T00:00:00').getTime(),
-        new Date(today   + 'T23:59:59').getTime(),
-        true, true,
-      )
+      .between(weekStart, todayEnd, true, true)
       .toArray() ?? Promise.resolve([]),
-    [today, weekAgo],
+    [weekStart, todayEnd],
     [],
   )
-
-  const todayStart = new Date(today + 'T00:00:00').getTime()
-  const todayEnd   = new Date(today + 'T23:59:59').getTime()
 
   const todaySessions  = (sessions ?? []).filter(
     s => s.sessionType === 'work' && s.completedAt >= todayStart && s.completedAt <= todayEnd

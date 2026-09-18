@@ -93,3 +93,47 @@ export function describeCutoff(hour: number): string {
     .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   return `Days end at ${label} — anything logged before then counts for the day before`
 }
+
+/**
+ * The habit day as of right now, honouring the stored cutoff.
+ *
+ * The convenience that stops the cutoff from being half-applied. Every
+ * place that asks "what day is it" for a habit — the streak, the ring,
+ * the trend chart, the grit score — has to agree, or a tick at 01:00
+ * gets written to one day and read back from another and looks to the
+ * user like it did nothing at all.
+ *
+ * On the server there is no localStorage and no user, so it falls back
+ * to a plain midnight rollover; every caller re-reads on the client.
+ */
+export function currentDayISO(now: Date = new Date()): string {
+  const cutoff = typeof window !== 'undefined' ? loadCutoffHour() : 0
+  return effectiveDateISO(now, cutoff)
+}
+
+/**
+ * The timestamp range covered by the current habit day.
+ *
+ * For anything logged by the clock rather than by a date key — a focus
+ * session, a timed workout — "today" has to run from the cutoff to the
+ * next cutoff, not from midnight to midnight. Otherwise the session you
+ * are in the middle of at 00:05 stops counting towards today while you
+ * are still sitting at it.
+ *
+ * Both ends are built by stepping the date component, so a daylight
+ * saving change inside the window doesn't shift the boundary by an hour.
+ */
+export function dayBoundsMs(now: Date = new Date(), cutoffHour?: number): [number, number] {
+  const cutoff = clampCutoff(
+    cutoffHour ?? (typeof window !== 'undefined' ? loadCutoffHour() : 0),
+  )
+
+  const start = new Date(now.getTime())
+  start.setHours(cutoff, 0, 0, 0)
+  if (now.getHours() < cutoff) start.setDate(start.getDate() - 1)
+
+  const end = new Date(start.getTime())
+  end.setDate(end.getDate() + 1)
+
+  return [start.getTime(), end.getTime() - 1]
+}

@@ -108,3 +108,34 @@ export function daysSinceLocalDate(iso: string, now: Date = new Date()): number 
   const to = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   return Math.round((to.getTime() - from.getTime()) / 86_400_000)
 }
+
+/**
+ * `n` days from a `YYYY-MM-DD` key, as another key. Negative steps back.
+ *
+ * Anchored on the date *component* for the same reason as `daysAgoISO`:
+ * adding `n * 86_400_000` ms to a local midnight lands an hour either
+ * side of midnight on a daylight-saving boundary, and therefore on the
+ * wrong day.
+ */
+export function addDaysISO(iso: string, n: number): string {
+  const d = fromLocalDateStr(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  d.setDate(d.getDate() + n)
+  return toLocalDateStr(d)
+}
+
+/**
+ * Whole calendar days from one `YYYY-MM-DD` key to another.
+ *
+ * Both ends are converted to UTC midnights purely as a counting device —
+ * no timezone is implied — so the subtraction is exact and a daylight
+ * saving shift in between cannot knock the answer a day out. Negative
+ * when `toISO` is the earlier of the two.
+ */
+export function diffDaysISO(fromISO: string, toISO: string): number {
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fromISO)
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(toISO)
+  if (!a || !b) return NaN
+  const ms = (m: RegExpExecArray) => Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Math.round((ms(b) - ms(a)) / 86_400_000)
+}

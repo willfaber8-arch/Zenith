@@ -749,15 +749,18 @@ export default function HabitsView() {
   )
 
   /* 30-day completion log — drives the partial-aware analytics trend. */
-  const thirtyDaysAgo = isoForDayOffset(-29)
+  const thirtyDaysAgo = isoForDayOffset(-29, today)
   const completions30 = useLiveQuery(
     () => db?.habitCompletions.where('date').between(thirtyDaysAgo, today, true, true).toArray()
        ?? Promise.resolve([]),
     [thirtyDaysAgo, today],
     [],
   )
+  /* Anchored on the habit day the hook is using, not re-derived: the
+     query range and the series have to end on the same date or the last
+     point is a day the completions query never fetched. */
   const gritPoints = (allHabits && allHabits.length > 0)
-    ? computeCompletionSeries(allHabits, completions30 ?? [], 30)
+    ? computeCompletionSeries(allHabits, completions30 ?? [], 30, today)
     : []
 
   /* First-run: auto-load the General starter pack (once, only when empty). */
@@ -774,7 +777,7 @@ export default function HabitsView() {
   useEffect(() => {
     if (reconciledRef.current || !allHabits || allHabits.length === 0 || !db) return
     reconciledRef.current = true
-    const broken = detectBrokenStreaks(allHabits)
+    const broken = detectBrokenStreaks(allHabits, today)
     if (broken.length === 0) return
     void (async () => {
       for (const b of broken) {
@@ -796,7 +799,7 @@ export default function HabitsView() {
         'info',
       )
     })()
-  }, [allHabits, toast])
+  }, [allHabits, toast, today])
 
   /* Recomputed on render; the window closes on its own once the hour passes. */
   const graceNote = useMemo(() => {
