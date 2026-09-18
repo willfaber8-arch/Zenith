@@ -154,9 +154,18 @@ export default function GritAnalyticsChart({ points }: Props) {
         <div className={styles.emptyState} role="status">
           <span className={styles.emptyIcon} aria-hidden="true">◈</span>
           <p className={styles.emptyText}>No habit data to analyse yet.</p>
+          {/*
+            * Names the action, not a place.
+            *
+            * This used to send people to Study Shield, which has never
+            * tracked habits — and the only view that renders this chart
+            * is the Habits view, so the reader is already standing in
+            * the place the old copy would have sent them to if it had
+            * named the right one.
+            */}
           <p className={styles.emptySubtext}>
-            Start tracking habits in Study Shield to see your Grit Score
-            develop over time.
+            Add a habit and start ticking it off — your Grit Score builds
+            from the last 30 days.
           </p>
         </div>
       </div>

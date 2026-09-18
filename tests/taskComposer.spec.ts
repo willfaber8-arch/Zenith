@@ -136,3 +136,72 @@ test.describe('Study Shield', () => {
     expect(labels).toContain('Review')
   })
 })
+
+test.describe('tasks that existed before the reorganisation', () => {
+
+  test('are all still there, and all still reachable', async ({ page, context }) => {
+    await injectAuth(context)
+    await context.addInitScript(() => {
+      localStorage.setItem('zenith_onboarding_completed_v1', 'true')
+      localStorage.setItem('zenith_tutorial_v1', JSON.stringify({ sessionsShown: 9 }))
+    })
+    await page.goto('/')
+    await waitForBridge(page)
+
+    /*
+     * Seeded the way they would already exist: every kind, filed and
+     * unfiled, open and done. Two screens used to write these rows and
+     * one of those screens is gone — the rows it wrote are ordinary
+     * rows in `assignments` and have to stay readable from the one that
+     * remains, including the completed ones behind "Show done".
+     */
+    await page.evaluate(async () => {
+      const db = window.__zenith!.db
+      const now = Date.now()
+      /* `as const` on the union fields: a widened `string` does not
+         satisfy Dexie's InsertType and fails the typecheck CI runs. */
+      const base = {
+        status: 'pending' as const, priority: 'medium' as const,
+        category: 'scholastic', kind: 'task' as const,
+        courseId: '', dueDate: '',
+        createdAt: now, updatedAt: now,
+      }
+      await db.assignments.bulkAdd([
+        { ...base, title: 'Filed task',          listId: 1 },
+        { ...base, title: 'Unfiled task' },
+        { ...base, title: 'A reminder',          kind: 'reminder' as const, category: 'life' },
+        { ...base, title: 'A problem set',       kind: 'problem_set' as const, problems: [] },
+        { ...base, title: 'Already done',        status: 'completed' as const, completedAt: now },
+        { ...base, title: 'Filed in a dead list', listId: 9999 },
+      ])
+    })
+
+    await page.reload()
+    await waitForBridge(page)
+
+    /* Nothing was dropped on the way through. */
+    const titles = await page.evaluate(async () => {
+      const rows = await window.__zenith!.db.assignments.toArray()
+      return (rows as { title: string }[]).map(r => r.title).sort()
+    })
+    expect(titles).toEqual([
+      'A problem set', 'A reminder', 'Already done', 'Filed in a dead list',
+      'Filed task', 'Unfiled task',
+    ])
+
+    await openTasksTab(page)
+    await expect(page.getByPlaceholder('Add a task…')).toBeVisible({ timeout: 15_000 })
+
+    /* And every open one is on screen — a row whose list no longer
+       exists has to surface under Unfiled rather than vanish with it. */
+    for (const t of ['Filed task', 'Unfiled task', 'A reminder',
+                     'A problem set', 'Filed in a dead list']) {
+      await expect(page.getByText(t, { exact: true })).toBeVisible()
+    }
+
+    /* The completed one is hidden, not deleted. */
+    await expect(page.getByText('Already done', { exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Show done' }).click()
+    await expect(page.getByText('Already done', { exact: true })).toBeVisible()
+  })
+})
