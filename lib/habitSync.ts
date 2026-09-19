@@ -193,6 +193,58 @@ export async function addHabitProgress(
   return { completedNow, newCount, crossedLimit }
 }
 
+/* ── Skipping a day ──────────────────────────────────────────── */
+
+/**
+ * Toggle whether `habitId` is skipped for `dateISO` (default: the habit
+ * day). A skipped day is stored on the habit itself in `skippedDates`,
+ * the same non-indexed-field pattern as `color` or `notes` — no schema
+ * migration for something a habit either has or doesn't.
+ *
+ * That's the whole write. Nothing else — streakCount, lastCompletedDate,
+ * allTimeHighStreak — is touched, because nothing else needs to be:
+ * `isHabitScheduledOn` already checks `skippedDates` first, so every
+ * reader that decides whether a day was due (the streak walk, the
+ * weekly ratio, the grit average, this same file's own gate above)
+ * starts treating the day as never scheduled the moment this list
+ * changes, without a separate recalculation step.
+ *
+ * Refuses to skip a day that already has something logged — a skip is
+ * a decision made instead of doing the habit, not a way to make logged
+ * progress stop counting. Unskipping has no such guard; it only ever
+ * puts a day back the way an untouched day already looks.
+ *
+ * Returns which way it went, or null on a no-op (habit missing, or a
+ * skip refused because the day isn't empty) so the caller can decide
+ * whether to say anything.
+ */
+export async function toggleHabitSkip(
+  habitId: number,
+  dateISO: string = effectiveDateISO(new Date(),
+    typeof window !== 'undefined' ? loadCutoffHour() : 0),
+): Promise<'skipped' | 'unskipped' | null> {
+  if (!db) return null
+  const habit = await db.habits.get(habitId)
+  if (!habit) return null
+
+  const skippedDates = habit.skippedDates ?? []
+
+  if (skippedDates.includes(dateISO)) {
+    await db.habits.update(habitId, {
+      skippedDates: skippedDates.filter(d => d !== dateISO),
+    })
+    return 'unskipped'
+  }
+
+  const existing = await db.habitCompletions
+    .where('[habitId+date]').equals([habitId, dateISO])
+    .first()
+  if (existing && existing.count > 0) return null
+
+  await db.habits.update(habitId, { skippedDates: [...skippedDates, dateISO] })
+  return 'skipped'
+}
+
 /* ── Auto-sync dispatch ───────────────────────────────────────── */
 
 /**

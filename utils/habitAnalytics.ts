@@ -20,8 +20,8 @@
 
 import type { Habit, HabitCompletion } from '@/lib/db'
 import type { GritDataPoint } from '@/utils/gritScore'
-import { isHabitScheduledOn } from '@/utils/habitSchedule'
-import { addDaysISO, diffDaysISO, fromLocalDateStr } from '@/utils/localDate'
+import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
+import { addDaysISO, fromLocalDateStr } from '@/utils/localDate'
 import { currentDayISO } from '@/utils/dayBoundary'
 
 /* ── Completion fraction series ───────────────────────────────── */
@@ -95,9 +95,28 @@ export interface BrokenStreak {
 
 /**
  * A streak is considered LOST when the habit still carries a positive
- * `streakCount` but its last full completion was 2+ days ago (i.e. at
- * least one scheduled day was missed). Yesterday (gap === 1) is still
- * "alive" — the user can complete today to continue.
+ * `streakCount` but the occurrence immediately before today — the last
+ * time it was actually due — was not the one it was last completed on.
+ * Today itself is never enough on its own to break it: the user can
+ * still complete today to continue.
+ *
+ * This is deliberately the same rule `addHabitProgress` uses to decide
+ * whether a completion continues a streak, read backwards
+ * (`lastCompletedDate === previousScheduledDate`) rather than a
+ * separate "how many calendar days" count. Two consequences follow from
+ * sharing it instead of re-deriving it:
+ *
+ *   A specific-days habit's own off days no longer count against it —
+ *   the old calendar-day gap flagged a Mon/Wed/Fri habit as broken on
+ *   Wednesday morning, before that day's occurrence had even happened,
+ *   because two calendar days had passed since Monday.
+ *
+ *   A skipped day is transparent to it. `previousScheduledDate` already
+ *   walks straight past anything in `skippedDates` (that is the whole
+ *   point of `isHabitScheduledOn` checking skips first), so the
+ *   occurrence "immediately before today" lands on the last day that
+ *   was genuinely due — exactly as if the skipped day were never on the
+ *   calendar, which is what a skip is for.
  *
  * The gap is measured against the habit day, which matters more here than
  * anywhere else: the caller writes `streakCount: 0` on what this returns.
@@ -119,11 +138,13 @@ export function detectBrokenStreaks(
       broken.push({ habitId: h.id, name: h.name, lostStreak: h.streakCount })
       continue
     }
-    const gap = diffDaysISO(h.lastCompletedDate, todayISO)
-    if (Number.isNaN(gap)) continue
-    if (gap >= 2) {
-      broken.push({ habitId: h.id, name: h.name, lostStreak: h.streakCount })
-    }
+    if (h.lastCompletedDate === todayISO) continue   // already done today
+
+    const prevScheduled = previousScheduledDate(h, todayISO)
+    if (prevScheduled == null) continue              // nothing due before today yet
+    if (h.lastCompletedDate === prevScheduled) continue   // yesterday's occurrence — still alive
+
+    broken.push({ habitId: h.id, name: h.name, lostStreak: h.streakCount })
   }
   return broken
 }

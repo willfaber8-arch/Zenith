@@ -3,8 +3,8 @@
 import { useCallback }    from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db, type Habit, type HabitCompletion, type HabitFrequency } from '@/lib/db'
-import { addHabitProgress } from '@/lib/habitSync'
-import { isHabitScheduledOn as scheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
+import { addHabitProgress, toggleHabitSkip } from '@/lib/habitSync'
+import { isHabitScheduledOn as scheduledOn, isSkippedOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { limitStreak } from '@/utils/habitLimit'
 import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
 import { addDaysISO } from '@/utils/localDate'
@@ -55,6 +55,11 @@ export interface HabitWithCompletion extends Habit {
 export interface DayStatus {
   iso:       string
   scheduled: boolean
+  /* Explicitly skipped — a subset of !scheduled. Kept separate from
+     `scheduled` so the UI can tell "never due" (blank) apart from
+     "was due, marked not required" (its own light indicator) instead
+     of both collapsing to the same not-scheduled dot. */
+  skipped:   boolean
   count:     number
   target:    number
   done:      boolean
@@ -148,6 +153,7 @@ export function useHabits() {
       return {
         iso,
         scheduled: isHabitScheduledOn(habit, iso),
+        skipped:   isSkippedOn(habit, iso),
         count,
         target:    habit.targetCompletions,
         done,
@@ -181,6 +187,10 @@ export function useHabits() {
     // The result is handed back so the caller can react to the press that
     // actually completed the habit without re-deriving that rule itself.
     return addHabitProgress(habitId, habit.stepAmount ?? 1, today)
+  }, [today])
+
+  const toggleSkip = useCallback(async (habitId: number) => {
+    return toggleHabitSkip(habitId, today)
   }, [today])
 
   const createHabit = useCallback(async (input: NewHabitInput) => {
@@ -228,6 +238,7 @@ export function useHabits() {
     scheduledCount: scheduledToday.length,
     doneCount: doneToday,
     increment,
+    toggleSkip,
     createHabit,
     deleteHabit,
     updateHabit,

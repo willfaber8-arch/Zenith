@@ -21,6 +21,17 @@
  *                                              last occurrence when a month
  *                                              has no 5th of that weekday
  *
+ * Skipped days
+ * ─────────────────────────────────────────────────────────────────────
+ * `habit.skippedDates` names days that were never due at all — not
+ * completed, not missed, just off the calendar for that one occurrence
+ * (shaving on a beard-growing week, a rest day on a workout habit).
+ * `isHabitScheduledOn` checks it before anything else, which is what
+ * makes every reader that already asks "was this due?" — the streak
+ * continuity walk, the weekly consistency ratio, the completion button,
+ * the grit average — treat a skip exactly like an ordinary off day
+ * without any of them needing to know skips exist as a separate concept.
+ *
  * Pure module — no React / Dexie imports.
  */
 
@@ -88,7 +99,24 @@ function monthlyScheduledDay(habit: Habit, year: number, month0: number): number
 
 /* ── Public API ───────────────────────────────────────────────── */
 
+/** True when `iso` was explicitly skipped for this habit. */
+export function isSkippedOn(habit: Habit, iso: string): boolean {
+  return habit.skippedDates?.includes(iso) ?? false
+}
+
+/**
+ * Bound on how many prior occurrences `previousScheduledDate` will walk
+ * past while every one of them turns out to be skipped, for the two
+ * frequencies (`biweekly`, `monthly`) whose occurrence math does not
+ * already run through this function. ~4 years of biweekly occurrences —
+ * generous for a habit anyone would actually leave that continuously
+ * skipped, and cheap even so: this only runs on a completion press or a
+ * streak reconciliation, never inside a per-day analytics loop.
+ */
+const MAX_SKIP_WALK = 104
+
 export function isHabitScheduledOn(habit: Habit, iso: string): boolean {
+  if (isSkippedOn(habit, iso)) return false
   switch (habit.frequency) {
     case 'biweekly': {
       if (!habit.startDate || iso < habit.startDate) return false
@@ -116,23 +144,43 @@ export function isHabitScheduledOn(habit: Habit, iso: string): boolean {
  */
 export function previousScheduledDate(habit: Habit, iso: string): string | null {
   switch (habit.frequency) {
+    /*
+     * biweekly / monthly land on a single arithmetic date rather than
+     * walking day by day, so a skip on that one date has to be handled
+     * here explicitly — stepping to the occurrence before it and trying
+     * again, rather than returning a date that was never actually due.
+     */
     case 'biweekly': {
       if (!habit.startDate) return null
-      const prev = parseLocalISO(iso)
-      prev.setDate(prev.getDate() - 14)
-      const prevISO = toLocalISO(prev)
-      return prevISO >= habit.startDate ? prevISO : null
+      let cursor = iso
+      for (let i = 0; i < MAX_SKIP_WALK; i++) {
+        const prev = parseLocalISO(cursor)
+        prev.setDate(prev.getDate() - 14)
+        const prevISO = toLocalISO(prev)
+        if (prevISO < habit.startDate) return null
+        if (!isSkippedOn(habit, prevISO)) return prevISO
+        cursor = prevISO
+      }
+      return null
     }
     case 'monthly': {
       if (!habit.startDate) return null
-      const cur      = parseLocalISO(iso)
-      const pm       = new Date(cur.getFullYear(), cur.getMonth() - 1, 1)
-      const schedDay = monthlyScheduledDay(habit, pm.getFullYear(), pm.getMonth())
-      if (schedDay == null) return null
-      const prevISO = toLocalISO(new Date(pm.getFullYear(), pm.getMonth(), schedDay))
-      return prevISO >= habit.startDate ? prevISO : null
+      let cursor = iso
+      for (let i = 0; i < MAX_SKIP_WALK; i++) {
+        const cur      = parseLocalISO(cursor)
+        const pm       = new Date(cur.getFullYear(), cur.getMonth() - 1, 1)
+        const schedDay = monthlyScheduledDay(habit, pm.getFullYear(), pm.getMonth())
+        if (schedDay == null) return null
+        const prevISO = toLocalISO(new Date(pm.getFullYear(), pm.getMonth(), schedDay))
+        if (prevISO < habit.startDate) return null
+        if (!isSkippedOn(habit, prevISO)) return prevISO
+        cursor = prevISO
+      }
+      return null
     }
-    // daily / specific_days — walk back up to 7 days to the prior scheduled day.
+    // daily / specific_days — walk back up to 7 days to the prior
+    // scheduled day. isHabitScheduledOn already excludes skipped days,
+    // so this needs no separate skip handling.
     default: {
       const d = parseLocalISO(iso)
       for (let i = 1; i <= 7; i++) {

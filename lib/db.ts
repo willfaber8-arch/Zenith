@@ -234,6 +234,7 @@ export interface Habit {
   lastExceededDate?:  string            //   last ISO date when count > target (at_least only)
   startDate?:         string            //   ISO anchor date for biweekly/monthly cadence
   monthlyMode?:       'date' | 'weekday'//   monthly recurrence: same day-of-month vs same weekday slot
+  skippedDates?:      string[]          //   ISO dates explicitly skipped — not done, not missed
   notes?:             string
   createdAt:          number
   supabaseId?:        string

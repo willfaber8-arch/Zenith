@@ -156,15 +156,16 @@ function useCompletionBurst() {
 
 /* ── Habit row ────────────────────────────────────────────── */
 function HabitRow({
-  habit, today, weekDates, onIncrement, onDelete, onEdit, editMode,
+  habit, today, weekDates, onIncrement, onToggleSkip, onDelete, onEdit, editMode,
 }: {
-  habit:       HabitWithCompletion
-  today:       string
-  weekDates:   string[]
-  onIncrement: (id: number, e: React.MouseEvent) => void
-  onDelete:    (id: number) => void
-  onEdit:      (habit: HabitWithCompletion) => void
-  editMode:    boolean
+  habit:        HabitWithCompletion
+  today:        string
+  weekDates:    string[]
+  onIncrement:  (id: number, e: React.MouseEvent) => void
+  onToggleSkip: (id: number) => void
+  onDelete:     (id: number) => void
+  onEdit:       (habit: HabitWithCompletion) => void
+  editMode:     boolean
 }) {
   const isAtMost       = (habit.goalType ?? 'at_least') === 'at_most'
   const target         = habit.targetCompletions > 0 ? habit.targetCompletions : 1
@@ -176,7 +177,17 @@ function HabitRow({
     ? Math.round(((habit.todayCount - habit.targetCompletions) / habit.targetCompletions) * 100)
     : 0
   const isWarning      = isAtMost && habit.todayCount > habit.targetCompletions
-  const todayScheduled = habit.weekData.find(d => d.iso === today)?.scheduled ?? false
+  const todayDay       = habit.weekData.find(d => d.iso === today)
+  const todayScheduled = todayDay?.scheduled ?? false
+  /*
+   * Distinct from `todayScheduled`: a skip makes that false too (it's
+   * what keeps a skipped day out of the streak and grit maths), but the
+   * row still needs to say WHY there's nothing to tap today rather than
+   * just going quiet like a genuine off-day would.
+   */
+  const todaySkipped   = todayDay?.skipped ?? false
+  const canSkip         = !editMode && !todaySkipped && todayScheduled
+    && !habit.todayDone && habit.todayCount === 0
   const allTimeHigh    = habit.allTimeHighStreak ?? habit.streakCount
   const habitColor     = habit.color ?? '#7c95ff'
   const autoMeta       = habitSourceMeta(habit.autoSource)
@@ -188,6 +199,7 @@ function HabitRow({
         habit.todayDone && todayScheduled ? styles.habitRowDone : '',
         isWarning ? styles.habitRowOver : '',
         editMode ? styles.habitRowEdit : '',
+        todaySkipped && !editMode ? styles.habitRowSkipped : '',
       ].filter(Boolean).join(' ')}
       style={{ '--habit-color': habitColor } as React.CSSProperties}
     >
@@ -202,7 +214,26 @@ function HabitRow({
             overflowPct={overflowPct}
             warning={isWarning}
           />
-          {todayScheduled && !editMode && (
+          {todaySkipped && !editMode && (
+            /*
+             * Occupies the exact slot the tap button would — the one
+             * place on the row someone glancing for "what do I do
+             * today" already looks. Clicking it undoes the skip rather
+             * than logging anything, which is why it sits over the
+             * same circle instead of beside it: the button IS today's
+             * state for this habit right now.
+             */
+            <button
+              type="button"
+              className={styles.skipBadge}
+              onClick={() => onToggleSkip(habit.id)}
+              aria-label={`Skipped today — click to make ${habit.name} due again`}
+              title="Skipped today — click to undo"
+            >
+              <Icon name="moon" size={16} />
+            </button>
+          )}
+          {todayScheduled && !todaySkipped && !editMode && (
             <button
               type="button"
               className={[
@@ -265,6 +296,21 @@ function HabitRow({
           {weekDates.map((iso) => {
             const day = habit.weekData.find(d => d.iso === iso)
             const isToday = iso === today
+            /* Its own dot, checked ahead of the plain "not scheduled"
+               case — a skip is a decision, an off-day is just absence,
+               and collapsing both to the same blank dot would make the
+               decision invisible a day later, once it has scrolled out
+               of "today" into the strip's past. */
+            if (day?.skipped) {
+              return (
+                <span
+                  key={iso}
+                  className={`${styles.dotSkipped} ${isToday ? styles.dotToday : ''}`}
+                  aria-label={`${iso}: skipped`}
+                  title="Skipped"
+                />
+              )
+            }
             if (!day?.scheduled) return <span key={iso} className={styles.dotEmpty} aria-hidden="true" />
             const frac    = day.target > 0 ? Math.min(1, day.count / day.target) : 0
             const partial = !day.done && frac > 0
@@ -283,6 +329,24 @@ function HabitRow({
 
       {/* Right: streak / edit actions */}
       <div className={styles.habitRight}>
+        {/*
+          * Only offered while there is still something to decide: once
+          * anything is logged, skipping would either erase real
+          * progress or make no sense, so the button steps aside rather
+          * than staying visible and disabled.
+          */}
+        {canSkip && (
+          <button
+            type="button"
+            className={styles.skipBtn}
+            onClick={() => onToggleSkip(habit.id)}
+            aria-label={`Skip ${habit.name} today — won't count as missed`}
+            title="Not required today"
+          >
+            <Icon name="moon" size={12} />
+          </button>
+        )}
+
         {!editMode && habit.streakCount > 0 && (
           <span className={`${styles.streak} ${habit.streakCount >= 7 ? styles.streakHot : ''}`}>
             <Icon name="flame" size={13} /> {habit.streakCount}
@@ -319,16 +383,22 @@ function HabitRow({
 
 /* ── Category section header ──────────────────────────────── */
 function CategorySection({
-  category, habits, collapsed, onToggle, children,
+  category, habits, today, collapsed, onToggle, children,
 }: {
   category:  string
   habits:    HabitWithCompletion[]
+  today:     string
   collapsed: boolean
   onToggle:  () => void
   children:  React.ReactNode
 }) {
-  const done  = habits.filter(h => h.todayDone).length
-  const total = habits.length
+  /* Skipped-today habits ride along in `habits` (see visibleHabits) so
+     their row stays on screen, but a skip means "not required" —
+     counting one in the denominator here would make the ratio unable
+     to reach 100% over something the day no longer asks for. */
+  const counted = habits.filter(h => !h.weekData.find(d => d.iso === today)?.skipped)
+  const done  = counted.filter(h => h.todayDone).length
+  const total = counted.length
 
   return (
     <div className={styles.categorySection}>
@@ -770,7 +840,7 @@ export default function HabitsView() {
   const {
     habits, weekDates, today, dailyPct,
     scheduledCount, doneCount,
-    increment, createHabit, deleteHabit, updateHabit,
+    increment, toggleSkip, createHabit, deleteHabit, updateHabit,
   } = useHabits()
 
   const { toast }               = useToast()
@@ -885,6 +955,18 @@ export default function HabitsView() {
     }
   }, [habits, increment, burst, toast])
 
+  const handleToggleSkip = useCallback(async (habitId: number) => {
+    const habit = habits.find(h => h.id === habitId)
+    if (!habit) return
+    const result = await toggleSkip(habitId)
+    if (result === 'skipped') {
+      toast(`"${habit.name}" skipped today — won't count as missed.`, 'info')
+    } else if (result === 'unskipped') {
+      toast(`"${habit.name}" is back on today.`, 'info')
+    }
+    // null: already has progress logged, or habit vanished mid-click — silent no-op.
+  }, [habits, toggleSkip, toast])
+
   const handleDelete = useCallback(async (habitId: number) => {
     const habit = habits.find(h => h.id === habitId)
     if (!habit) return
@@ -924,11 +1006,20 @@ export default function HabitsView() {
     })
   }, [])
 
-  /* In the day's list, show only habits scheduled today. Edit mode reveals
-     all habits (incl. off-day ones) so they can be managed any day. */
+  /*
+   * In the day's list, show habits scheduled today — plus, separately,
+   * habits skipped today. A skip makes `isHabitScheduledOn` false (that
+   * is what keeps it out of the streak/grit maths), so without this
+   * second clause a skipped habit would vanish the moment it was
+   * skipped, with no row left to show the indicator on or to un-skip
+   * from. Edit mode reveals every habit (incl. genuine off-days) so
+   * they can be managed any day.
+   */
   const visibleHabits = editMode
     ? habits
-    : (habits ?? []).filter(h => isHabitScheduledOn(h, today))
+    : (habits ?? []).filter(h =>
+        isHabitScheduledOn(h, today) || h.weekData.find(d => d.iso === today)?.skipped,
+      )
 
   /* Group habits by category */
   const grouped = visibleHabits.reduce<Record<string, HabitWithCompletion[]>>((acc, h) => {
@@ -1049,7 +1140,8 @@ export default function HabitsView() {
                 <div key={habit.id} className={`anim-slide-in ${i < 4 ? `delay-${i + 1}` : ''}`}>
                   <HabitRow
                     habit={habit} today={today} weekDates={weekDates}
-                    onIncrement={handleIncrement} onDelete={handleDelete}
+                    onIncrement={handleIncrement} onToggleSkip={handleToggleSkip}
+                    onDelete={handleDelete}
                     onEdit={h => setEditTarget(h)} editMode={editMode}
                   />
                 </div>
@@ -1062,6 +1154,7 @@ export default function HabitsView() {
                   key={cat}
                   category={cat}
                   habits={grouped[cat]}
+                  today={today}
                   collapsed={collapsedCats.has(cat)}
                   onToggle={() => toggleCategory(cat)}
                 >
@@ -1069,7 +1162,8 @@ export default function HabitsView() {
                     <div key={habit.id} className={`anim-slide-in ${i < 4 ? `delay-${i + 1}` : ''}`}>
                       <HabitRow
                         habit={habit} today={today} weekDates={weekDates}
-                        onIncrement={handleIncrement} onDelete={handleDelete}
+                        onIncrement={handleIncrement} onToggleSkip={handleToggleSkip}
+                        onDelete={handleDelete}
                         onEdit={h => setEditTarget(h)} editMode={editMode}
                       />
                     </div>

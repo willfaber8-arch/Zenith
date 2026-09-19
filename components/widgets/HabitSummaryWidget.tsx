@@ -13,7 +13,7 @@ const RADIUS = 38
 const CIRC   = 2 * Math.PI * RADIUS
 
 export default function HabitSummaryWidget() {
-  const { habits, dailyPct, scheduledCount, doneCount } = useHabits()
+  const { habits, today, dailyPct, scheduledCount, doneCount } = useHabits()
   const { navigate } = useNav()
 
   const dashOffset = scheduledCount === 0 ? CIRC : CIRC * (1 - dailyPct / 100)
@@ -58,17 +58,35 @@ export default function HabitSummaryWidget() {
           </div>
 
           <ul className={styles.habitList} aria-label={`${doneCount} of ${scheduledCount} habits done today`}>
-            {habits.slice(0, HABIT_PREVIEW).map(h => (
-              <li key={h.id} className={`${styles.habitRow} ${h.todayDone ? styles.habitRowDone : ''}`}>
-                <span className={styles.habitCheck} aria-label={h.todayDone ? 'completed' : 'pending'}>
-                  {h.todayDone ? '✓' : '○'}
-                </span>
-                <span className={styles.habitName}>{h.name}</span>
-                {h.streakCount > 0 && (
-                  <span className={styles.habitStreak}>{h.streakCount}<Icon name="flame" size={11} /></span>
-                )}
-              </li>
-            ))}
+            {habits.slice(0, HABIT_PREVIEW).map(h => {
+              /* Reuses weekData rather than re-deriving skip status —
+                 the same field the Habits view reads, so this preview
+                 can never disagree with the row it links to. A skipped
+                 habit gets its own quiet marker instead of the pending
+                 "○", which would otherwise read as something missed. */
+              const skipped = h.weekData.find(d => d.iso === today)?.skipped ?? false
+              return (
+                <li
+                  key={h.id}
+                  className={[
+                    styles.habitRow,
+                    h.todayDone ? styles.habitRowDone : '',
+                    skipped ? styles.habitRowSkipped : '',
+                  ].filter(Boolean).join(' ')}
+                >
+                  <span
+                    className={`${styles.habitCheck} ${skipped ? styles.habitCheckSkipped : ''}`}
+                    aria-label={skipped ? 'skipped today' : h.todayDone ? 'completed' : 'pending'}
+                  >
+                    {skipped ? '◐' : h.todayDone ? '✓' : '○'}
+                  </span>
+                  <span className={styles.habitName}>{h.name}</span>
+                  {h.streakCount > 0 && (
+                    <span className={styles.habitStreak}>{h.streakCount}<Icon name="flame" size={11} /></span>
+                  )}
+                </li>
+              )
+            })}
             {habits.length > HABIT_PREVIEW && (
               <li className={styles.moreRow}>
                 +{habits.length - HABIT_PREVIEW} more
