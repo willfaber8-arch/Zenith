@@ -393,12 +393,23 @@
   opacity: 1;
 }
 
+/* Skipped: full opacity like .habitRowDone — a skip is a decision, not
+   an unfinished item, so it shouldn't sit dimmed among the pending
+   ones. */
+.habitRowSkipped {
+  opacity: 1;
+}
+
 .habitCheck {
   font-size:   0.625rem;
   width:       14px;
   text-align:  center;
   flex-shrink: 0;
   color:       var(--accent-green);
+}
+
+.habitCheckSkipped {
+  color: #a78bfa;
 }
 
 .habitName {
