@@ -202,8 +202,19 @@
   margin-top: var(--sp-1);
 }
 
-.waterBtn {
+/*
+ * Positions the droplet burst against the button without the button
+ * itself needing to know about it — .waterBtn stays a plain flex item
+ * of .cardActions everywhere else in the file; only this file cares
+ * that it now sits inside a wrapper.
+ */
+.waterBtnWrap {
+  position: relative;
   flex: 1;
+}
+
+.waterBtn {
+  width: 100%;
   padding: 6px var(--sp-3);
   background: rgba(82,204,163,0.10);
   border: 1px solid rgba(82,204,163,0.25);
@@ -222,6 +233,61 @@
   border-color: rgba(248,113,113,0.30);
   color: #f87171;
 }
+
+/*
+ * The brief "that worked" cues after Water Now — a ring pulse on the
+ * whole card so it reads even out of the corner of your eye, the
+ * button itself confirming in words rather than only in colour, and a
+ * few droplets falling past it. One-shot animations only: nothing here
+ * loops, and every one of them is driven by a piece of state
+ * (`justWatered`) that clears on a timer, so nothing is left mid-way
+ * if the component re-renders before it finishes.
+ */
+@keyframes plantWaterPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(82,204,163,0.45); }
+  60%  { box-shadow: 0 0 0 10px rgba(82,204,163,0); }
+  100% { box-shadow: 0 0 0 0 rgba(82,204,163,0); }
+}
+
+.plantCardWatered {
+  animation: plantWaterPulse 900ms var(--ease-smooth);
+}
+
+.waterBtnDone {
+  background: rgba(82,204,163,0.22) !important;
+  border-color: rgba(82,204,163,0.45) !important;
+  color: var(--accent-green) !important;
+}
+
+@keyframes dropletFall {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.7); }
+  30%  { opacity: 1; transform: translateY(2px)  scale(1); }
+  100% { opacity: 0; transform: translateY(18px) scale(0.85); }
+}
+
+.dropletBurst {
+  position: absolute;
+  inset: auto 0 100% 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  padding-bottom: 4px;
+  pointer-events: none;
+}
+
+.dropletBurst :global(svg) {
+  color: #38bdf8;
+  /* `both` is safe here: these spans hold no descendants of their own,
+     so the "identity transform traps a position:fixed descendant" class
+     of bug (see CalendarView's .anim-scale-in fix) cannot occur — and
+     the whole burst unmounts with justWatered before it would matter
+     anyway. */
+  animation: dropletFall 650ms var(--ease-smooth) both;
+}
+
+.dropletBurst :global(svg):nth-child(2) { animation-delay: 90ms; }
+.dropletBurst :global(svg):nth-child(3) { animation-delay: 180ms; }
 
 /* ── Health picker ────────────────────────────────────────── */
 .healthWrap { position: relative; }

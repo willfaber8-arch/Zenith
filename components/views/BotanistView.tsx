@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import type {
@@ -11,6 +11,7 @@ import {
   wateringInfo, healthTrendFromEntries, computeGardenStats,
 } from '@/utils/botanyStats'
 import { useToast } from '@/lib/ToastContext'
+import { syncHabitSource } from '@/lib/habitSync'
 import Icon, { type IconName } from '@/components/ui/Icon'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import styles from './BotanistView.module.css'
@@ -366,14 +367,45 @@ function PlantCard({
     healthRating?: number; specialConditions?: string; notes?: string
   }
 
+  const { toast } = useToast()
+
+  /*
+   * The confirmation window for "Watered!" — a brief pulse on the card,
+   * a droplet burst over the button, the button's own label swapping —
+   * cleared on a timer rather than left to the data change alone.
+   * `days` resetting to 0 already redraws the progress bar (it has its
+   * own 600ms width transition), but that redraw is silent on a plant
+   * that was already well within interval: pct barely moves, so a tap
+   * with no other feedback reads as nothing having happened.
+   */
+  const [justWatered, setJustWatered] = useState(false)
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (clearTimer.current) clearTimeout(clearTimer.current) }, [])
+
   async function logWatering() {
     if (plant.id === undefined) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db.houseplants.update(plant.id, { lastWateredDate: today() as any })
+
+    /* Same shared engine every other auto-linked tracker fills through
+       (Workouts, Pomodoro, Polyglot Vault, Library, Mental Wellness) —
+       a habit set to auto-fill from "Plant watered" advances here too,
+       with no separate wiring at this call site beyond naming the
+       source. */
+    void syncHabitSource('plant', 1)
+
+    toast(`Watered "${plant.plantName}".`, 'success')
+
+    if (clearTimer.current) clearTimeout(clearTimer.current)
+    setJustWatered(true)
+    clearTimer.current = setTimeout(() => setJustWatered(false), 900)
   }
 
   return (
-    <div className={styles.plantCard} data-urgency={urgency}>
+    <div
+      className={`${styles.plantCard} ${justWatered ? styles.plantCardWatered : ''}`}
+      data-urgency={urgency}
+    >
       <div className={styles.cardTop}>
         <div className={styles.cardNames}>
           <span className={styles.plantName}>{plant.plantName}</span>
@@ -425,9 +457,31 @@ function PlantCard({
 
       {/* Actions */}
       <div className={styles.cardActions}>
-        <button type="button" className={styles.waterBtn} data-urgency={urgency} onClick={logWatering}>
-          <Icon name="droplet" size={14} /> Water Now
-        </button>
+        <div className={styles.waterBtnWrap}>
+          {justWatered && (
+            /* Leaf glyphs, unmounted with the rest of the confirmation
+               state rather than reset — animation-fill-mode: both holds
+               each droplet's start and end frame so nothing flashes in
+               or snaps away, and nothing here is an ancestor a fixed
+               overlay could get trapped inside (see .anim-scale-in /
+               .anim-slide-in for the case where that matters). */
+            <span className={styles.dropletBurst} aria-hidden="true">
+              <Icon name="droplet" size={12} />
+              <Icon name="droplet" size={10} />
+              <Icon name="droplet" size={12} />
+            </span>
+          )}
+          <button
+            type="button"
+            className={`${styles.waterBtn} ${justWatered ? styles.waterBtnDone : ''}`}
+            data-urgency={urgency}
+            onClick={logWatering}
+          >
+            {justWatered
+              ? <><Icon name="check" size={14} /> Watered!</>
+              : <><Icon name="droplet" size={14} /> Water Now</>}
+          </button>
+        </div>
         <HealthPicker plantId={plant.id!} current={ext.healthRating} />
         <button type="button" className={styles.journalBtn} onClick={() => onOpenLog(plant)}><Icon name="bookOpen" size={13} /> Journal</button>
         <button type="button" className={styles.editBtn} onClick={() => onEdit(plant)}>Edit</button>

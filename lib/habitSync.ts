@@ -36,7 +36,7 @@ import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
 
 /* ── Source registry ──────────────────────────────────────────── */
 
-export type HabitAutoSource = 'cardio' | 'study' | 'vocab' | 'mood' | 'reading'
+export type HabitAutoSource = 'cardio' | 'study' | 'vocab' | 'mood' | 'reading' | 'plant'
 
 export interface HabitSourceMeta {
   id:    HabitAutoSource
@@ -57,6 +57,8 @@ export const HABIT_SOURCES: readonly HabitSourceMeta[] = [
     hint: 'Fills automatically when you log your mood in Mental Wellness.' },
   { id: 'reading', label: 'Reading session',   icon: 'bookOpen', unit: 'sessions',
     hint: 'Fills automatically when you start or finish a book in the Library.' },
+  { id: 'plant',  label: 'Plant watered',      icon: 'droplet', unit: 'plants',
+    hint: 'Fills automatically when you water a plant in the Botanist Guide.' },
 ] as const
 
 const SOURCE_IDS = new Set<string>(HABIT_SOURCES.map(s => s.id))
