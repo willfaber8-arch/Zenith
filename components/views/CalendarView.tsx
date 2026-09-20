@@ -78,6 +78,7 @@ import {
   validateCustomDayMeetings, CUSTOM_DAYS_REPEAT, type CustomDayMeeting,
 } from '@/lib/personalEventSeries'
 import { layoutOverlaps } from '@/utils/eventOverlap'
+import { backfillSeriesOnce } from '@/lib/calendarSeriesBackfill'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -2649,6 +2650,31 @@ export default function CalendarView() {
       void ensureDefaultLocalCalendar()
     }
   }, [localCalendarsRaw])
+
+  /*
+   * Reconstruct the grouping older events never got.
+   *
+   * Runs once per install, on the screen that shows the events — a
+   * course schedule generated before the generator stamped a
+   * `seriesUid` is forty rows the app cannot tell are one class, so
+   * "this and following" silently reaches one of them. Backfilling
+   * fills in the field everything already reads rather than teaching
+   * anything a second way to group.
+   */
+  const backfilledRef = useRef(false)
+  useEffect(() => {
+    if (!db || backfilledRef.current) return
+    backfilledRef.current = true
+    void backfillSeriesOnce().then(result => {
+      if (result && result.series > 0) {
+        toast(
+          `Grouped ${result.rows} older events into ${result.series} ` +
+          `${result.series === 1 ? 'repeat' : 'repeats'} — editing one can now change the rest.`,
+          'info',
+        )
+      }
+    })
+  }, [toast])
 
   /* Synthetic feed entry for personal events */
   const personalFeed: CalendarFeed = useMemo(() => ({

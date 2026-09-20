@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNav }          from '@/lib/NavContext'
 import { useAuth }         from '@/lib/AuthContext'
 import { useToast }        from '@/lib/ToastContext'
-import { useNavBadge }     from '@/lib/NavBadgeContext'
+import { useNavBadge, type NavBadge } from '@/lib/NavBadgeContext'
 import { useStudyMode }    from '@/lib/StudyModeContext'
 import { useHiddenNavItems } from '@/lib/hooks/useHiddenNavItems'
 import { useNavLayout }      from '@/lib/hooks/useNavLayout'
@@ -368,7 +368,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             key={link.id}
                             link={link}
                             active={activeView === link.id}
-                            badge={badges[link.id] ?? 0}
+                            badge={badges[link.id]}
                             onClick={() => handleLink(link)}
                             onHide={() => {
                               hideItem(link.id)
@@ -425,7 +425,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                 key={link.id}
                                 link={link}
                                 active={activeView === link.id}
-                                badge={badges[link.id] ?? 0}
+                                badge={badges[link.id]}
                                 onClick={() => handleLink(link)}
                                 onHide={() => {
                                   hideItem(link.id)
@@ -447,7 +447,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           <NavLinkItem
                             link={link}
                             active={activeView === link.id}
-                            badge={badges[link.id] ?? 0}
+                            badge={badges[link.id]}
                             onClick={() => handleLink(link)}
                             onHide={() => {
                               hideItem(link.id)
@@ -839,6 +839,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+/* ── The completion ring ────────────────────────────────────────
+ *
+ * Sits in the slot a count pill would, because it answers the same
+ * question — is there anything left here today — for a list that fills
+ * up rather than one that drains. Drawn from `currentColor` so it
+ * picks up the nav item's per-category accent without knowing which
+ * category it is in, and turns green on the tick that finishes the
+ * day, matching what the Habits view does with a finished row.
+ */
+const RING_R    = 6.25
+const RING_CIRC = 2 * Math.PI * RING_R
+
+function NavRing({ done, total }: { done: number; total: number }) {
+  const pct  = total > 0 ? Math.min(1, done / total) : 0
+  const full = total > 0 && done >= total
+
+  return (
+    <span
+      className={`${styles.ring} ${full ? styles.ringFull : ''}`}
+      role="img"
+      aria-label={`${done} of ${total} habits done today`}
+      title={`Habits · ${done}/${total} done today`}
+    >
+      <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true">
+        <circle
+          cx="7.5" cy="7.5" r={RING_R}
+          fill="none" stroke="currentColor" strokeWidth="2" opacity="0.25"
+        />
+        {pct > 0 && (
+          <circle
+            cx="7.5" cy="7.5" r={RING_R}
+            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            strokeDasharray={`${RING_CIRC * pct} ${RING_CIRC}`}
+            transform="rotate(-90 7.5 7.5)"
+            style={{ transition: 'stroke-dasharray 350ms var(--ease-smooth)' }}
+          />
+        )}
+      </svg>
+    </span>
+  )
+}
+
 /* ── NavLinkItem sub-component ──────────────────────────────── */
 
 function NavLinkItem({
@@ -846,7 +888,7 @@ function NavLinkItem({
 }: {
   link:          NavLink
   active:        boolean
-  badge:         number
+  badge?:        NavBadge
   onClick:       () => void
   onHide:        () => void
   colorOverride?: string
@@ -870,10 +912,13 @@ function NavLinkItem({
         <span className={styles.navDot} aria-hidden="true" />
         <span className={styles.navLabel}>{link.label}</span>
 
-        {badge > 0 && (
-          <span className={styles.badge} aria-label={`${badge} pending`}>
-            {badge > 99 ? '99+' : badge}
+        {badge?.kind === 'count' && badge.count > 0 && (
+          <span className={styles.badge} aria-label={`${badge.count} pending`}>
+            {badge.count > 99 ? '99+' : badge.count}
           </span>
+        )}
+        {badge?.kind === 'ring' && (
+          <NavRing done={badge.done} total={badge.total} />
         )}
       </button>
     </li>

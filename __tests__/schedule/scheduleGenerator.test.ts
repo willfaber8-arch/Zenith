@@ -8,9 +8,10 @@
 
 import {
   planSessions, validateMeetings, validateWindow, parseHHMM,
-  windowForUniversity,
+  windowForUniversity, generateUniversitySchedule,
   type DayMeeting, type SemesterWindow,
 } from '@/utils/scheduleGenerator'
+import { db } from '@/lib/db'
 
 /* A short window with known weekdays:
    2026-09-07 is a Monday, 2026-09-11 the Friday of that week. */
@@ -202,5 +203,46 @@ describe('windowForUniversity', () => {
     const a = windowForUniversity('CORNELL')
     a.breaks[0].label = 'MUTATED'
     expect(windowForUniversity('CORNELL').breaks[0].label).not.toBe('MUTATED')
+  })
+})
+
+/* ── The generated rows themselves ──────────────────────────────── */
+
+describe('generateUniversitySchedule', () => {
+  beforeEach(async () => {
+    await db.calendarEvents.clear()
+    await db.calendarFeeds.clear()
+    await db.courseIntensityProfiles.clear()
+  })
+
+  const run = (courseName: string) => generateUniversitySchedule({
+    courseName,
+    meetings: [at('mon', '10:10', '11:00'), at('wed', '10:10', '11:00')],
+    universityId: 'CORNELL',
+    calendar: week(),
+  })
+
+  it('writes the whole course as one series, not as unrelated sessions', async () => {
+    const res = await run('CHEM 2090')
+    expect(res.count).toBeGreaterThan(1)
+
+    const rows = await db.calendarEvents.toArray()
+    const uids = new Set(rows.map(r => r.seriesUid))
+    expect(uids.size).toBe(1)
+    expect([...uids][0]).toBeTruthy()
+  })
+
+  /*
+   * The same course taken again is a different commitment, in its own
+   * feed. Keying the series on the course name alone would let an edit
+   * to this term's Tuesday reach into last term's.
+   */
+  it('gives a second run of the same course its own series', async () => {
+    await run('CHEM 2090')
+    await new Promise(r => setTimeout(r, 2))
+    await run('CHEM 2090')
+
+    const rows = await db.calendarEvents.toArray()
+    expect(new Set(rows.map(r => r.seriesUid)).size).toBe(2)
   })
 })
