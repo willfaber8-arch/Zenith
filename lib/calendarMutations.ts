@@ -16,13 +16,22 @@
  *     operation over a different set of rows.
  */
 
-import { db, type CalendarEvent, type PersonalEvent } from '@/lib/db'
+import { db, type CalendarEvent, type PersonalEvent, type EventPriority } from '@/lib/db'
 
 /** The synthetic feed id the grid uses for your own events. */
 export const PERSONAL_FEED_ID = -1
 
-/** Which occurrences an edit or deletion should reach. */
-export type EditScope = 'this' | 'series'
+/**
+ * Which occurrences an edit or deletion should reach.
+ *
+ * `'future'` sits between the two older options: every occurrence from
+ * the one you touched onward, past ones left alone. That is the shape
+ * most edits actually want — moving a standing meeting an hour later
+ * "from now on" should not rewrite what already happened — and it used
+ * to be missing entirely; only "this one" or literally all of them,
+ * history included, were on offer.
+ */
+export type EditScope = 'this' | 'future' | 'series'
 
 export interface EventPatch {
   title?:       string
@@ -33,6 +42,7 @@ export interface EventPatch {
   category?:    string
   allDay?:      number
   timeZone?:    string
+  priority?:    EventPriority
 }
 
 export function isPersonal(event: { feedId: number }): boolean {
@@ -81,7 +91,14 @@ async function targetIds(event: CalendarEvent, scope: EditScope): Promise<number
   const rows = isPersonal(event)
     ? await db.personalEvents.where('seriesUid').equals(event.seriesUid).toArray()
     : await db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
-  return rows.map(r => r.id).filter((id): id is number => id != null)
+
+  /* 'future' keeps the one clicked and everything after it — the same
+     rows 'series' returns, minus whatever already happened. */
+  const inScope = scope === 'future'
+    ? rows.filter(r => r.startMs >= event.startMs)
+    : rows
+
+  return inScope.map(r => r.id).filter((id): id is number => id != null)
 }
 
 /**

@@ -1,0 +1,53 @@
+.btn {
+  position: relative;
+  overflow: hidden;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.btn:hover:not(:disabled) { border-color: rgba(248, 113, 113, 0.35); color: #f87171; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+/* The fill: scaleX(0) → scaleX(1) over exactly HOLD_MS, so the bar
+   finishing is the same moment the timer fires onConfirm. Transform
+   only — no width/left animation — keeps this off the layout thread. */
+.fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(248, 113, 113, 0.30);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 140ms ease-out;
+  pointer-events: none;
+}
+
+.holding .fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms) linear;
+}
+
+.holding {
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #f87171;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}

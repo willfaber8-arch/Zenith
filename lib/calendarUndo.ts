@@ -21,22 +21,40 @@ function newId(): string {
   return `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 }
 
-/** Which rows an operation at this scope is about to touch. */
+/**
+ * Which rows an operation at this scope is about to touch.
+ *
+ * Mirrors targetIds() in lib/calendarMutations.ts — the two have to agree
+ * on what a scope means, or an undo could restore a different set of rows
+ * than the mutation it is meant to reverse touched.
+ *
+ * The grid negates a personal event's id to keep it from colliding with
+ * feed events in the same list (see the mapping in CalendarView), so it
+ * has to come off here too. It wasn't: `personalEvents.get(-3)` matches
+ * nothing, so every personal-event edit or drag silently captured no
+ * snapshot at all, and "Undo" never appeared after moving your own event.
+ */
 async function rowsInScope(event: CalendarEvent, scope: EditScope): Promise<CalRow[]> {
   if (!db) return []
 
   if (isPersonal(event)) {
     if (event.id == null) return []
-    const row = await db.personalEvents.get(event.id)
-    return row ? [row] : []
+    const rowId = Math.abs(event.id)
+    if (scope === 'this' || !event.seriesUid) {
+      const row = await db.personalEvents.get(rowId)
+      return row ? [row] : []
+    }
+    const rows = await db.personalEvents.where('seriesUid').equals(event.seriesUid).toArray()
+    return scope === 'future' ? rows.filter(r => r.startMs >= event.startMs) : rows
   }
 
-  if (scope === 'series' && event.seriesUid) {
-    return db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
+  if (scope === 'this' || !event.seriesUid) {
+    if (event.id == null) return []
+    const row = await db.calendarEvents.get(event.id)
+    return row ? [row] : []
   }
-  if (event.id == null) return []
-  const row = await db.calendarEvents.get(event.id)
-  return row ? [row] : []
+  const rows = await db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
+  return scope === 'future' ? rows.filter(r => r.startMs >= event.startMs) : rows
 }
 
 /**

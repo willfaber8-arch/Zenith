@@ -13,7 +13,7 @@ import {
 } from '@/lib/hooks/useHabits'
 import { useLiveQuery }         from 'dexie-react-hooks'
 import { db, type Habit, type HabitFrequency } from '@/lib/db'
-import { HABIT_SOURCES, habitSourceMeta } from '@/lib/habitSync'
+import { HABIT_SOURCES, habitSourceMeta, type HabitTapUndo } from '@/lib/habitSync'
 import { ensureGeneralHabitPreset, loadGeneralHabitPreset, GENERAL_HABIT_PRESET } from '@/lib/habitPresets'
 import { computeCompletionSeries, detectBrokenStreaks } from '@/utils/habitAnalytics'
 import { pushNotification }      from '@/lib/notificationCenter'
@@ -21,6 +21,7 @@ import GritAnalyticsChart       from '@/components/GritAnalyticsChart'
 import { playHabitProgress } from '@/lib/habitSounds'
 import { useToast }             from '@/lib/ToastContext'
 import Icon from '@/components/ui/Icon'
+import HoldToConfirm from '@/components/ui/HoldToConfirm'
 import styles from './HabitsView.module.css'
 
 /* ── Day labels ───────────────────────────────────────────── */
@@ -157,6 +158,7 @@ function useCompletionBurst() {
 /* ── Habit row ────────────────────────────────────────────── */
 function HabitRow({
   habit, today, weekDates, onIncrement, onToggleSkip, onDelete, onEdit, editMode,
+  canUndoTap, onUndoTap,
 }: {
   habit:        HabitWithCompletion
   today:        string
@@ -166,6 +168,9 @@ function HabitRow({
   onDelete:     (id: number) => void
   onEdit:       (habit: HabitWithCompletion) => void
   editMode:     boolean
+  /** A snapshot of the last tap on this habit is still available to undo. */
+  canUndoTap: boolean
+  onUndoTap:  (id: number) => void
 }) {
   const isAtMost       = (habit.goalType ?? 'at_least') === 'at_most'
   const target         = habit.targetCompletions > 0 ? habit.targetCompletions : 1
@@ -345,6 +350,25 @@ function HabitRow({
           >
             <Icon name="moon" size={12} />
           </button>
+        )}
+
+        {/*
+          * The other side of the same slot skipBtn occupies: skipping is
+          * only offered before anything is logged, undoing only after —
+          * the two conditions never overlap, so this never fights the
+          * skip button for room.
+          *
+          * A hold rather than a second tap: the gesture that confirms an
+          * ordinary press (another press) is exactly the gesture that
+          * caused the mis-tap, so it would guard against nothing here.
+          */}
+        {!editMode && !todaySkipped && habit.todayCount > 0 && canUndoTap && (
+          <HoldToConfirm
+            onConfirm={() => onUndoTap(habit.id)}
+            label={`Hold to undo the last tap on ${habit.name}`}
+            title="Hold to undo your last tap"
+            icon={<Icon name="reset" size={12} />}
+          />
         )}
 
         {!editMode && habit.streakCount > 0 && (
@@ -840,7 +864,7 @@ export default function HabitsView() {
   const {
     habits, weekDates, today, dailyPct,
     scheduledCount, doneCount,
-    increment, toggleSkip, createHabit, deleteHabit, updateHabit,
+    increment, undoTap, toggleSkip, createHabit, deleteHabit, updateHabit,
   } = useHabits()
 
   const { toast }               = useToast()
@@ -849,6 +873,30 @@ export default function HabitsView() {
   const [editTarget, setEditTarget] = useState<HabitWithCompletion | null>(null)
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set())
   const { canvasRef, burst }    = useCompletionBurst()
+
+  /*
+   * The last tap on each habit, kept only long enough to undo it — not
+   * persisted, and not a history: a second tap on the same habit
+   * replaces its entry, so only the most recent press is ever reachable.
+   * That is deliberate scope, not a shortcut — this is for catching a
+   * mis-tap a moment after it happens, not for rewriting a day once
+   * you have moved on from it.
+   */
+  const [lastTap, setLastTap] = useState<Map<number, HabitTapUndo>>(new Map())
+
+  /* A snapshot taken for yesterday no longer means "undo the tap you
+     just made" once the habit day has rolled over — it means "rewrite
+     yesterday", which this control was never meant to offer. */
+  useEffect(() => {
+    setLastTap(prev => {
+      let changed = false
+      const next = new Map(prev)
+      for (const [id, snap] of prev) {
+        if (snap.dateISO !== today) { next.delete(id); changed = true }
+      }
+      return changed ? next : prev
+    })
+  }, [today])
 
   const allHabits = useLiveQuery(
     () => db?.habits.toArray() ?? Promise.resolve([]),
@@ -939,6 +987,11 @@ export default function HabitsView() {
     const result = await increment(habitId)
     if (!result) return   // not scheduled today, or the write was a no-op
 
+    const undo = result.undo
+    if (undo) {
+      setLastTap(prev => new Map(prev).set(habitId, undo))
+    }
+
     const goalType = habit.goalType ?? 'at_least'
     playHabitProgress(result, habit.targetCompletions, goalType)
 
@@ -954,6 +1007,15 @@ export default function HabitsView() {
       toast(`${habit.name} — over your limit of ${habit.targetCompletions}`, 'error')
     }
   }, [habits, increment, burst, toast])
+
+  const handleUndoTap = useCallback(async (habitId: number) => {
+    const snap = lastTap.get(habitId)
+    if (!snap) return
+    const habit = habits.find(h => h.id === habitId)
+    await undoTap(snap)
+    setLastTap(prev => { const next = new Map(prev); next.delete(habitId); return next })
+    toast(`Undid the last tap on "${habit?.name ?? 'that habit'}".`, 'info')
+  }, [lastTap, undoTap, habits, toast])
 
   const handleToggleSkip = useCallback(async (habitId: number) => {
     const habit = habits.find(h => h.id === habitId)
@@ -1143,6 +1205,7 @@ export default function HabitsView() {
                     onIncrement={handleIncrement} onToggleSkip={handleToggleSkip}
                     onDelete={handleDelete}
                     onEdit={h => setEditTarget(h)} editMode={editMode}
+                    canUndoTap={lastTap.has(habit.id)} onUndoTap={handleUndoTap}
                   />
                 </div>
               ))}
@@ -1165,6 +1228,7 @@ export default function HabitsView() {
                         onIncrement={handleIncrement} onToggleSkip={handleToggleSkip}
                         onDelete={handleDelete}
                         onEdit={h => setEditTarget(h)} editMode={editMode}
+                        canUndoTap={lastTap.has(habit.id)} onUndoTap={handleUndoTap}
                       />
                     </div>
                   ))}

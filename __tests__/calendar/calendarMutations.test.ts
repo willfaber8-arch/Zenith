@@ -157,3 +157,66 @@ describe('commitDrag', () => {
     expect(after!.endMs - after!.startMs).toBe(H)
   })
 })
+
+describe('the "future" scope', () => {
+  it('reaches the occurrence you clicked and every later one, not earlier ones', async () => {
+    const rows = await seedSeries(5)   // 5 weekly occurrences, base .. base+4*7d
+    await applyEventPatch(rows[2], { title: 'Moved to a bigger room' }, 'future')
+    const after = await db.calendarEvents.orderBy('startMs').toArray()
+    expect(after.map(r => r.title)).toEqual([
+      'CHEM 2090', 'CHEM 2090',                                       // before — untouched
+      'Moved to a bigger room', 'Moved to a bigger room', 'Moved to a bigger room', // this + after
+    ])
+  })
+
+  it('still never carries a time onto the occurrences after it', async () => {
+    const rows = await seedSeries(4)
+    await applyEventPatch(rows[1], { startMs: base + H, endMs: base + 2 * H }, 'future')
+    const after = await db.calendarEvents.orderBy('startMs').toArray()
+    expect(new Set(after.map(r => r.startMs)).size).toBe(4)
+  })
+
+  it('deletes the occurrence and everything after it, leaving the past alone', async () => {
+    const rows = await seedSeries(5)
+    const removed = await removeEvent(rows[3], 'future')
+    expect(removed).toBe(2)   // rows[3] and rows[4]
+    const left = await db.calendarEvents.toArray()
+    expect(left).toHaveLength(3)
+    expect(left.every(r => r.startMs < rows[3].startMs)).toBe(true)
+  })
+
+  it('behaves exactly like "this" for the very last occurrence', async () => {
+    const rows = await seedSeries(3)
+    expect(await removeEvent(rows[2], 'future')).toBe(1)
+    expect(await db.calendarEvents.count()).toBe(2)
+  })
+
+  it('behaves exactly like "series" for the very first occurrence', async () => {
+    const rows = await seedSeries(3)
+    expect(await removeEvent(rows[0], 'future')).toBe(3)
+    expect(await db.calendarEvents.count()).toBe(0)
+  })
+
+  it('routes a personal event series through its own table too', async () => {
+    const seriesUid = 'personal-series'
+    const ids: number[] = []
+    for (let i = 0; i < 4; i++) {
+      ids.push(await db.personalEvents.add({
+        title: 'Study group', startMs: base + i * 7 * 24 * H, endMs: base + i * 7 * 24 * H + H,
+        allDay: 0, color: '#7c95ff', category: 'personal', seriesUid, createdAt: Date.now(),
+      } as never) as number)
+    }
+    const middle = (await db.personalEvents.get(ids[1]))!
+    const asEvent = {
+      id: -ids[1], feedId: PERSONAL_FEED_ID, uid: `personal-${ids[1]}`,
+      title: middle.title, startMs: middle.startMs, endMs: middle.endMs,
+      allDay: 0, is1159: 0, category: 'personal', seriesUid,
+    } as CalendarEvent
+
+    const touched = await applyEventPatch(asEvent, { title: 'Study group — moved' }, 'future')
+    expect(touched).toBe(3)   // ids[1], ids[2], ids[3]
+    const rows = await db.personalEvents.toArray()
+    expect(rows.filter(r => r.title === 'Study group — moved')).toHaveLength(3)
+    expect(rows.filter(r => r.title === 'Study group')).toHaveLength(1)
+  })
+})

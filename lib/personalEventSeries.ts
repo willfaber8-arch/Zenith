@@ -17,6 +17,7 @@
 import { db, type PersonalEvent } from '@/lib/db'
 import { expandOccurrences } from '@/utils/recurrence'
 import { isRepeatPreset, ruleFor, type RepeatPreset } from '@/utils/taskRepeat'
+import { parseHHMM } from '@/utils/scheduleGenerator'
 
 /**
  * How far ahead a repeat is written out.
@@ -153,6 +154,184 @@ export async function repeatExistingEvent(
   if (rest.length > 0) {
     await db.personalEvents.bulkAdd(rest.map(o => ({
       ...data, startMs: o.startMs, endMs: o.endMs, seriesUid, repeat: preset,
+    })) as PersonalEvent[])
+  }
+
+  return { count: occurrences.length, seriesUid }
+}
+
+/* ── Custom days: a weekday picker with its own time per day ─────
+ *
+ * The presets above cover "every day" shapes; they cannot express "my
+ * study group meets Monday at 6 and Thursday at 7:30" — one weekly
+ * rule with one time cannot hold two different hours. This is the same
+ * problem the University Schedule Replicator already solved for class
+ * timetables (utils/scheduleGenerator.ts's DayMeeting + planSessions),
+ * so the shape here matches it deliberately: a list of (day, start,
+ * end) triples, walked one calendar day at a time rather than run
+ * through the single-time-per-occurrence RRULE engine.
+ */
+
+/** One weekday a custom-repeat event meets, with that day's own hours. */
+export interface CustomDayMeeting {
+  /** 0 = Sunday … 6 = Saturday, matching Date#getDay(). */
+  dayOfWeek: number
+  /** 24-hour "HH:MM" — the format <input type="time"> produces. */
+  startTime: string
+  endTime:   string
+}
+
+const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+
+/**
+ * Check a set of custom-day meetings, returning the first problem in
+ * plain words, or null when there is nothing wrong.
+ */
+export function validateCustomDayMeetings(meetings: CustomDayMeeting[]): string | null {
+  if (meetings.length === 0) return 'Pick at least one day.'
+
+  const seen = new Set<number>()
+  for (const m of meetings) {
+    if (seen.has(m.dayOfWeek)) return 'A day is listed twice.'
+    seen.add(m.dayOfWeek)
+
+    if (!HHMM_RE.test(m.startTime) || !HHMM_RE.test(m.endTime)) {
+      return 'Every selected day needs a start and an end time.'
+    }
+    if (parseHHMM(m.endTime) <= parseHHMM(m.startTime)) {
+      return 'An event has to end after it starts.'
+    }
+  }
+  return null
+}
+
+function toLocalDateKey(d: Date): string {
+  const y  = d.getFullYear()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${mo}-${day}`
+}
+
+function buildLocalMs(dateKey: string, timeStr: string): number {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  const mins = parseHHMM(timeStr)
+  return new Date(y, m - 1, d, Math.floor(mins / 60), mins % 60, 0, 0).getTime()
+}
+
+/**
+ * Work out every date a custom-day repeat lands on, and at what hours.
+ *
+ * Walks forward one calendar day at a time from `anchorDate` — which is
+ * simply the date the user had open when they picked the days, not
+ * necessarily one of the selected weekdays itself. When it is not, the
+ * series' first real occurrence is whichever selected day comes next,
+ * exactly like a plain "every Monday" repeat created on a Saturday
+ * already lands on the following Monday rather than inventing a
+ * Saturday occurrence — one rule for both, not a special case here.
+ *
+ * Pure: no Dexie, no DOM, no clock. Bounded by both a occurrence count
+ * and a horizon date so "every day, forever" cannot be asked to plan
+ * an unbounded list.
+ */
+export function planCustomDayOccurrences(
+  meetings: CustomDayMeeting[],
+  anchorDate: string,
+  opts: { untilDate?: string; maxOccurrences?: number } = {},
+): { startMs: number; endMs: number }[] {
+  const problem = validateCustomDayMeetings(meetings)
+  if (problem) throw new Error(problem)
+
+  const byDow = new Map<number, CustomDayMeeting>()
+  for (const m of meetings) byDow.set(m.dayOfWeek, m)
+
+  const [ay, am, ad] = anchorDate.split('-').map(Number)
+  const cursor = new Date(ay, am - 1, ad, 0, 0, 0, 0)
+
+  const horizonMs = opts.untilDate
+    ? (() => {
+        const [uy, um, ud] = opts.untilDate!.split('-').map(Number)
+        return new Date(uy, um - 1, ud, 23, 59, 59, 999).getTime()
+      })()
+    : new Date(ay + SERIES_HORIZON_YEARS, am - 1, ad).getTime()
+
+  const max = opts.maxOccurrences ?? MAX_EVENT_OCCURRENCES
+  const out: { startMs: number; endMs: number }[] = []
+
+  while (out.length < max && cursor.getTime() <= horizonMs) {
+    const meet = byDow.get(cursor.getDay())
+    if (meet) {
+      const dateKey = toLocalDateKey(cursor)
+      out.push({
+        startMs: buildLocalMs(dateKey, meet.startTime),
+        endMs:   buildLocalMs(dateKey, meet.endTime),
+      })
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return out
+}
+
+/** Marks a series as produced by the weekday picker rather than a preset. */
+export const CUSTOM_DAYS_REPEAT = 'custom'
+
+/**
+ * Add an event that repeats on specific weekdays, each with its own
+ * hours — the picker's write path, parallel to createPersonalEvent's
+ * preset one.
+ */
+export async function createCustomDayEvent(
+  data: Omit<PersonalEvent, 'id' | 'startMs' | 'endMs'>,
+  anchorDate: string,
+  meetings: CustomDayMeeting[],
+  opts: { untilDate?: string } = {},
+): Promise<CreateResult> {
+  if (!db) return { count: 0 }
+
+  const occurrences = planCustomDayOccurrences(meetings, anchorDate, opts)
+  if (occurrences.length === 0) return { count: 0 }
+
+  if (occurrences.length === 1) {
+    await db.personalEvents.add({ ...data, ...occurrences[0] } as PersonalEvent)
+    return { count: 1 }
+  }
+
+  const seriesUid = newSeriesUid()
+  const rows = occurrences.map(o => ({
+    ...data, startMs: o.startMs, endMs: o.endMs, seriesUid, repeat: CUSTOM_DAYS_REPEAT,
+  })) as PersonalEvent[]
+
+  await db.personalEvents.bulkAdd(rows)
+  return { count: rows.length, seriesUid }
+}
+
+/** Turn an event you already made into a custom weekday repeat. */
+export async function repeatExistingEventCustomDays(
+  rowId: number,
+  data: Omit<PersonalEvent, 'id' | 'startMs' | 'endMs'>,
+  anchorDate: string,
+  meetings: CustomDayMeeting[],
+  opts: { untilDate?: string } = {},
+): Promise<CreateResult> {
+  if (!db) return { count: 0 }
+
+  const occurrences = planCustomDayOccurrences(meetings, anchorDate, opts)
+  if (occurrences.length === 0) return { count: 0 }
+
+  if (occurrences.length === 1) {
+    await db.personalEvents.update(rowId, { ...data, ...occurrences[0] } as Partial<PersonalEvent>)
+    return { count: 1 }
+  }
+
+  const seriesUid = newSeriesUid()
+  const [first, ...rest] = occurrences
+
+  await db.personalEvents.update(rowId, {
+    ...data, startMs: first.startMs, endMs: first.endMs, seriesUid, repeat: CUSTOM_DAYS_REPEAT,
+  } as Partial<PersonalEvent>)
+
+  if (rest.length > 0) {
+    await db.personalEvents.bulkAdd(rest.map(o => ({
+      ...data, startMs: o.startMs, endMs: o.endMs, seriesUid, repeat: CUSTOM_DAYS_REPEAT,
     })) as PersonalEvent[])
   }
 
