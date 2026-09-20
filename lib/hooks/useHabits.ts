@@ -3,7 +3,10 @@
 import { useCallback }    from 'react'
 import { useLiveQuery }   from 'dexie-react-hooks'
 import { db, type Habit, type HabitCompletion, type HabitFrequency } from '@/lib/db'
-import { addHabitProgress, toggleHabitSkip } from '@/lib/habitSync'
+import {
+  addHabitProgress, toggleHabitSkip, captureHabitTap, revertHabitTap,
+  type HabitTapUndo,
+} from '@/lib/habitSync'
 import { isHabitScheduledOn as scheduledOn, isSkippedOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { limitStreak } from '@/utils/habitLimit'
 import { effectiveDateISO, loadCutoffHour } from '@/utils/dayBoundary'
@@ -182,12 +185,27 @@ export function useHabits() {
     if (!db) return null
     const habit = await db.habits.get(habitId)
     if (!habit) return null
+
+    /*
+     * Captured before the write so a mis-tap has something exact to go
+     * back to — see captureHabitTap's note on why this can't be
+     * computed after the fact from the streak rules alone. Taken even
+     * when the tap turns out to be a no-op below; the caller only keeps
+     * it once it knows the tap actually did something.
+     */
+    const undo = await captureHabitTap(habitId, today)
+
     // Manual "+" press: advance by one step. Completion + streak logic
     // lives in the shared engine so manual and auto-sync paths can't drift.
     // The result is handed back so the caller can react to the press that
     // actually completed the habit without re-deriving that rule itself.
-    return addHabitProgress(habitId, habit.stepAmount ?? 1, today)
+    const result = await addHabitProgress(habitId, habit.stepAmount ?? 1, today)
+    return result ? { ...result, undo } : null
   }, [today])
+
+  const undoTap = useCallback(async (snap: HabitTapUndo) => {
+    await revertHabitTap(snap)
+  }, [])
 
   const toggleSkip = useCallback(async (habitId: number) => {
     return toggleHabitSkip(habitId, today)
@@ -238,6 +256,7 @@ export function useHabits() {
     scheduledCount: scheduledToday.length,
     doneCount: doneToday,
     increment,
+    undoTap,
     toggleSkip,
     createHabit,
     deleteHabit,

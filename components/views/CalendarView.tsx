@@ -50,7 +50,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCalendarData, FEED_COLORS } from '@/lib/hooks/useCalendarData'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
-import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem, type Priority } from '@/lib/db'
+import { db, ensureDefaultLocalCalendar, type CalendarFeed, type CalendarEvent, type PersonalEvent, type LocalCalendar, type TodoCategory, type Assignment, type ProblemItem, type Priority, type EventPriority } from '@/lib/db'
 import {
   kindOf, hasDueDate, isOverdue, isOpen, groupByList, KIND_BADGE, type TaskKind,
 } from '@/utils/taskUnify'
@@ -72,7 +72,12 @@ import {
 } from '@/utils/taskRepeat'
 import UniversityScheduleReplicator from '@/components/UniversityScheduleReplicator'
 import CourseManager from '@/components/CourseManager'
-import { createPersonalEvent, repeatExistingEvent } from '@/lib/personalEventSeries'
+import {
+  createPersonalEvent, repeatExistingEvent,
+  createCustomDayEvent, repeatExistingEventCustomDays,
+  validateCustomDayMeetings, CUSTOM_DAYS_REPEAT, type CustomDayMeeting,
+} from '@/lib/personalEventSeries'
+import { layoutOverlaps } from '@/utils/eventOverlap'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
 import { useMicrosoftCalendar } from '@/lib/hooks/useMicrosoftCalendar'
@@ -100,6 +105,33 @@ const EVENT_COLORS = [
 ]
 
 const PERSONAL_FEED_ID = -1
+
+/*
+ * Weekday descriptors for the New Event modal's day picker.
+ *
+ * Deliberately its own list rather than the University Schedule
+ * Replicator's DAY_KEYS: that one is Mon–Fri only (nobody schedules a
+ * lecture on a Sunday), but a personal event can meet any day of the
+ * week. `dow` matches Date#getDay() — 0 is Sunday — which is also what
+ * CustomDayMeeting.dayOfWeek expects, so no translation happens between
+ * the picker and the planner.
+ */
+const DOW_LIST: { dow: number; short: string; full: string }[] = [
+  { dow: 0, short: 'Su', full: 'Sunday'    },
+  { dow: 1, short: 'M',  full: 'Monday'    },
+  { dow: 2, short: 'Tu', full: 'Tuesday'   },
+  { dow: 3, short: 'W',  full: 'Wednesday' },
+  { dow: 4, short: 'Th', full: 'Thursday'  },
+  { dow: 5, short: 'F',  full: 'Friday'    },
+  { dow: 6, short: 'Sa', full: 'Saturday'  },
+]
+
+/** The day the "same time" toggle reads from and writes to, regardless
+    of which days are actually selected — mirrors dayTimes.mon in
+    UniversityScheduleReplicator. */
+const UNIFORM_DOW = 1
+
+const EVENT_PRIORITIES: EventPriority[] = ['low', 'normal', 'high']
 
 /*
  * Below this, a press is a click rather than a drag.
@@ -768,11 +800,24 @@ interface EventPillElProps {
   dayEnd:   number
   /** Width of a day column, so a sideways drag can be read as days. */
   columnPx: number
+  /** 0 = this pill is the one drawn on top by default. From layoutOverlaps. */
+  stackIndex:  number
+  /** How many events — this one included — share its overlap cluster. */
+  clusterSize: number
   onOpen:   (event: CalendarEvent, rect: DOMRect) => void
   onDrag:   (event: CalendarEvent, next: { startMs: number; endMs: number }) => void
   /** When locked, events open on click but cannot be dragged or resized. */
   locked:   boolean
 }
+
+/*
+ * How far each stacked-behind pill shifts sideways, in pixels, and how
+ * much of the column it gives up to make room. Small enough that a
+ * cluster of three or four still leaves everyone a legible sliver of
+ * their own colour; the exact figure is not load-bearing, just a
+ * reasonable card-fan.
+ */
+const OVERLAP_CASCADE_PX = 14
 
 /**
  * One event on the grid.
@@ -784,10 +829,18 @@ interface EventPillElProps {
  * event when you only meant to read it.
  */
 function EventPillEl({
-  event, feed, hourPx, dayStart, dayEnd, columnPx, onOpen, onDrag, locked,
+  event, feed, hourPx, dayStart, dayEnd, columnPx,
+  stackIndex, clusterSize, onOpen, onDrag, locked,
 }: EventPillElProps) {
   const elRef = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<{ startMs: number; endMs: number } | null>(null)
+  /*
+   * Whether the pointer is over THIS pill specifically. A cluster's
+   * back pills only ever expose a narrow sliver, and that sliver is
+   * exactly what has to answer to hover — bringing the whole cluster
+   * forward on any hover would defeat the point of stacking them.
+   */
+  const [hovered, setHovered] = useState(false)
 
   /* Drag state lives in a ref: mousemove fires constantly and must not
      re-render on every pixel (rule 29). */
@@ -810,6 +863,24 @@ function EventPillEl({
 
   const color = (event as CalendarEvent & { _color?: string })._color ?? feed?.color ?? '#7c95ff'
   const compact = height < 34
+
+  /*
+   * The cascade. rank 0 (highest priority, then earliest start — see
+   * utils/eventOverlap.ts) sits at the column's own left/right edges,
+   * exactly where a lone event always has, and every rank behind it
+   * gives up OVERLAP_CASCADE_PX from the left so its own trailing sliver
+   * stays uncovered on the right — "don't merge them" without a full
+   * side-by-side column layout. Left untouched entirely when nothing
+   * overlaps, so the common case renders exactly as it always did.
+   */
+  const overlapping = clusterSize > 1
+  const leftInset  = overlapping ? stackIndex * OVERLAP_CASCADE_PX : 0
+  const rightInset = overlapping ? (clusterSize - 1 - stackIndex) * OVERLAP_CASCADE_PX : 0
+  /* Inline only beats the CSS hover rule when it is actually set —
+     leaving it undefined for an un-hovered, non-overlapping pill keeps
+     the stylesheet's own z-index: 2 / :hover z-index: 3 in charge,
+     unchanged from before this existed. */
+  const zIndex = hovered ? 1000 : overlapping ? clusterSize - stackIndex + 1 : undefined
 
   const beginDrag = useCallback((mode: 'move' | 'resize') => (e: React.MouseEvent) => {
     /* Locked means read-only: a click still opens the details, but no
@@ -877,6 +948,7 @@ function EventPillEl({
         compact ? styles.eventPillCompact : '',
         preview ? styles.eventPillDragging : '',
         locked  ? styles.eventPillLocked  : '',
+        overlapping ? styles.eventPillStacked : '',
       ].filter(Boolean).join(' ')}
       style={{
         top:             `${top}px`,
@@ -884,8 +956,17 @@ function EventPillEl({
         backgroundColor: `${color}2e`,
         borderLeft:      `3px solid ${color}`,
         color:           color,
+        ...(overlapping ? {
+          left:  `calc(3px + ${leftInset}px)`,
+          right: `calc(3px + ${rightInset}px)`,
+        } : null),
+        ...(zIndex !== undefined ? { zIndex } : null),
       }}
       onMouseDown={beginDrag('move')}
+      onMouseEnter={overlapping ? () => setHovered(true)  : undefined}
+      onMouseLeave={overlapping ? () => setHovered(false) : undefined}
+      onFocus={overlapping ? () => setHovered(true)  : undefined}
+      onBlur={overlapping  ? () => setHovered(false) : undefined}
       onClick={() => {
         /* With dragging off there is no mouseup handler to tell a click
            from a drag, so the click has to open the card itself. */
@@ -899,7 +980,9 @@ function EventPillEl({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`${event.title}, ${formatTime(shown.startMs)}. Open details.`}
+      aria-label={`${event.title}, ${formatTime(shown.startMs)}${
+        overlapping ? `, ${stackIndex + 1} of ${clusterSize} overlapping` : ''
+      }. Open details.`}
     >
       <span className={styles.eventPillTitle}>{event.title}</span>
       {height >= 34 && (
@@ -1313,6 +1396,10 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan, d
             const endHour   = en.getMinutes() > 0 ? en.getHours() + 1 : en.getHours()
             return endHour > startH && startHour < endH
           })
+          /* Who cascades behind whom, for anything sharing this day's
+             pixels with something else. A day with no overlap at all —
+             the ordinary case — costs one pass over a handful of items. */
+          const overlapLayout = layoutOverlaps(timedEvts)
           const weekend   = day.getDay() === 0 || day.getDay() === 6
 
           return (
@@ -1360,20 +1447,25 @@ function WeekGrid({ weekDays, events, feeds, onOpen, onDrag, locked, hourSpan, d
               )}
 
               {/* Event pills */}
-              {timedEvts.map(evt => (
-                <EventPillEl
-                  key={evt.id}
-                  event={evt}
-                  feed={feedMap.get(evt.feedId)}
-                  hourPx={hourPx}
-                  dayStart={startH}
-                  dayEnd={endH}
-                  columnPx={columnPx}
-                  onOpen={onOpen}
-                  onDrag={onDrag}
-                  locked={locked}
-                />
-              ))}
+              {timedEvts.map(evt => {
+                const layout = overlapLayout.get(evt.id) ?? { stackIndex: 0, clusterSize: 1 }
+                return (
+                  <EventPillEl
+                    key={evt.id}
+                    event={evt}
+                    feed={feedMap.get(evt.feedId)}
+                    hourPx={hourPx}
+                    dayStart={startH}
+                    dayEnd={endH}
+                    columnPx={columnPx}
+                    stackIndex={layout.stackIndex}
+                    clusterSize={layout.clusterSize}
+                    onOpen={onOpen}
+                    onDrag={onDrag}
+                    locked={locked}
+                  />
+                )
+              })}
             </div>
           )
         })}
@@ -2500,7 +2592,6 @@ export default function CalendarView() {
   useEffect(() => subscribeCalendarTab(setCalTab), [])
   const [showSchedule,  setShowSchedule]  = useState(false)
   const [showNewEvent,  setShowNewEvent]  = useState(false)
-  const [editEvent,     setEditEvent]     = useState<PersonalEvent | null>(null)
 
   /* Month view state */
   const [monthStart, setMonthStart] = useState(() => {
@@ -2597,6 +2688,7 @@ export default function CalendarView() {
         seriesUid:   pe.seriesUid,
         repeat:      pe.repeat,
         _color:      pe.color ?? cal?.color,   // event colour (defaults to its calendar's)
+        priority:    pe.priority,
       } as CalendarEvent & { _color?: string }))
   }, [personalEventsRaw, localCalendars])
 
@@ -2745,24 +2837,20 @@ export default function CalendarView() {
   /* Personal event CRUD */
   const handleAddEvent = useCallback(async (
     data: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset,
+    extra: { customDays?: CustomDayMeeting[]; anchorDate?: string },
   ) => {
     if (!db) return
+    if (extra.customDays && extra.customDays.length > 0 && extra.anchorDate) {
+      const { startMs: _startMs, endMs: _endMs, ...rest } = data
+      const { count } = await createCustomDayEvent(rest, extra.anchorDate, extra.customDays)
+      if (count > 1) toast(`Added ${count} occurrences of "${data.title}".`, 'success')
+      return
+    }
     const { count } = await createPersonalEvent(data, repeat)
     if (count > 1) {
       toast(`Added ${count} occurrences of "${data.title}".`, 'success')
     }
   }, [toast])
-
-  const handleEditEvent = useCallback(async (
-    data: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset,
-  ) => {
-    if (!db || !editEvent?.id) return
-    const { count } = await repeatExistingEvent(editEvent.id, data, repeat)
-    if (count > 1) {
-      toast(`"${data.title}" now repeats — ${count} occurrences.`, 'success')
-    }
-    setEditEvent(null)
-  }, [editEvent, toast])
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -3228,13 +3316,36 @@ export default function CalendarView() {
       {editTarget && (
         <NewEventModal
           onClose={() => setEditTarget(null)}
-          onSave={async (data, repeat) => {
+          onSave={async (data, repeat, extra) => {
             const target = editTarget
             setEditTarget(null)
             if (!target) return
+            /* Defaults to 'this' — editing a one-off, or an occurrence
+               with no scope chosen, only ever touches what was clicked. */
+            const scope = extra.scope ?? 'this'
             try {
-              const snap = await captureUndo(target, 'this', 'edit')
+              const snap = await captureUndo(target, scope,
+                scope === 'series' ? 'edit of series'
+                : scope === 'future' ? 'edit of future occurrences'
+                : 'edit')
               if (snap) setUndoStack(st => pushUndo(st, snap))
+
+              /*
+               * Turning a one-off into a custom weekday repeat writes the
+               * rest of the series — a patch only ever touches rows that
+               * already exist.
+               */
+              if (extra.customDays && extra.customDays.length > 0
+                  && extra.anchorDate && target.id != null) {
+                const { startMs: _startMs, endMs: _endMs, ...rest } =
+                  data as Omit<PersonalEvent, 'id'>
+                const { count } = await repeatExistingEventCustomDays(
+                  Math.abs(target.id), rest, extra.anchorDate, extra.customDays)
+                toast(count > 1
+                  ? `"${data.title}" now repeats — ${count} occurrences.`
+                  : 'Event updated.', 'success')
+                return
+              }
 
               /*
                * Asking a one-off to repeat is not a patch — it writes
@@ -3252,7 +3363,7 @@ export default function CalendarView() {
                 return
               }
 
-              await applyEventPatch(target, {
+              const n = await applyEventPatch(target, {
                 title:       data.title,
                 startMs:     data.startMs,
                 endMs:       data.endMs,
@@ -3261,8 +3372,9 @@ export default function CalendarView() {
                 description: data.description,
                 timeZone:    data.timeZone,
                 location:    (data as { location?: string }).location,
-              }, 'this')
-              toast('Event updated.', 'success')
+                priority:    data.priority,
+              }, scope)
+              toast(n > 1 ? `Updated ${n} occurrences.` : 'Event updated.', 'success')
             } catch {
               toast('Could not save that change.', 'error')
             }
@@ -3277,6 +3389,7 @@ export default function CalendarView() {
             category:    editTarget.category,
             description: editTarget.description,
             timeZone:    editTarget.timeZone,
+            priority:    editTarget.priority,
             /* Carried through, or the form says "Happens once" about an
                event that repeats — and offers a picker that would make
                a second series out of one already in a series. */
@@ -3284,19 +3397,6 @@ export default function CalendarView() {
             repeat:      (editTarget as CalendarEvent & { repeat?: string }).repeat,
             createdAt:   Date.now(),
           } as PersonalEvent}
-          localCalendars={localCalendars}
-          msConfigured={ms.configured}
-          msConnected={ms.account !== null}
-          onAddToOutlook={handleAddToOutlook}
-          onPushMicrosoft={handlePushMicrosoft}
-        />
-      )}
-
-      {editEvent && (
-        <NewEventModal
-          onClose={() => setEditEvent(null)}
-          onSave={handleEditEvent}
-          initial={editEvent}
           localCalendars={localCalendars}
           msConfigured={ms.configured}
           msConnected={ms.account !== null}
@@ -3353,7 +3453,17 @@ function NewEventModal({
   msConfigured, msConnected, onAddToOutlook, onPushMicrosoft,
 }: {
   onClose:  () => void
-  onSave:   (e: Omit<PersonalEvent, 'id'>, repeat: RepeatPreset) => void
+  /**
+   * `extra.customDays` (with `extra.anchorDate`) carries a weekday-picker
+   * repeat, parallel to and mutually exclusive with `repeat`. `extra.scope`
+   * only means anything when editing an occurrence that is part of a
+   * series — creating never sets it.
+   */
+  onSave:   (
+    e: Omit<PersonalEvent, 'id'>,
+    repeat: RepeatPreset,
+    extra: { customDays?: CustomDayMeeting[]; anchorDate?: string; scope?: EditScope },
+  ) => void
   initial?: PersonalEvent
   localCalendars: LocalCalendar[]
   msConfigured:    boolean
@@ -3389,6 +3499,70 @@ function NewEventModal({
   const [repeat,  setRepeat]  = useState<RepeatPreset>(
     isRepeatPreset(initial?.repeat) ? initial.repeat : 'none',
   )
+  const [priority, setPriority] = useState<EventPriority>(initial?.priority ?? 'normal')
+
+  /*
+   * The weekday picker — a second repeat path alongside `repeat`, for
+   * the shape presets cannot express: different days meeting at
+   * different hours. Mutually exclusive with `repeat` in the UI, but
+   * kept as separate state rather than folded into RepeatPreset itself
+   * — that type is deliberately shared with tasks and stays small.
+   */
+  const [useCustomDays, setUseCustomDays] = useState(false)
+  const [customDow,     setCustomDow]     = useState<Set<number>>(() => new Set())
+  const [customUniform, setCustomUniform] = useState(true)
+  const [customTimes,   setCustomTimes]   = useState<Record<number, { start: string; end: string }>>(
+    () => Object.fromEntries(
+      DOW_LIST.map(d => [d.dow, { start: initStart, end: initEnd }]),
+    ) as Record<number, { start: string; end: string }>,
+  )
+
+  const selectedDow = useMemo(
+    () => DOW_LIST.filter(d => customDow.has(d.dow)).map(d => d.dow),
+    [customDow],
+  )
+
+  const customMeetings = useMemo<CustomDayMeeting[]>(
+    () => selectedDow.map(dow => ({
+      dayOfWeek: dow,
+      startTime: customUniform ? customTimes[UNIFORM_DOW].start : customTimes[dow].start,
+      endTime:   customUniform ? customTimes[UNIFORM_DOW].end   : customTimes[dow].end,
+    })),
+    [selectedDow, customTimes, customUniform],
+  )
+
+  const customDaysProblem = useMemo(
+    () => (useCustomDays && customDow.size > 0) ? validateCustomDayMeetings(customMeetings) : null,
+    [useCustomDays, customDow, customMeetings],
+  )
+
+  const toggleCustomDow = useCallback((dow: number) => {
+    setCustomDow(prev => {
+      const next = new Set(prev)
+      if (next.has(dow)) next.delete(dow)
+      else next.add(dow)
+      return next
+    })
+  }, [])
+
+  const setCustomDayTime = useCallback((dow: number, field: 'start' | 'end', value: string) => {
+    setCustomTimes(prev => ({ ...prev, [dow]: { ...prev[dow], [field]: value } }))
+  }, [])
+
+  /* In uniform mode every day reads from UNIFORM_DOW's slot, so editing
+     the single visible pair has to write there whichever days are
+     actually selected. */
+  const setUniformCustomTime = useCallback((field: 'start' | 'end', value: string) => {
+    setCustomTimes(prev => ({ ...prev, [UNIFORM_DOW]: { ...prev[UNIFORM_DOW], [field]: value } }))
+  }, [])
+
+  /*
+   * Already one of several occurrences. When it is, the scope choice
+   * below decides which rows an edit reaches — mirrors the delete
+   * question in EventDetailPopover, just asked up front instead of
+   * after Save.
+   */
+  const [scope, setScope] = useState<EditScope>('this')
 
   /*
    * Already one of several occurrences. Re-expanding from inside one of
@@ -3413,6 +3587,7 @@ function NewEventModal({
   }
 
   const canSave = title.trim().length > 0 && date.length > 0
+    && (!useCustomDays || (customDow.size > 0 && !customDaysProblem))
 
   /* Shared start/end derivation — reused by save and external-calendar export. */
   function computeTimes(): { startMs: number; endMs: number } {
@@ -3461,7 +3636,12 @@ function NewEventModal({
       timeZone:    zone || undefined,
       createdAt:   Date.now(),
       calendarId,
-    }, inSeries ? 'none' : repeat)
+      priority: priority !== 'normal' ? priority : undefined,
+    }, useCustomDays || inSeries ? 'none' : repeat, {
+      customDays: useCustomDays ? customMeetings : undefined,
+      anchorDate: useCustomDays ? date : undefined,
+      scope:      inSeries ? scope : undefined,
+    })
     onClose()
   }
 
@@ -3494,16 +3674,26 @@ function NewEventModal({
 
           <div className={styles.evRow}>
             <div className={styles.evField}>
-              <label className={styles.evLabel} htmlFor="ev-date">Date *</label>
+              <label className={styles.evLabel} htmlFor="ev-date">
+                {useCustomDays ? 'Starting from *' : 'Date *'}
+              </label>
               <input id="ev-date" type="date" className={styles.evInput} value={date} onChange={e => setDate(e.target.value)} />
             </div>
-            <label className={styles.evCheckRow}>
-              <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />
-              <span className={styles.evLabel}>All day</span>
-            </label>
+            {!useCustomDays && (
+              <label className={styles.evCheckRow}>
+                <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />
+                <span className={styles.evLabel}>All day</span>
+              </label>
+            )}
           </div>
+          {useCustomDays && (
+            <p className={styles.evRepeatNote}>
+              The first occurrence is whichever selected day comes next on or
+              after this date — each day below has its own hours instead.
+            </p>
+          )}
 
-          {!allDay && (
+          {!allDay && !useCustomDays && (
             <div className={styles.evRow}>
               <div className={styles.evField}>
                 <label className={styles.evLabel} htmlFor="ev-start">Start time</label>
@@ -3540,6 +3730,38 @@ function NewEventModal({
             </div>
           </div>
 
+          {inSeries && (
+            <div className={styles.evField}>
+              <span className={styles.evLabel} id="ev-scope-label">Apply changes to</span>
+              <div className={styles.evScopeRow} role="group" aria-labelledby="ev-scope-label">
+                <button
+                  type="button"
+                  className={`${styles.evScopeBtn} ${scope === 'this' ? styles.evScopeBtnOn : ''}`}
+                  onClick={() => setScope('this')}
+                  aria-pressed={scope === 'this'}
+                >
+                  This event
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.evScopeBtn} ${scope === 'future' ? styles.evScopeBtnOn : ''}`}
+                  onClick={() => setScope('future')}
+                  aria-pressed={scope === 'future'}
+                >
+                  This &amp; following
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.evScopeBtn} ${scope === 'series' ? styles.evScopeBtnOn : ''}`}
+                  onClick={() => setScope('series')}
+                  aria-pressed={scope === 'series'}
+                >
+                  All events
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className={styles.evField}>
             <label className={styles.evLabel} htmlFor="ev-repeat">Repeats</label>
             {inSeries ? (
@@ -3553,21 +3775,149 @@ function NewEventModal({
                 <select
                   id="ev-repeat"
                   className={styles.evInput}
-                  value={repeat}
-                  onChange={e => setRepeat(e.target.value as RepeatPreset)}
+                  value={useCustomDays ? CUSTOM_DAYS_REPEAT : repeat}
+                  onChange={e => {
+                    const v = e.target.value
+                    if (v === CUSTOM_DAYS_REPEAT) { setUseCustomDays(true) }
+                    else { setUseCustomDays(false); setRepeat(v as RepeatPreset) }
+                  }}
                 >
                   {REPEAT_PRESETS.map(r => (
                     <option key={r} value={r}>{REPEAT_LABEL[r]}</option>
                   ))}
+                  <option value={CUSTOM_DAYS_REPEAT}>Choose specific days…</option>
                 </select>
-                {repeat !== 'none' && (
+                {repeat !== 'none' && !useCustomDays && (
                   <p className={styles.evRepeatNote}>
                     Written out for the next two years. Delete or edit any one of
                     them and you will be asked whether you mean that one or all.
                   </p>
                 )}
+                {useCustomDays && (
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
+                    <span className={styles.evLabel} id="ev-custom-days-label">Meeting days</span>
+                    <div
+                      className={styles.evDayPicker}
+                      role="group"
+                      aria-labelledby="ev-custom-days-label"
+                      style={{ marginTop: '4px' }}
+                    >
+                      {DOW_LIST.map(d => (
+                        <button
+                          key={d.dow}
+                          type="button"
+                          className={`${styles.evDayBtn} ${customDow.has(d.dow) ? styles.evDayBtnOn : ''}`}
+                          onClick={() => toggleCustomDow(d.dow)}
+                          aria-pressed={customDow.has(d.dow)}
+                          aria-label={d.full}
+                        >
+                          {d.short}
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedDow.length > 0 && (
+                      <div style={{ marginTop: 'var(--sp-3)' }}>
+                        <div className={styles.evTimesHeader}>
+                          <span className={styles.evLabel}>Time</span>
+                          {selectedDow.length > 1 && (
+                            <label className={styles.evUniformToggle}>
+                              <input
+                                type="checkbox"
+                                checked={!customUniform}
+                                onChange={e => setCustomUniform(!e.target.checked)}
+                              />
+                              Different times per day
+                            </label>
+                          )}
+                        </div>
+
+                        {customUniform || selectedDow.length === 1 ? (
+                          <div className={styles.evTimePair}>
+                            <input
+                              type="time"
+                              className={styles.evInput}
+                              value={customTimes[selectedDow[0]].start}
+                              onChange={e => (customUniform
+                                ? setUniformCustomTime('start', e.target.value)
+                                : setCustomDayTime(selectedDow[0], 'start', e.target.value))}
+                              aria-label="Start time"
+                            />
+                            <span className={styles.evTimeSep} aria-hidden="true">→</span>
+                            <input
+                              type="time"
+                              className={styles.evInput}
+                              value={customTimes[selectedDow[0]].end}
+                              onChange={e => (customUniform
+                                ? setUniformCustomTime('end', e.target.value)
+                                : setCustomDayTime(selectedDow[0], 'end', e.target.value))}
+                              aria-label="End time"
+                            />
+                          </div>
+                        ) : (
+                          <div className={styles.evPerDayList}>
+                            {selectedDow.map(dow => (
+                              <div key={dow} className={styles.evPerDayRow}>
+                                <span className={styles.evPerDayName}>
+                                  {DOW_LIST.find(d => d.dow === dow)?.full}
+                                </span>
+                                <input
+                                  type="time"
+                                  className={styles.evInput}
+                                  value={customTimes[dow].start}
+                                  onChange={e => setCustomDayTime(dow, 'start', e.target.value)}
+                                  aria-label={`${DOW_LIST.find(d => d.dow === dow)?.full} start time`}
+                                />
+                                <span className={styles.evTimeSep} aria-hidden="true">→</span>
+                                <input
+                                  type="time"
+                                  className={styles.evInput}
+                                  value={customTimes[dow].end}
+                                  onChange={e => setCustomDayTime(dow, 'end', e.target.value)}
+                                  aria-label={`${DOW_LIST.find(d => d.dow === dow)?.full} end time`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {customDow.size === 0 && (
+                      <p className={styles.evRepeatNote}>Pick at least one day.</p>
+                    )}
+                    {customDaysProblem && customDow.size > 0 && (
+                      <p className={styles.evRepeatNote} role="alert">{customDaysProblem}</p>
+                    )}
+                    {customDow.size > 1 && !customDaysProblem && (
+                      <p className={styles.evRepeatNote}>
+                        Written out for the next two years, one row per meeting day.
+                      </p>
+                    )}
+                  </div>
+                )}
               </>
             )}
+          </div>
+
+          <div className={styles.evField}>
+            <span className={styles.evLabel} id="ev-priority-label">Priority</span>
+            <div className={styles.evPriorityRow} role="group" aria-labelledby="ev-priority-label">
+              {EVENT_PRIORITIES.map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`${styles.evPriorityBtn} ${priority === p ? styles.evPriorityBtnOn : ''}`}
+                  onClick={() => setPriority(p)}
+                  aria-pressed={priority === p}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
+            <p className={styles.evRepeatNote}>
+              When two events overlap, the higher priority one stays fully visible on top.
+            </p>
           </div>
 
           <div className={styles.evField}>

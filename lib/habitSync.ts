@@ -27,7 +27,7 @@
  */
 
 import type { IconName } from '@/components/ui/Icon'
-import { db, type Habit } from '@/lib/db'
+import { db, type Habit, type HabitCompletion } from '@/lib/db'
 import { pushNotification } from '@/lib/notificationCenter'
 import { isHabitScheduledOn, previousScheduledDate } from '@/utils/habitSchedule'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -193,6 +193,67 @@ export async function addHabitProgress(
   }
 
   return { completedNow, newCount, crossedLimit }
+}
+
+/* ── Undoing an accidental tap ────────────────────────────────── */
+
+export interface HabitTapUndo {
+  habitId: number
+  dateISO: string
+  /** The whole habit row exactly as it was before the tap. */
+  habitBefore: Habit
+  /** Today's completion row before the tap, or null if the tap created it. */
+  completionBefore: HabitCompletion | null
+}
+
+/**
+ * Snapshot a habit and its completion row for `dateISO`, immediately
+ * before a tap is about to change them.
+ *
+ * A tap can't be undone by running its arithmetic backwards: whether it
+ * continued a streak or started a new one after a break decides what
+ * `lastCompletedDate` and `streakCount` should revert to, and that
+ * decision was already thrown away by the time an "undo" button is
+ * pressed — a broken-then-restarted streak looks identical to a
+ * continued one once the count has moved. So this works the way
+ * calendar undo does instead: capture the exact prior state and put it
+ * back, rather than reasoning about what the prior state must have
+ * been.
+ */
+export async function captureHabitTap(
+  habitId: number,
+  dateISO: string,
+): Promise<HabitTapUndo | null> {
+  if (!db) return null
+  const habit = await db.habits.get(habitId)
+  if (!habit) return null
+  const completion = await db.habitCompletions
+    .where('[habitId+date]').equals([habitId, dateISO])
+    .first()
+  return { habitId, dateISO, habitBefore: habit, completionBefore: completion ?? null }
+}
+
+/**
+ * Put a habit's row and its completion for that day back exactly the
+ * way captureHabitTap found them, undoing one tap.
+ *
+ * `put`, not `update`: an edited row has to lose every field the tap
+ * touched, not just the ones this function happens to know about, and a
+ * completion row the tap created has to disappear entirely rather than
+ * being left behind with a stale count.
+ */
+export async function revertHabitTap(snap: HabitTapUndo): Promise<void> {
+  if (!db) return
+  await db.habits.put(snap.habitBefore)
+
+  if (snap.completionBefore) {
+    await db.habitCompletions.put(snap.completionBefore)
+    return
+  }
+  const row = await db.habitCompletions
+    .where('[habitId+date]').equals([snap.habitId, snap.dateISO])
+    .first()
+  if (row?.id != null) await db.habitCompletions.delete(row.id)
 }
 
 /* ── Skipping a day ──────────────────────────────────────────── */

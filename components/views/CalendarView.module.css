@@ -749,7 +749,26 @@
   z-index: 2;
   transition:
     filter    var(--dur-fast),
-    transform var(--dur-fast) var(--ease-expo);
+    transform var(--dur-fast) var(--ease-expo),
+    left      var(--dur-fast) var(--ease-expo),
+    right     var(--dur-fast) var(--ease-expo);
+}
+
+/*
+ * One of several sharing this slice of the day. left/right come in
+ * inline per pill (the cascade offset), so this only carries what every
+ * stacked pill needs regardless of its rank: a crisp edge against
+ * whichever pill is layered underneath it, since without one two
+ * adjacent colours can read as a single mis-shaded block again even
+ * once they are offset.
+ */
+.eventPillStacked {
+  box-shadow: -1px 0 0 0 rgba(0, 0, 0, 0.35);
+}
+
+.eventPillStacked:hover,
+.eventPillStacked:focus-visible {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
 /*
@@ -3334,6 +3353,151 @@
   font-size: 0.68rem;
   line-height: 1.5;
   color: var(--text-dark);
+}
+
+/* ── New Event weekday picker (mirrors UniversityScheduleReplicator) ── */
+
+.evDayPicker {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.evDayBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-dark);
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.evDayBtn:hover { border-color: rgba(124,149,255,0.30); color: var(--text-muted); background: rgba(124,149,255,0.06); }
+
+.evDayBtnOn {
+  background: rgba(124,149,255,0.16);
+  border-color: var(--accent-purple-dim);
+  color: var(--accent-purple);
+  box-shadow: 0 0 10px rgba(124,149,255,0.14);
+}
+
+.evDayBtnOn:hover { background: rgba(124,149,255,0.22); border-color: var(--accent-purple); }
+
+.evTimesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.evUniformToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.evUniformToggle input { accent-color: var(--accent-purple); cursor: pointer; }
+
+.evTimePair {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.evTimePair .evInput { flex: 1; }
+
+.evTimeSep { font-size: 0.75rem; color: var(--text-dark); flex-shrink: 0; }
+
+.evPerDayList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.evPerDayRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.evPerDayRow .evInput { flex: 1; }
+
+.evPerDayName {
+  flex: 0 0 4.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Priority + edit-scope selectors ────────────────────────────── */
+
+.evPriorityRow {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.evPriorityBtn {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.evPriorityBtn:hover { border-color: rgba(124,149,255,0.30); color: var(--text-primary); }
+
+.evPriorityBtnOn {
+  background: rgba(124,149,255,0.16);
+  border-color: var(--accent-purple-dim);
+  color: var(--accent-purple);
+}
+
+.evScopeRow {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.evScopeBtn {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.evScopeBtn:hover { border-color: rgba(124,149,255,0.30); color: var(--text-primary); }
+
+.evScopeBtnOn {
+  background: rgba(124,149,255,0.16);
+  border-color: var(--accent-purple-dim);
+  color: var(--accent-purple);
 }
 
 /*

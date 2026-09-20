@@ -152,11 +152,15 @@ export default function EventDetailPopover({
 
       {askScope ? (
         <div className={styles.scopeBox}>
-          <p className={styles.scopeQ}>Delete just this one, or every repeat?</p>
+          <p className={styles.scopeQ}>Delete just this one, this and later ones, or every repeat?</p>
           <div className={styles.scopeRow}>
             <button type="button" className={styles.scopeBtn}
                     onClick={() => onDelete('this')}>
               This event
+            </button>
+            <button type="button" className={styles.scopeBtn}
+                    onClick={() => onDelete('future')}>
+              This &amp; following
             </button>
             <button type="button" className={`${styles.scopeBtn} ${styles.scopeBtnAll}`}
                     onClick={() => onDelete('series')}>

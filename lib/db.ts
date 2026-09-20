@@ -447,7 +447,19 @@ export interface CalendarEvent {
   description?: string
   /** IANA zone to read this event against. Display only — see PersonalEvent. */
   timeZone?:    string
+  /**
+   * Who wins the top of the stack when this overlaps another event.
+   * Absent means 'normal'. Only ever set by a personal event's own
+   * form — carried here, rather than only on PersonalEvent, because
+   * this is the shape the week grid actually lays out and an imported
+   * event can overlap a personal one just as easily as two of your own
+   * can overlap each other.
+   */
+  priority?:    EventPriority
 }
+
+/** How an event is ranked when it overlaps another. See utils/eventOverlap.ts. */
+export type EventPriority = 'low' | 'normal' | 'high'
 
 /**
  * GpaSemester — a container for one semester's academic record.
@@ -573,6 +585,12 @@ export interface PersonalEvent {
    * Non-indexed, so no migration.
    */
   timeZone?:    string
+  /**
+   * Who wins the top of the stack when this overlaps another event on
+   * the week grid. Absent means 'normal'. Non-indexed — a tie-break
+   * for layout, never something to query the table by.
+   */
+  priority?:    EventPriority
 }
 
 /**
