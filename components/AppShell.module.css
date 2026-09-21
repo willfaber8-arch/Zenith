@@ -374,6 +374,27 @@
   animation: scaleIn 0.22s var(--ease-spring-snappy) both;
 }
 
+/*
+ * The completion ring, in the slot the count pill would take.
+ *
+ * `currentColor` inside the SVG resolves against this, so the ring is
+ * whatever accent the nav item's category already sets — no second
+ * palette, and it follows a retheme for free.
+ */
+.ring {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--item-accent, var(--accent-purple));
+  animation: scaleIn 0.22s var(--ease-spring-snappy) both;
+}
+
+/* Everything due today is done — the one state worth changing colour
+   for, and the same green a finished habit row uses. */
+.ringFull { color: var(--accent-green); }
+
 /* ── Footer row (Settings + Sign Out) ────────────────────── */
 
 .sidebarFooter {

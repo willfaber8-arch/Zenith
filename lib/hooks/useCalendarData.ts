@@ -22,6 +22,7 @@ import { useLiveQuery }          from 'dexie-react-hooks'
 import { db, type CalendarFeed, type CalendarEvent } from '@/lib/db'
 import { useToast }              from '@/lib/ToastContext'
 import { parseIcal }             from '@/utils/calendarParser'
+import { backfillFeedSeries }    from '@/lib/calendarSeriesBackfill'
 
 /* ── Feed accent colour palette (cycles on add) ─────────────── */
 
@@ -121,6 +122,15 @@ export function useCalendarData(): UseCalendarDataReturn {
 
     if (toInsert.length > 0) {
       await db.calendarEvents.bulkAdd(toInsert as CalendarEvent[])
+      /*
+       * Group whatever arrived ungrouped. A server that expanded a
+       * recurrence before sending it gives us separate VEVENTs with no
+       * RRULE to read, so `parseIcal` has nothing to build a series
+       * from — and since a refresh re-imports, doing this only in the
+       * one-time backfill would let a refresh quietly un-group a feed
+       * that had already been repaired.
+       */
+      await backfillFeedSeries(feedId)
     }
 
     return toInsert.length

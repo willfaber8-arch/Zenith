@@ -7,8 +7,9 @@
  *
  *   1. Seeds the userProfile singleton (id=1) on first authenticated
  *      session — safe to call repeatedly (no-op if row exists).
- *   2. Subscribes to live assignment counts and pushes badge numbers
- *      into NavBadgeContext so sidebar pills stay reactive.
+ *   2. Subscribes to live assignment counts and today's habit progress,
+ *      pushing both into NavBadgeContext so the sidebar's count pill
+ *      and completion ring stay reactive.
  *   3. Takes the daily local snapshot, if one is due, and then tidies
  *      away finished tasks past their retention window — in that order,
  *      so anything the sweep removes is inside a snapshot first.
@@ -19,6 +20,7 @@
 import { useEffect }                 from 'react'
 import { useAuth }                   from '@/lib/AuthContext'
 import { seedUserProfile }           from '@/lib/db'
+import { useHabitRingBadge }         from '@/lib/hooks/useHabitRingBadge'
 import { useLiveAssignmentBadges }   from '@/lib/hooks/useLiveAssignmentBadges'
 import { warn }                      from '@/lib/logger'
 import { takeSnapshot }              from '@/utils/dbSnapshots'
@@ -85,6 +87,9 @@ export default function BadgeSyncEffect() {
 
   /* ── Live assignment count → NavBadge sync ─────────────────── */
   useLiveAssignmentBadges()
+
+  /* ── Today's habit progress → the Habits ring ──────────────── */
+  useHabitRingBadge()
 
   return null
 }

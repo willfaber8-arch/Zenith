@@ -294,9 +294,24 @@ export async function generateUniversitySchedule(
   /* Deterministic UID — stable if the same course is ever regenerated. */
   const uidPrefix = `sched-${input.universityId}-${name.replace(/\W+/g, '_')}`
 
+  /*
+   * One id across the whole run, so a semester of a class is a series.
+   *
+   * Without it every session was an independent row and the calendar
+   * had no way to know they were the same class: "this and following"
+   * reached one Tuesday, the delete prompt never offered "all of them",
+   * and moving a course to a new room meant editing it forty times.
+   *
+   * Scoped to the run, not to `uidPrefix` alone: the same course taken
+   * again in a later term generates a second feed, and those two terms
+   * are not one series to be edited together.
+   */
+  const seriesUid = `${uidPrefix}-${now.toString(36)}`
+
   const eventRows = sessions.map(s => ({
     feedId:      0,                       // filled in inside the transaction
     uid:         `${uidPrefix}-${s.date}`,
+    seriesUid,
     title:       name,
     startMs:     buildSlotMs(s.date, s.startTime),
     endMs:       buildSlotMs(s.date, s.endTime),
