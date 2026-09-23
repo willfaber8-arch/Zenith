@@ -220,3 +220,164 @@ describe('the "future" scope', () => {
     expect(rows.filter(r => r.title === 'Study group')).toHaveLength(1)
   })
 })
+
+/* ── Time changes that reach the rest of the series ───────────────── */
+
+describe('a time change on a repeat', () => {
+  const day = 24 * H
+
+  /** A daily 3–4pm repeat, five days running from `from`. */
+  async function seedDaily(from: Date, count = 5): Promise<CalendarEvent[]> {
+    await db.calendarEvents.clear()
+    const rows = Array.from({ length: count }, (_, i) => {
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i, 15, 0)
+      return {
+        feedId: 1, uid: `free::${i}`, seriesUid: 'free', locallyEdited: 0,
+        title: 'Free time',
+        startMs: d.getTime(), endMs: d.getTime() + H,
+        allDay: 0, is1159: 0, category: 'life',
+      }
+    })
+    await db.calendarEvents.bulkAdd(rows as CalendarEvent[])
+    return db.calendarEvents.orderBy('startMs').toArray()
+  }
+
+  const hoursOf = async () =>
+    (await db.calendarEvents.orderBy('startMs').toArray())
+      .map(r => new Date(r.startMs).getHours())
+
+  const datesOf = async () =>
+    (await db.calendarEvents.orderBy('startMs').toArray())
+      .map(r => new Date(r.startMs).getDate())
+
+  /*
+   * The reported bug, in one test: set a daily repeat to the wrong hour
+   * and fixing it should be one edit, not one edit per day.
+   */
+  it('moves every occurrence to the new hour, each keeping its own date', async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const rows = await seedDaily(today)
+    const before = await datesOf()
+
+    const target = new Date(rows[0].startMs)
+    target.setHours(16, 0, 0, 0)
+
+    await applyEventPatch(
+      rows[0],
+      { startMs: target.getTime(), endMs: target.getTime() + H },
+      'series',
+      'time-of-day',
+    )
+
+    expect(await hoursOf()).toEqual([16, 16, 16, 16, 16])
+    expect(await datesOf()).toEqual(before)
+  })
+
+  it('still touches only the clicked occurrence when the mode says so', async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const rows = await seedDaily(today)
+
+    const target = new Date(rows[2].startMs)
+    target.setHours(16, 0, 0, 0)
+
+    await applyEventPatch(
+      rows[2],
+      { startMs: target.getTime(), endMs: target.getTime() + H },
+      'series',
+      'occurrence-only',
+    )
+
+    expect(await hoursOf()).toEqual([15, 15, 16, 15, 15])
+  })
+
+  /* What a drag does, and must keep doing. */
+  it('commitDrag never reaches the series', async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const rows = await seedDaily(today)
+
+    await commitDrag(rows[1], {
+      startMs: rows[1].startMs + 2 * H,
+      endMs:   rows[1].endMs   + 2 * H,
+    })
+
+    expect(await hoursOf()).toEqual([15, 17, 15, 15, 15])
+  })
+
+  it('leaves occurrences that already happened at their original time', async () => {
+    /* Two days behind, three ahead, all at 3pm. */
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - 2)
+    const rows = await seedDaily(start)
+
+    const clicked = rows[2]                    // today
+    const target = new Date(clicked.startMs)
+    target.setHours(16, 0, 0, 0)
+
+    await applyEventPatch(
+      clicked,
+      { startMs: target.getTime(), endMs: target.getTime() + H },
+      'series',
+      'time-of-day',
+    )
+
+    /* The two behind keep 3pm; today and the two ahead move to 4pm. */
+    expect(await hoursOf()).toEqual([15, 15, 16, 16, 16])
+  })
+
+  it('under "this and following" every occurrence it reaches moves', async () => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - 2)
+    const rows = await seedDaily(start)
+
+    const clicked = rows[1]                    // yesterday
+    const target = new Date(clicked.startMs)
+    target.setHours(16, 0, 0, 0)
+
+    await applyEventPatch(
+      clicked,
+      { startMs: target.getTime(), endMs: target.getTime() + H },
+      'future',
+      'time-of-day',
+    )
+
+    /* 'future' means from the one you picked — it does not second-guess
+       that choice with the past guard. */
+    expect(await hoursOf()).toEqual([15, 16, 16, 16, 16])
+  })
+
+  it('shifts every occurrence by the same days when asked to', async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const rows = await seedDaily(today)
+    const before = await datesOf()
+
+    const target = new Date(rows[0].startMs + day)
+    target.setHours(15, 0, 0, 0)
+
+    await applyEventPatch(
+      rows[0],
+      { startMs: target.getTime(), endMs: target.getTime() + H },
+      'series',
+      'shift-days',
+    )
+
+    expect(await datesOf()).toEqual(before.map(d => d + 1))
+  })
+
+  it('carries a non-time field to the past as well — a rename is not a record of when', async () => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - 2)
+    const rows = await seedDaily(start)
+
+    await applyEventPatch(rows[2], { title: 'Quiet hours' }, 'series', 'time-of-day')
+
+    const titles = (await db.calendarEvents.toArray()).map(r => r.title)
+    expect(titles.every(t => t === 'Quiet hours')).toBe(true)
+  })
+})

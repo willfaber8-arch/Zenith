@@ -738,6 +738,18 @@
   position: absolute;
   left: 3px;
   right: 3px;
+  /*
+   * Opaque, so a pill in front actually hides what is behind it.
+   *
+   * Mixed against the card colour rather than blended into a fixed hex
+   * in JS, so a cosmetic theme that redefines --surface-card retints
+   * every event with it (see the note on runtime theming in CLAUDE.md).
+   * The plain declaration above is the fallback for anything without
+   * color-mix: a solid card colour loses the event's tint but never
+   * goes transparent, which is the property that matters here.
+   */
+  background: var(--surface-card);
+  background: color-mix(in srgb, var(--pill-color, var(--accent-purple)) 32%, var(--surface-card));
   border-radius: var(--r-sm);
   padding: 5px 8px;
   overflow: hidden;
@@ -3493,6 +3505,14 @@
 }
 
 .evScopeBtn:hover { border-color: rgba(124,149,255,0.30); color: var(--text-primary); }
+
+/* The question in front of a big series edit, beside its two answers. */
+.evConfirmQ {
+  margin-right: auto;
+  align-self: center;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
 
 .evScopeBtnOn {
   background: rgba(124,149,255,0.16);
