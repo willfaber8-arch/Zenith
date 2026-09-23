@@ -30,7 +30,8 @@ import {
   deltaMinutesFromPx, deltaDaysFromPx, applyMove, applyResize, clampToVisibleDay,
 } from '@/utils/calendarInteraction'
 import {
-  applyEventPatch, removeEvent, commitDrag, seriesSize, isPersonal, type EditScope,
+  applyEventPatch, removeEvent, commitDrag, seriesSize, isPersonal,
+  seriesOccurrences, type EditScope,
 } from '@/lib/calendarMutations'
 import EventDetailPopover from '@/components/EventDetailPopover'
 import { COMMON_ZONES, describeInZone } from '@/utils/eventTimezone'
@@ -78,6 +79,10 @@ import {
   validateCustomDayMeetings, CUSTOM_DAYS_REPEAT, type CustomDayMeeting,
 } from '@/lib/personalEventSeries'
 import { layoutOverlaps } from '@/utils/eventOverlap'
+import {
+  planSeriesTimes, describeTimeChange, startOfLocalDay,
+  type SeriesTimeMode,
+} from '@/utils/seriesEdit'
 import { backfillSeriesOnce } from '@/lib/calendarSeriesBackfill'
 import CognitiveLoadMap from '@/components/CognitiveLoadMap'
 import { useToast } from '@/lib/ToastContext'
@@ -133,6 +138,15 @@ const DOW_LIST: { dow: number; short: string; full: string }[] = [
 const UNIFORM_DOW = 1
 
 const EVENT_PRIORITIES: EventPriority[] = ['low', 'normal', 'high']
+
+/**
+ * Above this many occurrences, saving a series edit asks once first.
+ *
+ * Low enough to catch a term of a weekly class, high enough that fixing
+ * the time on a handful of occurrences — the common case, and the whole
+ * reason series edits carry times at all — never stops to ask.
+ */
+const BIG_SERIES_EDIT = 10
 
 /*
  * Below this, a press is a click rather than a drag.
@@ -954,7 +968,17 @@ function EventPillEl({
       style={{
         top:             `${top}px`,
         height:          `${height}px`,
-        backgroundColor: `${color}2e`,
+        /*
+         * The pill's own colour, mixed to an opaque tint in CSS rather
+         * than set as a translucent background here.
+         *
+         * It used to be `${color}2e` — 18% alpha — which is why two
+         * overlapping events still read as one muddy block even after
+         * they were offset from each other: you were seeing the lower
+         * pill, and the grid lines, straight through the upper one.
+         * Offsetting them only helps if the one in front is solid.
+         */
+        '--pill-color':  color,
         borderLeft:      `3px solid ${color}`,
         color:           color,
         ...(overlapping ? {
@@ -962,7 +986,7 @@ function EventPillEl({
           right: `calc(3px + ${rightInset}px)`,
         } : null),
         ...(zIndex !== undefined ? { zIndex } : null),
-      }}
+      } as React.CSSProperties}
       onMouseDown={beginDrag('move')}
       onMouseEnter={overlapping ? () => setHovered(true)  : undefined}
       onMouseLeave={overlapping ? () => setHovered(false) : undefined}
@@ -2807,6 +2831,10 @@ export default function CalendarView() {
   }, [])
 
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
+  /* The edited event's sibling occurrences, loaded when the form opens
+     so it can preview a series edit against the real rows. */
+  const [editSeries, setEditSeries] =
+    useState<{ id: number; startMs: number; endMs: number }[]>([])
   const [detail, setDetail] = useState<
     { event: CalendarEvent; rect: DOMRect; seriesCount: number } | null
   >(null)
@@ -3319,9 +3347,17 @@ export default function CalendarView() {
              * Both kinds of event edit through the same form. An imported
              * one is written back through applyEventPatch so it picks up
              * the locallyEdited flag and survives the next refresh.
+             *
+             * The series' other occurrences are loaded alongside it so
+             * the form can say what a series edit will do before doing
+             * it — an empty list simply means there is nothing to say.
              */
-            setEditTarget(detail.event)
+            const target = detail.event
             setDetail(null)
+            void seriesOccurrences(target).then(rows => {
+              setEditSeries(rows)
+              setEditTarget(target)
+            })
           }}
           onDelete={scope => void handleDeleteFromPopover(scope)}
         />
@@ -3399,7 +3435,7 @@ export default function CalendarView() {
                 timeZone:    data.timeZone,
                 location:    (data as { location?: string }).location,
                 priority:    data.priority,
-              }, scope)
+              }, scope, extra.timeMode)
               toast(n > 1 ? `Updated ${n} occurrences.` : 'Event updated.', 'success')
             } catch {
               toast('Could not save that change.', 'error')
@@ -3423,6 +3459,12 @@ export default function CalendarView() {
             repeat:      (editTarget as CalendarEvent & { repeat?: string }).repeat,
             createdAt:   Date.now(),
           } as PersonalEvent}
+          seriesRows={editSeries}
+          /* The table's own id: the grid negates personal ones so they
+             cannot collide with feed ids in the same list. */
+          seriesClickedId={editTarget.id != null
+            ? (isPersonal(editTarget) ? Math.abs(editTarget.id) : editTarget.id)
+            : undefined}
           localCalendars={localCalendars}
           msConfigured={ms.configured}
           msConnected={ms.account !== null}
@@ -3477,6 +3519,7 @@ export default function CalendarView() {
 function NewEventModal({
   onClose, onSave, initial, localCalendars,
   msConfigured, msConnected, onAddToOutlook, onPushMicrosoft,
+  seriesRows, seriesClickedId,
 }: {
   onClose:  () => void
   /**
@@ -3488,9 +3531,23 @@ function NewEventModal({
   onSave:   (
     e: Omit<PersonalEvent, 'id'>,
     repeat: RepeatPreset,
-    extra: { customDays?: CustomDayMeeting[]; anchorDate?: string; scope?: EditScope },
+    extra: {
+      customDays?: CustomDayMeeting[]
+      anchorDate?: string
+      scope?: EditScope
+      timeMode?: SeriesTimeMode
+    },
   ) => void
   initial?: PersonalEvent
+  /**
+   * Every occurrence of the series this event belongs to, so the form
+   * can say what an edit will actually do before it does it. It runs
+   * the same planner the write path runs, which is what stops the
+   * sentence on screen from promising something different.
+   */
+  seriesRows?: { id: number; startMs: number; endMs: number }[]
+  /** The edited occurrence's row id — positive, as the table stores it. */
+  seriesClickedId?: number
   localCalendars: LocalCalendar[]
   msConfigured:    boolean
   msConnected:     boolean
@@ -3591,6 +3648,16 @@ function NewEventModal({
   const [scope, setScope] = useState<EditScope>('this')
 
   /*
+   * What a changed date means for the rest of the series — asked only
+   * when the date actually changed, because a plain "3pm → 4pm" has one
+   * sensible reading and should not stop to ask about it.
+   */
+  const [dateMode, setDateMode] = useState<'this-date' | 'shift-all'>('this-date')
+
+  /* Armed by Save when the edit reaches a lot of occurrences. */
+  const [confirmBig, setConfirmBig] = useState(false)
+
+  /*
    * Already one of several occurrences. Re-expanding from inside one of
    * them would have to rewrite rows you may have moved by hand, so the
    * form says what it is rather than offering a picker that cannot
@@ -3614,6 +3681,43 @@ function NewEventModal({
 
   const canSave = title.trim().length > 0 && date.length > 0
     && (!useCustomDays || (customDow.size > 0 && !customDaysProblem))
+
+  /*
+   * What this edit is about to do to the rest of the series.
+   *
+   * Runs the same planner the write path runs, over the same rows, so
+   * the sentence under the scope picker cannot promise something the
+   * save then does differently. Null whenever there is nothing to
+   * explain — a one-off, or an edit scoped to this occurrence alone.
+   */
+  const seriesPreview = useMemo(() => {
+    if (!inSeries || scope === 'this') return null
+    if (!seriesRows || seriesRows.length === 0 || seriesClickedId == null) return null
+
+    const clicked = seriesRows.find(r => r.id === seriesClickedId)
+    if (!clicked) return null
+
+    const target = computeTimes()
+    const change = describeTimeChange(clicked, target)
+
+    const reached = scope === 'future'
+      ? seriesRows.filter(r => r.startMs >= clicked.startMs)
+      : seriesRows
+
+    const mode: SeriesTimeMode =
+      change.dateChanged && dateMode === 'shift-all' ? 'shift-days' : 'time-of-day'
+
+    const protectBeforeMs = scope === 'series' ? startOfLocalDay() : undefined
+    const moved = planSeriesTimes(mode, {
+      rows: reached, clickedId: seriesClickedId, target, protectBeforeMs,
+    })
+
+    const past = protectBeforeMs === undefined ? 0
+      : reached.filter(r => r.startMs < protectBeforeMs && r.id !== seriesClickedId).length
+
+    return { change, mode, moved, past, reach: reached.length, target }
+    /* computeTimes() reads these four; nothing else here changes it. */
+  }, [inSeries, scope, dateMode, seriesRows, seriesClickedId, date, start, end, allDay])
 
   /* Shared start/end derivation — reused by save and external-calendar export. */
   function computeTimes(): { startMs: number; endMs: number } {
@@ -3651,6 +3755,18 @@ function NewEventModal({
 
   function handleSave() {
     if (!canSave) return
+
+    /*
+     * A speed bump in front of the big ones only. Rewriting a whole
+     * term is a reasonable thing to want and a terrible thing to do by
+     * accident, and the inline sentence above has already said how many
+     * this reaches — this just makes you agree with it out loud.
+     */
+    if (!confirmBig && (seriesPreview?.reach ?? 0) > BIG_SERIES_EDIT) {
+      setConfirmBig(true)
+      return
+    }
+
     const { startMs, endMs } = computeTimes()
     onSave({
       title:    title.trim(),
@@ -3667,6 +3783,11 @@ function NewEventModal({
       customDays: useCustomDays ? customMeetings : undefined,
       anchorDate: useCustomDays ? date : undefined,
       scope:      inSeries ? scope : undefined,
+      /* A drag is the other caller of applyEventPatch and passes
+         nothing here, so it keeps the occurrence-only default. */
+      timeMode:   inSeries
+        ? (scope === 'this' ? 'occurrence-only' : (seriesPreview?.mode ?? 'time-of-day'))
+        : undefined,
     })
     onClose()
   }
@@ -3785,6 +3906,69 @@ function NewEventModal({
                   All events
                 </button>
               </div>
+
+              {/*
+                What that choice actually does, in a sentence, before it
+                does it. Only ever shown when there is something to say —
+                "This event" explains itself.
+              */}
+              {seriesPreview && (
+                <p className={styles.evRepeatNote} role="status">
+                  {seriesPreview.change.timeChanged || seriesPreview.change.dateChanged
+                    ? <>
+                        {seriesPreview.moved.length === 0
+                          ? 'Every occurrence is already at this time.'
+                          : <>
+                              {/* "All" only when it really is all of them —
+                                  with past occurrences held back it is not,
+                                  and the next sentence would contradict it. */}
+                              {seriesPreview.moved.length === 1
+                                ? 'One occurrence moves'
+                                : `${seriesPreview.past > 0 ? '' : 'All '}`
+                                  + `${seriesPreview.moved.length} occurrences move`} to{' '}
+                              {formatTime(seriesPreview.target.startMs)}
+                              {seriesPreview.mode === 'shift-days'
+                                ? ', shifted by '
+                                  + `${Math.abs(seriesPreview.change.dayDelta)} day`
+                                  + `${Math.abs(seriesPreview.change.dayDelta) === 1 ? '' : 's'}.`
+                                : ', each keeping its own date.'}
+                            </>}
+                        {seriesPreview.past > 0 && (
+                          <> {seriesPreview.past} that already happened
+                            {seriesPreview.past === 1 ? ' keeps its' : ' keep their'} original time.</>
+                        )}
+                      </>
+                    : `Changes apply to ${seriesPreview.reach} occurrence${seriesPreview.reach === 1 ? '' : 's'}.`}
+                </p>
+              )}
+
+              {/*
+                The one genuinely ambiguous case, asked only when it
+                arises: the date was changed as well, and there is no
+                way to tell from the form whether that means "this one
+                moved" or "the whole pattern moved".
+              */}
+              {seriesPreview?.change.dateChanged && (
+                <div className={styles.evScopeRow} role="group" aria-label="What the new date means">
+                  <button
+                    type="button"
+                    className={`${styles.evScopeBtn} ${dateMode === 'this-date' ? styles.evScopeBtnOn : ''}`}
+                    onClick={() => setDateMode('this-date')}
+                    aria-pressed={dateMode === 'this-date'}
+                  >
+                    Only this one&rsquo;s date
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.evScopeBtn} ${dateMode === 'shift-all' ? styles.evScopeBtnOn : ''}`}
+                    onClick={() => setDateMode('shift-all')}
+                    aria-pressed={dateMode === 'shift-all'}
+                  >
+                    Shift them all by {Math.abs(seriesPreview.change.dayDelta)} day
+                    {Math.abs(seriesPreview.change.dayDelta) === 1 ? '' : 's'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -4036,12 +4220,36 @@ function NewEventModal({
             )}
           </div>
 
-          <div className={styles.evActions}>
-            <button type="button" className={styles.evCancelBtn} onClick={onClose}>Cancel</button>
-            <button type="button" className={styles.evSaveBtn} onClick={handleSave} disabled={!canSave}>
-              {initial ? 'Save Changes' : 'Add Event'}
-            </button>
-          </div>
+          {/*
+            Confirmed in place rather than in a dialog over the dialog,
+            matching how ConfirmDelete asks: the form stays readable
+            behind the question, so you can still see what you changed
+            while deciding whether you meant it at that scale.
+          */}
+          {confirmBig ? (
+            <div className={styles.evActions} role="alert">
+              <span className={styles.evConfirmQ}>
+                That&rsquo;s {seriesPreview?.reach} events.
+              </span>
+              <button
+                type="button"
+                className={styles.evCancelBtn}
+                onClick={() => setConfirmBig(false)}
+              >
+                Go back
+              </button>
+              <button type="button" className={styles.evSaveBtn} onClick={handleSave} autoFocus>
+                Change all {seriesPreview?.reach}
+              </button>
+            </div>
+          ) : (
+            <div className={styles.evActions}>
+              <button type="button" className={styles.evCancelBtn} onClick={onClose}>Cancel</button>
+              <button type="button" className={styles.evSaveBtn} onClick={handleSave} disabled={!canSave}>
+                {initial ? 'Save Changes' : 'Add Event'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -17,6 +17,10 @@
  */
 
 import { db, type CalendarEvent, type PersonalEvent, type EventPriority } from '@/lib/db'
+import {
+  planSeriesTimes, startOfLocalDay,
+  type OccurrenceRow, type SeriesTimeMode,
+} from '@/utils/seriesEdit'
 
 /** The synthetic feed id the grid uses for your own events. */
 export const PERSONAL_FEED_ID = -1
@@ -101,56 +105,127 @@ async function targetIds(event: CalendarEvent, scope: EditScope): Promise<number
   return inScope.map(r => r.id).filter((id): id is number => id != null)
 }
 
+/** The rows a scope reaches, with the timings the planner needs. */
+async function rowsForScope(
+  event: CalendarEvent,
+  scope: EditScope,
+): Promise<(OccurrenceRow & { id: number })[]> {
+  if (!db) return []
+  const clickedId = isPersonal(event) ? personalRowId(event) : event.id
+  if (clickedId == null) return []
+
+  if (scope === 'this' || !event.seriesUid) {
+    return [{ id: clickedId, startMs: event.startMs, endMs: event.endMs }]
+  }
+
+  const all = isPersonal(event)
+    ? await db.personalEvents.where('seriesUid').equals(event.seriesUid).toArray()
+    : await db.calendarEvents.where('seriesUid').equals(event.seriesUid).toArray()
+
+  const inScope = scope === 'future'
+    ? all.filter(r => r.startMs >= event.startMs)
+    : all
+
+  return inScope
+    .filter(r => r.id != null)
+    .map(r => ({ id: r.id as number, startMs: r.startMs, endMs: r.endMs }))
+}
+
 /**
- * Apply a patch to an event, or to its whole series.
+ * Every occurrence of this event's series, for a UI that wants to
+ * describe an edit before making it.
  *
- * A series edit deliberately does not carry start and end times across
- * occurrences — moving every Monday class to Tuesday by editing one of
- * them would be a surprise, and the times are what make each occurrence
- * distinct. Times only ever apply to the occurrence you touched.
+ * Exported so the form previews an edit against the same rows the write
+ * will touch, rather than counting them a second way of its own.
+ */
+export async function seriesOccurrences(
+  event: CalendarEvent,
+): Promise<{ id: number; startMs: number; endMs: number }[]> {
+  return rowsForScope(event, 'series')
+}
+
+/**
+ * Apply a patch to an event, to the rest of its series, or to the part
+ * of the series still ahead.
+ *
+ * Times used to be stripped from anything but the occurrence you
+ * clicked. The reasoning only went halfway: an occurrence's `startMs`
+ * is an absolute instant, and writing one instant onto forty rows does
+ * collapse a whole term onto one afternoon — but a repeat's *time of
+ * day* is not per-occurrence at all. "My daily free time is at the
+ * wrong hour" was therefore forty separate edits, which is the bug this
+ * now fixes: `timeMode` decides how far a time change carries, and
+ * utils/seriesEdit works out each row's new timing from its own date.
+ *
+ * `'occurrence-only'` is the default, and is what dragging always uses:
+ * a drag is a gesture on one block of time, never a statement about the
+ * series.
  */
 export async function applyEventPatch(
   event: CalendarEvent,
   patch: EventPatch,
   scope: EditScope = 'this',
+  timeMode: SeriesTimeMode = 'occurrence-only',
 ): Promise<number> {
   if (!db) return 0
 
-  const ids = await targetIds(event, scope)
-  if (ids.length === 0) return 0
+  const rows = await rowsForScope(event, scope)
+  if (rows.length === 0) return 0
+
+  const clickedId = isPersonal(event) ? personalRowId(event) : event.id
+  if (clickedId == null) return 0
 
   const { startMs, endMs, ...shared } = patch
 
-  if (isPersonal(event)) {
-    let n = 0
-    for (const id of ids) {
-      /* Times belong to the occurrence you touched, never to the
-         series — moving every Tuesday seminar to Wednesday by editing
-         one of them is not what editing one of them means. */
-      const body: Partial<PersonalEvent> = id === personalRowId(event)
-        ? { ...shared, ...(startMs !== undefined ? { startMs } : {}),
-                       ...(endMs   !== undefined ? { endMs   } : {}) }
-        : { ...shared }
-      if (Object.keys(body).length === 0) continue
-      await db.personalEvents.update(id, body)
-      n++
-    }
-    return n
-  }
+  /*
+   * A time change reaches the other occurrences only when the caller
+   * asked it to and both ends are known — half a time is not a time.
+   *
+   * Under `'series'` the past is protected: a repeat set to the wrong
+   * hour should be fixed from here on, but rewriting when last week's
+   * occurrences happened turns the calendar's record of them into a
+   * guess. `'future'` needs no such guard, since every row it reaches
+   * is already at or after the one being edited.
+   */
+  const timePlan = (startMs !== undefined && endMs !== undefined)
+    ? planSeriesTimes(scope === 'this' ? 'occurrence-only' : timeMode, {
+        rows,
+        clickedId,
+        target: { startMs, endMs },
+        protectBeforeMs: scope === 'series' ? startOfLocalDay() : undefined,
+      })
+    : []
+  const timeById = new Map(timePlan.map(p => [p.id, p]))
+
+  /* Only one end supplied — write it where it was aimed and nowhere else. */
+  const partialTime = (startMs !== undefined) !== (endMs !== undefined)
+
+  const personal = isPersonal(event)
   let touched = 0
 
-  for (const id of ids) {
-    const isTheOneClicked = id === event.id
-    /* Times belong to the occurrence, never to the series. */
-    const body: Partial<CalendarEvent> = isTheOneClicked
-      ? { ...shared, ...(startMs !== undefined ? { startMs } : {}),
-                     ...(endMs   !== undefined ? { endMs   } : {}),
-          locallyEdited: 1 }
-      : { ...shared, locallyEdited: 1 }
+  for (const row of rows) {
+    const moved = timeById.get(row.id)
+    const body: Record<string, unknown> = { ...shared }
+
+    if (moved) {
+      body.startMs = moved.startMs
+      body.endMs   = moved.endMs
+    } else if (partialTime && row.id === clickedId) {
+      if (startMs !== undefined) body.startMs = startMs
+      if (endMs   !== undefined) body.endMs   = endMs
+    }
+
+    /* Keeps an edited feed event from being reverted by the next
+       refresh — see the note on locallyEdited in CLAUDE.md. */
+    if (!personal) body.locallyEdited = 1
+
     if (Object.keys(body).length === 0) continue
-    await db.calendarEvents.update(id, body)
+
+    if (personal) await db.personalEvents.update(row.id, body as Partial<PersonalEvent>)
+    else          await db.calendarEvents.update(row.id, body as Partial<CalendarEvent>)
     touched++
   }
+
   return touched
 }
 
