@@ -75,19 +75,98 @@ function isBlockedIpv4(ip: string): boolean {
 
 /* ── IPv6 helpers ─────────────────────────────────────────────── */
 
+/**
+ * Expand an IPv6 literal to its 16 bytes, or null if it will not parse.
+ *
+ * Matching on the *text* of an IPv6 address does not work here, and
+ * quietly failed open for a long time: this guard used to recognise an
+ * IPv4-mapped address only as `::ffff:127.0.0.1`, but `new URL()`
+ * normalises every IPv6 literal to its hex form before the guard sees
+ * the hostname, so what actually arrived was `::ffff:7f00:1`. The
+ * dotted-quad branch could never match a parsed URL, and every private
+ * IPv4 address was reachable by spelling it as IPv6 —
+ * `http://[::ffff:a9fe:a9fe]/` is the cloud metadata endpoint.
+ *
+ * Parsing to bytes removes the whole class of problem: one address has
+ * many spellings, and exactly one byte sequence.
+ */
+export function ipv6ToBytes(addr: string): Uint8Array | null {
+  let a = addr.toLowerCase().split('%')[0]      // strip zone id (fe80::1%eth0)
+  if (a.length === 0) return null
+
+  /* A trailing dotted-quad carries the low 32 bits (::ffff:1.2.3.4). */
+  let tail: number[] = []
+  const lastColon = a.lastIndexOf(':')
+  const afterColon = a.slice(lastColon + 1)
+  if (afterColon.includes('.')) {
+    const v4 = ipv4ToInt(afterColon)
+    if (v4 === null) return null
+    tail = [(v4 >>> 24) & 0xff, (v4 >>> 16) & 0xff, (v4 >>> 8) & 0xff, v4 & 0xff]
+    a = a.slice(0, lastColon + 1) + '0:0'       // stand in for the 32 bits
+  }
+
+  const halves = a.split('::')
+  if (halves.length > 2) return null            // "::" may appear once
+
+  const toGroups = (part: string): number[] | null => {
+    if (part === '') return []
+    const out: number[] = []
+    for (const g of part.split(':')) {
+      if (!/^[0-9a-f]{1,4}$/.test(g)) return null
+      out.push(parseInt(g, 16))
+    }
+    return out
+  }
+
+  const head = toGroups(halves[0])
+  const rest = halves.length === 2 ? toGroups(halves[1]) : null
+  if (head === null || (halves.length === 2 && rest === null)) return null
+
+  let groups: number[]
+  if (halves.length === 2) {
+    const fill = 8 - head.length - rest!.length
+    if (fill < 1) return null                   // "::" must cover ≥1 group
+    groups = [...head, ...Array(fill).fill(0), ...rest!]
+  } else {
+    groups = head
+  }
+  if (groups.length !== 8) return null
+
+  const bytes = new Uint8Array(16)
+  groups.forEach((g, i) => {
+    bytes[i * 2]     = (g >>> 8) & 0xff
+    bytes[i * 2 + 1] = g & 0xff
+  })
+  if (tail.length === 4) bytes.set(tail, 12)
+  return bytes
+}
+
 function isBlockedIpv6(ip: string): boolean {
-  const a = ip.toLowerCase().split('%')[0] // strip zone id (fe80::1%eth0)
-  if (a === '::1' || a === '::') return true // loopback / unspecified
+  const b = ipv6ToBytes(ip)
+  if (b === null) return true                   // unparseable → treat as unsafe
 
-  /* IPv4-mapped (::ffff:a.b.c.d) and IPv4-compatible — validate embedded v4 */
-  const mapped = a.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/)
-  if (mapped) return isBlockedIpv4(mapped[1])
+  const firstTenZero = b.subarray(0, 10).every(x => x === 0)
 
-  if (/^f[cd]/.test(a)) return true            // fc00::/7 unique-local
-  if (/^fe[89ab]/.test(a)) return true         // fe80::/10 link-local
-  if (/^ff/.test(a)) return true               // ff00::/8 multicast
-  if (a.startsWith('2001:db8')) return true    // documentation
-  if (a.startsWith('64:ff9b')) return true     // NAT64
+  /*
+   * ::ffff:0:0/96 — IPv4-mapped. The embedded address is the one the
+   * socket will actually reach, so it gets the full IPv4 treatment.
+   */
+  if (firstTenZero && b[10] === 0xff && b[11] === 0xff) {
+    return isBlockedIpv4(`${b[12]}.${b[13]}.${b[14]}.${b[15]}`)
+  }
+
+  /*
+   * ::/96 — the unspecified address, loopback, and the deprecated
+   * IPv4-compatible form. Nothing public lives in this range, so the
+   * whole of it is refused rather than picking out the known-bad ones.
+   */
+  if (firstTenZero && b[10] === 0 && b[11] === 0) return true
+
+  if ((b[0] & 0xfe) === 0xfc) return true                     // fc00::/7 unique-local
+  if (b[0] === 0xfe && (b[1] & 0xc0) === 0x80) return true    // fe80::/10 link-local
+  if (b[0] === 0xff) return true                              // ff00::/8 multicast
+  if (b[0] === 0x20 && b[1] === 0x01 && b[2] === 0x0d && b[3] === 0xb8) return true // 2001:db8::/32
+  if (b[0] === 0x00 && b[1] === 0x64 && b[2] === 0xff && b[3] === 0x9b) return true // 64:ff9b::/96 NAT64
   return false
 }
 

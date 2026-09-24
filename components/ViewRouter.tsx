@@ -62,10 +62,8 @@ import {
   LazyWorldEventsView          as WorldEventsView,
   LazyWorkoutsView             as WorkoutsView,
   LazyCubeTimerView            as CubeTimerView,
+  LazyGameFinderView           as GameFinderView,
 } from '@/lib/dynamicViews'
-
-/* GameFinderView is small (wraps a single component) — keep synchronous */
-import GameFinderView from '@/components/views/GameFinderView'
 
 /* ── View resolver ────────────────────────────────────────────── */
 

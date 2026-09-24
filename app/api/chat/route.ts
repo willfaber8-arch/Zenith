@@ -185,11 +185,14 @@ async function streamGemini(
   }))
 
   const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT
-  const url   = `${GEMINI_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`
+  /* The key travels in a header, not the query string. Google accepts
+     both, but a URL is the part of a request that ends up in proxy logs,
+     error reports and stack traces — a secret does not belong there. */
+  const url   = `${GEMINI_BASE}/${model}:streamGenerateContent?alt=sse`
 
   const upstream = await fetch(url, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       contents:         geminiMessages,
       systemInstruction: { parts: [{ text: systemPrompt }] },

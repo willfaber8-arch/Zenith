@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import GameFinderDashboard from '@/components/GameFinderDashboard'
-import TournamentHubView   from './TournamentHubView'
+/* The tournament tab is a second view's worth of code behind a button
+   nobody has pressed yet — its chunk arrives when the tab does. */
+import { LazyTournamentHubView as TournamentHubView } from '@/lib/dynamicViews'
 
 type Tab = 'finder' | 'tournament'
 

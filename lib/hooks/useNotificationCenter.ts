@@ -14,13 +14,12 @@
  *     the bell's "new" dot stays meaningful without the user opening a tab.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import {
   subscribeNotifications,
   getNotifications,
-  unseenCount as readUnseen,
   markAllSeen,
   dismissNotification,
   clearAllNotifications,
@@ -71,13 +70,29 @@ export interface NotificationCenterApi {
 /* ── Hook ──────────────────────────────────────────────────────── */
 
 export function useNotificationCenter(): NotificationCenterApi {
-  /* Store subscription → re-render on any change (this tab or another). */
-  const [, force] = useState(0)
+  /*
+   * Store subscription → re-render on any change (this tab or another).
+   *
+   * `version` doubles as the cache key for everything read out of
+   * localStorage below. The reads used to run unconditionally in the
+   * render body — three separate `localStorage.getItem` + `JSON.parse`
+   * calls, two of which then pruned and sorted the same list — and this
+   * hook lives in the topbar's notification bell, which re-rendered once
+   * a second alongside the clock. Parsing the same JSON 86,400 times a
+   * day to produce an identical answer is the whole cost; the store only
+   * changes when `emit()` fires, and that is exactly what bumps this.
+   */
+  const [version, force] = useState(0)
   useEffect(() => subscribeNotifications(() => force(v => v + 1)), [])
 
-  const notifications = getNotifications()
-  const unseen        = readUnseen()
-  const checklistDefs = getEnabledChecklist()
+  const notifications = useMemo(() => getNotifications(), [version])
+  /* Derived from the list we already have — `unseenCount()` re-read,
+     re-pruned and re-sorted the store a second time for a filter. */
+  const unseen        = useMemo(
+    () => notifications.filter(n => n.seenAt == null).length,
+    [notifications],
+  )
+  const checklistDefs = useMemo(() => getEnabledChecklist(), [version])
 
   const [start, end] = todayBounds()
   const iso = todayISO()

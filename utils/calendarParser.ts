@@ -247,6 +247,21 @@ function classifyCategory(title: string, description = ''): EventCategory {
  * @param icalText  Raw .ics text content (UTF-8)
  * @returns         Array of ParsedCalendarEvent (may be empty)
  */
+/**
+ * The most events one import may produce.
+ *
+ * Each VEVENT is individually bounded by MAX_OCCURRENCES, and the proxy
+ * caps the feed at 8 MB — but those two limits multiply rather than cap
+ * each other. An 8 MB file of minimal VEVENTs is tens of thousands of
+ * them, each entitled to expand 750 times, and every result becomes a
+ * row written to IndexedDB. A calendar nobody would publish on purpose
+ * is enough to wedge the browser; a hostile one is trivial.
+ *
+ * Well past any real calendar — a decade of daily events with several
+ * feeds is a small fraction of it.
+ */
+export const MAX_IMPORT_EVENTS = 20_000
+
 export function parseIcal(icalText: string): ParsedCalendarEvent[] {
   const lines   = unfold(icalText).split(/\r?\n/)
   const results: ParsedCalendarEvent[] = []
@@ -299,6 +314,7 @@ export function parseIcal(icalText: string): ParsedCalendarEvent[] {
       const clean = title.trim() || '(No title)'
 
       for (const occ of occs) {
+        if (results.length >= MAX_IMPORT_EVENTS) return results
         results.push({
           /* Unique per occurrence so a re-import updates rather than
              duplicates, and stable so it survives a refresh. */
