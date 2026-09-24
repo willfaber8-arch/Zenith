@@ -14,12 +14,48 @@ import Icon from '@/components/ui/Icon'
 import { weatherIcon } from '@/lib/weatherIcons'
 import styles from './Topbar.module.css'
 
+/* Views reached from the sidebar footer carry no category, so they fell
+   through to the generic 'Zenith OS' label. On a phone the breadcrumb is
+   the only "you are here" signal, so name them explicitly. */
+const SYSTEM_VIEW_LABELS: Record<string, string> = {
+  settings: 'Settings',
+  help:     'Help & Feedback',
+}
+
 function fmtTime(d: Date): string {
   return d.toLocaleTimeString('en-US', {
     hour:   '2-digit',
     minute: '2-digit',
     hour12: false,
   })
+}
+
+/**
+ * The clock owns its own tick.
+ *
+ * It used to be a `now` state on Topbar itself, which meant a `setState`
+ * once a second re-rendered the entire status cluster — the notification
+ * bell (which re-reads and re-parses localStorage in its render body), the
+ * module search, the sync chip, the credits counter — 86,400 times a day,
+ * to change two digits. Keeping the interval in the leaf that displays it
+ * confines the re-render to this one `<time>`.
+ */
+function TopbarClock() {
+  const [now, setNow] = useState<Date | null>(null)
+
+  useEffect(() => {
+    setNow(new Date())
+    /* Tick on the second rather than every 1000ms from mount, so the
+       displayed minute changes when the minute actually does. */
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <time className={styles.clock} aria-label="System time" suppressHydrationWarning>
+      {now ? fmtTime(now) : '--:--'}
+    </time>
+  )
 }
 
 interface TopbarProps {
@@ -32,28 +68,12 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
   const { activeView, activeCategory }    = useNav()
   const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilot()
 
-  const [now,     setNow]     = useState<Date | null>(null)
   const { status: wStatus, weather } = useWeather()
-
-  /* ── Live clock ─────────────────────────────────────────── */
-  useEffect(() => {
-    setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
 
   /* ── Breadcrumb ─────────────────────────────────────────── */
   const catConfig = activeCategory
     ? NAV_CONFIG.find(c => c.id === activeCategory)
     : null
-
-  /* Views reached from the sidebar footer carry no category, so they fell
-     through to the generic 'Zenith OS' label. On a phone the breadcrumb is
-     the only "you are here" signal, so name them explicitly. */
-  const SYSTEM_VIEW_LABELS: Record<string, string> = {
-    settings: 'Settings',
-    help:     'Help & Feedback',
-  }
 
   let viewLabel: string = SYSTEM_VIEW_LABELS[activeView] ?? 'Zenith OS'
   if (activeView === 'home') {
@@ -182,13 +202,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
 
         {/* Live clock */}
         <span className={`${styles.slot} ${styles.slotLow}`}>
-          <time
-            className={styles.clock}
-            aria-label="System time"
-            suppressHydrationWarning
-          >
-            {now ? fmtTime(now) : '--:--'}
-          </time>
+          <TopbarClock />
           <span className={styles.divider} aria-hidden="true" />
         </span>
 

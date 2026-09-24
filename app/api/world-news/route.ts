@@ -14,7 +14,8 @@
  * renders quickly after the first warm-up hit.
  */
 
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 export const revalidate = 600   // 10-minute edge cache
 
@@ -108,7 +109,17 @@ function parseRSSItems(xml: string, source: string): NewsArticle[] {
 
 /* ── Handler ────────────────────────────────────────────────────── */
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  /* One uncached request fans out to every upstream feed, so the cost of
+     asking is several times the cost of being asked. */
+  const limit = rateLimit(`world-news:${clientIp(req)}`, 30, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests — try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   const settled = await Promise.allSettled(
     FEEDS.map(({ url, source }) =>
       fetch(url, {

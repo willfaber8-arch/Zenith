@@ -221,15 +221,6 @@ const nextConfig: NextConfig = {
       cacheGroups: {
         ...existingGroups,
 
-        /* Leaflet + react-leaflet — only loaded on TrailHunterView.
-           Separate chunk keeps the home screen fast. */
-        leaflet: {
-          test:             /[\\/]node_modules[\\/](leaflet|react-leaflet)[\\/]/,
-          name:             'vendor-leaflet',
-          chunks:           'async' as const,
-          priority:         30,
-          reuseExistingChunk: true,
-        },
 
         /* PeerJS — only loaded in MultiplayerLobby (Phase 5.5).
            Dynamic import in services/p2pNetwork.ts keeps it async.  */

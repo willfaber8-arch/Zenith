@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import type { StandingRow, TeamResult, TeamSearchHit, TeamFixture } from '@/types/sports'
+import { rateLimit, clientIp } from '@/lib/server/rateLimit'
 
 export const revalidate = 600   // 10-minute edge cache
 
@@ -230,6 +231,20 @@ async function getResults(teamId: string): Promise<TeamResult[]> {
 /* ── GET handler ───────────────────────────────────────────────── */
 
 export async function GET(req: NextRequest): Promise<Response> {
+  /*
+   * Every other outbound proxy in this app is metered; this one was not.
+   * Its responses vary by query, so the edge cache does not cover it —
+   * a caller varying `q` walks straight through to TheSportsDB on the
+   * deployment's key, as fast as it can ask.
+   */
+  const limit = rateLimit(`sports:${clientIp(req)}`, 40, 60_000)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests — try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   const params = req.nextUrl.searchParams
   const action = params.get('action')
 

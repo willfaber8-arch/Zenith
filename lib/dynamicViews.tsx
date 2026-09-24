@@ -302,6 +302,19 @@ export const LazyCubeTimerView = dynamic(
   },
 )
 
+/**
+ * GameFinderView — the multiplayer game directory and its tournament tab.
+ *
+ * Tiny itself, which is why it was imported synchronously, but it pulls in
+ * `types/gameFinder.ts` (the whole 140 KB static catalogue) and the
+ * Tournament Hub behind it. Every visitor was downloading both at first
+ * paint whether or not they ever opened the view.
+ */
+export const LazyGameFinderView = dynamic(
+  () => import('@/components/views/GameFinderView'),
+  { ssr: false, loading: EmptyLoader },
+)
+
 /** AiCopilotSidebar — slide-over chat panel with streaming Anthropic responses.
  *  Only opens when the user clicks the ◎ button; never visible at first paint. */
 export const LazyAiCopilotSidebar = dynamic(

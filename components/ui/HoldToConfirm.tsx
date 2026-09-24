@@ -17,7 +17,7 @@
  * same HOLD_MS.
  */
 
-import { useCallback, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import styles from './HoldToConfirm.module.css'
 
 const HOLD_MS = 700
@@ -44,6 +44,19 @@ export default function HoldToConfirm({
       timerRef.current = null
     }
     setHolding(false)
+  }, [])
+
+  /*
+   * A hold interrupted by the control disappearing must not still fire.
+   *
+   * The timer is the only thing that calls onConfirm, and it outlived
+   * the component: start a hold on a habit row, have the row unmount
+   * underneath you (the day rolls over, the habit is deleted, you
+   * navigate away), and ~700ms later the undo ran anyway — against a
+   * row nobody was looking at.
+   */
+  useEffect(() => () => {
+    if (timerRef.current != null) clearTimeout(timerRef.current)
   }, [])
 
   const start = useCallback(() => {

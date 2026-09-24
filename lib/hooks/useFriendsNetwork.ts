@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
+import { sanitiseSyncPayload } from '@/utils/peerPayload'
 import {
   evaluateTemporalSnapshot,
 } from '@/types/friendsNetwork'
@@ -254,12 +255,23 @@ export function useFriendsNetwork(): FriendsNetworkState {
     })
 
     conn.on('data', async (rawData: any) => {
-      /* Parse and validate incoming payload */
+      /*
+       * Everything past this point is data from another machine, so it
+       * is validated against the peer it actually came from rather than
+       * the one it claims to be. `conn.peer` is assigned by the
+       * signalling layer; `senderId` is written by the sender, and
+       * keying rows on the latter without checking it let any peer
+       * overwrite a different friend's row. See utils/peerPayload.
+       */
       let payload: SyncPayload
       try {
-        payload = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
-        if (payload?.type !== 'ZENITH_FRIEND_SYNC') return
+        const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
+        const clean = sanitiseSyncPayload(parsed, conn.peer)
+        if (!clean) return
+        payload = clean
       } catch { return }
+
+      try {
 
       /* ── Multi-temporal evaluation ─────────────────────────
          Zero rolling-window fields whose window has elapsed.
@@ -326,6 +338,17 @@ export function useFriendsNetwork(): FriendsNetworkState {
         setTimeout(() => {
           if (!cancelledRef.current) setLastSyncMsg(null)
         }, 4_000)
+      }
+
+      } catch {
+        /*
+         * A sync that fails mid-write leaves the peer's rows partly
+         * updated, which is survivable — the next sync overwrites them.
+         * An unhandled rejection is not: this handler is async and
+         * nothing above it catches, so one malformed payload used to
+         * take out the whole connection.
+         */
+        if (!cancelledRef.current) setLastSyncMsg('A friend sent something unreadable.')
       }
     })
 

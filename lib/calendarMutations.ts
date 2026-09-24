@@ -39,6 +39,11 @@ export type EditScope = 'this' | 'future' | 'series'
 
 export interface EventPatch {
   title?:       string
+  /* Personal events only — an imported event takes its colour from its
+     feed, and has no calendar of its own to move between. The edit form
+     passes these only when the target is a personal event. */
+  color?:       string
+  calendarId?:  number
   startMs?:     number
   endMs?:       number
   location?:    string

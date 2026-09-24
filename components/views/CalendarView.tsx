@@ -224,7 +224,11 @@ const FORMAT_WEEKDAY_FULL = new Intl.DateTimeFormat('en-US', {
 })
 
 function formatWeekRange(weekStart: Date): string {
-  const weekEnd = new Date(weekStart.getTime() + 6 * DAY_MS)
+  /* Stepped by date component. Adding 6 days of milliseconds across a
+     clocks-change weekend lands an hour out, which is enough to roll
+     into the next day and label the week wrongly. */
+  const weekEnd = new Date(
+    weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6)
   if (weekStart.getMonth() === weekEnd.getMonth()) {
     return `${FORMAT_MONTH_DAY.format(weekStart)} – ${weekEnd.getDate()}, ${weekStart.getFullYear()}`
   }
@@ -255,7 +259,6 @@ function getEventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
   const start = startOfDay.getTime()
   /* Stepped by date component: a day is 23 or 25 hours twice a year. */
   const end = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime()
-  void DAY_MS
   return events.filter(e => e.startMs >= start && e.startMs < end)
 }
 
@@ -2738,6 +2741,10 @@ export default function CalendarView() {
         seriesUid:   pe.seriesUid,
         repeat:      pe.repeat,
         _color:      pe.color ?? cal?.color,   // event colour (defaults to its calendar's)
+        /* Carried for the same reason as _color: the edit form reads
+           this shape, not the stored row, and without it the form could
+           not show — or keep — which calendar the event belongs to. */
+        _calendarId: pe.calendarId,
         priority:    pe.priority,
       } as CalendarEvent & { _color?: string }))
   }, [personalEventsRaw, localCalendars])
@@ -2934,13 +2941,25 @@ export default function CalendarView() {
   )
 
   /* Week navigation */
+  /*
+   * Stepped by date component, never by 7 days of milliseconds.
+   *
+   * Paging across a clocks-change weekend used to shift weekStart by an
+   * hour, which rolled it onto the previous day: the grid then ran
+   * Sunday–Saturday with the weekend shading in the wrong columns, and
+   * because each press re-used the drifted value it stayed wrong until
+   * Today was pressed.
+   */
+  const stepWeek = (base: Date, weeks: number) =>
+    new Date(base.getFullYear(), base.getMonth(), base.getDate() + weeks * 7)
+
   const goToPrev = useCallback(() => {
-    setWeekStart(prev => new Date(prev.getTime() - 7 * DAY_MS))
+    setWeekStart(prev => stepWeek(prev, -1))
     setGridKey(k => k + 1)
   }, [])
 
   const goToNext = useCallback(() => {
-    setWeekStart(prev => new Date(prev.getTime() + 7 * DAY_MS))
+    setWeekStart(prev => stepWeek(prev, 1))
     setGridKey(k => k + 1)
   }, [])
 
@@ -3397,7 +3416,17 @@ export default function CalendarView() {
                * rest of the series — a patch only ever touches rows that
                * already exist.
                */
-              if (extra.customDays && extra.customDays.length > 0
+              /*
+               * Personal events only. `repeatExistingEventCustomDays`
+               * writes to `personalEvents`, and both tables are `++id`
+               * from 1 — so running it for an imported feed event took
+               * that event's `calendarEvents` id and rewrote whichever
+               * unrelated personal event happened to share the number,
+               * then reported success. The preset-repeat branch below
+               * has always been guarded this way; this one was not.
+               */
+              if (isPersonal(target)
+                  && extra.customDays && extra.customDays.length > 0
                   && extra.anchorDate && target.id != null) {
                 const { startMs: _startMs, endMs: _endMs, ...rest } =
                   data as Omit<PersonalEvent, 'id'>
@@ -3435,6 +3464,11 @@ export default function CalendarView() {
                 timeZone:    data.timeZone,
                 location:    (data as { location?: string }).location,
                 priority:    data.priority,
+                /* Only personal events carry their own colour and
+                   calendar; a feed event takes both from its feed. */
+                ...(isPersonal(target)
+                  ? { color: data.color, calendarId: data.calendarId }
+                  : {}),
               }, scope, extra.timeMode)
               toast(n > 1 ? `Updated ${n} occurrences.` : 'Event updated.', 'success')
             } catch {
@@ -3447,7 +3481,11 @@ export default function CalendarView() {
             startMs:     editTarget.startMs,
             endMs:       editTarget.endMs,
             allDay:      editTarget.allDay,
-            color:       '#7c95ff',
+            /* The event's own colour, not a constant. The swatch row used
+               to open on periwinkle whatever colour the event was, so
+               "change nothing" silently repainted it. */
+            color:       (editTarget as CalendarEvent & { _color?: string })._color ?? '#7c95ff',
+            calendarId:  (editTarget as CalendarEvent & { _calendarId?: number })._calendarId,
             category:    editTarget.category,
             description: editTarget.description,
             timeZone:    editTarget.timeZone,
@@ -3718,6 +3756,16 @@ function NewEventModal({
     return { change, mode, moved, past, reach: reached.length, target }
     /* computeTimes() reads these four; nothing else here changes it. */
   }, [inSeries, scope, dateMode, seriesRows, seriesClickedId, date, start, end, allDay])
+
+  /*
+   * The confirmation was asked about one particular edit. Changing the
+   * edit after arming it — a different scope, a different time — has to
+   * ask again, or the second Save would commit something nobody
+   * confirmed.
+   */
+  useEffect(() => {
+    setConfirmBig(false)
+  }, [scope, dateMode, date, start, end, allDay, title])
 
   /* Shared start/end derivation — reused by save and external-calendar export. */
   function computeTimes(): { startMs: number; endMs: number } {
@@ -4047,7 +4095,7 @@ function NewEventModal({
                             <input
                               type="time"
                               className={styles.evInput}
-                              value={customTimes[selectedDow[0]].start}
+                              value={(customUniform ? customTimes[UNIFORM_DOW] : customTimes[selectedDow[0]]).start}
                               onChange={e => (customUniform
                                 ? setUniformCustomTime('start', e.target.value)
                                 : setCustomDayTime(selectedDow[0], 'start', e.target.value))}
@@ -4057,7 +4105,7 @@ function NewEventModal({
                             <input
                               type="time"
                               className={styles.evInput}
-                              value={customTimes[selectedDow[0]].end}
+                              value={(customUniform ? customTimes[UNIFORM_DOW] : customTimes[selectedDow[0]]).end}
                               onChange={e => (customUniform
                                 ? setUniformCustomTime('end', e.target.value)
                                 : setCustomDayTime(selectedDow[0], 'end', e.target.value))}

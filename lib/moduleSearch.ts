@@ -39,6 +39,9 @@ export const MODULE_INDEX: ModuleEntry[] = [
   { id: 'vocab-builder', label: 'Vocab Builder', category: 'essentials',
     hint: 'Spaced-repetition vocabulary flashcards',
     keywords: ['vocabulary', 'words', 'language', 'flashcards', 'spaced repetition', 'polyglot', 'translation', 'learn language'] },
+  { id: 'toolkit', label: 'Engineering Toolkit', category: 'essentials',
+    hint: 'Unit conversion and a searchable formula reference',
+    keywords: ['toolkit', 'engineering', 'convert', 'conversion', 'units', 'formula', 'formulas', 'equation', 'reference', 'calculator'] },
 
   /* ── Life ── */
   { id: 'habits', label: 'Habits', category: 'essentials',
@@ -96,6 +99,9 @@ export const MODULE_INDEX: ModuleEntry[] = [
     keywords: ['cube', 'rubik', 'rubiks', 'timer', 'speedcube', 'speedcubing', 'scramble', 'ao5', 'ao12', 'pyraminx', '2x2', '3x3', '4x4', 'cstimer'] },
 
   /* ── Personalized Vault ── */
+  { id: 'notes', label: 'Notes', category: 'vault',
+    hint: 'Somewhere to put a thought before you know what it is',
+    keywords: ['note', 'notes', 'notebook', 'scratch', 'jot', 'write', 'memo', 'idea', 'thoughts'] },
   { id: 'custom-links', label: 'Custom Link Manager', category: 'vault',
     hint: 'Save & organize your favorite links',
     keywords: ['bookmarks', 'links', 'shortcuts', 'urls', 'favorites', 'sites', 'web'] },

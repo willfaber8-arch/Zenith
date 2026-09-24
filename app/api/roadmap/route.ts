@@ -26,10 +26,13 @@ const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash-lite'
 
 async function callGemini(apiKey: string, goal: string, maxTokens: number): Promise<string> {
   const model = process.env.GEMINI_MODEL ?? GEMINI_MODEL_DEFAULT
-  const url   = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`
+  /* The key travels in a header, not the query string. Google accepts
+     both, but a URL is the part of a request that ends up in proxy logs,
+     error reports and stack traces — a secret does not belong there. */
+  const url   = `${GEMINI_BASE}/${model}:generateContent`
   const res   = await fetch(url, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       contents:         [{ role: 'user', parts: [{ text: goal }] }],
       systemInstruction: { parts: [{ text: ROADMAP_SYSTEM }] },

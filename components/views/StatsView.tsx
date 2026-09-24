@@ -11,6 +11,7 @@ import EcosystemWrapped from '@/components/EcosystemWrapped'
 import Icon from '@/components/ui/Icon'
 import styles from './StatsView.module.css'
 import { currentDayISO } from '@/utils/dayBoundary'
+import { isHabitScheduledOn, isSkippedOn } from '@/utils/habitSchedule'
 
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -65,8 +66,24 @@ export default function StatsView() {
      too — otherwise "completed today" reads zero during the grace window. */
   const todayISO = currentDayISO()
   const todayCompletions = completions.filter(c => c.date === todayISO)
-  const habitsCompletedToday = habits.filter(h =>
-    todayCompletions.find(c => c.habitId === h.id && c.count >= (h.targetCompletions ?? 1)),
+  /*
+   * "Done today" has to mean here what it means on the Habits page.
+   *
+   * This counted `count >= target` for every habit, which inverts a
+   * limit habit: "no more than two coffees" was reported done once you
+   * had reached two, and a day with none — the best possible day for
+   * that habit — counted as not done. A limit is not decided until the
+   * day is over, so today it is simply pending, exactly as useHabits
+   * treats it. Habits that are not due today (off-days, skipped) are
+   * out of both halves of the ratio rather than dragging the
+   * denominator down.
+   */
+  const dueToday = habits.filter(h =>
+    isHabitScheduledOn(h, todayISO) && !isSkippedOn(h, todayISO),
+  )
+  const habitsCompletedToday = dueToday.filter(h =>
+    h.goalType !== 'at_most'
+    && todayCompletions.some(c => c.habitId === h.id && c.count >= (h.targetCompletions ?? 1)),
   ).length
   const topStreak = habits.reduce((max, h) => Math.max(max, h.streakCount ?? 0), 0)
 
@@ -146,7 +163,7 @@ export default function StatsView() {
       {/* ── Overview row ──────────────────────────────────────── */}
       <div className={styles.overviewRow}>
         <StatChip label="Habits Active"       value={habits.length}              />
-        <StatChip label="Done Today"          value={`${habitsCompletedToday}/${habits.length}`} accent />
+        <StatChip label="Done Today"          value={`${habitsCompletedToday}/${dueToday.length}`} accent />
         <StatChip label="Best Streak"         value={`${topStreak}d`}            />
         <StatChip label="Focus This Week"     value={`${focusHours}h`}           />
         <StatChip label="Sessions (7d)"       value={weekSessions.length}        />
