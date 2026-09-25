@@ -1839,7 +1839,21 @@ function TaskVoiceButton({ onText }: { onText: (text: string) => void }) {
  * one. Reminders, tasks and problem sets are three kinds of one thing,
  * grouped into the lists you make, with a single composer above them.
  */
-function TasksPanel() {
+/** A scrolling box on a phone; no box at all anywhere else. */
+function PhoneScroll({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return on ? <div className={styles.taskScrollPhone}>{children}</div> : <>{children}</>
+}
+
+/**
+ * The Tasks tab.
+ *
+ * Exported for the phone, which shows this list and nothing else for
+ * its Tasks screen. `phone` hides the AI roadmap (a sit-down planning
+ * tool) and puts the lists in their own scrolling area under a pinned
+ * composer; the writes, filters and lists are exactly the desktop ones,
+ * so there is still one task list, not two (CLAUDE.md rule 92).
+ */
+export function TasksPanel({ phone = false }: { phone?: boolean } = {}) {
   const { toast } = useToast()
   const undoableDelete = useUndoableDelete()
 
@@ -2090,7 +2104,7 @@ function TasksPanel() {
   const totalShown = visible.length
 
   return (
-    <div className={styles.tasksPanel}>
+    <div className={`${styles.tasksPanel} ${phone ? styles.tasksPanelPhone : ''}`}>
       <div className={styles.tasksPanelHeader}>
         {/* No panel heading. The tab above already says Tasks, and a
             heading reading "TASKS" immediately left of a filter chip
@@ -2100,7 +2114,9 @@ function TasksPanel() {
             ['all',         'All',           totalShown],
             ['reminder',    'Reminders',     counts.reminder],
             ['task',        'Tasks',         counts.task],
-            ['problem_set', 'Problem Sets',  counts.problem_set],
+            /* "Problem Sets" is the one label that pushed the filters
+               onto a second line on a phone. */
+            ['problem_set', phone ? 'Sets' : 'Problem Sets', counts.problem_set],
           ] as [TaskKind | 'all', string, number][]).map(([id, label, n]) => (
             <button
               key={id}
@@ -2126,15 +2142,17 @@ function TasksPanel() {
           >
             {showDone ? 'Hide done' : 'Show done'}
           </button>
-          <button
-            type="button"
-            className={styles.taskGhostBtn}
-            onClick={() => setShowRoadmap(r => !r)}
-            aria-pressed={showRoadmap}
-            title="Break a goal into steps with AI"
-          >
-            {showRoadmap ? 'Hide roadmap' : '✦ Roadmap'}
-          </button>
+          {!phone && (
+            <button
+              type="button"
+              className={styles.taskGhostBtn}
+              onClick={() => setShowRoadmap(r => !r)}
+              aria-pressed={showRoadmap}
+              title="Break a goal into steps with AI"
+            >
+              {showRoadmap ? 'Hide roadmap' : '✦ Roadmap'}
+            </button>
+          )}
           {!addingCategory && (
             <button type="button" className={styles.addCategoryBtn} onClick={() => setAddingCategory(true)}>
               + New List
@@ -2145,7 +2163,7 @@ function TasksPanel() {
 
       {showDone && <DoneRetentionNote />}
 
-      {showRoadmap && (
+      {showRoadmap && !phone && (
         <div className={styles.roadmapSlot}>
           <RoadmapGeneratorButton />
         </div>
@@ -2276,6 +2294,9 @@ function TasksPanel() {
         </div>
       )}
 
+      {/* On a phone the lists scroll under a pinned composer; on a
+          desktop they flow in the page as they always have. */}
+      <PhoneScroll on={phone}>
       {lists.length === 0 && !addingCategory && (
         <p className={styles.tasksEmpty}>No lists yet. Click &ldquo;+ New List&rdquo; to get started.</p>
       )}
@@ -2552,6 +2573,7 @@ function TasksPanel() {
           {showDone ? 'Nothing here yet.' : 'Nothing outstanding.'}
         </p>
       )}
+      </PhoneScroll>
     </div>
   )
 }

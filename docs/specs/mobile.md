@@ -1,7 +1,15 @@
 # Zenith on a phone — plan
 
-Not built. This is the argument for what mobile Zenith should be, so the
-build is a series of small decisions rather than one big one.
+> **What shipped (September 2026)** differs from this plan in two
+> deliberate ways, both from using it: the bottom bar is **Home · Today ·
+> Habits · Tasks · Notes** (no "Log", no centre "+"), and there is **no
+> "More" list** — views that fail the test below are simply not on the
+> phone. Home is four large buttons; Today is habits left, tasks due and
+> today's events, each actionable in place. The implementation notes live
+> in CLAUDE.md rules 107–108; this document is kept as the reasoning.
+
+This is the argument for what mobile Zenith should be, so the build is a
+series of small decisions rather than one big one.
 
 ---
 

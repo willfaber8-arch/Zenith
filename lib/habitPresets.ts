@@ -106,18 +106,32 @@ export async function loadGeneralHabitPreset(): Promise<number> {
  */
 export async function ensureGeneralHabitPreset(): Promise<boolean> {
   if (!db || typeof window === 'undefined') return false
+
+  /*
+   * Check and claim in one synchronous step, before anything awaits.
+   *
+   * The flag used to be set only after `await db.habits.count()`, so two
+   * calls in flight together — React mounting the effect twice, or two
+   * tabs opened on first run — both read "not seeded", both counted
+   * zero, and both added the pack: every starter habit twice. Latching
+   * here, and never un-latching, also keeps the old promise that the
+   * pack is offered once even if you later clear your habits.
+   */
   try {
     if (localStorage.getItem(SEED_FLAG)) return false
+    localStorage.setItem(SEED_FLAG, String(Date.now()))
   } catch {
     return false
   }
 
-  const count = await db.habits.count()
-  // Latch regardless so we never auto-populate again, even if the user
-  // later clears their habits.
-  try { localStorage.setItem(SEED_FLAG, String(Date.now())) } catch { /* non-fatal */ }
-
-  if (count > 0) return false   // user already has habits — leave them alone
-  await db.habits.bulkAdd(toHabitRows(Date.now()) as Habit[])
-  return true
+  /*
+   * And count-then-add as one transaction, which IndexedDB serialises
+   * even across tabs — the flag above cannot, since each tab can reach
+   * this point before the other's write to localStorage is visible.
+   */
+  return db.transaction('rw', db.habits, async () => {
+    if (await db.habits.count() > 0) return false   // leave real habits alone
+    await db.habits.bulkAdd(toHabitRows(Date.now()) as Habit[])
+    return true
+  })
 }

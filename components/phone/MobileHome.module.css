@@ -1,0 +1,124 @@
+/* ════════════════════════════════════════════════════════════
+   MobileHome — a greeting and four large buttons, on one screen.
+
+   The page claims exactly the space between the two bars
+   (the phone viewport is a flex column — see AppShell's phone
+   frame) and the 2×2 grid takes whatever is left, so it fills a
+   small phone and a large one alike without ever scrolling.
+   ════════════════════════════════════════════════════════════ */
+
+.home {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-3);
+}
+
+.head {
+  flex-shrink: 0;
+}
+
+.hello {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.date {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--sp-3);
+  /* On a very short screen (landscape, split view) the tiles still need
+     to be big enough to hit and read. */
+  min-height: 260px;
+  max-height: 560px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--tile) 28%, transparent);
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tile) 16%, transparent), transparent 70%),
+    var(--surface-card);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.tile:active {
+  transform: scale(0.97);
+  border-color: color-mix(in srgb, var(--tile) 55%, transparent);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--tile);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--tile) 14%, transparent);
+  color: var(--tile);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.line {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Reserve the line even while counts load, so tiles never jump. */
+  min-height: 1.2em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { transition: none; }
+  .tile:active { transform: none; }
+}

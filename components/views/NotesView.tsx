@@ -46,8 +46,8 @@ import {
   resolvePolicy, setGlobalPolicy, POLICY_EVENT, type NotePolicy,
 } from '@/lib/notePolicy'
 import NoteToolbar from '@/components/NoteToolbar'
+import { usePhoneLayout } from '@/lib/hooks/useMediaQuery'
 import ZenHeading from '@/components/ui/ZenHeading'
-import { CAPTURE_EVENT } from '@/components/MobileTabBar'
 import {
   validateFolderName, notesInFolder, folderCounts, selectionAfterDelete,
   ALL_NOTES, UNFILED, MAX_FOLDER_NAME, type FolderSelection,
@@ -258,6 +258,30 @@ export default function NotesView() {
     if (id != null) void persist(id, draftRef.current)
   }, [persist])
 
+  /*
+   * On a phone the list and the editor take turns: the list is the page,
+   * and a note opens full-screen with a way back. Side by side they gave
+   * each other half of 390px and a permanent "Select a note" box.
+   */
+  const phone = usePhoneLayout()
+
+  /*
+   * Back to the list. A pending autosave would still land on its own —
+   * its timer carries the note's id — but it is written now rather than
+   * up to a moment later, so "back" never races the save it is leaving.
+   * Only when something is actually unsaved: re-writing an untouched
+   * note would move it to the top of the list for no reason.
+   */
+  const closeEditor = () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+      const id = editingRef.current
+      if (id != null) void persist(id, draftRef.current)
+    }
+    setSelectedId(null)
+  }
+
   /* ── Title ───────────────────────────────────────────────────── */
 
   const onTitleChange = (value: string) => {
@@ -364,26 +388,6 @@ export default function NotesView() {
     setShowArchived(false)
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
-
-  /*
-   * Capture from the phone's "+" opens a blank note immediately.
-   *
-   * `createNoteRef` rather than the function itself in the dependency
-   * list: createNote is redefined every render, and depending on it
-   * would tear down and re-add the listener each time — occasionally
-   * missing the event that arrives in between.
-   */
-  const createNoteRef = useRef(createNote)
-  createNoteRef.current = createNote
-  useEffect(() => {
-    const onCapture = (e: Event) => {
-      if ((e as CustomEvent<{ kind?: string }>).detail?.kind === 'note') {
-        void createNoteRef.current()
-      }
-    }
-    window.addEventListener(CAPTURE_EVENT, onCapture)
-    return () => window.removeEventListener(CAPTURE_EVENT, onCapture)
-  }, [])
 
   const toggleChecklistLine = async (line: number) => {
     if (selectedId == null) return
@@ -590,15 +594,21 @@ export default function NotesView() {
   )
 
   return (
-    <div className={styles.root}>
-      <ZenHeading
-        eyebrow="Personalized Vault · Notes"
-        title="Notes."
-        subtitle="Somewhere to put a thought before you know what it is."
-        size="lg"
-      />
+    <div className={`${styles.root} ${phone ? styles.rootPhone : ''}`}>
+      {/* The phone's top bar already says "Notes". */}
+      {!phone && (
+        <ZenHeading
+          eyebrow="Personalized Vault · Notes"
+          title="Notes."
+          subtitle="Somewhere to put a thought before you know what it is."
+          size="lg"
+        />
+      )}
 
-      <div className={styles.layout}>
+      <div
+        className={`${styles.layout} ${phone ? styles.layoutPhone : ''}`}
+        data-open={phone && selected ? 'editor' : 'list'}
+      >
 
         {/* ── List ────────────────────────────────────────────── */}
         <aside className={styles.list} aria-label="Notes">
@@ -793,6 +803,16 @@ export default function NotesView() {
           ) : (
             <>
               <div className={styles.editorBar}>
+                {phone && (
+                  <button
+                    type="button"
+                    className={styles.backBtn}
+                    onClick={closeEditor}
+                    aria-label="Back to all notes"
+                  >
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                )}
                 {/*
                   The title is an input, not a label. It used to be derived
                   from the first line with no way to override it, so a note

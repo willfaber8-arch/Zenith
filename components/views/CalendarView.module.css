@@ -3531,3 +3531,226 @@
   margin-bottom: var(--sp-4);
   animation: fadeIn var(--dur-base) var(--ease-smooth);
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Tasks on a phone
+   ════════════════════════════════════════════════════════════════
+ *
+ * Only reached through `TasksPanel phone` (the phone's Tasks screen),
+ * so none of this touches the desktop Tasks tab.
+ *
+ * The panel fills the space between the phone's two bars. Filters and
+ * the composer stay put at the top; the lists scroll beneath them in
+ * their own area, so adding a task never means scrolling back up to
+ * find the box.
+ */
+.tasksPanelPhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) 0;
+  animation: none;
+}
+
+.tasksPanelPhone .tasksPanelHeader {
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.tasksPanelPhone .taskFilters {
+  flex-basis: 100%;
+}
+
+.tasksPanelPhone .taskFilter {
+  min-height: 36px;
+}
+
+.tasksPanelPhone .taskToolbarRight {
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.tasksPanelPhone .taskGhostBtn,
+.tasksPanelPhone .addCategoryBtn {
+  min-height: 36px;
+}
+
+/*
+ * The composer, rearranged for a narrow screen without touching its
+ * markup: what you are writing and "Add" on the first line; the kind
+ * and the date on the second; priority, course and list sharing the
+ * third. Order, not DOM, decides where each lands.
+ */
+.tasksPanelPhone .composeRow {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: var(--sp-2);
+  gap: var(--sp-2);
+}
+
+.tasksPanelPhone .composeTitle {
+  order: 0;
+  /* Wide enough that the kind buttons and date cannot squeeze onto the
+     first line beside it — they wrap to the next. */
+  flex: 1 1 55%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 16px;   /* below 16px iOS zooms the page on focus */
+}
+
+.tasksPanelPhone .taskMicBtn    { order: 1; min-width: 44px; min-height: 44px; }
+.tasksPanelPhone .composeSubmit { order: 2; min-height: 44px; }
+
+.tasksPanelPhone .composeKind {
+  order: 3;
+  flex: 0 0 auto;
+}
+
+.tasksPanelPhone .composeField {
+  order: 4;
+  /* The date takes the rest of the kind buttons' line; the selects below
+     override this and share the next line a third each. */
+  flex: 1 1 45%;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 16px;
+}
+
+/* Priority, course and list share the last line, a third each. */
+.tasksPanelPhone .composeField:not([type='date']) {
+  order: 6;
+  flex: 1 1 calc(33% - var(--sp-2));
+}
+
+.taskScrollPhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--sp-4);
+  /* The row actions (delete, edit) must never push past the screen edge. */
+  overflow-x: hidden;
+}
+
+.taskScrollPhone .taskCategory {
+  flex-shrink: 0;
+  padding: var(--sp-3);
+}
+
+/*
+ * A task row on a phone: the title gets the whole first line beside its
+ * checkbox and its two actions; the tags (kind, repeat, course, steps,
+ * due date) drop to a second line underneath it. On a desktop they all
+ * share one line, which at 390px left the title three letters wide.
+ *
+ * Done with `order` and two pseudo-elements so the row's markup — and
+ * so the desktop row — is exactly as it was:
+ *   ::before  a zero-height, full-width item that forces the line break
+ *   ::after   a spacer the width of the checkbox, so the tags line up
+ *             under the title rather than under the checkbox
+ */
+.taskScrollPhone .taskItem {
+  flex-wrap: wrap;
+  column-gap: var(--sp-2);
+  row-gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-1);
+}
+
+.taskScrollPhone .taskItem::before {
+  content: '';
+  order: 4;
+  flex: 0 0 100%;
+  height: 0;
+}
+
+.taskScrollPhone .taskItem::after {
+  content: '';
+  order: 5;
+  /* checkbox (22) + its margin (4) — so the tags sit under the title */
+  flex: 0 0 26px;
+}
+
+.taskScrollPhone .taskCheckbox {
+  order: 0;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  margin-left: var(--sp-1);
+}
+
+/* 44px to press, 22px to see: the hit area is an invisible ring around
+   the box rather than padding, which would draw the border 44px wide. */
+.taskScrollPhone .taskCheckbox::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+.taskScrollPhone .taskTitle {
+  order: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.95rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.taskScrollPhone .editTaskBtn,
+.taskScrollPhone .deleteTaskBtn {
+  opacity: 1;
+  width: 36px;
+  height: 36px;
+}
+
+.taskScrollPhone .editTaskBtn   { order: 2; }
+.taskScrollPhone .deleteTaskBtn { order: 3; }
+
+.taskScrollPhone .taskKindTag,
+.taskScrollPhone .taskRepeatTag,
+.taskScrollPhone .taskCourseTag,
+.taskScrollPhone .taskProgress,
+.taskScrollPhone .taskDueDate {
+  order: 6;
+}
+
+.taskScrollPhone .taskProblems {
+  order: 7;
+  flex: 1 1 100%;
+}
+
+.taskScrollPhone .taskCategoryName,
+.taskScrollPhone .taskCategoryUnfiled {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+}
+
+/* Filters on one line, the toolbar on the next — not three lines. */
+.tasksPanelPhone .taskFilters {
+  /* One line when they fit, which the short labels do from 360px up;
+     wrapping on anything smaller rather than running off the edge. */
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.tasksPanelPhone .taskFilter {
+  padding: var(--sp-1) var(--sp-2);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tasksPanelPhone .composeField[type='date'] {
+  padding-left: var(--sp-2);
+  padding-right: var(--sp-2);
+}
+
+/* An empty list is a place to file things, not content — keep it slim. */
+.taskScrollPhone .taskCategory:not(:has(.taskItem)) {
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}

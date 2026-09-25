@@ -315,6 +315,24 @@ export const LazyGameFinderView = dynamic(
   { ssr: false, loading: EmptyLoader },
 )
 
+/*
+ * The phone's own screens (see lib/phoneViews). Lazy so a laptop never
+ * downloads them, and so the phone's Tasks screen — which reuses the
+ * Calendar's TasksPanel — pulls the calendar chunk only when opened.
+ */
+export const LazyMobileHome = dynamic(
+  () => import('@/components/phone/MobileHome'),
+  { ssr: false, loading: EmptyLoader },
+)
+export const LazyMobileToday = dynamic(
+  () => import('@/components/phone/MobileToday'),
+  { ssr: false, loading: EmptyLoader },
+)
+export const LazyMobileTasks = dynamic(
+  () => import('@/components/phone/MobileTasks'),
+  { ssr: false, loading: EmptyLoader },
+)
+
 /** AiCopilotSidebar — slide-over chat panel with streaming Anthropic responses.
  *  Only opens when the user clicks the ◎ button; never visible at first paint. */
 export const LazyAiCopilotSidebar = dynamic(

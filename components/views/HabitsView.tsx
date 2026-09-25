@@ -22,6 +22,7 @@ import { playHabitProgress } from '@/lib/habitSounds'
 import { useToast }             from '@/lib/ToastContext'
 import Icon from '@/components/ui/Icon'
 import HoldToConfirm from '@/components/ui/HoldToConfirm'
+import { usePhoneLayout } from '@/lib/hooks/useMediaQuery'
 import styles from './HabitsView.module.css'
 
 /* ── Day labels ───────────────────────────────────────────── */
@@ -870,6 +871,14 @@ export default function HabitsView() {
   const { toast }               = useToast()
   const [showCreate, setShowCreate] = useState(false)
   const [editMode,   setEditMode]   = useState(false)
+  /*
+   * On a phone the list is the page: a compact header pinned at the top,
+   * the habits scrolling beneath it, and the analytics tucked behind a
+   * "Stats" toggle at the bottom — closed until asked for, because the
+   * chart is something you study at a desk, not between sets.
+   */
+  const phone = usePhoneLayout()
+  const [statsOpen, setStatsOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<HabitWithCompletion | null>(null)
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set())
   const { canvasRef, burst }    = useCompletionBurst()
@@ -1098,12 +1107,76 @@ export default function HabitsView() {
     return { short: DAY_LABELS[dow].slice(0, 1), iso }
   })
 
+  /* Rendered beside the list on a desktop and behind the Stats toggle
+     on a phone — one panel, two places to put it. */
+  const analyticsPanel = (
+    <div className={`${styles.chartPanel} anim-fade-in delay-2`}>
+      <p className={styles.chartLabel}>Analytics</p>
+
+      {/* Quick stats row */}
+      <div className={styles.analyticsStats}>
+        <div className={styles.analyticsStat}>
+          <span className={styles.analyticsStatNum}>{dailyPct}%</span>
+          <span className={styles.analyticsStatLabel}>Today</span>
+        </div>
+        <div className={styles.analyticsStat}>
+          <span className={styles.analyticsStatNum}>{habits.length}</span>
+          <span className={styles.analyticsStatLabel}>Habits</span>
+        </div>
+        <div className={styles.analyticsStat}>
+          <span className={styles.analyticsStatNum}>
+            {Math.max(...habits.map(h => h.streakCount), 0)}
+          </span>
+          <span className={styles.analyticsStatLabel}>Best Streak</span>
+        </div>
+      </div>
+
+      <div className={styles.chartDivider} />
+      <p className={styles.chartSubLabel}>30-Day Trend</p>
+      <GritAnalyticsChart points={gritPoints} />
+    </div>
+  )
+
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${phone ? styles.pagePhone : ''}`}>
       <canvas ref={canvasRef} className={styles.confettiCanvas} aria-hidden="true" />
 
+      {/* ── Phone: one compact line for progress and actions ── */}
+      {phone && (
+        <div className={styles.phoneHead} aria-live="polite">
+          <CircleProgress pct={dailyPct} size={40} done={dailyPct === 100} />
+          <div className={styles.phoneHeadText}>
+            <span className={styles.phoneHeadCount}>{doneCount}/{scheduledCount} done today</span>
+            {habits.length > 0 && (
+              <span className={styles.dailyStreak}>
+                <Icon name="flame" size={12} /> {Math.max(...habits.map(h => h.streakCount), 0)} day streak
+              </span>
+            )}
+          </div>
+          {!editMode && (
+            <button
+              type="button"
+              className={styles.phoneHeadBtn}
+              onClick={() => setShowCreate(true)}
+              aria-label="New habit"
+            >
+              <Icon name="plus" size={18} />
+            </button>
+          )}
+          <button
+            type="button"
+            className={`${styles.phoneHeadBtn} ${editMode ? styles.toolbarBtnActive : ''}`}
+            onClick={() => setEditMode(v => !v)}
+            aria-pressed={editMode}
+            aria-label={editMode ? 'Done editing habits' : 'Edit habits'}
+          >
+            {editMode ? <Icon name="check" size={18} /> : <Icon name="edit" size={17} />}
+          </button>
+        </div>
+      )}
+
       {/* ── Heading + daily badge ──────────────────────────── */}
-      <div className={styles.headingRow}>
+      {!phone && <div className={styles.headingRow}>
         <div className={styles.headingRight}>
           <div className={`${styles.dailyBadge} anim-fade-in`} aria-live="polite">
             <CircleProgress pct={dailyPct} size={72} done={dailyPct === 100} />
@@ -1118,7 +1191,7 @@ export default function HabitsView() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ── Toolbar row ──────────────────────────────────── */}
       {/*
@@ -1128,27 +1201,29 @@ export default function HabitsView() {
       */}
       {graceNote && <p className={styles.graceNote}>{graceNote}</p>}
 
-      <div className={styles.toolbar}>
-        {!editMode && (
+      {!phone && (
+        <div className={styles.toolbar}>
+          {!editMode && (
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => setShowCreate(true)}
+            >
+              <span aria-hidden="true">+</span> New Habit
+            </button>
+          )}
           <button
             type="button"
-            className={styles.addBtn}
-            onClick={() => setShowCreate(true)}
+            className={`${styles.toolbarBtn} ${editMode ? styles.toolbarBtnActive : ''}`}
+            onClick={() => setEditMode(v => !v)}
           >
-            <span aria-hidden="true">+</span> New Habit
+            {editMode ? '✓ Done Editing' : '✎ Edit Habits'}
           </button>
-        )}
-        <button
-          type="button"
-          className={`${styles.toolbarBtn} ${editMode ? styles.toolbarBtnActive : ''}`}
-          onClick={() => setEditMode(v => !v)}
-        >
-          {editMode ? '✓ Done Editing' : '✎ Edit Habits'}
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* ── Main two-column body ──────────────────────────── */}
-      <div className={habits.length > 0 ? styles.bodyRow : undefined}>
+      <div className={phone ? styles.bodyPhone : habits.length > 0 ? styles.bodyRow : undefined}>
 
         {/* Left: habit list */}
         <div className={styles.habitColumn}>
@@ -1238,32 +1313,27 @@ export default function HabitsView() {
           )}
         </div>
 
-        {/* Right: analytics panel — always visible when habits exist */}
-        {habits.length > 0 && (
-          <div className={`${styles.chartPanel} anim-fade-in delay-2`}>
-            <p className={styles.chartLabel}>Analytics</p>
-
-            {/* Quick stats row */}
-            <div className={styles.analyticsStats}>
-              <div className={styles.analyticsStat}>
-                <span className={styles.analyticsStatNum}>{dailyPct}%</span>
-                <span className={styles.analyticsStatLabel}>Today</span>
+        {/* Right: analytics panel — always visible when habits exist on a
+            desktop; behind a toggle at the bottom on a phone. */}
+        {habits.length > 0 && !phone && analyticsPanel}
+        {habits.length > 0 && phone && (
+          <div className={styles.statsDock}>
+            <button
+              type="button"
+              className={styles.statsToggle}
+              onClick={() => setStatsOpen(o => !o)}
+              aria-expanded={statsOpen}
+            >
+              <Icon name="chart" size={16} /> Stats
+              <span className={`${styles.statsChevron} ${statsOpen ? styles.statsChevronOpen : ''}`} aria-hidden="true">
+                <Icon name="chevronDown" size={16} />
+              </span>
+            </button>
+            {statsOpen && (
+              <div className={styles.statsBody}>
+                {analyticsPanel}
               </div>
-              <div className={styles.analyticsStat}>
-                <span className={styles.analyticsStatNum}>{habits.length}</span>
-                <span className={styles.analyticsStatLabel}>Habits</span>
-              </div>
-              <div className={styles.analyticsStat}>
-                <span className={styles.analyticsStatNum}>
-                  {Math.max(...habits.map(h => h.streakCount), 0)}
-                </span>
-                <span className={styles.analyticsStatLabel}>Best Streak</span>
-              </div>
-            </div>
-
-            <div className={styles.chartDivider} />
-            <p className={styles.chartSubLabel}>30-Day Trend</p>
-            <GritAnalyticsChart points={gritPoints} />
+            )}
           </div>
         )}
       </div>
