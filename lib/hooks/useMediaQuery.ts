@@ -43,3 +43,37 @@ export const MOBILE_QUERY = '(max-width: 767px)'
 export function useIsMobileViewport(): boolean {
   return useMediaQuery(MOBILE_QUERY)
 }
+
+/**
+ * Whether the app is laid out for a phone — correct on the first render.
+ *
+ * `useIsMobileViewport` starts at `false` so server and client markup
+ * match, which is right for anything that is server-rendered but wrong
+ * for choosing between two different *layouts*: the desktop one paints
+ * for a frame and then swaps. This reads `matchMedia` synchronously
+ * instead, so a phone never sees the desktop dashboard flash past.
+ *
+ * That is only safe below the auth check. AppShell renders nothing on
+ * the server (`isReady` is false until localStorage has been read), so
+ * every component inside it mounts client-side and there is no server
+ * markup to disagree with. Do not call this from anything that renders
+ * before the session is known.
+ */
+export function usePhoneLayout(): boolean {
+  const [phone, setPhone] = useState(
+    () => typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia(MOBILE_QUERY).matches,
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mql = window.matchMedia(MOBILE_QUERY)
+    const onChange = (e: MediaQueryListEvent) => setPhone(e.matches)
+    setPhone(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+
+  return phone
+}

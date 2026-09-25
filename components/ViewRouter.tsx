@@ -63,7 +63,12 @@ import {
   LazyWorkoutsView             as WorkoutsView,
   LazyCubeTimerView            as CubeTimerView,
   LazyGameFinderView           as GameFinderView,
+  LazyMobileHome               as MobileHome,
+  LazyMobileToday              as MobileToday,
+  LazyMobileTasks              as MobileTasks,
 } from '@/lib/dynamicViews'
+import { usePhoneLayout } from '@/lib/hooks/useMediaQuery'
+import { phoneViewFor } from '@/lib/phoneViews'
 
 /* ── View resolver ────────────────────────────────────────────── */
 
@@ -143,6 +148,23 @@ function resolveView(id: ViewId): JSX.Element {
   return factory ? factory() : <HomeView />
 }
 
+/**
+ * What a phone draws for each of its screens.
+ *
+ * Home, Today and Tasks are phone compositions of their own; Habits,
+ * Notes and Settings are the same views as on a laptop, which adapt
+ * themselves. Anything else never reaches here — `phoneViewFor` has
+ * already turned it into Home.
+ */
+function resolvePhoneView(id: ViewId): JSX.Element {
+  switch (id) {
+    case 'home':     return <MobileHome />
+    case 'outlook':  return <MobileToday />
+    case 'calendar': return <MobileTasks />
+    default:         return resolveView(id)
+  }
+}
+
 /* ── ViewRouter ───────────────────────────────────────────────── */
 
 /*
@@ -168,13 +190,30 @@ const EXIT_MS = 200
 const ENTER_MS = 320
 
 export default function ViewRouter() {
-  const { activeView } = useNav()
+  const { activeView: navView } = useNav()
+  /*
+   * On a phone the view on screen is a phone view, whatever navigation
+   * says. The stored view is not rewritten — a laptop still reopens
+   * wherever you left it — this only decides what is drawn here.
+   */
+  const phone      = usePhoneLayout()
+  const activeView = phone ? phoneViewFor(navView) : navView
   const [displayed, setDisplayed] = useState<ViewId>(activeView)
   const [visible,   setVisible]   = useState(true)
   const [settled,   setSettled]   = useState(true)
 
   useEffect(() => {
-    if (activeView === displayed) return
+    /*
+     * Already showing it — but make sure it is *visible*.
+     *
+     * Going somewhere and straight back inside the 200ms fade-out used
+     * to strand the page: the fade-out had begun (visible=false), the
+     * second navigation cancelled the swap, and this branch returned
+     * without ever fading back in. The page sat at opacity 0 with
+     * pointer-events off — blank and untappable — until you navigated
+     * again. Two quick taps on a phone's bottom bar were enough.
+     */
+    if (activeView === displayed) { setVisible(true); return }
 
     setVisible(false)
     setSettled(false)
@@ -206,9 +245,12 @@ export default function ViewRouter() {
           : `opacity ${EXIT_MS}ms ease,
              transform ${EXIT_MS}ms ease`,
         pointerEvents: visible ? undefined : 'none',
+        /* A phone screen fills the space between the two bars and
+           manages its own scrolling; see AppShell's phone frame. */
+        ...(phone ? { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' } : {}),
       }}
     >
-      {resolveView(displayed)}
+      {phone ? resolvePhoneView(displayed) : resolveView(displayed)}
     </div>
   )
 }

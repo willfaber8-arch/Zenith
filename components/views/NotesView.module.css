@@ -502,3 +502,120 @@
 }
 
 .confirmDeleteNo:hover { color: var(--text-primary); }
+
+/* ════════════════════════════════════════════════════════════
+   Notes on a phone
+   ════════════════════════════════════════════════════════════
+ *
+ * Set by NotesView when `usePhoneLayout()` is true, so nothing
+ * here reaches a desktop. The list and the editor take turns
+ * (`data-open`), each filling the space between the phone's two
+ * bars, and only the rows or the note body scroll.
+ */
+.rootPhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3);
+}
+
+.layoutPhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  /* The desktop grid aligns its columns to the start; in a column that
+     would leave the list at its content width instead of the screen's. */
+  align-items: stretch;
+}
+
+.layoutPhone[data-open='list']   .editor { display: none; }
+.layoutPhone[data-open='editor'] .list   { display: none; }
+
+.layoutPhone .list {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: static;
+}
+
+.layoutPhone .rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.layoutPhone .row {
+  min-height: 56px;
+  justify-content: center;
+}
+
+.layoutPhone .search,
+.layoutPhone .newBtn {
+  min-height: 44px;
+  font-size: 16px;   /* below 16px iOS zooms the page on focus */
+}
+
+.layoutPhone .editor {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Back, then the title, on the first line; folder and actions below. */
+.layoutPhone .editorBar {
+  flex-wrap: wrap;
+  row-gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.layoutPhone .titleInput {
+  flex: 1 1 60%;
+  min-height: 40px;
+  margin-left: 0;
+  font-size: 16px;
+}
+
+.layoutPhone .notefolderSelect {
+  min-height: 36px;
+  max-width: none;
+  flex: 1 1 auto;
+}
+
+.layoutPhone .iconBtn {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
+
+.layoutPhone .textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+  font-size: 16px;
+}
+
+.backBtn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: calc(-1 * var(--sp-1));
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.backBtn:active,
+.backBtn:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}

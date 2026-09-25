@@ -110,3 +110,20 @@
 }
 
 .action:hover { background: var(--bg-active); color: var(--text-primary); }
+
+/*
+ * On a phone, above the bottom bar rather than on top of it.
+ *
+ * The bar is the phone's whole navigation; a toast parked over it hid
+ * three of the five tabs for as long as it was up — longest for exactly
+ * the toasts that carry an Undo you might want to reach for. Centred and
+ * full-width, too: a phone has no corner worth tucking into.
+ */
+@media (max-width: 767px) {
+  .container {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    align-items: stretch;
+  }
+}

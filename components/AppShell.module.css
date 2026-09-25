@@ -1004,3 +1004,44 @@
 }
 
 .groupSelect:focus { outline: none; border-color: rgba(124, 149, 255, 0.40); }
+
+/* ════════════════════════════════════════════════════════════════
+   Phone frame
+   ════════════════════════════════════════════════════════════════
+ *
+ * Applied by AppShell (`usePhoneLayout`) rather than by a media query
+ * so it arrives together with the phone's own top bar and routing.
+ *
+ * The phone used to let the whole document scroll: top bar, page and
+ * all, with the bottom bar floating over whatever happened to be
+ * underneath. It is a fixed frame now — the top bar and bottom bar stay
+ * where they are, and only a list that is genuinely longer than the
+ * screen scrolls, inside its own area. The viewport is a flex column so
+ * a phone screen can claim exactly the space between the two bars
+ * (`flex: 1; min-height: 0`) without anyone hard-coding bar heights.
+ *
+ * Two classes throughout, so these win over the single-class rules in
+ * the 767px block above regardless of source order.
+ */
+.shell.phoneShell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.phoneShell .contentFrame {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.phoneShell .viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}

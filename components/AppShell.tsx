@@ -10,7 +10,7 @@ import { useHiddenNavItems } from '@/lib/hooks/useHiddenNavItems'
 import { useNavLayout }      from '@/lib/hooks/useNavLayout'
 import { MAX_GROUPS as NAV_MAX_GROUPS, MAX_LABEL as NAV_MAX_LABEL } from '@/lib/navLayout'
 import { useNotifications }  from '@/lib/hooks/useNotifications'
-import { useIsMobileViewport } from '@/lib/hooks/useMediaQuery'
+import { useIsMobileViewport, usePhoneLayout } from '@/lib/hooks/useMediaQuery'
 import { useBodyScrollLock }   from '@/lib/hooks/useBodyScrollLock'
 import Topbar                    from './Topbar'
 import BadgeSyncEffect           from './BadgeSyncEffect'
@@ -24,6 +24,7 @@ import {
 } from '@/lib/nav-config'
 import { ZenithMark } from './ZenithLogo'
 import MobileTabBar from '@/components/MobileTabBar'
+import MobileTopbar from '@/components/MobileTopbar'
 import MobileViewNote from '@/components/MobileViewNote'
 import styles from './AppShell.module.css'
 
@@ -181,6 +182,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
    * desktop, so they are gated on a real matchMedia read.
    * ─────────────────────────────────────────────────────────────── */
   const isMobile     = useIsMobileViewport()
+  /*
+   * A phone is a different composition, not a narrower desktop: no
+   * sidebar at all, its own top bar, and a fixed frame in which only
+   * lists scroll. Everything gated on this is simply not rendered on a
+   * computer, so the desktop layout is untouched by any of it.
+   */
+  const isPhone      = usePhoneLayout()
   const drawerOpen   = isMobile && open
   const sidebarRef   = useRef<HTMLElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -269,8 +277,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const hiddenCount = hidden.size
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${isPhone ? styles.phoneShell : ''}`}>
 
+      {/* The phone has no sidebar — its navigation is the bottom bar. */}
+      {!isPhone && (<>
       {/* ── Persistent Sidebar ──────────────────────────────── */}
       <aside
         id="sidebar"
@@ -555,6 +565,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         </div>
       </aside>
+      </>)}
 
       {/* ── Hidden items management panel ───────────────────── */}
       {showHiddenMgr && (
@@ -787,34 +798,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Content Frame: Topbar + scrollable viewport ─────── */}
       <div className={styles.contentFrame}>
-        <div style={topbarStyle} aria-hidden={isStudyModeActive}>
-          <Topbar
-            sidebarOpen={open}
-            onToggleSidebar={() => setOpen(o => !o)}
-          />
-        </div>
+        {isPhone ? (
+          <MobileTopbar />
+        ) : (
+          <div style={topbarStyle} aria-hidden={isStudyModeActive}>
+            <Topbar
+              sidebarOpen={open}
+              onToggleSidebar={() => setOpen(o => !o)}
+            />
+          </div>
+        )}
         <MentalHealthBurnoutBanner />
 
         <div
           className={styles.viewport}
           data-category={activeCategory ?? 'essentials'}
         >
-          <MobileViewNote />
+          {/* "Better on a bigger screen" only made sense while the phone
+              could reach those views; it no longer can. */}
+          {!isPhone && <MobileViewNote />}
           {children}
         </div>
       </div>
 
       {/* ── Phone navigation ─────────────────────────────────
-          Hidden above 767px by its own CSS. Rendered outside the
-          content frame so `position: fixed` resolves against the
-          viewport rather than a transformed ancestor. */}
-      {!isStudyModeActive && <MobileTabBar />}
+          The phone's only navigation. Rendered outside the content
+          frame so `position: fixed` resolves against the viewport
+          rather than a transformed ancestor. */}
+      {isPhone && !isStudyModeActive && <MobileTabBar />}
 
       {/* ── Study mode cockpit overlay ───────────────────────── */}
       <StudyLayoutContainer />
 
       {/* ── Sidebar reveal button (shown when sidebar is hidden) ── */}
-      {sidebarHidden && (
+      {sidebarHidden && !isPhone && (
         <button
           type="button"
           className={styles.sidebarRevealBtn}
@@ -827,7 +844,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Mobile backdrop ──────────────────────────────────── */}
-      {open && (
+      {open && !isPhone && (
         <div
           className={styles.backdrop}
           onClick={() => setOpen(false)}

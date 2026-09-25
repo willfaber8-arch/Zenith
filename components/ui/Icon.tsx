@@ -27,7 +27,7 @@ export type IconName =
   | 'run' | 'walk' | 'bike' | 'swim' | 'row' | 'hike' | 'yoga' | 'elliptical'
   | 'dumbbell' | 'barbell' | 'stopwatch' | 'heart' | 'flame'
   /* Structure */
-  | 'calendar' | 'clock' | 'list' | 'grid' | 'chart' | 'target'
+  | 'calendar' | 'clock' | 'list' | 'grid' | 'chart' | 'target' | 'home'
   /* Actions */
   | 'plus' | 'minus' | 'check' | 'close' | 'edit' | 'trash'
   | 'chevronLeft' | 'chevronRight' | 'chevronDown'
@@ -87,6 +87,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5.2l3.2 2" /></>,
   list: <><path d="M8 6h12M8 12h12M8 18h12" /><circle cx="4.2" cy="6" r="1" /><circle cx="4.2" cy="12" r="1" /><circle cx="4.2" cy="18" r="1" /></>,
   grid: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></>,
+  home: <><path d="M4 10.5 12 4l8 6.5" /><path d="M6 9v10.5a1 1 0 0 0 1 1h3.5V15h3v5.5H17a1 1 0 0 0 1-1V9" /></>,
   chart: <><path d="M4 20h16" /><path d="M7 20v-6M12 20V6M17 20v-9" /></>,
   target: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>,
 

@@ -1122,3 +1122,151 @@
   font-size:     0.74rem;
   line-height:   1.5;
 }
+
+/* ════════════════════════════════════════════════════════════
+   Habits on a phone
+   ════════════════════════════════════════════════════════════
+ *
+ * Set by HabitsView when `usePhoneLayout()` is true; a desktop
+ * never gets these classes. The page fills the space between the
+ * phone's two bars: a one-line header at the top, the habit list
+ * scrolling in the middle, and a Stats toggle at the bottom whose
+ * panel, when opened, takes room from the list rather than from
+ * the screen.
+ */
+.pagePhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3) var(--sp-3) 0;
+}
+
+.phoneHead {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+}
+
+.phoneHeadText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneHeadCount {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.phoneHeadBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.phoneHeadBtn:active {
+  background: var(--bg-hover);
+}
+
+.pagePhone .graceNote {
+  flex-shrink: 0;
+}
+
+.bodyPhone {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.bodyPhone .habitColumn {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-bottom: var(--sp-2);
+}
+
+/* The week strip is a desktop glance; on a phone it squeezed the name. */
+.pagePhone .weekHeader,
+.pagePhone .weekDots {
+  display: none;
+}
+
+/* Inside a category section the header already names the category. */
+.pagePhone .habitCategoryBadge {
+  display: none;
+}
+
+.statsDock {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 55%;
+  padding-bottom: var(--sp-2);
+}
+
+.statsToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.statsChevron {
+  margin-left: auto;
+  display: flex;
+  transition: transform var(--dur-base) var(--ease-smooth);
+}
+
+.statsChevronOpen {
+  transform: rotate(180deg);
+}
+
+.statsBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: var(--sp-2);
+}
+
+.statsBody .chartPanel {
+  width: 100%;
+  position: static;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statsChevron { transition: none; }
+}
