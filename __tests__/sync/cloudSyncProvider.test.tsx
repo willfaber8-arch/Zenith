@@ -99,7 +99,8 @@ it('when both devices changed, it saves and loads nothing and asks which to keep
   expect(await notes()).toEqual(['laptop', 'laptop edit'])
   expect(screen.getByRole('status')).toHaveAttribute('aria-label', expect.stringContaining('paused'))
 
-  fireEvent.click(screen.getByRole('button', { name: 'Keep this device’s' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Keep this device’s version' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes, keep this device’s' }))
 
   await waitFor(() => expect(cloudNotes()).toEqual(['laptop', 'laptop edit']))
   const aside = (await db.db_snapshots.toArray()).filter(s => s.kind === 'cloud-copy')
@@ -113,12 +114,64 @@ it('choosing the other device’s version keeps this one’s as a safety copy', 
   await addNote('laptop edit'); setSnapshotMeta({ lastLocalChangeAt: Date.now() })
 
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: 'Keep Safari · iOS’s' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Keep Safari · iOS’s version' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes, keep Safari · iOS’s' }))
 
   await waitFor(() => expect(reload).toHaveBeenCalled())
   expect(await notes()).toEqual(['phone version'])
   const kept = (await db.db_snapshots.toArray()).filter(s => s.kind === 'before-cloud-load')
   expect(kept[0].payload).toContain('laptop edit')
+})
+
+it('nothing is replaced until the choice is confirmed, and going back changes nothing', async () => {
+  await addNote('laptop'); await pushSnapshot()
+  otherDeviceWrites(['phone version'])
+  await addNote('laptop edit'); setSnapshotMeta({ lastLocalChangeAt: Date.now() })
+  const before = cloud.row!.updated_at
+
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: 'Keep this device’s version' }))
+
+  /* The question names what is about to be replaced… */
+  expect(screen.getByText('Replace Safari · iOS’s changes with this device’s?')).toBeInTheDocument()
+  await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+  /* …and nothing has happened yet. */
+  expect(cloud.row!.updated_at).toBe(before)
+  expect(cloudNotes()).toEqual(['phone version'])
+
+  fireEvent.click(screen.getByRole('button', { name: 'Go back' }))
+  expect(screen.getByRole('button', { name: 'Keep this device’s version' })).toBeInTheDocument()
+  await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+  expect(cloudNotes()).toEqual(['phone version'])
+  expect(await notes()).toEqual(['laptop', 'laptop edit'])
+  expect(reload).not.toHaveBeenCalled()
+})
+
+it('shows what each version holds before asking, and every choice says what it does', async () => {
+  await addNote('laptop'); await pushSnapshot()                 // cloud copy recorded as 1 note
+  otherDeviceWrites(['p1', 'p2', 'p3'])                         // written by the "phone"
+  ;(cloud.row!.payload as Record<string, unknown>).summary = { notes: 3, tasks: 0, habits: 0, events: 0 }
+  await addNote('laptop edit'); setSnapshotMeta({ lastLocalChangeAt: Date.now() })
+
+  mount()
+
+  expect(await screen.findByText('2 notes · 0 tasks · 0 habits · 0 events')).toBeInTheDocument()
+  expect(screen.getByText('3 notes · 0 tasks · 0 habits · 0 events')).toBeInTheDocument()
+  expect(screen.getByText(/Changes nothing\. Sync stays paused/)).toBeInTheDocument()
+  expect(screen.getAllByText(/as a safety copy on this device/)).toHaveLength(2)   // both replacing choices say what they keep
+
+  fireEvent.click(screen.getByRole('button', { name: 'Decide later' }))
+  await waitFor(() => expect(screen.queryByText('Both devices changed since they last synced')).toBeNull())
+  expect(cloudNotes()).toEqual(['p1', 'p2', 'p3'])
+})
+
+it('a copy saved before counts were recorded says so, instead of showing zeros', async () => {
+  await addNote('laptop'); await pushSnapshot()
+  otherDeviceWrites(['phone version'])                          // no summary on this one
+  await addNote('laptop edit'); setSnapshotMeta({ lastLocalChangeAt: Date.now() })
+
+  mount()
+  expect(await screen.findByText(/Contents not recorded/)).toBeInTheDocument()
 })
 
 it('another account on this browser: sync pauses, nothing crosses, and only loading is offered', async () => {
@@ -131,6 +184,9 @@ it('another account on this browser: sync pauses, nothing crosses, and only load
   expect(await screen.findByText('This device’s data belongs to a different account')).toBeInTheDocument()
   expect(cloud.row).toBeNull()                              // nothing of A's pushed into B
   expect(screen.queryByRole('button', { name: /upload|save/i })).toBeNull()
+  /* Account B has nothing in the cloud: nothing to load is offered, and it says why. */
+  expect(screen.queryByRole('button', { name: 'Load this account’s data' })).toBeNull()
+  expect(screen.getByText('Nothing saved in the cloud yet')).toBeInTheDocument()
 })
 
 it('does nothing at all when cloud sync is not available', async () => {

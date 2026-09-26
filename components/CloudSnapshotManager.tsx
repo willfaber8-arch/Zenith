@@ -20,25 +20,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast }          from '@/lib/ToastContext'
 import { useCloudSync }      from '@/lib/CloudSyncContext'
+import { relativeTime }      from '@/utils/relativeTime'
 import styles from './CloudSnapshotManager.module.css'
-
-/* ── Relative time formatter ──────────────────────────────────────── */
-
-function relativeTime(iso: string | null): string {
-  if (!iso) return 'never'
-  const ms = Date.parse(iso)
-  if (Number.isNaN(ms)) return 'unknown'
-
-  const diff = Date.now() - ms
-  if (diff < 45_000)       return 'just now'
-  const mins = Math.round(diff / 60_000)
-  if (mins < 60)           return `${mins} min ago`
-  const hours = Math.round(mins / 60)
-  if (hours < 24)          return `${hours} hr${hours === 1 ? '' : 's'} ago`
-  const days = Math.round(hours / 24)
-  if (days < 30)           return `${days} day${days === 1 ? '' : 's'} ago`
-  return new Date(ms).toLocaleDateString()
-}
 
 const PULL_CONFIRM =
   'Load from cloud?\n\n' +
@@ -56,7 +39,7 @@ export default function CloudSnapshotManager() {
   const {
     available, reason, status, lastSyncedAt, remoteMeta,
     pushing, pulling, blocked, error,
-    saveNow, loadNow, keepThisDevice, keepCloud, refreshRemote,
+    saveNow, loadNow, refreshRemote,
   } = useCloudSync()
   /* The conflict itself is resolved from the banner at the top of every
      screen (CloudSyncBanner); this panel reports it and offers the same
@@ -152,7 +135,11 @@ export default function CloudSnapshotManager() {
   return (
     <div className={styles.panel}>
 
-      {/* ── Conflict callout ─────────────────────────────────────── */}
+      {/* ── Conflict callout ─────────────────────────────────────────
+          Explains; does not decide. The choices live in one place — the
+          banner at the top of the screen, which is on this screen too —
+          where each says what it replaces, shows what both versions hold,
+          and asks once more before replacing anything. */}
       {conflict && available && (
         <div className={styles.conflictBox} role="alert">
           <p className={styles.conflictTitle}>Which version should win?</p>
@@ -161,26 +148,10 @@ export default function CloudSnapshotManager() {
             {relativeTime(remoteMeta?.updatedAt ?? null)}
             {remoteMeta?.deviceLabel ? ` from ${remoteMeta.deviceLabel}` : ''},
             but this browser profile has changes that were never saved.
-            Pick one. The other is kept as a safety copy on this device.
+            Nothing is saved or loaded until you choose, in the message at the
+            top of the screen — it shows what each version holds, and the one
+            you don&apos;t pick is kept as a safety copy on this device.
           </p>
-          <div className={styles.conflictActions}>
-            <button
-              className={styles.pushBtn}
-              onClick={() => void keepThisDevice()}
-              disabled={busy}
-              aria-busy={pushing}
-            >
-              Keep this profile&apos;s data
-            </button>
-            <button
-              className={styles.pullBtn}
-              onClick={() => void keepCloud()}
-              disabled={busy}
-              aria-busy={pulling}
-            >
-              Use the cloud version
-            </button>
-          </div>
         </div>
       )}
 

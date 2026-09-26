@@ -44,10 +44,11 @@ class Query {
     const out: Record<string, unknown> = {}
     for (const c of this.cols.split(',').map(x => x.trim()).filter(Boolean)) {
       /* alias:column->>key — a text value out of a jsonb column, as PostgREST does. */
-      const m = /^(\w+):(\w+)->>(\w+)$/.exec(c)
+      const m = /^(\w+):(\w+)(->>?)(\w+)$/.exec(c)
       if (m) {
-        const v = ((r as never)[m[2]] as Record<string, unknown> | null)?.[m[3]]
-        out[m[1]] = v === undefined || v === null ? null : String(v)
+        const v = ((r as never)[m[2]] as Record<string, unknown> | null)?.[m[4]]
+        /* ->> is text; -> is the JSON value itself. */
+        out[m[1]] = v === undefined || v === null ? null : m[3] === '->>' ? String(v) : v
       } else {
         out[c] = (r as never)[c]
       }

@@ -92,6 +92,67 @@ export type RemoteSnapshotMeta = {
    * that do not set it read as "unknown", never as "leaky".
    */
   secretsStripped?: boolean
+  /**
+   * What the copy holds, in words a person recognises — shown beside the
+   * choices when sync needs a decision. Null for a copy written before
+   * this was recorded.
+   */
+  summary?: DataSummary | null
+}
+
+/**
+ * A few counts people can compare at a glance: "12 notes · 48 tasks"
+ * says far more about which version to keep than a timestamp does.
+ */
+export type DataSummary = { notes: number; tasks: number; habits: number; events: number }
+
+/** Which tables each count reads — the same for a payload and for this device. */
+export const SUMMARY_TABLES: Record<keyof DataSummary, readonly string[]> = {
+  notes:  ['quickNotes'],
+  tasks:  ['assignments'],
+  habits: ['habits'],
+  events: ['personalEvents', 'calendarEvents'],
+}
+
+/** The summary of a payload about to be saved. */
+export function summarisePayload(payload: { tables?: Record<string, unknown> }): DataSummary {
+  const out = { notes: 0, tasks: 0, habits: 0, events: 0 }
+  for (const k of Object.keys(SUMMARY_TABLES) as (keyof DataSummary)[]) {
+    for (const t of SUMMARY_TABLES[k]) {
+      const rows = payload.tables?.[t]
+      if (Array.isArray(rows)) out[k] += rows.length
+    }
+  }
+  return out
+}
+
+/** The summary of what is on this device right now. */
+export async function localDataSummary(): Promise<DataSummary | null> {
+  try {
+    const { db } = await import('@/lib/db')
+    if (!db) return null
+    const out = { notes: 0, tasks: 0, habits: 0, events: 0 }
+    for (const k of Object.keys(SUMMARY_TABLES) as (keyof DataSummary)[]) {
+      for (const t of SUMMARY_TABLES[k]) {
+        const table = db.tables.find(x => x.name === t)
+        if (table) out[k] += await table.count()
+      }
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+/** A summary read back from the cloud, or null if it is missing or malformed. */
+function readSummary(raw: unknown): DataSummary | null {
+  const v = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return null } })() : raw
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.floor(x) : null)
+  const notes = n(o.notes), tasks = n(o.tasks), habits = n(o.habits), events = n(o.events)
+  if (notes == null || tasks == null || habits == null || events == null) return null
+  return { notes, tasks, habits, events }
 }
 
 /** This profile's view of the sync state — persisted in localStorage. */
@@ -518,7 +579,12 @@ export interface PushOptions {
    * a third write arriving in between is not lost either.
    */
   overwriteCloud?: boolean
-  /** The user confirmed a push the mass-deletion guard held back. */
+  /**
+   * The user confirmed a push the mass-deletion guard held back. The
+   * fuller cloud copy it replaces is saved on this device first, the same
+   * as `overwriteCloud` does — "I deleted it on purpose" should still be
+   * undoable the day after.
+   */
   allowShrink?: boolean
   /** The user confirmed this device's data belongs with this account. */
   adoptAccount?: boolean
@@ -602,14 +668,15 @@ async function pushLocked(opts: PushOptions): Promise<SnapshotResult> {
    * the one just read — after keeping a copy of it here.
    */
   let expected = meta.lastSyncedAt
-  if (opts.overwriteCloud && remote) {
+  if ((opts.overwriteCloud || opts.allowShrink) && remote) {
     const kept = await keepCloudCopyAside(userId)
     if (!kept) return { ok: false, blocked: 'no-backup' }
-    expected = remote.updatedAt
+    /* Only choosing this device over the cloud moves the expected version. */
+    if (opts.overwriteCloud) expected = remote.updatedAt
   }
 
   const body = {
-    payload,
+    payload:        { ...payload, summary: summarisePayload(payload) },
     schema_version: payload.schemaVersion,
     device_label:   resolveDeviceLabel(),
     /* The trigger stamps the real time; this only has to change. */
@@ -816,7 +883,7 @@ export async function getRemoteMeta(): Promise<RemoteSnapshotMeta | null> {
   const { data, error } = await supabase
     .from(SNAPSHOT_TABLE)
     /* One key out of the payload, not the payload: still a cheap probe. */
-    .select('updated_at, device_label, schema_version, secrets_stripped:payload->>secretsStripped')
+    .select('updated_at, device_label, schema_version, secrets_stripped:payload->>secretsStripped, summary:payload->summary')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -825,12 +892,14 @@ export async function getRemoteMeta(): Promise<RemoteSnapshotMeta | null> {
   const row = data as {
     updated_at: string; device_label: string | null; schema_version: number | null
     secrets_stripped: string | null
+    summary?: unknown
   }
   return {
     updatedAt:       row.updated_at,
     deviceLabel:     row.device_label ?? null,
     schemaVersion:   typeof row.schema_version === 'number' ? row.schema_version : null,
     secretsStripped: row.secrets_stripped === 'true',
+    summary:         readSummary(row.summary),
   }
 }
 

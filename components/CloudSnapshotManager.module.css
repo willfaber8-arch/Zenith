@@ -146,13 +146,6 @@
   color:       var(--text-muted);
 }
 
-.conflictActions {
-  display:   flex;
-  flex-wrap: wrap;
-  gap:       var(--sp-3);
-  margin-top: var(--sp-1);
-}
-
 /* ── Status strip ─────────────────────────────────────────────── */
 .status {
   padding:        var(--sp-3) var(--sp-6);

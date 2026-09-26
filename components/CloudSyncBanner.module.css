@@ -5,6 +5,10 @@
    ════════════════════════════════════════════════════════════ */
 
 .banner {
+  /* Above the Home view's fixed layout switcher (z 10), which would
+     otherwise sit on the banner's top-right corner while it is shown. */
+  position: relative;
+  z-index: 11;
   flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
@@ -47,10 +51,120 @@
   color: var(--text-muted);
 }
 
-.actions {
+.sides {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.side {
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-main);
+}
+
+.sideHeading {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.sideSummary {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.sideWhen {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-dark);
+}
+
+/* One row per choice: the button, and beside it what it does. */
+.choices {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: minmax(180px, max-content) 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.choiceWhat {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.line {
+  display: flex;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.line + .line { margin-top: 2px; }
+
+.replaces,
+.keeps {
+  flex-shrink: 0;
+  width: 62px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.85;
+}
+
+.replaces { color: var(--accent-warm); }
+.keeps    { color: var(--accent-green); }
+
+.footnote {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-dark);
+}
+
+/* The second ask, in place of the choices — never a dialog over the banner. */
+.confirm {
+  flex: 1 1 100%;
+  padding: var(--sp-3);
+  border: 1px solid color-mix(in srgb, var(--accent-warm) 45%, transparent);
+  border-radius: var(--r-md);
+  background: var(--bg-main);
+  animation: fadeIn var(--dur-fast) var(--ease-smooth) both;
+}
+
+.confirmQ {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.confirmBtns {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
+  margin-top: var(--sp-3);
 }
 
 .btn {
@@ -72,12 +186,23 @@
   color: var(--bg-main);
 }
 
+.btnDanger {
+  border-color: transparent;
+  background: var(--accent-warm);
+  color: var(--bg-main);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
 @media (max-width: 767px) {
-  .actions { width: 100%; }
-  .btn     { flex: 1 1 auto; min-height: 44px; }
+  /* The phone frame never scrolls (rule 107), so a long decision scrolls
+     inside the banner instead of pushing the screen off the bottom. */
+  .banner      { max-height: 70dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .sides       { grid-template-columns: 1fr; }
+  .choice      { grid-template-columns: 1fr; gap: var(--sp-1); }
+  .btn         { width: 100%; min-height: 44px; }
+  .confirmBtns .btn { flex: 1 1 auto; width: auto; }
 }

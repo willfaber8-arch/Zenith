@@ -120,6 +120,27 @@ describe('a save that would wipe most of the cloud copy', () => {
     expect(cloudNotes()).toEqual(['the only one left'])
   })
 
+  it('confirming it still keeps the fuller cloud copy on this device first', async () => {
+    for (let i = 0; i < 40; i++) await addNote(`note ${i}`)
+    await pushSnapshot()
+    await db.quickNotes.clear(); await addNote('the only one left'); markDirty()
+
+    expect((await pushSnapshot({ allowShrink: true })).ok).toBe(true)
+    const aside = (await db.db_snapshots.toArray()).filter(s => s.kind === 'cloud-copy')
+    expect(aside).toHaveLength(1)
+    expect(aside[0].payload).toContain('note 39')
+  })
+
+  it('confirming it does not also let it replace a copy another device wrote meanwhile', async () => {
+    for (let i = 0; i < 40; i++) await addNote(`note ${i}`)
+    await pushSnapshot()
+    await db.quickNotes.clear(); markDirty()
+    otherDeviceWrites(['written on the phone'])
+
+    expect(await pushSnapshot({ allowShrink: true })).toMatchObject({ ok: false, blocked: 'conflict' })
+    expect(cloudNotes()).toEqual(['written on the phone'])
+  })
+
   it('does not get in the way of ordinary tidying', () => {
     expect(looksLikeMassDeletion(40, 35)).toBe(false)    // deleted five things
     expect(looksLikeMassDeletion(10, 0)).toBe(false)     // a small workspace emptied on purpose
@@ -261,6 +282,28 @@ describe('a copy already in the cloud from before secrets were stripped', () => 
     expect((await pushSnapshot()).ok).toBe(true)
     expect(JSON.stringify(cloud.row)).not.toContain('sk-OLD-LEAK')
     expect((await getRemoteMeta())?.secretsStripped).toBe(true)
+  })
+})
+
+describe('what the banner shows about each version', () => {
+  it('each save records what the copy holds, and reading it back costs no payload', async () => {
+    await addNote('a'); await addNote('b')
+    await pushSnapshot()
+    const { getRemoteMeta } = await import('@/services/cloudSnapshot')
+    expect((await getRemoteMeta())?.summary).toEqual({ notes: 2, tasks: 0, habits: 0, events: 0 })
+  })
+
+  it('a copy saved before counts existed reads as unknown, never as empty', async () => {
+    otherDeviceWrites(['from an older Zenith'])
+    const { getRemoteMeta } = await import('@/services/cloudSnapshot')
+    expect((await getRemoteMeta())?.summary).toBeNull()
+  })
+
+  it('this device is counted the same way the saved copy is', async () => {
+    await addNote('a'); await addNote('b'); await addNote('c')
+    const { localDataSummary, summarisePayload } = await import('@/services/cloudSnapshot')
+    const { buildBackupPayload } = await import('@/utils/dbExporter')
+    expect(await localDataSummary()).toEqual(summarisePayload(await buildBackupPayload()))
   })
 })
 
