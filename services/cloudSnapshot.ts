@@ -26,6 +26,7 @@
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase'
 import { buildBackupPayload, collectSettings }     from '@/utils/dbExporter'
 import { importJsonToLocalDatabase }               from '@/utils/dbImporter'
+import { storeSafetyCopy }                         from '@/utils/dbSnapshots'
 
 /* ── Constants ────────────────────────────────────────────────────── */
 
@@ -43,16 +44,115 @@ const PAYLOAD_WARN_BYTES = 4 * 1024 * 1024
 
 /* ── Result types ─────────────────────────────────────────────────── */
 
+/**
+ * Why a sync step refused to run — each one a safeguard, never an error.
+ *
+ *   conflict         The cloud changed since this device last synced, and
+ *                    this device has changes of its own. Writing would
+ *                    replace the other device's work; loading would
+ *                    replace this one's. Only the user can choose.
+ *   account-mismatch This device's data belongs to a different account
+ *                    than the one signed in. Syncing would copy one
+ *                    person's workspace into another's.
+ *   outdated-app     The cloud copy was written by a newer Zenith than the
+ *                    one running here. This copy does not know that
+ *                    version's tables, so saving from it would drop them.
+ *   mass-deletion    Saving now would shrink the cloud copy drastically —
+ *                    what cleared browser storage or a bad import looks
+ *                    like. Held until the user confirms it is intended.
+ *   no-backup        A safety copy could not be made before replacing this
+ *                    device's data, so the replacement did not happen.
+ *   busy             Another tab of this browser is already syncing.
+ */
+export type SyncBlock =
+  | 'conflict'
+  | 'account-mismatch'
+  | 'outdated-app'
+  | 'mass-deletion'
+  | 'no-backup'
+  | 'busy'
+
 export type SnapshotResult = {
   ok:         boolean
   /** Server-authoritative `updated_at` of the snapshot row after the op. */
   updatedAt?: string
   error?:     string
+  /** Set when a safeguard stopped the operation. `ok` is false. */
+  blocked?:   SyncBlock
 }
 
 export type RemoteSnapshotMeta = {
-  updatedAt:   string
-  deviceLabel: string | null
+  updatedAt:     string
+  deviceLabel:   string | null
+  /** Dexie schema version of the app that wrote it. */
+  schemaVersion: number | null
+  /**
+   * False when the copy was written before secrets were stripped, and so
+   * may still contain API keys. Optional so older callers and fixtures
+   * that do not set it read as "unknown", never as "leaky".
+   */
+  secretsStripped?: boolean
+  /**
+   * What the copy holds, in words a person recognises — shown beside the
+   * choices when sync needs a decision. Null for a copy written before
+   * this was recorded.
+   */
+  summary?: DataSummary | null
+}
+
+/**
+ * A few counts people can compare at a glance: "12 notes · 48 tasks"
+ * says far more about which version to keep than a timestamp does.
+ */
+export type DataSummary = { notes: number; tasks: number; habits: number; events: number }
+
+/** Which tables each count reads — the same for a payload and for this device. */
+export const SUMMARY_TABLES: Record<keyof DataSummary, readonly string[]> = {
+  notes:  ['quickNotes'],
+  tasks:  ['assignments'],
+  habits: ['habits'],
+  events: ['personalEvents', 'calendarEvents'],
+}
+
+/** The summary of a payload about to be saved. */
+export function summarisePayload(payload: { tables?: Record<string, unknown> }): DataSummary {
+  const out = { notes: 0, tasks: 0, habits: 0, events: 0 }
+  for (const k of Object.keys(SUMMARY_TABLES) as (keyof DataSummary)[]) {
+    for (const t of SUMMARY_TABLES[k]) {
+      const rows = payload.tables?.[t]
+      if (Array.isArray(rows)) out[k] += rows.length
+    }
+  }
+  return out
+}
+
+/** The summary of what is on this device right now. */
+export async function localDataSummary(): Promise<DataSummary | null> {
+  try {
+    const { db } = await import('@/lib/db')
+    if (!db) return null
+    const out = { notes: 0, tasks: 0, habits: 0, events: 0 }
+    for (const k of Object.keys(SUMMARY_TABLES) as (keyof DataSummary)[]) {
+      for (const t of SUMMARY_TABLES[k]) {
+        const table = db.tables.find(x => x.name === t)
+        if (table) out[k] += await table.count()
+      }
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+/** A summary read back from the cloud, or null if it is missing or malformed. */
+function readSummary(raw: unknown): DataSummary | null {
+  const v = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return null } })() : raw
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.floor(x) : null)
+  const notes = n(o.notes), tasks = n(o.tasks), habits = n(o.habits), events = n(o.events)
+  if (notes == null || tasks == null || habits == null || events == null) return null
+  return { notes, tasks, habits, events }
 }
 
 /** This profile's view of the sync state — persisted in localStorage. */
@@ -74,12 +174,25 @@ export type SnapshotMeta = {
    * every write to localStorage.
    */
   settingsFingerprint: string | null
+  /**
+   * The account this device's data was last synced with.
+   *
+   * Local data outlives a sign-out — Zenith is local-first — so without
+   * this, whoever signed in next on the same browser would have the
+   * previous person's workspace pushed into their account, or theirs
+   * pulled over it. Sync refuses while the two disagree.
+   */
+  ownerUserId?:        string | null
+  /** Rows in the copy last pushed or pulled, for the mass-deletion guard. */
+  lastSyncedRowCount?: number | null
 }
 
 const EMPTY_META: SnapshotMeta = {
   lastSyncedAt:        null,
   lastLocalChangeAt:   null,
   settingsFingerprint: null,
+  ownerUserId:         null,
+  lastSyncedRowCount:  null,
 }
 
 /**
@@ -138,6 +251,10 @@ export function getSnapshotMeta(): SnapshotMeta {
          backed up — null means "no baseline", not "no changes". */
       settingsFingerprint:
         typeof parsed.settingsFingerprint === 'string' ? parsed.settingsFingerprint : null,
+      ownerUserId:
+        typeof parsed.ownerUserId === 'string' ? parsed.ownerUserId : null,
+      lastSyncedRowCount:
+        typeof parsed.lastSyncedRowCount === 'number' ? parsed.lastSyncedRowCount : null,
     }
   } catch {
     return { ...EMPTY_META }
@@ -200,11 +317,19 @@ export function hasUnpushedLocalChanges(meta: SnapshotMeta = getSnapshotMeta()):
     return true
   }
 
-  if (meta.lastLocalChangeAt == null) return false
-  if (!meta.lastSyncedAt)             return true
-  const syncedMs = Date.parse(meta.lastSyncedAt)
-  if (Number.isNaN(syncedMs))         return true
-  return meta.lastLocalChangeAt > syncedMs
+  /*
+   * Any stamp at all means unsaved work.
+   *
+   * This used to ask whether the stamp was *later* than `lastSyncedAt` —
+   * comparing this device's clock with the server's. A phone running a
+   * minute behind made an edit just after a sync look older than the
+   * sync: "already saved", so it was never pushed, and the next load
+   * from the cloud replaced it. The comparison was never needed: every
+   * successful push and pull clears the stamp, and a push that raced a
+   * new edit leaves it set. So its presence is the whole answer, and no
+   * clock enters into it.
+   */
+  return meta.lastLocalChangeAt != null
 }
 
 /**
@@ -373,15 +498,115 @@ function resolveDeviceLabel(): string {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   §4 — Push
+   §4 — Guards shared by push and pull
    ══════════════════════════════════════════════════════════════════ */
 
+/** The schema version of the database running in this tab. */
+async function localSchemaVersion(): Promise<number> {
+  const { db } = await import('@/lib/db')
+  return db?.verno ?? 0
+}
+
+/** Rows in a payload, across both databases. */
+export function payloadRowCount(payload: {
+  tables?: Record<string, unknown>
+  gamesTables?: Record<string, unknown>
+}): number {
+  let n = 0
+  for (const rows of Object.values(payload.tables ?? {})) if (Array.isArray(rows)) n += rows.length
+  for (const rows of Object.values(payload.gamesTables ?? {})) if (Array.isArray(rows)) n += rows.length
+  return n
+}
+
+/** Shrinking by at least this share of the last synced copy needs a yes… */
+export const MASS_DELETION_RATIO = 0.5
+/** …and by at least this many rows, so a small workspace can still be tidied. */
+export const MASS_DELETION_MIN_ROWS = 25
+
 /**
- * Serialises the entire local database and upserts it as this account's single
- * snapshot row. On success the server's `updated_at` becomes this profile's new
- * sync watermark and the local-change flag is cleared.
+ * True when a copy of `now` rows would replace one of `before` rows by
+ * losing most of it. Deleting a handful of things never trips this; an
+ * emptied database always does.
  */
-export async function pushSnapshot(): Promise<SnapshotResult> {
+export function looksLikeMassDeletion(before: number | null | undefined, now: number): boolean {
+  if (before == null || before <= 0) return false
+  const lost = before - now
+  return lost >= MASS_DELETION_MIN_ROWS && now < before * (1 - MASS_DELETION_RATIO)
+}
+
+/** True when two server timestamps name the same write. */
+export function sameVersion(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false
+  if (a === b) return true
+  const pa = Date.parse(a), pb = Date.parse(b)
+  return !Number.isNaN(pa) && pa === pb
+}
+
+/*
+ * One tab at a time.
+ *
+ * Every tab of a browser profile shares one IndexedDB and one watermark,
+ * so two tabs syncing at once race each other — each would see the
+ * other's push as "the cloud changed" and raise a conflict with itself.
+ * The Web Locks API serialises them across tabs; where it is missing,
+ * the compare-and-swap below still keeps the cloud copy safe.
+ */
+const LOCK_NAME = 'zenith-cloud-sync'
+
+async function withSyncLock<T>(fn: () => Promise<T>, busy: T): Promise<T> {
+  const locks = typeof navigator !== 'undefined'
+    ? (navigator as Navigator & { locks?: LockManager }).locks
+    : undefined
+  if (!locks?.request) return fn()
+  let ran = false
+  const out = await locks.request(LOCK_NAME, { ifAvailable: true }, async lock => {
+    if (!lock) return busy
+    ran = true
+    return fn()
+  })
+  return ran ? out : busy
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   §5 — Push
+   ══════════════════════════════════════════════════════════════════ */
+
+export interface PushOptions {
+  /**
+   * The user chose to keep this device's version over the cloud's. The
+   * cloud copy is saved on this device as a safety copy first, and then
+   * replaced — still compare-and-swap against the version just read, so
+   * a third write arriving in between is not lost either.
+   */
+  overwriteCloud?: boolean
+  /**
+   * The user confirmed a push the mass-deletion guard held back. The
+   * fuller cloud copy it replaces is saved on this device first, the same
+   * as `overwriteCloud` does — "I deleted it on purpose" should still be
+   * undoable the day after.
+   */
+  allowShrink?: boolean
+  /** The user confirmed this device's data belongs with this account. */
+  adoptAccount?: boolean
+}
+
+/**
+ * Serialises the local database and writes it as this account's cloud copy
+ * — but only over the version this device last saw.
+ *
+ * The write is a compare-and-swap on the server-stamped `updated_at`: the
+ * UPDATE matches only while the row is still the one this device last
+ * pushed or pulled. If another device wrote in between, nothing matches,
+ * nothing is overwritten, and the result is a conflict for the user to
+ * resolve. It used to be an unconditional upsert, so a device that had
+ * been sitting stale replaced everything written elsewhere the moment
+ * anything changed on it.
+ */
+export async function pushSnapshot(opts: PushOptions = {}): Promise<SnapshotResult> {
+  return withSyncLock(() => pushLocked(opts), { ok: false, blocked: 'busy' })
+}
+
+async function pushLocked(opts: PushOptions): Promise<SnapshotResult> {
   const supabase = getSupabaseClient()
   if (!supabase) {
     return { ok: false, error: 'Cloud is not configured for this build.' }
@@ -392,19 +617,35 @@ export async function pushSnapshot(): Promise<SnapshotResult> {
     return { ok: false, error: 'Sign in with an account to save to the cloud.' }
   }
 
+  const meta = getSnapshotMeta()
+  if (meta.ownerUserId && meta.ownerUserId !== userId && !opts.adoptAccount) {
+    return { ok: false, blocked: 'account-mismatch' }
+  }
+
+  const remote = await getRemoteMeta()
+  const schema = await localSchemaVersion()
+  if (remote?.schemaVersion != null && remote.schemaVersion > schema) {
+    return { ok: false, blocked: 'outdated-app' }
+  }
+
   /*
    * Snapshot the dirty stamp BEFORE reading the database. If the user writes
    * again while the upload is in flight, that newer edit is not represented in
    * the uploaded payload — so the profile must stay dirty rather than be marked
    * clean, or the change would silently never reach the cloud.
    */
-  const stampAtCapture = getSnapshotMeta().lastLocalChangeAt
+  const stampAtCapture = meta.lastLocalChangeAt
 
   let payload
   try {
     payload = await buildBackupPayload()
   } catch (err) {
     return { ok: false, error: (err as Error).message || 'Could not read the local database.' }
+  }
+  const rowCount = payloadRowCount(payload)
+
+  if (!opts.allowShrink && looksLikeMassDeletion(meta.lastSyncedRowCount, rowCount)) {
+    return { ok: false, blocked: 'mass-deletion' }
   }
 
   /* ── Size telemetry ─────────────────────────────────────────── */
@@ -421,27 +662,66 @@ export async function pushSnapshot(): Promise<SnapshotResult> {
     /* Blob sizing is diagnostic only — never block the push on it. */
   }
 
-  const { data, error } = await supabase
-    .from(SNAPSHOT_TABLE)
-    .upsert(
-      {
-        user_id:        userId,
-        payload,
-        schema_version: payload.schemaVersion,
-        device_label:   resolveDeviceLabel(),
-        updated_at:     new Date().toISOString(),
-      },
-      { onConflict: 'user_id' },
-    )
-    .select('updated_at')
-    .single()
-
-  if (error) {
-    return { ok: false, error: describeError(error.message) }
+  /*
+   * Which version this write may replace. Normally the one this device
+   * last synced; when the user has chosen this device over the cloud,
+   * the one just read — after keeping a copy of it here.
+   */
+  let expected = meta.lastSyncedAt
+  if ((opts.overwriteCloud || opts.allowShrink) && remote) {
+    const kept = await keepCloudCopyAside(userId)
+    if (!kept) return { ok: false, blocked: 'no-backup' }
+    /* Only choosing this device over the cloud moves the expected version. */
+    if (opts.overwriteCloud) expected = remote.updatedAt
   }
 
-  const updatedAt = (data as { updated_at: string } | null)?.updated_at
-    ?? new Date().toISOString()
+  const body = {
+    payload:        { ...payload, summary: summarisePayload(payload) },
+    schema_version: payload.schemaVersion,
+    device_label:   resolveDeviceLabel(),
+    /* The trigger stamps the real time; this only has to change. */
+    updated_at:     new Date().toISOString(),
+  }
+
+  let updatedAt: string | null = null
+
+  if (remote) {
+    /* A cloud copy exists. Replace it only if it is the one we expect. */
+    if (!expected || !sameVersion(expected, remote.updatedAt)) {
+      return { ok: false, blocked: 'conflict' }
+    }
+    const { data, error } = await supabase
+      .from(SNAPSHOT_TABLE)
+      .update(body)
+      .eq('user_id', userId)
+      .eq('updated_at', expected)
+      .select('updated_at')
+    if (error) return { ok: false, error: describeError(error.message) }
+    const rows = (data ?? []) as { updated_at: string }[]
+    /* Nothing matched: someone wrote between our read and our write. */
+    if (rows.length === 0) return { ok: false, blocked: 'conflict' }
+    updatedAt = rows[0].updated_at
+  } else {
+    /*
+     * No cloud copy yet. INSERT, never upsert: if another device creates
+     * the row in the same moment, the primary key rejects this write
+     * instead of replacing theirs.
+     */
+    const { data, error } = await supabase
+      .from(SNAPSHOT_TABLE)
+      .insert({ user_id: userId, ...body })
+      .select('updated_at')
+      .single()
+    if (error) {
+      if (/duplicate key|23505|already exists/i.test(error.message ?? '')) {
+        return { ok: false, blocked: 'conflict' }
+      }
+      return { ok: false, error: describeError(error.message) }
+    }
+    updatedAt = (data as { updated_at: string } | null)?.updated_at ?? null
+  }
+
+  if (!updatedAt) return { ok: false, error: 'The cloud did not confirm the save.' }
 
   /*
    * Clearing lastLocalChangeAt marks this profile clean: everything local is
@@ -451,28 +731,47 @@ export async function pushSnapshot(): Promise<SnapshotResult> {
    */
   const stampNow = getSnapshotMeta().lastLocalChangeAt
   setSnapshotMeta({
-    lastSyncedAt:      updatedAt,
-    lastLocalChangeAt: stampNow === stampAtCapture ? null : stampNow,
-    /* The settings that just went up become the baseline the next
-       dirty-check compares against. */
+    lastSyncedAt:        updatedAt,
+    lastLocalChangeAt:   stampNow === stampAtCapture ? null : stampNow,
     settingsFingerprint: settingsFingerprint(),
+    ownerUserId:         userId,
+    lastSyncedRowCount:  rowCount,
   })
 
   return { ok: true, updatedAt }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   §5 — Pull
+   §6 — Pull
    ══════════════════════════════════════════════════════════════════ */
 
+export interface PullOptions {
+  /** The user confirmed this account's data should replace this device's. */
+  adoptAccount?: boolean
+  /**
+   * The user chose the cloud's version over this device's unsaved work.
+   * The safety copy below is what makes that recoverable.
+   */
+  discardLocal?: boolean
+  /** The user confirmed loading even though no safety copy could be made. */
+  withoutBackup?: boolean
+}
+
 /**
- * Downloads this account's snapshot and REPLACES the local database with it.
+ * Downloads this account's cloud copy and loads it in place of this
+ * device's data — after keeping a safety copy of what it replaces.
  *
- * The importer clears every table before repopulating (and skips the transient
- * sync-queue tables), then dispatches `zenith:db-restored` so live views and
- * localStorage mirrors can react.
+ * Refuses, rather than proceeds, when this device has unsaved work (unless
+ * the user chose the cloud's version), when the data belongs to another
+ * account, and when a safety copy could not be made. Tables the cloud
+ * copy does not mention are left alone: an older Zenith on another device
+ * must not be able to empty a table it has never heard of.
  */
-export async function pullSnapshot(): Promise<SnapshotResult> {
+export async function pullSnapshot(opts: PullOptions = {}): Promise<SnapshotResult> {
+  return withSyncLock(() => pullLocked(opts), { ok: false, blocked: 'busy' })
+}
+
+async function pullLocked(opts: PullOptions): Promise<SnapshotResult> {
   const supabase = getSupabaseClient()
   if (!supabase) {
     return { ok: false, error: 'Cloud is not configured for this build.' }
@@ -481,6 +780,14 @@ export async function pullSnapshot(): Promise<SnapshotResult> {
   const userId = await resolveUserId()
   if (!userId) {
     return { ok: false, error: 'Sign in with an account to load from the cloud.' }
+  }
+
+  const meta = getSnapshotMeta()
+  if (meta.ownerUserId && meta.ownerUserId !== userId && !opts.adoptAccount) {
+    return { ok: false, blocked: 'account-mismatch' }
+  }
+  if (hasUnpushedLocalChanges(meta) && !opts.discardLocal) {
+    return { ok: false, blocked: 'conflict' }
   }
 
   const { data, error } = await supabase
@@ -504,13 +811,23 @@ export async function pullSnapshot(): Promise<SnapshotResult> {
     return { ok: false, error: 'The cloud snapshot is empty or unreadable.' }
   }
 
+  /*
+   * A copy of what is about to be replaced, kept on this device. Without
+   * one the load does not happen: this is the only thing that makes a
+   * wrong choice — or a bad copy in the cloud — recoverable.
+   */
+  if (!opts.withoutBackup) {
+    const kept = await storeSafetyCopy('before-cloud-load')
+    if (!kept) return { ok: false, blocked: 'no-backup' }
+  }
+
   try {
     /*
      * The importer takes a JSON string (it is shared with the file-restore
      * path), so the jsonb object is re-serialised here. Round-tripping through
      * JSON also strips any non-cloneable values before they reach IndexedDB.
      */
-    await importJsonToLocalDatabase(JSON.stringify(row.payload))
+    await importJsonToLocalDatabase(JSON.stringify(row.payload), { preserveMissingTables: true })
   } catch (err) {
     return { ok: false, error: (err as Error).message || 'Restore failed.' }
   }
@@ -521,20 +838,40 @@ export async function pullSnapshot(): Promise<SnapshotResult> {
     lastSyncedAt:        row.updated_at,
     lastLocalChangeAt:   null,
     settingsFingerprint: settingsFingerprint(),
+    ownerUserId:         userId,
+    lastSyncedRowCount:  payloadRowCount(row.payload as { tables?: Record<string, unknown> }),
   })
 
   return { ok: true, updatedAt: row.updated_at }
 }
 
+/**
+ * Keeps the cloud's current copy on this device before this device's
+ * version replaces it — the "other version kept as a backup" half of
+ * resolving a conflict in this device's favour.
+ */
+async function keepCloudCopyAside(userId: string): Promise<boolean> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return false
+  const { data, error } = await supabase
+    .from(SNAPSHOT_TABLE)
+    .select('payload')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) return false
+  if (!data) return true   // nothing in the cloud to keep
+  const payload = (data as { payload: unknown }).payload
+  if (!payload || typeof payload !== 'object') return true
+  return storeSafetyCopy('cloud-copy', JSON.stringify(payload))
+}
+
 /* ══════════════════════════════════════════════════════════════════
-   §6 — Remote metadata probe
+   §7 — Remote metadata probe
    ══════════════════════════════════════════════════════════════════ */
 
 /**
- * Cheap "is the cloud newer than me?" probe — selects only the two metadata
- * columns and never touches the (potentially large) payload.
- *
- * Returns null when unavailable or when no snapshot exists yet.
+ * Cheap "has the cloud changed?" probe — metadata columns only, never the
+ * (potentially large) payload. Null when unavailable or when no copy exists.
  */
 export async function getRemoteMeta(): Promise<RemoteSnapshotMeta | null> {
   const supabase = getSupabaseClient()
@@ -545,23 +882,118 @@ export async function getRemoteMeta(): Promise<RemoteSnapshotMeta | null> {
 
   const { data, error } = await supabase
     .from(SNAPSHOT_TABLE)
-    .select('updated_at, device_label')
+    /* One key out of the payload, not the payload: still a cheap probe. */
+    .select('updated_at, device_label, schema_version, secrets_stripped:payload->>secretsStripped, summary:payload->summary')
     .eq('user_id', userId)
     .maybeSingle()
 
   if (error || !data) return null
 
-  const row = data as { updated_at: string; device_label: string | null }
-  return { updatedAt: row.updated_at, deviceLabel: row.device_label ?? null }
+  const row = data as {
+    updated_at: string; device_label: string | null; schema_version: number | null
+    secrets_stripped: string | null
+    summary?: unknown
+  }
+  return {
+    updatedAt:       row.updated_at,
+    deviceLabel:     row.device_label ?? null,
+    schemaVersion:   typeof row.schema_version === 'number' ? row.schema_version : null,
+    secretsStripped: row.secrets_stripped === 'true',
+    summary:         readSummary(row.summary),
+  }
+}
+
+/** The signed-in account's id, for the controller's account check. */
+export async function currentCloudUserId(): Promise<string | null> {
+  return resolveUserId()
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   §7 — Helpers
+   §8 — What to do next
+   ══════════════════════════════════════════════════════════════════ */
+
+export type SyncDecision =
+  | { action: 'idle' }
+  | { action: 'push' }
+  | { action: 'pull' }
+  | { action: 'blocked'; reason: SyncBlock }
+
+export interface SyncSituation {
+  /** This device's watermark. */
+  meta:          SnapshotMeta
+  /** The signed-in account. */
+  userId:        string
+  /** The cloud copy, or null when there is none. */
+  remote:        RemoteSnapshotMeta | null
+  /** This device has unsaved work (hasUnpushedLocalChanges). */
+  localDirty:    boolean
+  /** This device holds data a person entered (hasMeaningfulLocalData). */
+  localHasData:  boolean
+  /** Schema version running here. */
+  localSchema:   number
+}
+
+/**
+ * Given where this device and the cloud stand, what should happen — pure,
+ * so every case the safeguards cover can be tested without a network.
+ *
+ * The automatic actions are only ever the two that cannot lose anything:
+ * pushing when the cloud still holds what this device last saw, and
+ * loading when this device has nothing unsaved. Everything else stops and
+ * says why.
+ */
+export function decideSync(s: SyncSituation): SyncDecision {
+  const { meta, userId, remote, localDirty, localHasData, localSchema } = s
+
+  if (meta.ownerUserId && meta.ownerUserId !== userId) {
+    return { action: 'blocked', reason: 'account-mismatch' }
+  }
+
+  /* No cloud copy yet: this device's data becomes the first one. */
+  if (!remote) {
+    return localDirty || localHasData ? { action: 'push' } : { action: 'idle' }
+  }
+
+  const cloudMoved = !sameVersion(meta.lastSyncedAt, remote.updatedAt)
+
+  if (!cloudMoved) {
+    if (remote.schemaVersion != null && remote.schemaVersion > localSchema) {
+      return localDirty ? { action: 'blocked', reason: 'outdated-app' } : { action: 'idle' }
+    }
+    if (localDirty) return { action: 'push' }
+    /*
+     * Nothing new to save — but the copy in the cloud was written before
+     * secrets were stripped and may still hold API keys. Replace it with a
+     * clean one now rather than waiting for the next edit, which on a
+     * quiet workspace could be never.
+     */
+    if (remote.secretsStripped === false) return { action: 'push' }
+    return { action: 'idle' }
+  }
+
+  /* The cloud has something this device has not seen. */
+  if (localDirty) return { action: 'blocked', reason: 'conflict' }
+
+  /*
+   * First sync on a device that already holds a workspace: it has never
+   * been compared with the cloud, so it looks "clean" while possibly
+   * holding months of work. Never replace it without asking.
+   */
+  if (!meta.lastSyncedAt && localHasData) {
+    return { action: 'blocked', reason: 'conflict' }
+  }
+
+  return { action: 'pull' }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   §9 — Helpers
    ══════════════════════════════════════════════════════════════════ */
 
 /**
  * Turns raw PostgREST failures into something a user can act on. The most
- * common one by far is a missing table (migration not run yet).
+ * common one by far is a missing table (migration not run yet). Never
+ * includes any of the payload — only the server's message.
  */
 function describeError(message: string): string {
   const m = message || 'Unknown cloud error.'
@@ -574,15 +1006,17 @@ function describeError(message: string): string {
   return m
 }
 
-/** True when `remoteUpdatedAt` is strictly newer than the local watermark. */
+/**
+ * True when the cloud holds a version this device has not seen.
+ *
+ * Identity, not ordering: "different from the one I last synced" is the
+ * question, and it has an answer even when the two timestamps came from
+ * clocks that disagree.
+ */
 export function isRemoteNewer(
   remoteUpdatedAt: string,
   meta: SnapshotMeta = getSnapshotMeta(),
 ): boolean {
-  const remoteMs = Date.parse(remoteUpdatedAt)
-  if (Number.isNaN(remoteMs)) return false
-  if (!meta.lastSyncedAt)     return true
-  const localMs = Date.parse(meta.lastSyncedAt)
-  if (Number.isNaN(localMs))  return true
-  return remoteMs > localMs
+  if (Number.isNaN(Date.parse(remoteUpdatedAt))) return false
+  return !sameVersion(meta.lastSyncedAt, remoteUpdatedAt)
 }

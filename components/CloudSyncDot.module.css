@@ -1,0 +1,32 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.ok    { color: var(--accent-green); }
+.info  { color: var(--accent-purple); }
+.muted { color: var(--text-dark); }
+.warn  { color: var(--accent-warm); }
+.busy  { color: var(--accent-purple); }
+
+.busy .dot { animation: pulseGlow 1.4s ease-in-out infinite; }
+
+.word { color: var(--text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .busy .dot { animation: none; }
+}

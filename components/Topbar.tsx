@@ -7,6 +7,8 @@ import { useCopilot }      from '@/lib/CopilotContext'
 import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
 import SyncIndicator from './SyncIndicator'
+import CloudSyncDot from './CloudSyncDot'
+import { useCloudSync } from '@/lib/CloudSyncContext'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
 import NotificationBell from './NotificationBell'
 import ModuleSearch from './ModuleSearch'
@@ -69,6 +71,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
   const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilot()
 
   const { status: wStatus, weather } = useWeather()
+  const { available: cloudAvailable } = useCloudSync()
 
   /* ── Breadcrumb ─────────────────────────────────────────── */
   const catConfig = activeCategory
@@ -172,6 +175,15 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
           <SyncIndicator />
           <span className={styles.divider} aria-hidden="true" />
         </span>
+
+        {/* Cloud copy sync — renders nothing unless signed in to a real
+            account, so offline sessions see no change here. */}
+        {cloudAvailable && (
+          <span className={`${styles.slot} ${styles.slotLow}`}>
+            <CloudSyncDot />
+            <span className={styles.divider} aria-hidden="true" />
+          </span>
+        )}
 
         {/* In-app notification bell — only shown when a session is active */}
         {session && (

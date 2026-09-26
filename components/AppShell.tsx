@@ -25,6 +25,8 @@ import {
 import { ZenithMark } from './ZenithLogo'
 import MobileTabBar from '@/components/MobileTabBar'
 import MobileTopbar from '@/components/MobileTopbar'
+import CloudSyncBanner from '@/components/CloudSyncBanner'
+import { CloudSyncProvider } from '@/lib/CloudSyncContext'
 import MobileViewNote from '@/components/MobileViewNote'
 import styles from './AppShell.module.css'
 
@@ -277,6 +279,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const hiddenCount = hidden.size
 
   return (
+    /* Cloud sync runs for the whole signed-in app, on every screen of
+       every device — see lib/CloudSyncContext. */
+    <CloudSyncProvider>
     <div className={`${styles.shell} ${isPhone ? styles.phoneShell : ''}`}>
 
       {/* The phone has no sidebar — its navigation is the bottom bar. */}
@@ -808,6 +813,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
           </div>
         )}
+        <CloudSyncBanner />
         <MentalHealthBurnoutBanner />
 
         <div
@@ -853,6 +859,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
     </div>
+    </CloudSyncProvider>
   )
 }
 

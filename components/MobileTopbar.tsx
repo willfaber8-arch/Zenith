@@ -23,6 +23,7 @@ import { phoneTitleFor } from '@/lib/phoneViews'
 import { seedGamesDatabase } from '@/lib/gamesDb'
 import { ZenithMark } from '@/components/ZenithLogo'
 import Icon from '@/components/ui/Icon'
+import CloudSyncDot from '@/components/CloudSyncDot'
 import styles from './MobileTopbar.module.css'
 
 export default function MobileTopbar() {
@@ -78,6 +79,8 @@ export default function MobileTopbar() {
     <header className={styles.bar}>
       <ZenithMark size={22} className={styles.mark} />
       <h1 className={styles.title}>{phoneTitleFor(activeView)}</h1>
+
+      <CloudSyncDot compact />
 
       <div ref={rootRef} className={styles.menuRoot}>
         <button

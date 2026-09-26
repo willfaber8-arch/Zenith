@@ -23,6 +23,7 @@
 import { db } from '@/lib/db'
 import { gamesDb } from '@/lib/gamesDb'
 import { SETTINGS_EXCLUDED, type MasterBackupPayload } from './dbExporter'
+import { isDeviceOnlySetting, stripProfileSecrets, pickProfileSecrets } from './deviceSecrets'
 
 /* ── Tables excluded from restore (cleared, not repopulated) ─────── */
 
@@ -171,8 +172,22 @@ export function inspectBackup(jsonString: string): BackupSummary {
  * Throws a human-readable Error on parse failure or schema mismatch.
  * On success returns an ImportResult summary.
  */
+export interface ImportOptions {
+  /**
+   * Leave tables the payload does not mention untouched instead of
+   * clearing them.
+   *
+   * A backup file is a statement of what the whole database should be,
+   * so a table it lacks is emptied. A cloud copy is not: it may come from
+   * a device running an older Zenith that has never heard of a newer
+   * table, and loading it must not wipe that table's rows here.
+   */
+  preserveMissingTables?: boolean
+}
+
 export async function importJsonToLocalDatabase(
   jsonString: string,
+  opts: ImportOptions = {},
 ): Promise<ImportResult> {
 
   /* ── Parse ──────────────────────────────────────────────────── */
@@ -212,9 +227,30 @@ export async function importJsonToLocalDatabase(
    *                            and tables absent from the backup file)
    */
   await db.transaction('rw', db.tables, async () => {
+    /*
+     * This device's letterbox key pair, read before anything is cleared so
+     * it can be put back inside the same transaction — see deviceSecrets.
+     * A copy never supplies it: older copies still carry *another*
+     * device's key, and adopting that would leave this device unable to
+     * read mail sent to the key it has been advertising.
+     */
+    const localProfiles = new Map<unknown, Record<string, unknown>>()
+    if (db.tables.some(t => t.name === 'userProfile')) {
+      for (const row of await db.table('userProfile').toArray() as Record<string, unknown>[]) {
+        localProfiles.set(row.id, row)
+      }
+    }
+
     for (const table of db.tables) {
       /* Step 0 — some tables are not part of a restore at all */
       if (PRESERVE.has(table.name)) continue
+
+      /* Step 0b — a table the payload does not mention, when asked to keep it */
+      if (opts.preserveMissingTables
+          && !Array.isArray((payload as MasterBackupPayload).tables[table.name])
+          && !SKIP_RESTORE.has(table.name)) {
+        continue
+      }
 
       /* Step 1 — always clear, regardless of what the backup contains */
       await table.clear()
@@ -239,7 +275,22 @@ export async function importJsonToLocalDatabase(
       }
 
       /* Step 4 — bulk-insert the backup rows */
-      if (rows.length > 0) {
+      if (table.name === 'userProfile') {
+        const incoming = (rows as Record<string, unknown>[]).map(r => {
+          const clean = stripProfileSecrets(r)
+          return { ...clean, ...pickProfileSecrets(localProfiles.get(r.id)) }
+        })
+        /* A payload with no profile row must not take this device's
+           identity and keys with it: the local row stays. */
+        for (const [id, local] of localProfiles) {
+          if (!incoming.some(r => r.id === id)) incoming.push(local)
+        }
+        if (incoming.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (table as any).bulkPut(incoming)
+          totalRowsWritten += incoming.length
+        }
+      } else if (rows.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (table as any).bulkPut(rows)
         totalRowsWritten += rows.length
@@ -286,6 +337,8 @@ export async function importJsonToLocalDatabase(
   if (settings && typeof settings === 'object' && typeof window !== 'undefined') {
     for (const [key, value] of Object.entries(settings)) {
       if (SETTINGS_EXCLUDED.has(key)) continue
+      /* Never taken from a copy, and never overwritten by one. */
+      if (isDeviceOnlySetting(key)) continue
       if (typeof value !== 'string') continue
       try { localStorage.setItem(key, value); settingsRestored++ } catch { /* full or blocked */ }
     }
