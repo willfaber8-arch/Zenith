@@ -1,0 +1,83 @@
+/* ════════════════════════════════════════════════════════════
+   CloudSyncBanner — sync needs a decision.
+   In the content frame's flow, directly under the top bar, so
+   it pushes the page down rather than covering any of it.
+   ════════════════════════════════════════════════════════════ */
+
+.banner {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin: var(--sp-2) var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  animation: fadeIn var(--dur-base) var(--ease-smooth) both;
+}
+
+.warn {
+  border-color: color-mix(in srgb, var(--accent-warm) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-warm) 8%, var(--surface-card));
+}
+
+.info {
+  border-color: color-mix(in srgb, var(--accent-purple) 35%, transparent);
+}
+
+.text {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.body {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.btn {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  border-color: transparent;
+  background: var(--accent-purple);
+  color: var(--bg-main);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 767px) {
+  .actions { width: 100%; }
+  .btn     { flex: 1 1 auto; min-height: 44px; }
+}

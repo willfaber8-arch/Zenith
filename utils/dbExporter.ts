@@ -15,6 +15,7 @@
  */
 
 import { db } from '@/lib/db'
+import { isDeviceOnlySetting, stripProfileSecrets } from './deviceSecrets'
 import { gamesDb } from '@/lib/gamesDb'
 
 /* ── Backup envelope ─────────────────────────────────────────────── */
@@ -52,6 +53,12 @@ export type MasterBackupPayload = {
    * back with someone else's settings.
    */
   settings?: { [key: string]: string }
+  /**
+   * Set on every copy made since device secrets were stripped (see
+   * utils/deviceSecrets). A cloud copy without it was written by an older
+   * Zenith and may still hold API keys — sync replaces it on sight.
+   */
+  secretsStripped?: true
 }
 
 const BACKUP_FORMAT_VERSION = 2
@@ -92,6 +99,8 @@ export function collectSettings(): { [key: string]: string } {
       const key = localStorage.key(i)
       if (!key || !key.startsWith(SETTINGS_PREFIX)) continue
       if (SETTINGS_EXCLUDED.has(key)) continue
+      /* Keys and device facts never leave this device — utils/deviceSecrets. */
+      if (isDeviceOnlySetting(key)) continue
       const value = localStorage.getItem(key)
       if (value !== null) out[key] = value
     }
@@ -134,7 +143,11 @@ export async function buildBackupPayload(): Promise<MasterBackupPayload> {
     if (table.name === 'db_snapshots') continue
 
     try {
-      tables[table.name] = await table.toArray()
+      const rows = await table.toArray()
+      /* The letterbox key pair is this device's alone — utils/deviceSecrets. */
+      tables[table.name] = table.name === 'userProfile'
+        ? (rows as Record<string, unknown>[]).map(stripProfileSecrets)
+        : rows
     } catch {
       /* A table failing (e.g., mid-upgrade) is non-fatal; record empty. */
       tables[table.name] = []
@@ -168,6 +181,7 @@ export async function buildBackupPayload(): Promise<MasterBackupPayload> {
     gamesSchemaVersion,
     gamesTables,
     settings:      collectSettings(),
+    secretsStripped: true,
   }
 }
 

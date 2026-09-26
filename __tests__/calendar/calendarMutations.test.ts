@@ -354,7 +354,19 @@ describe('a time change on a repeat', () => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const rows = await seedDaily(today)
-    const before = await datesOf()
+    /*
+     * Whole local dates, not day-of-month numbers: those wrap at a month
+     * end, so "each one day later" read as 31 where the calendar has the
+     * 1st — this failed on any run whose five days crossed into a new
+     * month, which is a quarter of the days in some months.
+     */
+    const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+    const keysOf = async () =>
+      (await db.calendarEvents.orderBy('startMs').toArray()).map(r => dayKey(new Date(r.startMs)))
+    const expected = (await db.calendarEvents.orderBy('startMs').toArray()).map(r => {
+      const d = new Date(r.startMs)
+      return dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1))
+    })
 
     const target = new Date(rows[0].startMs + day)
     target.setHours(15, 0, 0, 0)
@@ -366,7 +378,7 @@ describe('a time change on a repeat', () => {
       'shift-days',
     )
 
-    expect(await datesOf()).toEqual(before.map(d => d + 1))
+    expect(await keysOf()).toEqual(expected)
   })
 
   it('carries a non-time field to the past as well — a rename is not a record of when', async () => {

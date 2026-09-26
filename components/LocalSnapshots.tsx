@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  listSnapshots, takeSnapshot, restoreSnapshot, deleteSnapshot,
+  listSnapshots, takeSnapshot, restoreSnapshot, deleteSnapshot, SNAPSHOT_KIND_LABEL,
   KEEP_SNAPSHOTS, type SnapshotInfo,
 } from '@/utils/dbSnapshots'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
@@ -86,9 +86,10 @@ export default function LocalSnapshots() {
         <div>
           <p className={styles.title}>Automatic snapshots</p>
           <p className={styles.desc}>
-            A copy of everything is kept once a day, and the last {KEEP_SNAPSHOTS} are
-            held. These live in this browser, so they cover a mistake — not a lost
-            or wiped device. Export a backup for that.
+            A copy of everything is kept once a day, and cloud sync keeps one
+            before it ever replaces your data here — the last {KEEP_SNAPSHOTS} of
+            each kind are held. These live in this browser, so they cover a
+            mistake — not a lost or wiped device. Export a backup for that.
           </p>
         </div>
         <button
@@ -116,7 +117,8 @@ export default function LocalSnapshots() {
             <li key={s.id} className={styles.row}>
               <span className={styles.when}>{whenLabel(s.takenAt)}</span>
               <span className={styles.meta}>
-                {s.rowCount.toLocaleString()} rows · {sizeLabel(s.bytes)} ·{' '}
+                {/* Why it exists — a copy kept by cloud sync says so. */}
+                {SNAPSHOT_KIND_LABEL[s.kind]} · {s.rowCount.toLocaleString()} rows · {sizeLabel(s.bytes)} ·{' '}
                 {new Date(s.takenAt).toLocaleString()}
               </span>
 

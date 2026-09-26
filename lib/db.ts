@@ -646,6 +646,12 @@ export interface DbSnapshot {
   rowCount:      number
   /** Serialised MasterBackupPayload. */
   payload:       string
+  /**
+   * Why it was taken — see `SnapshotKind` in utils/dbSnapshots. Absent on
+   * rows from before kinds existed, which were all the daily kind.
+   * Non-indexed: no schema change.
+   */
+  kind?:         string
 }
 
 export interface TodoCategory {
@@ -1649,26 +1655,34 @@ export async function seedUserProfile(
   userName: string,
   opts: Partial<Omit<UserProfile, 'id' | 'userName'>> = {},
 ): Promise<UserProfile> {
-  const existing = await getDb().userProfile.get(1)
-  if (existing) {
-    const trimmed = userName.trim()
-    if (trimmed && existing.userName !== trimmed) {
-      await getDb().userProfile.update(1, { userName: trimmed, lastActiveAt: Date.now() })
-      return { ...existing, userName: trimmed }
+  /*
+   * Read and write in one transaction. Two calls at once — React's dev
+   * double-effect, two tabs — used to both find no profile and both
+   * `add` it, and the loser threw a ConstraintError (CLAUDE.md rule 109).
+   */
+  const db = getDb()
+  return db.transaction('rw', db.userProfile, async () => {
+    const existing = await db.userProfile.get(1)
+    if (existing) {
+      const trimmed = userName.trim()
+      if (trimmed && existing.userName !== trimmed) {
+        await db.userProfile.update(1, { userName: trimmed, lastActiveAt: Date.now() })
+        return { ...existing, userName: trimmed }
+      }
+      return existing
     }
-    return existing
-  }
 
-  const profile: UserProfile = {
-    id:              1,
-    userName,
-    universityName:  opts.universityName  ?? '',
-    majorIdentifier: opts.majorIdentifier ?? '',
-    avatarUrl:       opts.avatarUrl,
-    lastActiveAt:    Date.now(),
-  }
-  await getDb().userProfile.add(profile)
-  return profile
+    const profile: UserProfile = {
+      id:              1,
+      userName,
+      universityName:  opts.universityName  ?? '',
+      majorIdentifier: opts.majorIdentifier ?? '',
+      avatarUrl:       opts.avatarUrl,
+      lastActiveAt:    Date.now(),
+    }
+    await db.userProfile.add(profile)
+    return profile
+  })
 }
 
 

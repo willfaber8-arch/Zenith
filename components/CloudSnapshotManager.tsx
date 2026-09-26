@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useToast }          from '@/lib/ToastContext'
-import { useCloudSnapshot }  from '@/lib/hooks/useCloudSnapshot'
+import { useCloudSync }      from '@/lib/CloudSyncContext'
 import styles from './CloudSnapshotManager.module.css'
 
 /* ── Relative time formatter ──────────────────────────────────────── */
@@ -42,10 +42,10 @@ function relativeTime(iso: string | null): string {
 
 const PULL_CONFIRM =
   'Load from cloud?\n\n' +
-  'This REPLACES everything currently stored in this browser profile — ' +
-  'habits, notes, calendar, assignments and settings — with the copy saved ' +
-  'in your account. Anything here that was never saved to the cloud will be lost.\n\n' +
-  'The page reloads when the restore finishes.'
+  'This replaces what is stored in this browser profile — habits, notes, ' +
+  'calendar, tasks and settings — with the copy saved in your account.\n\n' +
+  'A safety copy of what is here now is kept first (Settings → Local ' +
+  'snapshots), and the page reloads when it finishes.'
 
 /* ══════════════════════════════════════════════════════════════════
    CloudSnapshotManager
@@ -55,9 +55,13 @@ export default function CloudSnapshotManager() {
   const { toast } = useToast()
   const {
     available, reason, status, lastSyncedAt, remoteMeta,
-    pushing, pulling, conflict, error,
-    push, pull, refreshRemote,
-  } = useCloudSnapshot()
+    pushing, pulling, blocked, error,
+    saveNow, loadNow, keepThisDevice, keepCloud, refreshRemote,
+  } = useCloudSync()
+  /* The conflict itself is resolved from the banner at the top of every
+     screen (CloudSyncBanner); this panel reports it and offers the same
+     two choices for anyone who came here to look. */
+  const conflict = blocked === 'conflict'
 
   /* Re-render the relative timestamps once a minute without extra fetches. */
   const [, setTimeTick] = useState(0)
@@ -72,14 +76,15 @@ export default function CloudSnapshotManager() {
 
   const handlePush = useCallback(async () => {
     if (busy || !available) return
-    const ok = await push()
+    const ok = await saveNow()
     if (ok) {
       toast('Workspace saved to your account.', 'success')
       void refreshRemote()
     } else {
-      toast('Could not save to the cloud.', 'error')
+      /* A safeguard stopping it is reported by the banner, not as a failure. */
+      toast('Not saved — see the message at the top of the screen.', 'info')
     }
-  }, [busy, available, push, refreshRemote, toast])
+  }, [busy, available, saveNow, refreshRemote, toast])
 
   /* ── Pull ───────────────────────────────────────────────────────── */
 
@@ -87,19 +92,10 @@ export default function CloudSnapshotManager() {
     if (busy || !available) return
     if (!window.confirm(PULL_CONFIRM)) return
 
-    const ok = await pull()
-    if (ok) {
-      toast('Cloud version loaded — reloading…', 'success')
-      /*
-       * A reload after the toast is the safest finish: every live view,
-       * in-memory cache and localStorage mirror re-reads from the freshly
-       * replaced database instead of trying to reconcile in place.
-       */
-      setTimeout(() => window.location.reload(), 1_200)
-    } else {
-      toast('Could not load from the cloud.', 'error')
-    }
-  }, [busy, available, pull, toast])
+    /* Reloads by itself on success, after keeping a safety copy. */
+    const ok = await loadNow()
+    if (!ok) toast('Not loaded — see the message at the top of the screen.', 'info')
+  }, [busy, available, loadNow, toast])
 
   /* ── Status strip ───────────────────────────────────────────────── */
 
@@ -165,12 +161,12 @@ export default function CloudSnapshotManager() {
             {relativeTime(remoteMeta?.updatedAt ?? null)}
             {remoteMeta?.deviceLabel ? ` from ${remoteMeta.deviceLabel}` : ''},
             but this browser profile has changes that were never saved.
-            Pick one — the other version is replaced.
+            Pick one. The other is kept as a safety copy on this device.
           </p>
           <div className={styles.conflictActions}>
             <button
               className={styles.pushBtn}
-              onClick={() => void handlePush()}
+              onClick={() => void keepThisDevice()}
               disabled={busy}
               aria-busy={pushing}
             >
@@ -178,7 +174,7 @@ export default function CloudSnapshotManager() {
             </button>
             <button
               className={styles.pullBtn}
-              onClick={() => void handlePull()}
+              onClick={() => void keepCloud()}
               disabled={busy}
               aria-busy={pulling}
             >
@@ -210,8 +206,8 @@ export default function CloudSnapshotManager() {
         <div className={styles.cell}>
           <p className={styles.cellLabel}>Load</p>
           <p className={styles.cellDesc}>
-            Replace everything in this browser profile with the copy saved in
-            your account. This is a replace, not a merge.
+            Replace this browser profile with the copy saved in your account.
+            A safety copy of what is here now is kept first.
           </p>
           <button
             className={styles.pullBtn}
