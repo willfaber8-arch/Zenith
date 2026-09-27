@@ -6,7 +6,7 @@ import { useNav }          from '@/lib/NavContext'
 import { useCopilot }      from '@/lib/CopilotContext'
 import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
-import SyncIndicator from './SyncIndicator'
+import SyncIndicator, { useSyncChipVisible } from './SyncIndicator'
 import CloudSyncDot from './CloudSyncDot'
 import { useCloudSync } from '@/lib/CloudSyncContext'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
@@ -72,6 +72,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
 
   const { status: wStatus, weather } = useWeather()
   const { available: cloudAvailable } = useCloudSync()
+  const showSyncChip = useSyncChipVisible()
 
   /* ── Breadcrumb ─────────────────────────────────────────── */
   const catConfig = activeCategory
@@ -170,11 +171,15 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
           </span>
         )}
 
-        {/* Sync status micro-indicator */}
-        <span className={`${styles.slot} ${styles.slotLow}`}>
-          <SyncIndicator />
-          <span className={styles.divider} aria-hidden="true" />
-        </span>
+        {/* Per-item uploader — only while it is holding changes it could not
+            send (see useSyncChipVisible); the whole-workspace sync has its
+            own dot just below. */}
+        {showSyncChip && (
+          <span className={`${styles.slot} ${styles.slotLow}`}>
+            <SyncIndicator />
+            <span className={styles.divider} aria-hidden="true" />
+          </span>
+        )}
 
         {/* Cloud copy sync — renders nothing unless signed in to a real
             account, so offline sessions see no change here. */}

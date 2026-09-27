@@ -14,10 +14,25 @@
  *   SYNCING            — pulsing purple ring; non-interactive
  *   SAVED_LOCALLY      — muted label; non-interactive
  *   OFFLINE_QUEUED     — amber warning; clickable to retry
+ *
+ * Shown only when there is something to say. This uploader mirrors
+ * individual rows (urgent tasks, habits, workouts, the profile) into
+ * per-item cloud tables that nothing in the app reads back; keeping
+ * devices in step is the whole-workspace sync and its own dot
+ * (CloudSyncDot). A permanent "saved"/"local" chip beside that dot was
+ * a second sync icon that could disagree with the first, and the one
+ * people actually asked about was "queue" — so the chip now appears
+ * only while changes are genuinely waiting: the uploader stalled
+ * (offline, or the cloud refused) with rows still pending, and it stays
+ * up through the retry until they are sent or retired. The ordinary
+ * upload after every edit never shows it, so the top bar does not jump
+ * each time a habit is ticked. See `useSyncChipVisible`.
  * ════════════════════════════════════════════════════════════════
  */
 
 import { useEffect, useState } from 'react'
+import { useLiveQuery }        from 'dexie-react-hooks'
+import { db }                  from '@/lib/db'
 import { useSyncStatus }       from '@/lib/SyncContext'
 import type { SyncStatus }     from '@/services/syncEngine'
 import styles                  from './SyncIndicator.module.css'
@@ -63,6 +78,37 @@ const STATUS_CONFIG: Record<SyncStatus, StatusConfig> = {
     clickable:  true,
     clickTitle: 'Retry cloud sync',
   },
+}
+
+/* ── Visibility ─────────────────────────────────────────────── */
+
+/**
+ * True while the uploader is holding changes it could not send.
+ *
+ * Both queues count — the engine's `pendingSyncQueue` and the broker's
+ * `outboxMutations` — because either can be the one stuck. A stall
+ * (OFFLINE_QUEUED) with rows pending shows the chip; it then stays
+ * through the SYNCING of a retry, so a retry does not blink it off and
+ * on, and goes once nothing is pending or everything is in the cloud.
+ * An `offline` event with nothing waiting is not news and stays hidden.
+ *
+ * Exported so the Topbar can drop the chip's whole slot, divider and
+ * all, rather than leave an orphan divider behind an empty chip.
+ */
+export function useSyncChipVisible(): boolean {
+  const { status } = useSyncStatus()
+  const pending = useLiveQuery(
+    async () => (db ? (await db.pendingSyncQueue.count()) + (await db.outboxMutations.count()) : 0),
+    [],
+  ) ?? 0
+
+  const [stalled, setStalled] = useState(false)
+  useEffect(() => {
+    if (status === 'OFFLINE_QUEUED' && pending > 0) setStalled(true)
+    else if (pending === 0 || status === 'CLOUD_SYNCHRONIZED' || status === 'SAVED_LOCALLY') setStalled(false)
+  }, [status, pending])
+
+  return stalled && (status === 'OFFLINE_QUEUED' || status === 'SYNCING')
 }
 
 /* ── Component ──────────────────────────────────────────────── */
