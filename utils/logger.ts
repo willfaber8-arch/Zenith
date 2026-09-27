@@ -87,14 +87,6 @@ export function zenithLog(channel: string, message: string, payload?: any): void
  * production just like zenithLog itself.
  */
 
-/** Traces for the ZenithSyncEngine (pendingSyncQueue drain pipeline) */
-export const syncLog    = (msg: string, data?: unknown) =>
-  zenithLog('SyncEngine', msg, data)
-
-/** Traces for the SyncBroker (outboxMutations batch flush) */
-export const brokerLog  = (msg: string, data?: unknown) =>
-  zenithLog('SyncBroker', msg, data)
-
 /** Traces for the IDB layer (Dexie hooks, table reads) */
 export const idbLog     = (msg: string, data?: unknown) =>
   zenithLog('IDB', msg, data)

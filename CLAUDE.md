@@ -193,8 +193,7 @@ Tailwind equivalents (from `@theme`): `animate-fade-in`, `animate-scale-in`, `an
 NavProvider
   └─ NavBadgeProvider
        └─ AuthProvider
-            └─ SyncProvider          (Phase 2.2 — bridges ZenithSyncEngine into React)
-                 └─ ToastProvider
+            └─ ToastProvider
                       └─ StudyModeProvider   (Phase 3.1 — focus cockpit state + Escape handler)
                            └─ CopilotProvider      (Phase 7.1 — AI Co-Pilot open/close state)
                                 ├─ ThemeBackground   (fixed, z-index: 0)
@@ -544,70 +543,11 @@ await seedUserProfile('Will')   // creates id=1 singleton if not exists (userNam
 
 ---
 
-## Cloud Sync System (`services/syncEngine.ts`)
+## Cloud Sync (`lib/CloudSyncContext.tsx`, `services/cloudSnapshot.ts`)
 
-### Sync status states
+There is one cloud sync: the whole-workspace snapshot in `zenith_snapshots`, run by `CloudSyncProvider` (mounted by AppShell) and shown by `CloudSyncDot` and `CloudSyncBanner`. Its rules are 111–115 below.
 
-```ts
-type SyncStatus =
-  | 'SAVED_LOCALLY'       // write landed in IDB; cloud sync pending
-  | 'SYNCING'             // flushing pendingSyncQueue to Supabase
-  | 'CLOUD_SYNCHRONIZED'  // queue empty; cloud mirrors local
-  | 'OFFLINE_QUEUED'      // network down; items retained in IDB
-```
-
-### Using sync status in a component
-
-```ts
-const { status, triggerSync } = useSyncStatus()
-```
-
-### How the engine works
-
-1. **Dexie hooks** fire on `assignments` (priority: `high`/`critical` only) and `userProfile`.
-2. The `creating` hook injects `supabaseId = crypto.randomUUID()` directly onto `obj` — persisted atomically in the same IDB write.
-3. A `setTimeout(0)` writes the pending item to `pendingSyncQueue` after that transaction commits.
-4. A **1.5 s debounced drain** calls `reconcileLocalToCloud()`.
-5. Reconciliation: checks `navigator.onLine` → checks Supabase session → **deduplicates queue** → flushes each item. Failed items increment `retryCount`; items exhausting `MAX_RETRIES = 3` are retired.
-6. **LWW for `userProfile`**: fetches remote `updated_at` before upserting — skips upload if remote is newer.
-7. A `window 'online'` listener triggers an immediate drain when connectivity restores.
-
----
-
-## Sync Broker (`services/syncBroker.ts`)
-
-Phase 6.4 companion to the engine. Extends sync coverage to **habits** and **workouts** and adds bulk-batched LWW upserts for all four tables. Runs in parallel with the engine — both systems are idempotent.
-
-### Initialisation
-
-Called automatically from `SyncProvider` alongside `engine.init()`:
-
-```ts
-import { initSyncBroker, processOutboxQueue } from '@/services/syncBroker'
-initSyncBroker()         // registers hooks + online listener + initial drain
-await processOutboxQueue() // exposed for explicit "retry" invocation
-```
-
-### How the broker works
-
-1. **Dexie hooks** on all 4 tables write mutations to `outboxMutations` (IDB v13) via `db.outboxMutations.put()`. The `put()` call (not `add()`) naturally deduplicates same-id entries during rapid saves.
-2. `supabaseId` is injected onto `Habit` and `Workout` records in the `creating` hook — persisted back into IDB as a stable cloud identity for subsequent UPDATE and DELETE hooks.
-3. A **2 s debounced drain** calls `processOutboxQueue()`.
-4. **`processOutboxQueue()`**: guards network + session → loads queue oldest-first → LWW dedup (DELETE beats UPDATE; latest timestamp wins among UPDATEs) → groups by `tableName` → for each table: one `SELECT id, updated_at WHERE id IN (...)` to fetch all remote timestamps → filters to local-wins records → one `upsert` call for the batch → one `delete` call for DELETEs → `bulkDelete` all flushed IDs atomically.
-5. Failed items are tracked in an in-memory `Map<id, retryCount>`; exhausted items are retired (deleted from `outboxMutations`) after `MAX_RETRIES = 3`.
-6. Status is broadcast through the shared `ZenithSyncEngine` stream via `getSyncEngine().reportStatus()`.
-
-### SyncStatusIndicator
-
-Full-panel widget that reads `useSyncStatus()` and displays the verbose label:
-
-```tsx
-import SyncStatusIndicator from '@/components/SyncStatusIndicator'
-// Drop anywhere inside SyncProvider — e.g. bottom of the sidebar
-<SyncStatusIndicator />
-```
-
-Fixed 26px height (no reflow on label change). `key={status}` remount replays `anim-slide-in` on every state change. Four states: `CLOUD_SYNCHRONIZED` → green, `SYNCING` → periwinkle (pulsing dot), `SAVED_LOCALLY` → guide-slate, `OFFLINE_QUEUED` → muted-slate (border shimmer).
+The older per-item uploader — `services/syncEngine.ts` (`pendingSyncQueue` → `supabase_urgent_tasks`, `supabase_user_profiles`) and `services/syncBroker.ts` (`outboxMutations` → `supabase_habits`, `supabase_workouts`), with `SyncProvider`, `useSyncStatus` and the top-bar `SyncIndicator` chip — has been removed (rule 117). Nothing in the app ever read those tables back.
 
 ---
 
@@ -927,7 +867,7 @@ their number for anything that wants to display it inline as well.
 12. **Context setter stability** — any function passed as a `useEffect` dependency must be wrapped in `useCallback`. Unstable references (recreated each render) cause infinite loops. `setBadge` in `NavBadgeContext` is the canonical example.
 13. **New reactive data** → add a hook to `lib/hooks/` using `useLiveQuery`. Never poll with `setInterval` for data that Dexie can stream live.
 14. **Badge counts** → call `setBadge(viewId, count)` from `useLiveAssignmentBadges` or a parallel hook — not directly from component render code.
-15. **Sync-aware mutations** — any DB write to `assignments` (priority: high/critical) or `userProfile` is automatically intercepted by the sync engine's Dexie hooks. No extra wiring needed at the call site.
+15. **Mutations need no sync wiring** — every write is picked up by the whole-workspace sync's change tracking (`startSnapshotChangeTracking`), so there is nothing to call at the write site. The per-item Dexie hooks this rule used to describe are gone (rule 117).
 16. **New university** → add a `UniversityConfig` file under `config/universities/`, register in `UNIVERSITY_REGISTRY`, and add a `case` to `getUniversityConfig()`. The lazy-loader handles bundling automatically.
 17. **Key-driven remounts for animation replay** — use `key={someStableId}` on view components when navigating between instances of the same component (e.g. switching universities/majors) so entrance animations replay without manual state resets.
 18. **New major** → mirrors the university pattern: add a `MajorConfig` file under `config/majors/`, register in `MAJOR_REGISTRY`, add a `case` to `getMajorConfig()`.
@@ -944,7 +884,7 @@ their number for anything that wants to display it inline as well.
 29. **Hardscape canvas drag** — document-level drag (not canvas-level) is required so elements don't "slip" when the mouse moves faster than the element. Store drag start state in a `useRef` (not state) so mousemove handlers don't cause re-renders on every pixel. Use functional state updates (`setItems(prev => …)`) to avoid stale closure issues.
 30. **Water log localStorage key** — hardscape layout uses `zenith_hardscape_v1`. Always version localStorage keys so schema changes don't crash on stale data.
 31. **`useLiveQuery` accepts 1–2 arguments only** (`dexie-react-hooks` v4 removed the third `defaultResult` parameter). The return type is `T | undefined`; guard every usage with `?? []` or optional chaining. Never pass a third argument — it is a compile-time type error that breaks `npm run build`.
-32. **Sync broker hooks all 4 tables** — habits and workouts now flow through `outboxMutations` via `syncBroker`. The engine's `pendingSyncQueue` continues to run for assignments/userProfile in parallel (idempotent upserts). Do not disable either hook system; they are additive by design.
+32. **(Retired) Sync broker** — the per-item `syncBroker`/`syncEngine` pair described here was removed; see rule 117.
 33. **Vercel deployment** — `vercel.json` + `.github/workflows/deploy.yml` are both committed. The CI pipeline validates (typecheck + Playwright) before deploying. Never push directly to Vercel outside the pipeline for production builds. GitHub Secrets required: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 34. **CSS Modules forbid bare attribute selectors** — Next.js CSS Modules requires every selector to contain at least one local class or ID. Bare `[data-branch='X']` selectors (and even `:global([data-branch='X'])`) are rejected with "not pure". Always anchor attribute selectors to a local class.
 35. **AI Co-Pilot context is compiled once per panel open** — `compileUserContextPayload()` runs on first `isOpen → true` transition (guarded by `contextStatus === 'idle'`). Do not re-run on every render or every message. The compiled `contextPayload` string is cached in component state for the duration of the session. If the user clicks ↺ (New Conversation), `handleClear()` resets `contextStatus` to `'idle'` so the next open re-compiles fresh context.
@@ -1089,3 +1029,5 @@ their number for anything that wants to display it inline as well.
 115. **A sync choice that replaces data says what it replaces and what it keeps, shows both versions, and asks twice.** `CloudSyncBanner` is the one place a sync decision is made — the Settings panel's conflict box explains and points at it rather than carrying a second set of buttons. Every choice is a button beside two labelled lines, **Replaces** (what is overwritten) and **Keeps** (what survives, and where), or a plain "Changes nothing" for a way out; every situation has a way out. Beside the choices, both versions are summarised in words a person recognises — "12 notes · 48 tasks · 6 habits · 130 events" and when each last changed — so the decision is made on contents, not on a device name. The cloud side's counts come from `payload.summary`, written on every push by `summarisePayload()` and read by `getRemoteMeta` as `summary:payload->summary` (one key, still no payload download); this device's come from `localDataSummary()`, which counts the same tables (`SUMMARY_TABLES`) and is re-counted while the banner is up. A copy saved before counts existed reads "Contents not recorded", never zeros, and an account with no copy at all reads "Nothing saved in the cloud yet" and is offered nothing to load. Any choice that replaces data arms an in-place second ask naming what will be replaced ("Replace Safari · iOS's changes with this device's?") before it runs — the same in-place confirm pattern as `ConfirmDelete`, never a dialog over the banner. "I deleted it on purpose — save" (`allowShrink`) keeps the fuller cloud copy aside first, exactly as "keep this device's version" (`overwriteCloud`) does, but without moving the expected version, so it still cannot replace a copy another device wrote in the meantime. On a phone the banner scrolls inside itself (`max-height: 70dvh`) because the frame never does (rule 107).
 
 116. **The Cube Timer's chart and scoreboard only read solves — nothing about them writes to `cube_solves`.** The chart (`CubeStatsChart`) reads the solve under the pointer: hover, touch-drag, or focus it and use ←/→/Home/End. It shows the solve's number *in the whole list* (the same number the solve list uses, even when only the last 100 are plotted), its time and penalty, the ao5/ao12 ending there, and when it happened. A click or Enter calls `onSelect(index)`, which the timer turns into `openSolve(id)`: the solve expands in the list, where its scramble and penalty controls already live, and scrolls into view. The tooltip opens toward the middle of the plot so it never runs off the card. The Personal Scoreboard (`CubeScoreboard`) ranks your N fastest singles or best ao5/ao12/ao100 in the page's current scope (This Session / All Sessions for the current puzzle), using `topSingles`/`topAverages` in `utils/cubeStats.ts`. Those are pure, tested, and built on the same `effectiveMs`/`average` as the stats table, so #1 is always the PB / best aoN the table shows. Averages are listed **without overlap** (greedy: fastest window first, then the fastest that shares no solve with one already taken), so a single hot streak cannot fill the board with near-copies of itself. `trimmedInWindow` marks the best and worst in an opened average exactly as `average` drops them, ties included. The board choice is a per-browser preference in `zenith_cube_scoreboard_v1`; solves stay where they were, in `cube_solves`, untouched.
+
+117. **The per-item uploader was dead weight, so it is gone.** `services/syncEngine.ts` and `services/syncBroker.ts` hooked every write to `assignments` (high/critical), `userProfile`, `habits` and `workouts`, queued it in `pendingSyncQueue`/`outboxMutations`, and upserted it into four `supabase_*` tables — which nothing in the app ever read back (the only reads were `updated_at` lookups for its own last-write-wins). Moving data between devices has only ever worked through the whole-workspace snapshot (rules 111–115), so the uploader cost a Dexie hook on every write, a second top-bar sync chip that could contradict the real one ("queue" beside "Synced"), and a round of network calls, for no reader. Removed with it: `lib/SyncContext.tsx` (`SyncProvider`, `useSyncStatus`), `components/SyncIndicator`, the unused `utils/syncStressTest.ts`, and the `syncLog`/`brokerLog` logger channels. **Deliberately kept:** the `pendingSyncQueue` and `outboxMutations` tables stay in the Dexie schema (dropping a table is a schema version whose only effect is deleting rows, and those rows were queue entries, never user data; backups already exclude them), the `supabaseId` field and index on older rows, and the `supabase_*` tables and their migrations in the cloud project — a copy that exists there is the user's to drop, not the app's. `tests/zenithCore.spec.ts` S2-T2/S2-T3 now assert the uploader stays gone: a high-priority write queues nothing, and an `online` event sends nothing to those tables.

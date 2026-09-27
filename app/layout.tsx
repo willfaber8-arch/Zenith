@@ -43,7 +43,6 @@ import './globals.css'
 import { NavProvider }        from '@/lib/NavContext'
 import { NavBadgeProvider }   from '@/lib/NavBadgeContext'
 import { AuthProvider }       from '@/lib/AuthContext'
-import { SyncProvider }       from '@/lib/SyncContext'
 import { ToastProvider }      from '@/lib/ToastContext'
 import { StudyModeProvider }  from '@/lib/StudyModeContext'
 import { CopilotProvider }         from '@/lib/CopilotContext'
@@ -154,12 +153,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NavProvider>
           <NavBadgeProvider>
           <AuthProvider>
-            {/*
-             * SyncProvider sits inside AuthProvider so it can observe the
-             * Supabase session state, and outside ToastProvider so any
-             * component in the tree (including Toast) can call useSyncStatus().
-             */}
-            <SyncProvider>
               <ToastProvider>
                 {/*
                  * StudyModeProvider sits inside ToastProvider so cockpit
@@ -186,7 +179,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </CopilotProvider>
                 </StudyModeProvider>
               </ToastProvider>
-            </SyncProvider>
           </AuthProvider>
           </NavBadgeProvider>
         </NavProvider>

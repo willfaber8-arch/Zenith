@@ -6,7 +6,6 @@ import { useNav }          from '@/lib/NavContext'
 import { useCopilot }      from '@/lib/CopilotContext'
 import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
-import SyncIndicator, { useSyncChipVisible } from './SyncIndicator'
 import CloudSyncDot from './CloudSyncDot'
 import { useCloudSync } from '@/lib/CloudSyncContext'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
@@ -72,7 +71,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
 
   const { status: wStatus, weather } = useWeather()
   const { available: cloudAvailable } = useCloudSync()
-  const showSyncChip = useSyncChipVisible()
 
   /* ── Breadcrumb ─────────────────────────────────────────── */
   const catConfig = activeCategory
@@ -145,7 +143,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
           orphan divider behind. Priority order (last to survive first):
             essential → avatar, notifications, AI
             medium    → module search
-            low       → sync chip, clock, credits, weather
+            low       → sync dot, clock, credits, weather
         */}
 
         {/* Module finder — jump to any Zenith view by name or keyword */}
@@ -167,16 +165,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
               {weatherCondition && <Icon name={weatherIcon(weatherCondition)} size={14} />}
               {weatherStr}
             </span>
-            <span className={styles.divider} aria-hidden="true" />
-          </span>
-        )}
-
-        {/* Per-item uploader — only while it is holding changes it could not
-            send (see useSyncChipVisible); the whole-workspace sync has its
-            own dot just below. */}
-        {showSyncChip && (
-          <span className={`${styles.slot} ${styles.slotLow}`}>
-            <SyncIndicator />
             <span className={styles.divider} aria-hidden="true" />
           </span>
         )}
