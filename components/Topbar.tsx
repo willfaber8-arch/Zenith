@@ -6,7 +6,6 @@ import { useNav }          from '@/lib/NavContext'
 import { useCopilot }      from '@/lib/CopilotContext'
 import { useWeather }      from '@/lib/hooks/useWeather'
 import { NAV_CONFIG, CATEGORY_ACCENT, type CategoryId } from '@/lib/nav-config'
-import SyncIndicator from './SyncIndicator'
 import CloudSyncDot from './CloudSyncDot'
 import { useCloudSync } from '@/lib/CloudSyncContext'
 import CosmeticPointsIndicator from './navigation/CosmeticPointsIndicator'
@@ -144,7 +143,7 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
           orphan divider behind. Priority order (last to survive first):
             essential → avatar, notifications, AI
             medium    → module search
-            low       → sync chip, clock, credits, weather
+            low       → sync dot, clock, credits, weather
         */}
 
         {/* Module finder — jump to any Zenith view by name or keyword */}
@@ -169,12 +168,6 @@ export default function Topbar({ sidebarOpen, onToggleSidebar }: TopbarProps) {
             <span className={styles.divider} aria-hidden="true" />
           </span>
         )}
-
-        {/* Sync status micro-indicator */}
-        <span className={`${styles.slot} ${styles.slotLow}`}>
-          <SyncIndicator />
-          <span className={styles.divider} aria-hidden="true" />
-        </span>
 
         {/* Cloud copy sync — renders nothing unless signed in to a real
             account, so offline sessions see no change here. */}

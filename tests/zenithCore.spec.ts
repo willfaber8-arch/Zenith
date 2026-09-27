@@ -9,11 +9,13 @@
  *     Verifies that a pre-injected localStorage session bypasses the
  *     AuthGate overlay and renders the full workspace shell.
  *
- *   Suite 2 — Local-first IDB write, reactive DOM, sync queue schema
+ *   Suite 2 — Local-first IDB write, reactive DOM, no per-item uploader
  *     Verifies the full local-first data path:
- *       write → IDB persists → useLiveQuery re-renders DOM →
- *       sync engine hooks → pendingSyncQueue contains valid payload →
- *       online event does not crash the engine
+ *       write → IDB persists → useLiveQuery re-renders DOM
+ *     and that the retired per-item uploader stays retired: a write
+ *     queues nothing and sends nothing to its old cloud tables, and an
+ *     `online` event leaves the workspace standing. Cloud sync is the
+ *     whole-workspace snapshot, tested in __tests__/sync/.
  *
  *   (A third suite covering RPG levelling was described here. The
  *   gamification layer it tested — quests, XP, levels, the character
@@ -44,7 +46,6 @@ import {
   waitForBridge,
   seedProfile,
   addAssignment,
-  readSyncQueue,
   navigateTo,
   type TestAssignment,
 } from './helpers/bridge'
@@ -128,7 +129,7 @@ test.describe('Suite 1 — Auth Gate bypass & workspace initialization', () => {
    SUITE 2 — Local-first IDB write, reactive DOM, sync queue schema
    ═══════════════════════════════════════════════════════════════ */
 
-test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schema', () => {
+test.describe('Suite 2 — Local-first IDB write, reactive DOM, no per-item uploader', () => {
 
   /** The assignment we write in every S2 test */
   const TEST_ASSIGNMENT: TestAssignment = {
@@ -178,11 +179,6 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
       expect(typeof row['createdAt']).toBe('number')
       expect(typeof row['updatedAt']).toBe('number')
 
-      // Sync engine should have injected a cloud UUID onto the row
-      expect(row['supabaseId']).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      )
-
       /* ─ ASSERTION 2: reactive DOM update ──────────────────── */
       /*
        * This pointed at UrgentTasksWidget's "Active assignments" list.
@@ -205,74 +201,36 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
 
   /* ── S2-T2 ─────────────────────────────────────────────────── */
   test(
-    'S2-T2: NETWORK INTERCEPT — pendingSyncQueue entry contains valid cloud-schema payload',
+    'S2-T2: a high-priority write queues nothing for the retired per-item uploader',
     async ({ page }) => {
       /*
-       * The sync engine's Dexie `assignments.creating` hook fires when
-       * a high/critical assignment is added. It:
-       *   1. Injects supabaseId = crypto.randomUUID() onto the row
-       *   2. setTimeout(0) → enqueueSync() → writes to pendingSyncQueue
-       *
-       * This test validates that the enqueued payload matches the schema
-       * the reconcileLocalToCloud() flush would send to Supabase.
+       * The old sync engine's Dexie hook used to enqueue every
+       * high/critical assignment into pendingSyncQueue for upload to
+       * supabase_urgent_tasks — a table nothing in the app ever read
+       * back. It is gone; a write now stays a local write, and cloud
+       * sync is the whole-workspace snapshot.
        */
-
       await addAssignment(page, TEST_ASSIGNMENT)
+      await page.waitForTimeout(500)   // longer than the old setTimeout(0) hook
 
-      /*
-       * The sync hook uses setTimeout(0) to defer the queue write past the
-       * Dexie transaction commit. waitForFunction polls until the queue is
-       * non-empty, which also validates the hook actually fired.
-       */
-      await page.waitForFunction(
-        async () => (await window.__zenith!.db.pendingSyncQueue.count()) > 0,
-        { timeout: 4_000, polling: 100 },
-      )
-
-      const queueItems = await readSyncQueue(page)
-      expect(queueItems.length).toBeGreaterThanOrEqual(1)
-
-      // The most recent queue entry should correspond to our assignment write
-      const entry = queueItems[queueItems.length - 1] as Record<string, unknown>
-
-      /* ─ Structural schema fields ───────────────────────────── */
-      expect(entry.tableName).toBe('assignments')
-      expect(entry.operation).toBe('upsert')
-      expect(entry.retryCount).toBe(0)
-      expect(typeof entry.timestamp).toBe('number')
-      expect(entry.timestamp).toBeGreaterThan(0)
-
-      /* ─ Cloud UUID ─────────────────────────────────────────── */
-      expect(typeof entry.supabaseId).toBe('string')
-      expect(entry.supabaseId as string).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      )
-
-      /* ─ Payload: serialised assignment snapshot ─────────────── */
-      const payload = JSON.parse(entry.payload as string) as Record<string, unknown>
-      expect(payload.title).toBe(TEST_ASSIGNMENT.title)
-      expect(payload.priority).toBe('high')
-      expect(payload.courseId).toBe(TEST_ASSIGNMENT.courseId)
-      expect(payload.status).toBe('pending')
-
-      // supabaseId in the payload must match the queue entry's supabaseId
-      expect(payload.supabaseId).toBe(entry.supabaseId)
+      const queued = await page.evaluate(async () => ({
+        engine: await window.__zenith!.db.pendingSyncQueue.count(),
+        broker: await window.__zenith!.db.outboxMutations.count(),
+      }))
+      expect(queued).toEqual({ engine: 0, broker: 0 })
     },
   )
 
   /* ── S2-T3 ─────────────────────────────────────────────────── */
   test(
-    'S2-T3: NETWORK INTERCEPT MOCK — online event dispatched; sync engine stays stable; any Supabase calls match schema',
+    'S2-T3: NETWORK INTERCEPT MOCK — an online event leaves the workspace standing and calls no retired per-item tables',
     async ({ page }) => {
       /*
        * Route ALL requests whose URL contains "supabase" to a local stub
-       * that returns an empty success response. This ensures:
-       *   (a) No real network calls leak into the test runner
-       *   (b) If env vars ARE configured, we can still assert payload shape
-       *   (c) If env vars are absent, the engine exits before making any
-       *       request — the intercepted list stays empty (also correct)
-       *
-       * In both cases the page must remain fully operational after the event.
+       * that returns an empty success response, so no real network call
+       * leaks into the test runner. The page must remain fully operational
+       * after the event, and nothing may be sent to the per-item tables
+       * the retired uploader used to write.
        */
       const intercepted: Array<{ method: string; url: string; body: string }> = []
 
@@ -290,13 +248,12 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
         })
       })
 
-      // Write a high-priority assignment — enqueues to pendingSyncQueue
       await addAssignment(page, TEST_ASSIGNMENT)
-      await page.waitForTimeout(300)   // give setTimeout(0) hooks time to fire
+      await page.waitForTimeout(300)
 
-      // Simulate the browser going back online — triggers the sync engine drain
+      // Simulate the browser coming back online
       await page.evaluate(() => window.dispatchEvent(new Event('online')))
-      await page.waitForTimeout(700)   // DRAIN_DEBOUNCE_MS = 1500; we check partial window
+      await page.waitForTimeout(1_800)   // past the old 1.5 s drain debounce
 
       /* ─ Stability assertion ─────────────────────────────────── */
       // The page must remain fully functional — no crash, no blank screen
@@ -305,26 +262,9 @@ test.describe('Suite 2 — Local-first IDB write, reactive DOM, sync queue schem
         page.getByRole('navigation', { name: 'Primary' }),
       ).toBeVisible()
 
-      /* ─ Payload shape assertion (Supabase-configured environments) ─ */
-      for (const req of intercepted) {
-        // All intercepted calls must target a valid REST or RPC path
-        expect(req.url).toMatch(/supabase/)
-
-        // If a POST body was sent, it must be valid JSON
-        if (req.body) {
-          const parsed = JSON.parse(req.body) as unknown
-          expect(parsed).toBeTruthy()
-        }
-      }
-
-      // The queue entry written in S2-T2 is still schema-valid
-      const queue = await readSyncQueue(page)
-      if (queue.length > 0) {
-        const entry = queue[0] as Record<string, unknown>
-        expect(['assignments', 'userProfile']).toContain(entry.tableName)
-        expect(['upsert', 'delete']).toContain(entry.operation)
-        expect(typeof entry.timestamp).toBe('number')
-      }
+      /* ─ Nothing reaches the retired per-item tables ─────────── */
+      const retired = /supabase_(urgent_tasks|user_profiles|habits|workouts)/
+      expect(intercepted.filter(r => retired.test(r.url))).toEqual([])
     },
   )
 

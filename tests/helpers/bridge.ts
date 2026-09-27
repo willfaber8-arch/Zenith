@@ -102,11 +102,8 @@ export interface TestAssignment {
 /**
  * Write an assignment through the live Dexie instance.
  *
- * Because this goes through Dexie (not raw IndexedDB), it:
- *   • triggers the `assignments.creating` Dexie hook → enqueues to
- *     pendingSyncQueue for high/critical priorities
- *   • notifies useLiveQuery subscribers → the dashboard re-renders
- *   • injects `supabaseId = crypto.randomUUID()` onto the row
+ * Because this goes through Dexie (not raw IndexedDB), it notifies
+ * useLiveQuery subscribers, so the dashboard re-renders without a reload.
  *
  * Returns the auto-incremented IDB primary key.
  */
@@ -146,13 +143,6 @@ export async function countTable(page: Page, table: string): Promise<number> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (t) => await (window.__zenith!.db as any)[t].count() as number,
     table,
-  )
-}
-
-/** Read all rows from pendingSyncQueue */
-export async function readSyncQueue(page: Page): Promise<unknown[]> {
-  return page.evaluate(async () =>
-    await window.__zenith!.db.pendingSyncQueue.toArray()
   )
 }
 
