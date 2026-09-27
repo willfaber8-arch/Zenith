@@ -334,3 +334,102 @@ export function rollingSeries(solves: StatSolve[], n: number): (number | null)[]
   }
   return out
 }
+
+/* ── personal scoreboard ─────────────────────────────────────────── */
+
+/** A single on the scoreboard: where it sits in the list, and its time. */
+export interface RankedSingle {
+  /** Index into the chronological solve list passed in. */
+  index: number
+  /** Effective time, penalty included. */
+  ms:    number
+}
+
+/**
+ * The `n` fastest singles, fastest first. DNFs have no time and never
+ * rank; a +2 ranks on its penalised time, because that is the time it
+ * counts as everywhere else. Ties go to the earlier solve — it got there
+ * first.
+ */
+export function topSingles(solves: StatSolve[], n: number): RankedSingle[] {
+  const out: RankedSingle[] = []
+  solves.forEach((s, index) => {
+    const ms = effectiveMs(s)
+    if (ms !== null) out.push({ index, ms })
+  })
+  out.sort((a, b) => a.ms - b.ms || a.index - b.index)
+  return out.slice(0, Math.max(0, n))
+}
+
+/** An average on the scoreboard: the window it covers, and its value. */
+export interface RankedAverage {
+  /** Index of the window's first solve in the chronological list. */
+  start: number
+  /** Window size — 5 for an ao5. The window is solves[start, start + size). */
+  size:  number
+  ms:    number
+}
+
+/**
+ * The `n` best average-of-`size` results, fastest first, using the same
+ * WCA rule as `average` (so a DNF average never ranks).
+ *
+ * With `distinct` (the default) each solve counts toward at most one
+ * listed average. Rolling windows overlap: five great solves in a row
+ * are the middle of several ao5s at once, and without this one good
+ * streak fills the whole board with near-copies of itself. The greedy
+ * pick takes the fastest window, then the fastest that shares no solve
+ * with anything already taken, and so on — so #1 is always exactly the
+ * `bestAverage` the stats table shows.
+ */
+export function topAverages(
+  solves: StatSolve[],
+  size: number,
+  n: number,
+  opts: { distinct?: boolean } = {},
+): RankedAverage[] {
+  const distinct = opts.distinct ?? true
+  if (size < 1 || n < 1 || solves.length < size) return []
+
+  const candidates: RankedAverage[] = []
+  for (let start = 0; start + size <= solves.length; start++) {
+    const ms = average(solves.slice(start, start + size), size)
+    if (ms !== null) candidates.push({ start, size, ms })
+  }
+  candidates.sort((a, b) => a.ms - b.ms || a.start - b.start)
+  if (!distinct) return candidates.slice(0, n)
+
+  const used = new Uint8Array(solves.length)
+  const out: RankedAverage[] = []
+  for (const c of candidates) {
+    let free = true
+    for (let i = c.start; i < c.start + size; i++) if (used[i]) { free = false; break }
+    if (!free) continue
+    for (let i = c.start; i < c.start + size; i++) used[i] = 1
+    out.push(c)
+    if (out.length === n) break
+  }
+  return out
+}
+
+/**
+ * Which solves in an average's window were trimmed — the single best and
+ * single worst, exactly as `average` trims them — so the scoreboard can
+ * show them in parentheses the way a results sheet does. Empty for
+ * windows under 5, which trim nothing.
+ */
+export function trimmedInWindow(window: StatSolve[]): Set<number> {
+  const out = new Set<number>()
+  if (window.length < 5) return out
+  const v = window.map(s => effectiveMs(s) ?? Infinity)   // a DNF is the worst
+  /* The first fastest is trimmed as best… */
+  let bestI = 0
+  v.forEach((x, i) => { if (x < v[bestI]) bestI = i })
+  /* …and the first slowest among the rest as worst, so equal times trim
+     two different solves, the way `average` removes them. */
+  let worstI = -1
+  v.forEach((x, i) => { if (i !== bestI && (worstI < 0 || x > v[worstI])) worstI = i })
+  out.add(bestI)
+  if (worstI >= 0) out.add(worstI)
+  return out
+}

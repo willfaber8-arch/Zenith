@@ -16,7 +16,10 @@
  *     mean, σ (std-dev), worst, success rate, +2 & DNF counts, longest streak
  *   • Lifetime totals — solve count, total solving time, PB, best ao5/ao12,
  *     mean, success rate
- *   • Pure-SVG solve-time trend chart (single + ao5/ao12 overlays)
+ *   • Pure-SVG solve-time trend chart (single + ao5/ao12 overlays); hover,
+ *     touch-drag or arrow keys read each solve, and a click opens it below
+ *   • Personal scoreboard — your N fastest singles or best ao5/ao12/ao100,
+ *     in the same scope as the stats (read-only; never writes a solve)
  *   • Options panel (inspection, precision, hold duration, focus mode, delete
  *     confirmation, best/worst highlight, show-scramble, start cue) persisted
  *     to localStorage
@@ -31,6 +34,7 @@ import { db, type CubeSolve } from '@/lib/db'
 import { useToast } from '@/lib/ToastContext'
 import ZenHeading from '@/components/ui/ZenHeading'
 import CubeStatsChart from '@/components/CubeStatsChart'
+import CubeScoreboard, { type ScoreSolve } from '@/components/CubeScoreboard'
 import {
   generateScramble,
   PUZZLE_IDS,
@@ -51,7 +55,6 @@ import {
   penaltyCount,
   longestStreak,
   sumEffective,
-  type StatSolve,
 } from '@/utils/cubeStats'
 import styles from './CubeTimerView.module.css'
 import { toLocalDateStr } from '@/utils/localDate'
@@ -225,8 +228,13 @@ export default function CubeTimerView() {
     () => [...(rawSolves ?? [])].sort((a, b) => b.createdAt - a.createdAt),
     [rawSolves],
   )
-  const chrono: StatSolve[] = useMemo(
-    () => [...solves].reverse().map(s => ({ timeMs: s.timeMs, penalty: s.penalty })),
+  /* Chronological, carrying what the chart and the scoreboard show beside
+     each time: its id (to open it), when it happened, and its puzzle. */
+  const toChrono = (s: CubeSolve): ScoreSolve => ({
+    id: s.id, timeMs: s.timeMs, penalty: s.penalty, createdAt: s.createdAt, puzzle: s.puzzle,
+  })
+  const chrono: ScoreSolve[] = useMemo(
+    () => [...solves].reverse().map(toChrono),
     [solves],
   )
 
@@ -238,8 +246,8 @@ export default function CubeTimerView() {
         .sort((a, b) => b.createdAt - a.createdAt),
     [rawLifetime, puzzle],
   )
-  const lifetimeChrono: StatSolve[] = useMemo(
-    () => [...lifetimeSolves].reverse().map(s => ({ timeMs: s.timeMs, penalty: s.penalty })),
+  const lifetimeChrono: ScoreSolve[] = useMemo(
+    () => [...lifetimeSolves].reverse().map(toChrono),
     [lifetimeSolves],
   )
 
@@ -590,6 +598,18 @@ export default function CubeTimerView() {
     )
     toast(`Exported ${exportRows.length} solves (JSON).`, 'success')
   }, [exportRows, scope, puzzle, sessionNameOf, toast])
+
+  /* ══════════════ open a solve from the chart or scoreboard ═════ */
+
+  /* Expands the solve in the list below and brings it into view — the
+     list is where its scramble and penalty controls already live. */
+  const openSolve = useCallback((id: string) => {
+    setExpandedId(id)
+    requestAnimationFrame(() => {
+      document.getElementById(`cube-solve-${id}`)
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }, [])
 
   /* ══════════════ formatting helpers ════════════════════════════ */
 
@@ -1029,7 +1049,7 @@ export default function CubeTimerView() {
                   const hl = s.id === bestId ? styles.solveBest
                     : s.id === worstId ? styles.solveWorst : ''
                   return (
-                    <li key={s.id} className={styles.solveItem}>
+                    <li key={s.id} id={`cube-solve-${s.id}`} className={styles.solveItem}>
                       <button
                         className={styles.solveRow}
                         onClick={() => setExpandedId(expanded ? null : s.id)}
@@ -1095,7 +1115,18 @@ export default function CubeTimerView() {
         <CubeStatsChart
           solves={activeChrono}
           limit={CHART_LIMIT}
+          decimals={precision}
+          onSelect={i => { const s = activeChrono[i]; if (s) openSolve(s.id) }}
           title={`${scope === 'lifetime' ? 'Lifetime' : 'Session'} · Solve Times (last ${Math.min(activeChrono.length, CHART_LIMIT)})`}
+        />
+
+        <CubeScoreboard
+          solves={activeChrono}
+          decimals={precision}
+          scopeLabel={scope === 'lifetime'
+            ? `All sessions · ${PUZZLE_LABELS[puzzle]}`
+            : `This session · ${sessions.find(x => x.id === activeSession)?.name ?? ''}`}
+          onOpen={openSolve}
         />
       </div>
     </div>

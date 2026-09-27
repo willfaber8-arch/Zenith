@@ -107,3 +107,99 @@
   line-height: 1.5;
   max-width:   300px;
 }
+
+/* ── hover: the plot, its guide and the tooltip ─────────────────── */
+
+.plot {
+  position:     relative;
+  border-radius: var(--r-md);
+  /* A horizontal drag scrubs the chart; a vertical one still scrolls the page. */
+  touch-action: pan-y;
+}
+.plot:focus { outline: none; }
+.plot:focus-visible {
+  outline:        1px solid var(--v-accent);
+  outline-offset: 4px;
+}
+
+.svgClickable { cursor: pointer; }
+
+.tooltip {
+  position:       absolute;
+  top:            0;
+  z-index:        2;
+  min-width:      150px;
+  max-width:      220px;
+  padding:        var(--sp-2) var(--sp-3);
+  background:     var(--bg-main);
+  border:         1px solid color-mix(in srgb, var(--v-accent) 35%, transparent);
+  border-radius:  var(--r-md);
+  box-shadow:     0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation:      fadeIn var(--dur-fast) var(--ease-smooth) both;
+}
+
+.tipHead {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--sp-2);
+  margin:         0;
+  font-family:    var(--font-mono);
+  font-size:      0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+}
+
+.tipPb {
+  padding:       1px 6px;
+  border-radius: var(--r-sm);
+  background:    var(--v-accent);
+  color:         var(--bg-main);
+  font-weight:   700;
+  letter-spacing: 0.06em;
+}
+
+.tipTime {
+  display:              flex;
+  align-items:          baseline;
+  gap:                  var(--sp-2);
+  margin:               2px 0 0;
+  font-family:          var(--font-mono);
+  font-size:            1.25rem;
+  font-weight:          600;
+  color:                var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.tipDnf { color: var(--accent-crimson); }
+
+.tipPen {
+  font-size:   0.64rem;
+  font-weight: 500;
+  color:       var(--accent-warm);
+}
+
+.tipAvgs {
+  display:     flex;
+  gap:         var(--sp-3);
+  margin:      var(--sp-1) 0 0;
+  font-family: var(--font-mono);
+  font-size:   0.7rem;
+  color:       var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tipAvgs span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tipAvgs i    { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+
+.tipWhen {
+  margin:    var(--sp-1) 0 0;
+  font-size: 0.7rem;
+  color:     var(--text-dark);
+}
+
+.tipHint {
+  margin:    2px 0 0;
+  font-size: 0.64rem;
+  color:     var(--text-dark);
+  opacity:   0.8;
+}

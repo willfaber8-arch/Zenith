@@ -11,11 +11,16 @@
  *   • DNFs      — skipped from the line, marked with a red tick at the top.
  *   • Y-axis    — auto-scaled to the finite value range (padded), labels
  *                 rendered as speedcubing times.
+ *   • Hover     — point anywhere on the plot (mouse, touch-drag, or the
+ *                 arrow keys once focused) to read the solve under it: its
+ *                 number, time and penalty, the ao5/ao12 ending there, and
+ *                 when it happened. Clicking (or Enter) hands the solve to
+ *                 `onSelect`, which the timer uses to open it in the list.
  *
  * SSR safety: renders only after client mount (matches GritAnalyticsChart).
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { effectiveMs, formatTime, rollingSeries, type StatSolve } from '@/utils/cubeStats'
 import styles from './CubeStatsChart.module.css'
 
@@ -56,9 +61,16 @@ function areaPath(pts: [number, number][], baseY: number): string {
 
 /* ── component ────────────────────────────────────────────────────── */
 
+/** A solve as the chart sees it — the stats shape, plus when it happened. */
+export type ChartSolve = StatSolve & { createdAt?: number }
+
 interface Props {
   /** Chronological (oldest → newest) solves for the current scope. */
-  solves: StatSolve[]
+  solves: ChartSolve[]
+  /** Fractional-second digits for times in the tooltip (2 or 3). */
+  decimals?: number
+  /** A solve was clicked: its index in `solves` (chronological). */
+  onSelect?: (index: number) => void
   /** Max number of most-recent solves to plot (default 100). */
   limit?: number
   /** Section eyebrow label. */
@@ -72,10 +84,16 @@ export default function CubeStatsChart({
   limit = 100,
   title = 'Solve Times',
   showAverages = true,
+  decimals = 2,
+  onSelect,
 }: Props) {
 
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+
+  /* Index into the plotted window of the solve being read, or null. */
+  const [hover, setHover] = useState<number | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
 
   /* Window of the most-recent `limit` solves + aligned rolling averages. */
   const model = useMemo(() => {
@@ -138,6 +156,30 @@ export default function CubeStatsChart({
   const xOf = (i: number) => PAD.left + (n <= 1 ? PW / 2 : (i / (n - 1)) * PW)
   const yOf = (v: number) => PAD.top + PH - ((v - yMin) / yRange) * PH
 
+  /* ── hover: nearest solve to the pointer, by x ─────────────────── */
+  const hovered = hover !== null && hover < n ? hover : null
+  const indexAt = (clientX: number): number | null => {
+    const r = svgRef.current?.getBoundingClientRect()
+    if (!r || r.width === 0) return null
+    const vx = ((clientX - r.left) / r.width) * VW       // viewBox units
+    if (n <= 1) return 0
+    const i = Math.round(((vx - PAD.left) / PW) * (n - 1))
+    return Math.min(n - 1, Math.max(0, i))
+  }
+  const onKey = (e: React.KeyboardEvent) => {
+    const cur = hovered ?? n - 1
+    let next: number | null = null
+    if (e.key === 'ArrowLeft')  next = Math.max(0, cur - 1)
+    if (e.key === 'ArrowRight') next = Math.min(n - 1, cur + 1)
+    if (e.key === 'Home')       next = 0
+    if (e.key === 'End')        next = n - 1
+    if (e.key === 'Escape')     { setHover(null); return }
+    if ((e.key === 'Enter' || e.key === ' ') && hovered !== null && onSelect) {
+      e.preventDefault(); onSelect(startIdx + hovered); return
+    }
+    if (next !== null) { e.preventDefault(); setHover(next) }
+  }
+
   /* Build finite point sets for each series. */
   const toPts = (vals: (number | null)[]): [number, number][] => {
     const out: [number, number][] = []
@@ -191,11 +233,27 @@ export default function CubeStatsChart({
         </div>
       </div>
 
+      <div
+        className={styles.plot}
+        tabIndex={0}
+        role="group"
+        aria-label={`${title}. Use the left and right arrow keys to read each solve.`}
+        onKeyDown={onKey}
+        onFocus={() => { if (hover === null) setHover(n - 1) }}
+        onBlur={() => setHover(null)}
+      >
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${VW} ${VH}`}
-        className={styles.svg}
-        role="img"
-        aria-label={`${title} — last ${n} solves`}
+        className={`${styles.svg} ${onSelect ? styles.svgClickable : ''}`}
+        aria-hidden="true"
+        onPointerMove={e => setHover(indexAt(e.clientX))}
+        onPointerDown={e => setHover(indexAt(e.clientX))}
+        onPointerLeave={e => { if (e.pointerType === 'mouse') setHover(null) }}
+        onClick={e => {
+          const i = indexAt(e.clientX)
+          if (i !== null && onSelect) onSelect(startIdx + i)
+        }}
       >
         <defs>
           <linearGradient
@@ -324,7 +382,96 @@ export default function CubeStatsChart({
           stroke="rgba(82,204,163,0.18)"
           strokeWidth={1}
         />
+
+        {/* hover guide + the points it crosses */}
+        {hovered !== null && (
+          <g pointerEvents="none">
+            <line
+              x1={xOf(hovered)} y1={PAD.top}
+              x2={xOf(hovered)} y2={baseY}
+              stroke="rgba(232,234,246,0.35)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+            {showAverages && ao12[hovered] != null && (
+              <circle cx={xOf(hovered)} cy={yOf(ao12[hovered]!)} r={3.2} fill={COL_AO12} stroke="var(--surface-card)" strokeWidth={1.5} />
+            )}
+            {showAverages && ao5[hovered] != null && (
+              <circle cx={xOf(hovered)} cy={yOf(ao5[hovered]!)} r={3.2} fill={COL_AO5} stroke="var(--surface-card)" strokeWidth={1.5} />
+            )}
+            {singleVals[hovered] != null && (
+              <circle cx={xOf(hovered)} cy={yOf(singleVals[hovered]!)} r={5} fill={COL_SINGLE} stroke="var(--surface-card)" strokeWidth={2} />
+            )}
+          </g>
+        )}
+
+        {/* full-height hit area, so the whole plot answers the pointer */}
+        <rect
+          x={PAD.left - 6} y={PAD.top}
+          width={PW + 12} height={PH}
+          fill="transparent"
+        />
       </svg>
+
+      {hovered !== null && (
+        <Tooltip
+          solve={win[hovered]}
+          number={startIdx + hovered + 1}
+          ao5={showAverages ? ao5[hovered] : undefined}
+          ao12={showAverages ? ao12[hovered] : undefined}
+          isBest={singleVals[hovered] === bestVal}
+          leftPct={(xOf(hovered) / VW) * 100}
+          decimals={decimals}
+          clickable={!!onSelect}
+        />
+      )}
+      </div>
+    </div>
+  )
+}
+
+/* ── tooltip ──────────────────────────────────────────────────────── */
+
+function Tooltip({
+  solve, number, ao5, ao12, isBest, leftPct, decimals, clickable,
+}: {
+  solve: ChartSolve
+  number: number
+  ao5?: number | null
+  ao12?: number | null
+  isBest: boolean
+  leftPct: number
+  decimals: number
+  clickable: boolean
+}) {
+  const time = solve.penalty === 'DNF' ? 'DNF' : formatTime(solve.timeMs, solve.penalty, decimals)
+  const when = solve.createdAt != null
+    ? new Date(solve.createdAt).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+    : null
+  /* Open towards the middle of the plot so it never runs off the card. */
+  const side = leftPct > 55
+    ? { right: `${100 - leftPct}%`, transform: 'translateX(-10px)' }
+    : { left: `${leftPct}%`, transform: 'translateX(10px)' }
+  return (
+    <div className={styles.tooltip} style={side} role="status" aria-live="polite">
+      <p className={styles.tipHead}>
+        Solve #{number}
+        {isBest && <span className={styles.tipPb}>best</span>}
+      </p>
+      <p className={`${styles.tipTime} ${solve.penalty === 'DNF' ? styles.tipDnf : ''}`}>
+        {time}
+        {solve.penalty === 'PLUS2' && <span className={styles.tipPen}>+2 penalty</span>}
+      </p>
+      {(ao5 !== undefined || ao12 !== undefined) && (
+        <p className={styles.tipAvgs}>
+          <span><i style={{ background: COL_AO5 }} />ao5 {ao5 == null ? '—' : formatTime(ao5, 'OK', decimals)}</span>
+          <span><i style={{ background: COL_AO12 }} />ao12 {ao12 == null ? '—' : formatTime(ao12, 'OK', decimals)}</span>
+        </p>
+      )}
+      {when && <p className={styles.tipWhen}>{when}</p>}
+      {clickable && <p className={styles.tipHint}>Click to open in the list</p>}
     </div>
   )
 }
