@@ -1,6 +1,7 @@
 'use client'
 
 import { isHabitSoundEnabled, setHabitSoundEnabled, playHabitComplete } from '@/lib/habitSounds'
+import { loadRightClickMode, saveRightClickMode } from '@/lib/rightClickAsLeft'
 import { loadCutoffHour, saveCutoffHour, describeCutoff } from '@/utils/dayBoundary'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLiveQuery }     from 'dexie-react-hooks'
@@ -231,6 +232,7 @@ function NotificationsPanel() {
 
 const SETTINGS_SECTIONS = [
   { id: 's-appearance',    label: 'Appearance'    },
+  { id: 's-mouse',         label: 'Mouse'         },
   { id: 's-school-colors', label: 'School Colors' },
   { id: 's-ai',            label: 'AI'            },
   { id: 's-help',          label: 'Help'          },
@@ -277,7 +279,11 @@ export default function SettingsView() {
   /* Read after mount: localStorage does not exist during the server render. */
   const [habitSoundOn, setHabitSoundOn] = useState(true)
   const [cutoffHour,   setCutoffHour]   = useState(0)
-  useEffect(() => { setHabitSoundOn(isHabitSoundEnabled()); setCutoffHour(loadCutoffHour()) }, [])
+  const [rightAsLeft,  setRightAsLeft]  = useState(true)
+  useEffect(() => {
+    setHabitSoundOn(isHabitSoundEnabled()); setCutoffHour(loadCutoffHour())
+    setRightAsLeft(loadRightClickMode() === 'left')
+  }, [])
 
   const { session }            = useAuth()
   const { toast }              = useToast()
@@ -964,6 +970,22 @@ export default function SettingsView() {
               hint="A tone per step and a chime on completion"
               checked={habitSoundOn}
               onChange={v => { setHabitSoundEnabled(v); setHabitSoundOn(v); if (v) playHabitComplete() }}
+            />
+          </div>
+        </Section>
+
+        {/* ── Mouse ───────────────────────────────────────────── */}
+        <Section id="s-mouse" title="Mouse">
+          <p className={styles.sectionSubtitle}>
+            A stray right-click on a trackpad opens the browser&apos;s menu instead of pressing the
+            button you meant. With this on, a right-click clicks whatever it lands on.
+          </p>
+          <div className={styles.toggleList}>
+            <ToggleRow
+              label="Right-click acts as a left click"
+              hint="Places that use right-click keep it (Minesweeper flags), as do text fields and selected text. Hold Shift for the browser menu anywhere."
+              checked={rightAsLeft}
+              onChange={v => { saveRightClickMode(v ? 'left' : 'native'); setRightAsLeft(v) }}
             />
           </div>
         </Section>
