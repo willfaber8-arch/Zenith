@@ -55,6 +55,7 @@ import HabitSyncToaster  from '@/components/HabitSyncToaster'
 import ErrorBoundary     from '@/components/ErrorBoundary'
 import ThemeApplicator from '@/components/ThemeApplicator'
 import NumberInputSelect from '@/components/NumberInputSelect'
+import RightClickAsLeft  from '@/components/RightClickAsLeft'
 import {
   LazyBackgroundCanvasManager as BackgroundCanvasManager,
   LazyAiCopilotSidebar        as AiCopilotSidebar,
@@ -163,6 +164,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <CopilotProvider>
                         <ThemeApplicator />
                         <NumberInputSelect />
+                        <RightClickAsLeft />
                         <ThemeBackground />
                         <BackgroundCanvasManager />
                         <CosmosCanvas />
