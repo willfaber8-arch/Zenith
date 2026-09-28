@@ -203,3 +203,23 @@
   color:     var(--text-dark);
   opacity:   0.8;
 }
+
+.tipPhases {
+  display:     flex;
+  flex-wrap:   wrap;
+  gap:         2px var(--sp-2);
+  margin:      var(--sp-1) 0 0;
+  font-family: var(--font-mono);
+  font-size:   0.66rem;
+  color:       var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tipPhases b { color: var(--text-primary); font-weight: 600; }
+
+.tipNote {
+  margin:     var(--sp-1) 0 0;
+  font-size:  0.72rem;
+  font-style: italic;
+  color:      var(--text-primary);
+  overflow-wrap: anywhere;
+}

@@ -22,6 +22,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { effectiveMs, formatTime, rollingSeries, type StatSolve } from '@/utils/cubeStats'
+import { phaseDurations } from '@/utils/cubePhases'
 import styles from './CubeStatsChart.module.css'
 
 /* ── SVG layout constants ─────────────────────────────────────────── */
@@ -62,7 +63,12 @@ function areaPath(pts: [number, number][], baseY: number): string {
 /* ── component ────────────────────────────────────────────────────── */
 
 /** A solve as the chart sees it — the stats shape, plus when it happened. */
-export type ChartSolve = StatSolve & { createdAt?: number }
+export type ChartSolve = StatSolve & {
+  createdAt?:  number
+  note?:       string
+  splits?:     number[]
+  phaseNames?: string[]
+}
 
 interface Props {
   /** Chronological (oldest → newest) solves for the current scope. */
@@ -445,6 +451,7 @@ function Tooltip({
   clickable: boolean
 }) {
   const time = solve.penalty === 'DNF' ? 'DNF' : formatTime(solve.timeMs, solve.penalty, decimals)
+  const phases = phaseDurations(solve.splits)
   const when = solve.createdAt != null
     ? new Date(solve.createdAt).toLocaleString(undefined, {
         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -470,6 +477,14 @@ function Tooltip({
           <span><i style={{ background: COL_AO12 }} />ao12 {ao12 == null ? '—' : formatTime(ao12, 'OK', decimals)}</span>
         </p>
       )}
+      {phases && (
+        <p className={styles.tipPhases}>
+          {phases.map((ms, i) => (
+            <span key={i}>{solve.phaseNames?.[i] ?? `P${i + 1}`} <b>{formatTime(ms, 'OK', decimals)}</b></span>
+          ))}
+        </p>
+      )}
+      {solve.note && <p className={styles.tipNote}>“{solve.note}”</p>}
       {when && <p className={styles.tipWhen}>{when}</p>}
       {clickable && <p className={styles.tipHint}>Click to open in the list</p>}
     </div>

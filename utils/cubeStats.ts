@@ -330,7 +330,9 @@ export function sumEffective(solves: StatSolve[]): number {
 export function rollingSeries(solves: StatSolve[], n: number): (number | null)[] {
   const out: (number | null)[] = []
   for (let i = 0; i < solves.length; i++) {
-    out.push(i + 1 < n ? null : average(solves.slice(0, i + 1), n))
+    /* Only the window: `average` reads the last n anyway, and slicing the
+       whole prefix made the chart O(n²) on a long lifetime history. */
+    out.push(i + 1 < n ? null : average(solves.slice(i + 1 - n, i + 1), n))
   }
   return out
 }
