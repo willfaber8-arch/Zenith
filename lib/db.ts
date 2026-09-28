@@ -686,6 +686,19 @@ export interface CubeSolve {
   penalty:   'OK' | 'PLUS2' | 'DNF'  //   penalty state; drives effective time
   scramble:  string   //   the scramble sequence this solve was on
   createdAt: number   // * indexed — Unix ms; chronological ordering
+  /*
+   * Optional, non-indexed — added without a schema version, so every solve
+   * recorded before them is unchanged and simply has none of these.
+   */
+  /** Multi-phase timing: elapsed ms at the end of each phase, cumulative;
+      the last equals `timeMs`. Raw — a +2/DNF belongs to the solve. */
+  splits?:     number[]
+  /** Phase names in force when the solve was done (same length as splits). */
+  phaseNames?: string[]
+  /** A short note ("PLL skip", "pop on F2L"). */
+  note?:       string
+  /** 'typed' when entered by hand rather than timed here. */
+  entry?:      'typed'
 }
 
 /**

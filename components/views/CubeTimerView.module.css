@@ -684,3 +684,147 @@
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--sp-4) var(--sp-3);
 }
+
+/* ── multi-phase timing ───────────────────────────────────────── */
+
+.phaseEditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-main);
+}
+.phasePresets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.phaseCount {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+.phaseNames {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--sp-2);
+}
+.phaseNameInput {
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+.phaseNameInput:focus { outline: none; border-color: var(--v-accent); }
+
+.livePhases {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.livePhase {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-dark);
+  font-variant-numeric: tabular-nums;
+}
+.livePhase b { color: var(--text-primary); font-weight: 600; }
+.livePhaseDone { color: var(--text-muted); }
+.livePhaseNow {
+  border-color: var(--v-accent);
+  color: var(--v-accent);
+}
+
+.phaseChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+.phaseChip {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.phaseChip b { color: var(--text-primary); font-weight: 600; }
+
+/* ── typed entry + notes ──────────────────────────────────────── */
+
+.typedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.typedInput {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+.typedInput:focus { outline: none; border-color: var(--v-accent); }
+.typedPreview {
+  min-width: 5.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.noteMark {
+  margin-left: var(--sp-2);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.typedMark {
+  margin-left: var(--sp-2);
+  padding: 0 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  vertical-align: middle;
+}
+.noteInput {
+  width: 100%;
+  margin: var(--sp-2) 0;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+.noteInput:focus { outline: none; border-color: var(--v-accent); }
