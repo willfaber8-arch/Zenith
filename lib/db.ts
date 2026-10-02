@@ -273,6 +273,13 @@ export type WorkoutType = 'strength' | 'cardio' | 'mobility' | 'sport' | 'other'
  * QuickNote — freeform text or Markdown entry.
  * Powers: note-stacking / knowledge base module.
  */
+/** See QuickNote.taskLink. */
+export interface NoteTaskLink {
+  taskId: number
+  title:  string
+  items:  { stepId: string; label: string; done: boolean }[]
+}
+
 export interface QuickNote {
   id:         number   // * PK — auto-increment
   title:      string   // * indexed — search / list display
@@ -308,6 +315,13 @@ export interface QuickNote {
   createdTasks?: string[]
   /** Per-note consent for to-do detection. Global policy in localStorage. */
   noteTaskPolicy?: 'ask' | 'never' | 'auto'
+  /**
+   * The one task this note's checklist is kept in step with (lib/noteTaskSync).
+   * `items` is the list as note and task last agreed on it — the base of
+   * the three-way merge — and `title` the note title the task last took.
+   * Non-indexed; absent on every note that was never linked.
+   */
+  taskLink?: NoteTaskLink
   /**
    * The user typed this title, so stop deriving one from the first line.
    *

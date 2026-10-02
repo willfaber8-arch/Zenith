@@ -32,11 +32,15 @@ import { useToast } from '@/lib/ToastContext'
 import { useUndoableDelete } from '@/lib/hooks/useUndoableDelete'
 import ConfirmDelete from '@/components/ui/ConfirmDelete'
 import {
-  pendingTasks, toggleLine, checklistProgress, detectTasks, type DetectedTask,
+  pendingTasks, toggleLine, checklistProgress, detectTasks,
 } from '@/lib/engines/NoteTaskDetector'
+import { linkNoteToTask, syncNoteTask, unlinkNote } from '@/lib/noteTaskSync'
+import { initialLink } from '@/utils/noteChecklistSync'
+import { useNav } from '@/lib/NavContext'
+import { requestCalendarTab } from '@/lib/calendarNavState'
 import {
   toggleInline, toggleLineMark, insertLink, insertBlock, continueList,
-  hasInlineMark, lineHasMark, parseLine, noteStats,
+  hasInlineMark, lineHasMark, noteStats,
   type EditState,
 } from '@/lib/engines/markdownEditing'
 import {
@@ -52,26 +56,11 @@ import {
   validateFolderName, notesInFolder, folderCounts, selectionAfterDelete,
   ALL_NOTES, UNFILED, MAX_FOLDER_NAME, type FolderSelection,
 } from '@/utils/noteFolders'
+import { deriveTitle } from '@/utils/noteTitle'
 import styles from './NotesView.module.css'
 
 /** Debounce before a keystroke reaches IndexedDB. */
 const AUTOSAVE_MS = 600
-
-/**
- * First non-empty line, used when the user never writes a title.
- *
- * Uses the line parser rather than stripping a character class, which
- * left the checkbox behind and titled a shopping list "[ ] buy milk".
- * Barely noticeable while checklists needed hand-typed Markdown; not
- * once there is a button for them.
- */
-function deriveTitle(body: string): string {
-  const first = body
-    .split('\n')
-    .map(l => parseLine(l).content.trim())
-    .find(Boolean)
-  return (first ?? '').slice(0, 80) || 'Untitled note'
-}
 
 function relativeTime(ts: number): string {
   const mins = Math.floor((Date.now() - ts) / 60_000)
@@ -131,6 +120,8 @@ export default function NotesView() {
   const [query,      setQuery]      = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [draft,      setDraft]      = useState('')
+  const draftRef = useRef(draft)
+  draftRef.current = draft
   const [titleDraft, setTitleDraft] = useState('')
   const [policyTick, setPolicyTick] = useState(0)
   const [sel,        setSel]        = useState({ start: 0, end: 0 })
@@ -142,6 +133,10 @@ export default function NotesView() {
   const titleTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editingRef  = useRef<number | null>(null)
+  /** The body as last loaded or saved — what the draft holds when
+   *  nothing is unsaved, so a change made elsewhere (the note's task
+   *  ticking a line) can be taken in without losing anything typed. */
+  const lastSavedRef = useRef<string>('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   /** Selection to restore after React commits a value it owns. */
   const pendingSel  = useRef<{ start: number; end: number } | null>(null)
@@ -202,6 +197,7 @@ export default function NotesView() {
   useEffect(() => {
     if (selected && editingRef.current !== selected.id) {
       editingRef.current = selected.id
+      lastSavedRef.current = selected.body
       setDraft(selected.body)
       setTitleDraft(selected.titleManual ? selected.title : '')
       setSaveState('idle')
@@ -229,6 +225,7 @@ export default function NotesView() {
 
   const persist = useCallback(async (id: number, body: string) => {
     if (!db) return
+    if (editingRef.current === id) lastSavedRef.current = body
     const row = await db.quickNotes.get(id)
     await db.quickNotes.update(id, {
       body,
@@ -236,8 +233,30 @@ export default function NotesView() {
       ...(row?.titleManual ? {} : { title: deriveTitle(body) }),
       updatedAt: Date.now(),
     })
+    /* A note whose checklist is a task brings the task level; any line
+       the task changed comes back through the live query below. */
+    await syncNoteTask(id)
     markSaved()
   }, [markSaved])
+
+  /*
+   * Take in a body written by something other than this editor — the
+   * linked task ticking or adding a line — but only while nothing typed
+   * here is unsaved. If it is, the next autosave merges the two instead.
+   */
+  useEffect(() => {
+    if (!selected || editingRef.current !== selected.id) return
+    if (selected.body === lastSavedRef.current) return
+    if (draftRef.current !== lastSavedRef.current) return
+    lastSavedRef.current = selected.body
+    const ta = textareaRef.current
+    if (ta && document.activeElement === ta) {
+      const len = selected.body.length
+      pendingSel.current = { start: Math.min(ta.selectionStart, len), end: Math.min(ta.selectionEnd, len) }
+    }
+    setDraft(selected.body)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on the stored body only
+  }, [selected?.id, selected?.body])
 
   const onDraftChange = (body: string) => {
     setDraft(body)
@@ -250,8 +269,6 @@ export default function NotesView() {
   /* Flush any pending save on unmount — losing the last few keystrokes
      because the user navigated away would be the worst possible bug in a
      capture tool. */
-  const draftRef = useRef(draft)
-  draftRef.current = draft
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     const id = editingRef.current
@@ -480,6 +497,8 @@ export default function NotesView() {
       // A copy has not filed its own to-dos, and inheriting the record of
       // them would silently suppress every task in the duplicate.
       createdTasks: [],
+      // Nor is it the note its task follows — that stays with the original.
+      taskLink: undefined,
       pinned: false, archived: 0,
       createdAt: now, updatedAt: now,
     } as unknown as QuickNote)
@@ -502,10 +521,29 @@ export default function NotesView() {
 
   /* ── To-do detection ─────────────────────────────────────────── */
 
-  const detected: DetectedTask[] = useMemo(
-    () => (selected ? pendingTasks(draft, selected.createdTasks ?? []) : []),
-    [draft, selected],
+  /*
+   * A note's to-dos go to the task list as ONE task — named after the
+   * note, no due date, a step per line — and from then on the two follow
+   * each other (lib/noteTaskSync). The link is only real while its task
+   * exists; a deleted task drops it on the spot rather than leaving a
+   * strip that points at nothing.
+   */
+  const linkTaskId = selected?.taskLink?.taskId
+  const linkedTask = useLiveQuery(
+    async () => (db && linkTaskId != null ? (await db.assignments.get(linkTaskId)) ?? null : null),
+    [linkTaskId],
   )
+  useEffect(() => {
+    if (selected?.id != null && linkTaskId != null && linkedTask === null) void syncNoteTask(selected.id)
+  }, [selected?.id, linkTaskId, linkedTask])
+  const linked = linkTaskId != null && linkedTask != null ? linkedTask : null
+
+  /** Steps the task would get — offered only when something is outstanding. */
+  const offerSteps = useMemo(() => {
+    if (!selected || selected.taskLink) return 0
+    if (pendingTasks(draft, selected.createdTasks ?? []).length === 0) return 0
+    return initialLink(draft, () => '').steps.length
+  }, [draft, selected])
 
   const outcome = useMemo(
     () => resolvePolicy(selected?.noteTaskPolicy),
@@ -513,44 +551,27 @@ export default function NotesView() {
     [selected?.noteTaskPolicy, policyTick],
   )
 
-  const fileTasks = useCallback(async (tasks: DetectedTask[]) => {
-    if (!db || !selected?.id || tasks.length === 0) return 0
-    const now = Date.now()
-    const today = new Date()
-    const due = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const fileAsTask = useCallback(async () => {
+    if (!db || !selected?.id) return null
+    /* Whatever is typed is saved first, so the task is made from what is
+       on screen and the body the link rewrites is the current one. */
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    await persist(selected.id, draftRef.current)
+    return linkNoteToTask(selected.id)
+  }, [selected?.id, persist])
 
-    for (const t of tasks) {
-      await db.assignments.add({
-        title:     t.text,
-        dueDate:   due,
-        courseId:  '',
-        status:    'pending',
-        priority:  'medium',
-        category:     'notes',
-        sourceNoteId: selected.id,
-        notes:        `From note: ${selected.title}`,
-        createdAt: now,
-        updatedAt: now,
-      } as never)
-    }
-
-    await db.quickNotes.update(selected.id, {
-      createdTasks: [...(selected.createdTasks ?? []), ...tasks.map(t => t.text)],
-    })
-    return tasks.length
-  }, [selected])
+  const announce = useCallback((r: { title: string; steps: number } | null) => {
+    if (r) toast(`Added “${r.title}” to your tasks with ${r.steps} step${r.steps === 1 ? '' : 's'}.`, 'success')
+  }, [toast])
 
   /* Silent creation when the user has opted into that globally or for
      this note. Runs after the debounce so it fires on settled text, not
      mid-word. */
   useEffect(() => {
-    if (outcome !== 'auto' || detected.length === 0) return
-    const t = setTimeout(async () => {
-      const n = await fileTasks(detected)
-      if (n > 0) toast(`Added ${n} to-do${n === 1 ? '' : 's'} from this note.`, 'success')
-    }, AUTOSAVE_MS + 200)
+    if (outcome !== 'auto' || offerSteps === 0) return
+    const t = setTimeout(async () => { announce(await fileAsTask()) }, AUTOSAVE_MS + 200)
     return () => clearTimeout(t)
-  }, [outcome, detected, fileTasks, toast])
+  }, [outcome, offerSteps, fileAsTask, announce])
 
   const respond = async (
     action: 'approve' | 'deny' | 'approve-never-ask' | 'always',
@@ -562,15 +583,26 @@ export default function NotesView() {
       return
     }
 
-    const n = await fileTasks(detected)
+    const r = await fileAsTask()
 
     if (action === 'approve-never-ask') {
       await db.quickNotes.update(selected.id, { noteTaskPolicy: 'auto' as NotePolicy })
     } else if (action === 'always') {
       setGlobalPolicy('always')
     }
+    announce(r)
+  }
 
-    if (n > 0) toast(`Added ${n} to-do${n === 1 ? '' : 's'} to your tasks.`, 'success')
+  const { navigate } = useNav()
+  const openLinkedTask = () => {
+    requestCalendarTab('tasks')
+    navigate('calendar', 'essentials')
+  }
+
+  const unlink = async () => {
+    if (selected?.id == null) return
+    await unlinkNote(selected.id)
+    toast('This note and its task no longer follow each other. Both are kept.', 'info')
   }
 
   /* ── Render ──────────────────────────────────────────────────── */
@@ -949,12 +981,12 @@ export default function NotesView() {
 
               {/* Consent strip. Inline, never a modal — a modal on save
                   would punish exactly the frictionlessness this exists for. */}
-              {outcome === 'prompt' && detected.length > 0 && (
+              {outcome === 'prompt' && offerSteps > 0 && (
                 <div className={styles.consent} role="group" aria-label="Add to-dos to tasks">
                   <p className={styles.consentText}>
-                    Found <strong>{detected.length}</strong> to-do
-                    {detected.length === 1 ? '' : 's'} here. Add
-                    {detected.length === 1 ? ' it' : ' them'} to your tasks?
+                    Add this list to your tasks as one task with{' '}
+                    <strong>{offerSteps}</strong> step{offerSteps === 1 ? '' : 's'}?
+                    {' '}Ticking a step in either place ticks it in both.
                   </p>
                   <div className={styles.consentBtns}>
                     <button type="button" className={styles.approve}
@@ -965,6 +997,22 @@ export default function NotesView() {
                             onClick={() => respond('always')}>Always add</button>
                     <button type="button" className={styles.deny}
                             onClick={() => respond('deny')}>No</button>
+                  </div>
+                </div>
+              )}
+
+              {linked && (
+                <div className={styles.linkStrip} role="group" aria-label="Linked task">
+                  <p className={styles.consentText}>
+                    In your tasks as <strong>{linked.title}</strong>
+                    {linked.problems && linked.problems.length > 0 && (
+                      <> · {linked.problems.filter(p => p.done).length} of {linked.problems.length} done</>
+                    )}
+                  </p>
+                  <div className={styles.consentBtns}>
+                    <button type="button" className={styles.ghost} onClick={openLinkedTask}>Open in Tasks</button>
+                    <button type="button" className={styles.deny} onClick={unlink}
+                            title="Keep the note and the task, but stop them following each other">Unlink</button>
                   </div>
                 </div>
               )}

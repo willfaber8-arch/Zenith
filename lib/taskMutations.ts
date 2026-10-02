@@ -16,6 +16,7 @@
 import { db, type Assignment, type ProblemItem, type Priority, type AssignmentStatus } from '@/lib/db'
 import { type TaskKind } from '@/utils/taskUnify'
 import { advanceOnComplete } from '@/utils/taskRepeat'
+import { syncTaskNote } from '@/lib/noteTaskSync'
 
 /* ── Creating ────────────────────────────────────────────────── */
 
@@ -131,6 +132,13 @@ export async function setDone(
   const now = Date.now()
   const status: AssignmentStatus = done ? 'completed' : 'pending'
   /*
+   * A note's checklist filed as one task: ticking the task off means the
+   * list is done, so every step is ticked — and through them every line
+   * in the note. Left open, the note would still show unticked lines
+   * under a task that says it is finished.
+   */
+  const tickSteps = done && a.sourceNoteId != null && (a.problems?.some(p => !p.done) ?? false)
+  /*
    * Unticking clears the stamp. Dexie deletes a key set to undefined,
    * so a task put back on the list stops counting down to removal
    * rather than keeping the clock it was on before.
@@ -138,8 +146,10 @@ export async function setDone(
   await db.assignments.update(a.id, {
     status,
     completedAt: done ? now : undefined,
+    ...(tickSteps ? { problems: a.problems!.map(p => ({ ...p, done: true })) } : {}),
     updatedAt:   now,
   })
+  await syncTaskNote(a)
   return null
 }
 
@@ -198,6 +208,7 @@ export async function toggleProblem(
     } : {}),
     updatedAt: Date.now(),
   })
+  await syncTaskNote(a)
 
   return { allDone, justCompleted }
 }
@@ -225,6 +236,7 @@ export async function setSubtasks(
       : {}),
     updatedAt: Date.now(),
   })
+  await syncTaskNote(a)
 }
 
 /* ── Deleting ────────────────────────────────────────────────── */

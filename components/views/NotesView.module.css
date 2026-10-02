@@ -215,6 +215,14 @@
   animation: fadeIn var(--dur-base) var(--ease-smooth) both;
 }
 
+/* The note's checklist is a task: one quiet line, not a call to action. */
+.linkStrip {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
 .consentText { font-size: 0.79rem; color: var(--text-muted); }
 .consentText strong { color: var(--text-primary); }
 
