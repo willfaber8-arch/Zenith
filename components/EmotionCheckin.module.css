@@ -1,0 +1,313 @@
+/* ════════════════════════════════════════════════════════════
+   EmotionCheckin — multi-phase feelings questionnaire
+   Inherits --v-* tokens from WellnessTracker's .tracker root.
+   ════════════════════════════════════════════════════════════ */
+
+.wrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-4);
+}
+
+/* ── Progress pips ─────────────────────────────────────────── */
+.progress {
+  display: flex;
+  gap:     var(--sp-2);
+}
+
+.pip {
+  flex:          1;
+  height:        4px;
+  border-radius: 2px;
+  background:    rgba(255, 255, 255, 0.07);
+  transition:    background var(--dur-base) var(--ease-smooth);
+}
+
+.pipDone   { background: var(--accent-purple-dim); }
+.pipActive { background: var(--v-accent, var(--accent-purple)); }
+
+/* ── Phase header ──────────────────────────────────────────── */
+.phaseEyebrow {
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin:         0 0 var(--sp-1);
+}
+
+.phaseTitle {
+  font-family: var(--font-display);
+  font-size:   17px;
+  font-weight: 600;
+  color:       var(--text-primary);
+  margin:      0;
+}
+
+.phaseSub {
+  font-family: var(--font-body);
+  font-size:   12px;
+  color:       var(--text-muted);
+  margin:      var(--sp-1) 0 0;
+}
+
+/* ── Question ──────────────────────────────────────────────── */
+.question {
+  border:         1px solid var(--v-border, var(--border-subtle));
+  border-radius:  var(--r-md);
+  background:     var(--v-inner, var(--bg-main));
+  padding:        var(--sp-3);
+  margin:         0;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  min-width:      0;
+}
+
+.prompt {
+  font-family: var(--font-body);
+  font-size:   13px;
+  font-weight: 500;
+  color:       var(--text-primary);
+  padding:     0;
+  margin-bottom: var(--sp-2);
+}
+
+.scale {
+  display:               grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap:                   var(--sp-1);
+}
+
+.scaleBtn {
+  padding:       var(--sp-2) var(--sp-1);
+  border-radius: var(--r-sm);
+  background:    transparent;
+  border:        1px solid var(--v-border, var(--border-subtle));
+  font-family:   var(--font-body);
+  font-size:     11px;
+  line-height:   1.2;
+  color:         var(--text-muted);
+  cursor:        pointer;
+  transition:    background var(--dur-fast) var(--ease-smooth),
+                 border-color var(--dur-fast) var(--ease-smooth),
+                 color var(--dur-fast) var(--ease-smooth);
+}
+
+.scaleBtn:hover {
+  background:   var(--bg-hover);
+  color:        var(--text-primary);
+}
+
+.scaleBtnOn {
+  background:   var(--bg-active);
+  border-color: var(--accent-purple-dim);
+  color:        var(--text-primary);
+}
+
+/* ── Nav ───────────────────────────────────────────────────── */
+.nav {
+  display:         flex;
+  justify-content: space-between;
+  gap:             var(--sp-3);
+}
+
+.primaryBtn,
+.secondaryBtn {
+  padding:       var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  font-family:   var(--font-body);
+  font-size:     13px;
+  font-weight:   600;
+  cursor:        pointer;
+  transition:    opacity var(--dur-fast) var(--ease-smooth);
+}
+
+.primaryBtn {
+  flex:       1;
+  background: var(--v-accent, var(--accent-purple));
+  border:     none;
+  color:      var(--bg-main);
+}
+
+.secondaryBtn {
+  background: transparent;
+  border:     1px solid var(--v-border, var(--border-subtle));
+  color:      var(--text-muted);
+}
+
+.secondaryBtn:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-hover); }
+.primaryBtn:hover:not(:disabled)   { opacity: 0.85; }
+.primaryBtn:disabled,
+.secondaryBtn:disabled              { opacity: 0.38; cursor: not-allowed; }
+
+/* ── Results ───────────────────────────────────────────────── */
+.empty {
+  font-family: var(--font-body);
+  font-size:   12px;
+  color:       var(--text-dark);
+  margin:      0;
+}
+
+.scoreRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-4);
+}
+
+.scoreRing {
+  width:           72px;
+  height:          72px;
+  border-radius:   50%;
+  flex-shrink:     0;
+  display:         flex;
+  align-items:     baseline;
+  justify-content: center;
+  padding-top:     22px;
+  border:          3px solid hsl(var(--score-hue, 210) 60% 55%);
+  box-shadow:      0 0 18px hsla(var(--score-hue, 210), 60%, 55%, 0.25);
+}
+
+.scoreNum {
+  font-family: var(--font-display);
+  font-size:   22px;
+  font-weight: 700;
+  color:       var(--text-primary);
+}
+
+.scoreOf {
+  font-family: var(--font-mono);
+  font-size:   9px;
+  color:       var(--text-dark);
+}
+
+.scoreLabel {
+  font-family: var(--font-display);
+  font-size:   16px;
+  font-weight: 600;
+  color:       var(--text-primary);
+  margin:      0;
+}
+
+.scoreSub {
+  font-family: var(--font-body);
+  font-size:   11px;
+  color:       var(--text-muted);
+  margin:      var(--sp-1) 0 0;
+}
+
+.areaList {
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+}
+
+.areaRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+}
+
+.areaName {
+  font-family: var(--font-body);
+  font-size:   11px;
+  color:       var(--text-muted);
+  width:       78px;
+  flex-shrink: 0;
+}
+
+.areaTrack {
+  flex:          1;
+  height:        5px;
+  border-radius: 3px;
+  background:    rgba(255, 255, 255, 0.06);
+  overflow:      hidden;
+}
+
+.areaFill {
+  height:        100%;
+  border-radius: 3px;
+  background:    hsl(var(--score-hue, 210) 60% 55%);
+  transition:    width var(--dur-slow) var(--ease-expo);
+}
+
+.areaVal {
+  font-family: var(--font-mono);
+  font-size:   10px;
+  color:       var(--text-dark);
+  width:       22px;
+  text-align:  right;
+  flex-shrink: 0;
+}
+
+.section {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+}
+
+.sectionHeading {
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--text-dark);
+  margin:         0;
+}
+
+.sectionNote {
+  font-family: var(--font-body);
+  font-size:   12px;
+  line-height: 1.5;
+  color:       var(--text-muted);
+  margin:      0;
+}
+
+.focusCard {
+  background:    var(--v-inner, var(--bg-main));
+  border:        1px solid rgba(248, 113, 113, 0.20);
+  border-radius: var(--r-md);
+  padding:       var(--sp-3);
+}
+
+.focusTitle {
+  font-family: var(--font-body);
+  font-size:   13px;
+  font-weight: 600;
+  color:       var(--text-primary);
+  margin:      0 0 var(--sp-1);
+}
+
+.focusScore {
+  font-family: var(--font-mono);
+  font-size:   10px;
+  font-weight: 400;
+  color:       var(--text-dark);
+  margin-left: var(--sp-1);
+}
+
+.focusTip {
+  font-family: var(--font-body);
+  font-size:   12px;
+  line-height: 1.5;
+  color:       var(--text-muted);
+  margin:      0;
+}
+
+.chips {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       var(--sp-2);
+}
+
+.chip {
+  padding:       var(--sp-1) var(--sp-3);
+  border-radius: 999px;
+  background:    rgba(82, 204, 163, 0.10);
+  border:        1px solid rgba(82, 204, 163, 0.25);
+  font-family:   var(--font-body);
+  font-size:     11px;
+  color:         var(--accent-green);
+}

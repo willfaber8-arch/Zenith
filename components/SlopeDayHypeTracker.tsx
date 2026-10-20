@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from 'react'
 import { useLiveQuery }       from 'dexie-react-hooks'
 import { db }                 from '@/lib/db'
 import { useMentalHealthLog } from '@/lib/hooks/useMentalHealthLog'
@@ -14,7 +14,9 @@ import {
 import type { MentalHealthLog } from '@/lib/db'
 import styles from './SlopeDayHypeTracker.module.css'
 import Icon from '@/components/ui/Icon'
-import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import EmotionCheckin from '@/components/EmotionCheckin'
+import { scoreCheckin, overallLabel } from '@/utils/emotionCheckin'
+import { todayISO, toLocalDateStr, addDaysISO } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -39,6 +41,13 @@ function moodCellColor(log: MentalHealthLog): string {
   const w   = (log.energyLevel - log.stressLevel + 9) / 18
   const hue = Math.round(w * 120)
   return `hsla(${hue}, 65%, 50%, 0.85)`
+}
+
+/** "today", "yesterday", or "Monday, Oct 12" — for sentences about a day */
+function dayPhrase(date: string): string {
+  const rel = relativeDateLabel(date)
+  if (rel === 'Today' || rel === 'Yesterday') return rel.toLowerCase()
+  return new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 /* ── Sub-components ──────────────────────────────────────────── */
@@ -77,24 +86,53 @@ export default function WellnessTracker() {
     return m
   }, [allLogs])
 
+  /* ── Which day is being logged ────────────────────────────── */
+  // An explicit date rather than "today": a day that rolls over at midnight
+  // while you are still in it stays reachable, and so does any earlier day.
+  const todayStr = todayISO()
+  const [logDate, setLogDate] = useState(todayStr)
+  const [mode,    setMode]    = useState<'mood' | 'checkin'>('mood')
+  const dayLog   = logMap.get(logDate) ?? null
+  const isPast   = logDate < todayStr
+
   /* ── Mood logging state ───────────────────────────────────── */
   const [selectedMood, setSelectedMood] = useState<MoodVector | null>(null)
   const [notes,        setNotes]        = useState('')
   const [justLogged,   setJustLogged]   = useState(false)
 
+  // Load the chosen day's entry into the form — once per day, and once more
+  // when that day's row first appears. Re-running on every live-query result
+  // would wipe a journal entry mid-sentence whenever anything else is saved.
+  const prefilled = useRef<string>('')
   useEffect(() => {
-    if (mh.todayLog?.moodVector) {
-      const m = MOOD_MAP[mh.todayLog.moodVector as MoodKey]
-      if (m) { setSelectedMood(m); setNotes(mh.todayLog.qualitativeNotes) }
-    }
-  }, [mh.todayLog])
+    const key = `${logDate}:${dayLog?.id ?? 'none'}`
+    if (prefilled.current === key) return
+    prefilled.current = key
+    const m = dayLog ? MOOD_MAP[dayLog.moodVector as MoodKey] ?? null : null
+    setSelectedMood(m)
+    setNotes(dayLog?.qualitativeNotes ?? '')
+    setJustLogged(false)
+  }, [logDate, dayLog])
 
   const handleLog = useCallback(async () => {
     if (!selectedMood || mh.submitting) return
-    await mh.logMood(selectedMood, notes)
+    await mh.logMood(selectedMood, notes, logDate)
     setJustLogged(true)
     setTimeout(() => setJustLogged(false), 2200)
-  }, [selectedMood, notes, mh])
+  }, [selectedMood, notes, logDate, mh])
+
+  // The week ending on the logged day — what the check-in averages against.
+  const weekLogs = useMemo(() => {
+    const from = addDaysISO(logDate, -6)
+    return allLogs.filter(l => l.logDate >= from && l.logDate <= logDate)
+  }, [allLogs, logDate])
+
+  const logPaneRef = useRef<HTMLDivElement>(null)
+  const editDay = useCallback((date: string) => {
+    if (date > todayISO()) return
+    setLogDate(date)
+    logPaneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
 
   /* ── Calendar state ───────────────────────────────────────── */
   const today = new Date()
@@ -104,9 +142,9 @@ export default function WellnessTracker() {
 
   const monthCells = useMemo(() => buildMonthCells(calYear, calMonth), [calYear, calMonth])
   const selectedLog = selectedDay ? (logMap.get(selectedDay) ?? null) : null
-  const todayStr    = todayISO()
   const monthLabel  = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const dateDisplay = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const dateDisplay = new Date(logDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const selectedCheckin = selectedLog?.emotions ? scoreCheckin(selectedLog.emotions) : null
 
   const prevMonth = useCallback(() => {
     setSelectedDay(null)
@@ -134,7 +172,7 @@ export default function WellnessTracker() {
         {/* ════════════════════════════════════════════════════
             LEFT PANE — MOOD LOGGING
             ════════════════════════════════════════════════════ */}
-        <div className={`${styles.card} anim-scale-in`}>
+        <div ref={logPaneRef} className={`${styles.card} anim-scale-in`}>
 
           <div className={styles.cardHeader}>
             <div>
@@ -144,10 +182,79 @@ export default function WellnessTracker() {
             <span className={styles.cardDate}>{dateDisplay}</span>
           </div>
 
+          {/* Which day — today, yesterday, or any earlier date */}
+          <div className={styles.dayPicker} role="group" aria-label="Day to log">
+            <button
+              type="button"
+              className={`${styles.dayPickBtn} ${logDate === todayStr ? styles.dayPickBtnOn : ''}`}
+              onClick={() => setLogDate(todayStr)}
+              aria-pressed={logDate === todayStr}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={`${styles.dayPickBtn} ${logDate === addDaysISO(todayStr, -1) ? styles.dayPickBtnOn : ''}`}
+              onClick={() => setLogDate(addDaysISO(todayStr, -1))}
+              aria-pressed={logDate === addDaysISO(todayStr, -1)}
+            >
+              Yesterday
+            </button>
+            <input
+              type="date"
+              className={styles.dayPickInput}
+              value={logDate}
+              max={todayStr}
+              onChange={e => { if (e.target.value && e.target.value <= todayStr) setLogDate(e.target.value) }}
+              aria-label="Pick a day"
+            />
+          </div>
+
+          {isPast && (
+            <div className={styles.pastChip}>
+              <Icon name="edit" size={13} />
+              {dayLog ? 'Editing' : 'Adding an entry for'} {dayPhrase(logDate)}
+            </div>
+          )}
+
+          {/* Quick mood, or the longer feelings check-in */}
+          <div className={styles.modeTabs} role="tablist" aria-label="Log type">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'mood'}
+              className={`${styles.modeTab} ${mode === 'mood' ? styles.modeTabOn : ''}`}
+              onClick={() => setMode('mood')}
+            >
+              Quick mood
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'checkin'}
+              className={`${styles.modeTab} ${mode === 'checkin' ? styles.modeTabOn : ''}`}
+              onClick={() => setMode('checkin')}
+            >
+              Feelings check-in
+              {dayLog?.emotions && <span className={styles.modeTabDot} aria-label="saved" />}
+            </button>
+          </div>
+
+          {mode === 'checkin' ? (
+            <EmotionCheckin
+              date={logDate}
+              saved={dayLog?.emotions}
+              savedAt={dayLog?.checkinAt}
+              recent={weekLogs}
+              submitting={mh.submitting}
+              onSave={answers => mh.saveCheckin(answers, logDate)}
+            />
+          ) : (<>
+
           {justLogged && (
             <div className={`${styles.todayChip} anim-scale-in`}>
               <span className={styles.todayChipDot} aria-hidden="true" />
-              Logged for today
+              Logged for {dayPhrase(logDate)}
             </div>
           )}
 
@@ -197,8 +304,10 @@ export default function WellnessTracker() {
             onClick={handleLog}
             disabled={!selectedMood || mh.submitting}
           >
-            {mh.submitting ? 'Logging…' : justLogged ? '✓ Logged' : 'Log Entry'}
+            {mh.submitting ? 'Logging…' : justLogged ? '✓ Logged' : dayLog ? 'Update Entry' : 'Log Entry'}
           </button>
+
+          </>)}
 
           <div className={styles.divider} aria-hidden="true" />
 
@@ -360,6 +469,14 @@ export default function WellnessTracker() {
                     <StatBar name="Stress" value={selectedLog.stressLevel} variant="stress" />
                     <StatBar name="Energy" value={selectedLog.energyLevel} variant="energy" />
                   </div>
+                  {selectedCheckin?.overall != null && (
+                    <p className={styles.calDetailCheckin}>
+                      Check-in: <strong>{selectedCheckin.overall}/100</strong> · {overallLabel(selectedCheckin.overall)}
+                      {selectedCheckin.focusAreas.length > 0 && (
+                        <> · lowest: {selectedCheckin.focusAreas.map(a => a.label).join(', ')}</>
+                      )}
+                    </p>
+                  )}
                   {selectedLog.qualitativeNotes ? (
                     <p className={styles.calDetailNotes}>
                       &ldquo;{selectedLog.qualitativeNotes}&rdquo;
@@ -370,6 +487,16 @@ export default function WellnessTracker() {
                 </>
               ) : (
                 <p className={styles.calDetailEmpty}>No entry logged for this day.</p>
+              )}
+              {selectedDay <= todayStr && (
+                <button
+                  type="button"
+                  className={styles.calEditBtn}
+                  onClick={() => editDay(selectedDay)}
+                >
+                  <Icon name="edit" size={13} />
+                  {selectedLog ? 'Edit this day' : 'Add an entry for this day'}
+                </button>
               )}
             </div>
           ) : (
