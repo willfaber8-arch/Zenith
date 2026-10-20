@@ -1,6 +1,7 @@
 
 import type { IconName } from '@/components/ui/Icon'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
+import type { EmotionAnswers } from '@/utils/emotionCheckin'
 /**
  * utils/mentalHealthLog.ts — Mental Health Log Schema & Evaluator
  * Phase 5 · Step 5.7 — Mental Health Mapping & Slope Day Hype Tracker
@@ -27,6 +28,14 @@ export interface MentalHealthLog {
   qualitativeNotes: string   //   micro-journal free text
   moodVector:       string   //   MoodKey stored as string
   createdAt:        number   // * indexed — Unix ms
+  /**
+   * Emotion check-in answers, intensity 0–4 per question
+   * (utils/emotionCheckin.ts). Optional and non-indexed — logs written
+   * before the check-in existed simply have none.
+   */
+  emotions?:        EmotionAnswers
+  /** Unix ms the check-in was last saved */
+  checkinAt?:       number
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -66,6 +75,21 @@ export const MOOD_MAP: Record<MoodKey, MoodVector> = Object.fromEntries(
   MOOD_VECTORS.map(m => [m.key, m]),
 ) as Record<MoodKey, MoodVector>
 
+/**
+ * The mood whose preset stress/energy sits closest to a reading. Used when
+ * a day has a check-in but no mood picked, so the calendar and the 3-day
+ * trend still have an icon and label to show.
+ */
+export function nearestMood(stressLevel: number, energyLevel: number): MoodVector {
+  let best = MOOD_VECTORS[0]
+  let bestD = Infinity
+  for (const m of MOOD_VECTORS) {
+    const d = (m.stressLevel - stressLevel) ** 2 + (m.energyLevel - energyLevel) ** 2
+    if (d < bestD) { best = m; bestD = d }
+  }
+  return best
+}
+
 /* ════════════════════════════════════════════════════════════════
    DATE UTILITIES
    ════════════════════════════════════════════════════════════════ */
@@ -75,6 +99,14 @@ function dateISO(daysAgo: number): string {
   const d = new Date()
   d.setDate(d.getDate() - daysAgo)
   return toLocalDateStr(d)
+}
+
+/**
+ * A day can be logged when it is a real date that is not in the future.
+ * Any past day is fair game — including yesterday after midnight.
+ */
+export function isLoggableDate(date: string, today: string = todayISO()): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today
 }
 
 /** Returns a friendly relative label: "Today", "Yesterday", or "Mon 31" */

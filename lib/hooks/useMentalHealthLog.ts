@@ -7,14 +7,25 @@
  * rolling 3-day MentalStateEvaluation automatically on every IDB change.
  * One log per calendar day — subsequent logs on the same day update the
  * existing row rather than inserting a duplicate.
+ *
+ * Every write takes the day it is for. Past days are editable (a day you
+ * forgot to log, or one that rolled over at midnight while you were still
+ * in it); future days are refused.
  */
 
 import { useState, useCallback, useMemo } from 'react'
 import { useLiveQuery }                   from 'dexie-react-hooks'
 import { db }                             from '@/lib/db'
 import { syncHabitSource }                from '@/lib/habitSync'
+import { currentDayISO }                from '@/utils/dayBoundary'
+import {
+  stressEnergyFromCheckin,
+  type EmotionAnswers,
+} from '@/utils/emotionCheckin'
 import {
   evaluateMentalState,
+  isLoggableDate,
+  nearestMood,
   MOOD_MAP,
   type MoodKey,
   type MoodVector,
@@ -31,6 +42,18 @@ function sevenDaysAgo(): string {
   return toLocalDateStr(d)
 }
 
+/* ── Writes ──────────────────────────────────────────────────── */
+
+/**
+ * Ticks any habit linked to the mood source — but only for an entry about
+ * the habit day being tracked now (today, or yesterday while the habit
+ * cutoff still counts it). Filling in last Tuesday's mood must not tick
+ * today's habit.
+ */
+function syncMoodHabit(date: string): void {
+  if (date === todayISO() || date === currentDayISO()) void syncHabitSource('mood', 1)
+}
+
 /* ── Hook return type ────────────────────────────────────────── */
 
 export interface MentalHealthLogState {
@@ -43,16 +66,22 @@ export interface MentalHealthLogState {
   /** True while an IDB write is in-flight */
   submitting:    boolean
   /**
-   * Log a mood for today.
-   * If a log already exists for today, it is updated atomically.
+   * Log a mood for a day (default today).
+   * If a log already exists for that day, it is updated atomically.
    * notes defaults to '' if omitted.
    */
-  logMood:       (mood: MoodVector, notes?: string) => Promise<void>
+  logMood:       (mood: MoodVector, notes?: string, date?: string) => Promise<void>
   /**
    * Quick one-tap log by MoodKey — resolves the vector automatically.
    * This is what the emoji grid buttons call.
    */
-  quickLog:      (key: MoodKey, notes?: string) => Promise<void>
+  quickLog:      (key: MoodKey, notes?: string, date?: string) => Promise<void>
+  /**
+   * Save an emotion check-in for a day (default today). An existing log
+   * keeps its mood, stress, energy and journal; a day with no log gets
+   * stress/energy derived from the answers and the nearest mood.
+   */
+  saveCheckin:   (answers: EmotionAnswers, date?: string) => Promise<void>
 }
 
 /* ── Hook ────────────────────────────────────────────────────── */
@@ -88,15 +117,14 @@ export function useMentalHealthLog(): MentalHealthLogState {
 
   /* ── Core write operation ─────────────────────────────────── */
 
-  const logMood = useCallback(async (mood: MoodVector, notes = '') => {
+  const logMood = useCallback(async (mood: MoodVector, notes = '', date = todayISO()) => {
+    if (!isLoggableDate(date)) return
     setSubmitting(true)
-    const today = todayISO()
     try {
       const existing = await db.mentalHealthLogs
-        .where('logDate').equals(today).first()
+        .where('logDate').equals(date).first()
 
       if (existing?.id !== undefined) {
-        // Update existing entry for today
         await db.mentalHealthLogs.update(existing.id, {
           stressLevel:      mood.stressLevel,
           energyLevel:      mood.energyLevel,
@@ -104,9 +132,8 @@ export function useMentalHealthLog(): MentalHealthLogState {
           moodVector:       mood.key,
         })
       } else {
-        // Insert new entry
         await db.mentalHealthLogs.add({
-          logDate:          today,
+          logDate:          date,
           stressLevel:      mood.stressLevel,
           energyLevel:      mood.energyLevel,
           qualitativeNotes: notes,
@@ -114,8 +141,42 @@ export function useMentalHealthLog(): MentalHealthLogState {
           createdAt:        Date.now(),
         })
       }
-      // Auto-advance any habit linked to the mood source (one check-in).
-      void syncHabitSource('mood', 1)
+      syncMoodHabit(date)
+    } finally {
+      setSubmitting(false)
+    }
+  }, [])
+
+  /* ── Emotion check-in ─────────────────────────────────────── */
+
+  const saveCheckin = useCallback(async (answers: EmotionAnswers, date = todayISO()) => {
+    if (!isLoggableDate(date)) return
+    setSubmitting(true)
+    try {
+      const existing = await db.mentalHealthLogs
+        .where('logDate').equals(date).first()
+
+      if (existing?.id !== undefined) {
+        // The mood and journal were chosen by hand — the check-in sits
+        // beside them rather than overwriting them.
+        await db.mentalHealthLogs.update(existing.id, {
+          emotions:  answers,
+          checkinAt: Date.now(),
+        })
+      } else {
+        const { stressLevel, energyLevel } = stressEnergyFromCheckin(answers)
+        await db.mentalHealthLogs.add({
+          logDate:          date,
+          stressLevel,
+          energyLevel,
+          qualitativeNotes: '',
+          moodVector:       nearestMood(stressLevel, energyLevel).key,
+          createdAt:        Date.now(),
+          emotions:         answers,
+          checkinAt:        Date.now(),
+        })
+      }
+      syncMoodHabit(date)
     } finally {
       setSubmitting(false)
     }
@@ -124,12 +185,12 @@ export function useMentalHealthLog(): MentalHealthLogState {
   /* ── Quick log by key ─────────────────────────────────────── */
 
   const quickLog = useCallback(
-    async (key: MoodKey, notes = '') => {
+    async (key: MoodKey, notes = '', date?: string) => {
       const mood = MOOD_MAP[key]
-      if (mood) await logMood(mood, notes)
+      if (mood) await logMood(mood, notes, date)
     },
     [logMood],
   )
 
-  return { logs, todayLog, evaluation, submitting, logMood, quickLog }
+  return { logs, todayLog, evaluation, submitting, logMood, quickLog, saveCheckin }
 }
