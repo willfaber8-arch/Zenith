@@ -21,6 +21,9 @@
  *     same in-place confirm the rest of Zenith uses (ConfirmDelete), not
  *     a dialog on top of the banner.
  *   · There is always a way to decide later that changes nothing.
+ *   · When both changed, the version changed most recently comes first,
+ *     with the green button — the usual answer is "the one I was just
+ *     using", so it is the one under your thumb.
  */
 
 import { useEffect, useState } from 'react'
@@ -40,6 +43,8 @@ interface Choice {
   what?:     string
   run:      () => void | Promise<unknown>
   primary?: boolean
+  /** The suggested choice in a conflict: the most recently changed version. Shown green. */
+  newest?:  boolean
   /** Set on a choice that replaces data: the question asked before it runs… */
   confirm?: string
   /** …and the button that answers it. */
@@ -52,6 +57,8 @@ interface Side {
   when:    string
   /** Shown instead of counts when there is no such copy at all. */
   none?:   string
+  /** Marked as the most recently changed of the two. */
+  newest?: boolean
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`
@@ -64,6 +71,28 @@ export function describeSummary(s: DataSummary | null | undefined): string {
     plural(s.notes, 'note'), plural(s.tasks, 'task'),
     plural(s.habits, 'habit'), plural(s.events, 'event'),
   ].join(' · ')
+}
+
+/**
+ * Which version changed most recently: this device's last edit, or the
+ * cloud copy's last save. Null when there is nothing to compare.
+ *
+ * This compares this device's clock with the server's, which sync itself
+ * never does (CLAUDE.md rule 114) — but this only decides which button is
+ * listed first. Being a minute out can reorder two buttons; it cannot
+ * move any data.
+ */
+export function newerSide(
+  changedHereAt: number | null | undefined,
+  cloudSavedAt:  string | null | undefined,
+): 'device' | 'cloud' | null {
+  const cloudMs = cloudSavedAt ? Date.parse(cloudSavedAt) : NaN
+  const hasHere  = typeof changedHereAt === 'number' && Number.isFinite(changedHereAt)
+  const hasCloud = Number.isFinite(cloudMs)
+  if (!hasHere && !hasCloud) return null
+  if (!hasCloud) return 'device'
+  if (!hasHere)  return 'cloud'
+  return (changedHereAt as number) >= cloudMs ? 'device' : 'cloud'
 }
 
 function Explain({ choice }: { choice: Choice }) {
@@ -138,30 +167,38 @@ export default function CloudSyncBanner() {
     none:    hasCloudCopy ? undefined : 'Nothing saved in the cloud yet',
   }
 
+  /* In a conflict, the version changed most recently goes first. Ties and
+     unknowns keep this device first, as it always was. */
+  const newer = newerSide(changedHere, sync.remoteMeta?.updatedAt)
+  const cloudFirst = newer === 'cloud'
+  const keepHere: Choice = {
+    label: 'Keep this device’s version',
+    replaces: `${other}’s version in the cloud. Your other devices switch to this one next time they open Zenith.`,
+    keeps:    `${other}’s version, as a safety copy on this device.`,
+    run:     sync.keepThisDevice,
+    confirm: `Replace ${other}’s changes with this device’s?`,
+    yes:     'Yes, keep this device’s',
+  }
+  const keepCloud: Choice = {
+    label: `Keep ${other}’s version`,
+    replaces: 'The changes made on this device. The page reloads.',
+    keeps:    'This device’s version, as a safety copy on this device.',
+    run:     sync.keepCloud,
+    confirm: `Replace this device’s changes with ${other}’s?`,
+    yes:     `Yes, keep ${other}’s`,
+  }
+  const [firstChoice, secondChoice] = cloudFirst ? [keepCloud, keepHere] : [keepHere, keepCloud]
+  const [firstSide, secondSide]     = cloudFirst ? [cloud, thisDevice] : [thisDevice, cloud]
+
   const copy: Record<SyncBlock | 'update', { title: string; body: string; sides?: [Side, Side]; choices: Choice[] } | null> = {
     conflict: {
       title: 'Both devices changed since they last synced',
       body:  `This device and ${other} each have changes the other hasn’t seen. Nothing has been saved or loaded — ` +
              'sync is paused until you choose which version to keep.',
-      sides: [thisDevice, cloud],
+      sides: [{ ...firstSide, newest: newer != null }, secondSide],
       choices: [
-        {
-          label: 'Keep this device’s version',
-          replaces: `${other}’s version in the cloud. Your other devices switch to this one next time they open Zenith.`,
-          keeps:    `${other}’s version, as a safety copy on this device.`,
-          run:     sync.keepThisDevice,
-          primary: true,
-          confirm: `Replace ${other}’s changes with this device’s?`,
-          yes:     'Yes, keep this device’s',
-        },
-        {
-          label: `Keep ${other}’s version`,
-          replaces: 'The changes made on this device. The page reloads.',
-          keeps:    'This device’s version, as a safety copy on this device.',
-          run:     sync.keepCloud,
-          confirm: `Replace this device’s changes with ${other}’s?`,
-          yes:     `Yes, keep ${other}’s`,
-        },
+        { ...firstChoice, primary: true, newest: newer != null },
+        secondChoice,
         {
           label: 'Decide later',
           what:  'Changes nothing. Sync stays paused, so anything you do here stays on this device until you choose.',
@@ -300,7 +337,10 @@ export default function CloudSyncBanner() {
         <div className={styles.sides} aria-label="What each version holds">
           {c.sides.map(side => (
             <div key={side.heading} className={styles.side}>
-              <p className={styles.sideHeading}>{side.heading}</p>
+              <p className={styles.sideHeading}>
+                {side.heading}
+                {side.newest && <span className={styles.newestTag}>Most recent</span>}
+              </p>
               <p className={styles.sideSummary}>{side.none ?? describeSummary(side.summary)}</p>
               {!side.none && <p className={styles.sideWhen}>{side.when}</p>}
             </div>
@@ -332,7 +372,7 @@ export default function CloudSyncBanner() {
             <li key={ch.label} className={styles.choice}>
               <button
                 type="button"
-                className={`${styles.btn} ${ch.primary ? styles.btnPrimary : ''}`}
+                className={`${styles.btn} ${ch.newest ? styles.btnNewest : ch.primary ? styles.btnPrimary : ''}`}
                 onClick={() => (ch.confirm ? setArmed(ch.label) : void ch.run())}
                 disabled={busy}
               >

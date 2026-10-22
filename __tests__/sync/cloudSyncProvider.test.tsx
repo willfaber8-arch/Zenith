@@ -198,3 +198,40 @@ it('does nothing at all when cloud sync is not available', async () => {
   expect(screen.queryByRole('alert')).toBeNull()            // no banner
   expect(cloud.row).toBeNull()
 })
+
+/* ═══ The most recently changed version is offered first ════════════ */
+
+const choiceOrder = () => screen.getAllByRole('button')
+  .map(b => b.textContent ?? '')
+  .filter(t => /^Keep .*version$/.test(t))
+
+it('lists the other device first, in green, when it saved after this device last changed', async () => {
+  await addNote('laptop'); await pushSnapshot()
+  await addNote('laptop edit')
+  setSnapshotMeta({ lastLocalChangeAt: null })   // drop the real-time stamp the add just made
+  setSnapshotMeta({ lastLocalChangeAt: cloud.clock - 60 * 60_000 })
+  otherDeviceWrites(['phone version'])
+
+  mount()
+  await screen.findByText('Both devices changed since they last synced')
+
+  expect(choiceOrder()).toEqual(['Keep Safari · iOS’s version', 'Keep this device’s version'])
+  expect(screen.getByRole('button', { name: 'Keep Safari · iOS’s version' }).className).toMatch(/btnNewest/)
+  expect(screen.getByRole('button', { name: 'Keep this device’s version' }).className).not.toMatch(/btnNewest/)
+  expect(screen.getByText('Most recent').closest('p')?.textContent).toContain('Safari · iOS')
+})
+
+it('lists this device first, in green, when it changed after the cloud copy was saved', async () => {
+  await addNote('laptop'); await pushSnapshot()
+  otherDeviceWrites(['phone version'])
+  await addNote('laptop edit')
+  setSnapshotMeta({ lastLocalChangeAt: null })   // drop the real-time stamp the add just made
+  setSnapshotMeta({ lastLocalChangeAt: cloud.clock + 60 * 60_000 })
+
+  mount()
+  await screen.findByText('Both devices changed since they last synced')
+
+  expect(choiceOrder()).toEqual(['Keep this device’s version', 'Keep Safari · iOS’s version'])
+  expect(screen.getByRole('button', { name: 'Keep this device’s version' }).className).toMatch(/btnNewest/)
+  expect(screen.getByText('Most recent').closest('p')?.textContent).toContain('This device')
+})

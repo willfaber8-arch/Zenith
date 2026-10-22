@@ -186,6 +186,25 @@
   color: var(--bg-main);
 }
 
+.btnNewest {
+  border-color: transparent;
+  background: var(--accent-green);
+  color: var(--bg-main);
+}
+
+.newestTag {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: 999px;
+  background: rgba(82, 204, 163, 0.14);
+  color: var(--accent-green);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 .btnDanger {
   border-color: transparent;
   background: var(--accent-warm);
