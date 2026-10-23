@@ -27,6 +27,8 @@ import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase'
 import { buildBackupPayload, collectSettings }     from '@/utils/dbExporter'
 import { importJsonToLocalDatabase }               from '@/utils/dbImporter'
 import { storeSafetyCopy }                         from '@/utils/dbSnapshots'
+import { isHousekeeping }                          from '@/lib/housekeepingWrites'
+import type { Transaction }                        from 'dexie'
 
 /* ── Constants ────────────────────────────────────────────────────── */
 
@@ -375,6 +377,40 @@ export async function hasMeaningfulLocalData(): Promise<boolean> {
 let _trackingStarted = false
 
 /**
+ * Tables whose writes are never a change to sync.
+ *
+ * The queue tables churn as a *side effect* of syncing. `db_snapshots` is
+ * this device's own safety copies, which never leave it (buildBackupPayload
+ * skips them). The daily one is written the first time Zenith opens each
+ * day, so tracking it stamped "changed here just now" on a device that had
+ * only been opened — and that device then looked like the newest version
+ * in the sync banner, and conflicted with every change made elsewhere.
+ */
+export const UNTRACKED_TABLES: ReadonlySet<string> = new Set([
+  'pendingSyncQueue',
+  'outboxMutations',
+  'db_snapshots',
+])
+
+/** Stamps a change unless the write is the app's own upkeep (lib/housekeepingWrites). */
+function trackWrite(tx: Transaction | undefined): void {
+  if (!isHousekeeping(tx)) markLocalChange()
+}
+
+type HookedTable = {
+  name: string
+  hook(event: 'creating', fn: (key: unknown, obj: unknown, tx: Transaction) => void): void
+  hook(event: 'updating', fn: (mods: unknown, key: unknown, obj: unknown, tx: Transaction) => void): void
+  hook(event: 'deleting', fn: (key: unknown, obj: unknown, tx: Transaction) => void): void
+}
+
+function hookTable(table: HookedTable): void {
+  table.hook('creating', (_k, _o, tx) => { trackWrite(tx) })
+  table.hook('updating', (_m, _k, _o, tx) => { trackWrite(tx); return undefined })
+  table.hook('deleting', (_k, _o, tx) => { trackWrite(tx) })
+}
+
+/**
  * Registers creating/updating/deleting hooks on every Dexie table so any write
  * anywhere in the app stamps the local-change watermark.
  *
@@ -394,17 +430,9 @@ export function startSnapshotChangeTracking(): void {
     _trackingStarted = true
 
     for (const table of db.tables) {
-      /*
-       * Queue tables churn constantly as a *side effect* of syncing; treating
-       * their writes as user changes would keep the profile permanently dirty.
-       */
-      if (table.name === 'pendingSyncQueue' || table.name === 'outboxMutations') {
-        continue
-      }
+      if (UNTRACKED_TABLES.has(table.name)) continue
       try {
-        table.hook('creating', () => { markLocalChange() })
-        table.hook('updating', () => { markLocalChange(); return undefined })
-        table.hook('deleting', () => { markLocalChange() })
+        hookTable(table as unknown as HookedTable)
       } catch {
         /* A table that refuses hooks is non-fatal — the periodic dirty-check
            in the controller still catches it on the next visibility change. */
@@ -421,9 +449,7 @@ export function startSnapshotChangeTracking(): void {
     if (!gamesDb) return
     for (const table of gamesDb.tables) {
       try {
-        table.hook('creating', () => { markLocalChange() })
-        table.hook('updating', () => { markLocalChange(); return undefined })
-        table.hook('deleting', () => { markLocalChange() })
+        hookTable(table as unknown as HookedTable)
       } catch { /* non-fatal, as above */ }
     }
   }).catch(() => { /* Arcade DB unavailable — nothing to track */ })

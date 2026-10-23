@@ -24,6 +24,7 @@
  */
 
 import { db, type Assignment } from '@/lib/db'
+import { markHousekeeping } from '@/lib/housekeepingWrites'
 
 /** How long finished tasks stay, in days. `null` means keep them. */
 export type RetentionDays = 7 | 14 | 30 | null
@@ -96,35 +97,45 @@ export async function sweepCompletedTasks(
   const retention = opts.retention !== undefined ? opts.retention : readRetention()
   const now       = opts.now ?? Date.now()
 
-  /* `status` is indexed, so this reads only the finished ones. */
-  const done: Assignment[] = await db.assignments
-    .where('status').equals('completed').toArray()
-  if (done.length === 0) return { removed: 0, stamped: 0 }
-
   /*
-   * Anything finished before completedAt existed has no clock. Give it
-   * one now instead of treating "unknown" as "old" — the alternative
-   * deletes a year of finished work the first time the app opens after
-   * an update, which is not something anyone asked for.
-   *
-   * This happens even when retention is off, so turning it on later
-   * still starts everyone's window from a sensible place.
+   * The app's own upkeep, not something you did: the transaction is tagged
+   * so cloud sync does not count it as "changed here" (lib/housekeepingWrites).
+   * Reading inside the same transaction also means a task you re-open while
+   * the sweep runs cannot be deleted from a stale list.
    */
-  const unstamped = done.filter(a => a.completedAt == null && a.id != null)
-  if (unstamped.length > 0) {
-    await db.assignments.bulkUpdate(
-      unstamped.map(a => ({ key: a.id as number, changes: { completedAt: now } })),
-    )
-  }
+  return db.transaction('rw', db.assignments, async tx => {
+    markHousekeeping(tx)
 
-  if (retention === null) return { removed: 0, stamped: unstamped.length }
+    /* `status` is indexed, so this reads only the finished ones. */
+    const done: Assignment[] = await db.assignments
+      .where('status').equals('completed').toArray()
+    if (done.length === 0) return { removed: 0, stamped: 0 }
 
-  const cutoff = now - retention * DAY_MS
-  const expired = done
-    .filter(a => a.completedAt != null && a.completedAt <= cutoff && a.id != null)
-    .map(a => a.id as number)
+    /*
+     * Anything finished before completedAt existed has no clock. Give it
+     * one now instead of treating "unknown" as "old" — the alternative
+     * deletes a year of finished work the first time the app opens after
+     * an update, which is not something anyone asked for.
+     *
+     * This happens even when retention is off, so turning it on later
+     * still starts everyone's window from a sensible place.
+     */
+    const unstamped = done.filter(a => a.completedAt == null && a.id != null)
+    if (unstamped.length > 0) {
+      await db.assignments.bulkUpdate(
+        unstamped.map(a => ({ key: a.id as number, changes: { completedAt: now } })),
+      )
+    }
 
-  if (expired.length > 0) await db.assignments.bulkDelete(expired)
+    if (retention === null) return { removed: 0, stamped: unstamped.length }
 
-  return { removed: expired.length, stamped: unstamped.length }
+    const cutoff = now - retention * DAY_MS
+    const expired = done
+      .filter(a => a.completedAt != null && a.completedAt <= cutoff && a.id != null)
+      .map(a => a.id as number)
+
+    if (expired.length > 0) await db.assignments.bulkDelete(expired)
+
+    return { removed: expired.length, stamped: unstamped.length }
+  })
 }
