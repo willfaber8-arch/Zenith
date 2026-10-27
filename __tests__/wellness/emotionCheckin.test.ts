@@ -1,170 +1,212 @@
 /**
- * The feelings check-in, and editing a day after it has ended.
+ * The daily check-in: five sliders, and what they add up to.
  *
- * The mood grid only asked about the school day (Busy, Focused, Drained).
- * The check-in asks how you actually feel — happy, sad, angry, anxious,
- * unfocused — and averages it. Half the questions are about feelings you
- * want more of and half about feelings you want less of, so the thing most
- * worth pinning down is that both point the same way before averaging:
- * "very sad" must never count as a good answer.
+ * Asked for as "shorter, and it should actually calculate something".
+ * So these pin the calculations: category scores that read the right way
+ * round (stress is the one where more is worse), today against your own
+ * usual, and links between how you feel and what you did — which must
+ * only appear when there are enough days on both sides to mean anything.
  */
 
 import {
-  EMOTION_QUESTIONS, EMOTION_PHASES, MAX_INTENSITY,
-  wellbeingFor, scoreCheckin, averageCheckins, stressEnergyFromCheckin,
-  overallLabel, NEEDS_WORK, MAX_FOCUS_AREAS,
-  type EmotionAnswers,
+  CHECKIN_QUESTIONS, toScore, wellbeingOf, categoryScores, overallScore, bandLabel,
+  answersFromLog, hasFullCheckin, compareToUsual, describeDelta, wellbeingSeries,
+  findLinks, buildFactorDays, habitDayStats, MIN_DAYS_PER_SIDE,
+  type CheckinAnswers, type CheckinSource,
 } from '@/utils/emotionCheckin'
 import { isLoggableDate, nearestMood, MOOD_MAP } from '@/utils/mentalHealthLog'
+import { addDaysISO } from '@/utils/localDate'
+import type { Habit } from '@/lib/db'
 
-/** Every question answered with the best possible answer */
-function best(): EmotionAnswers {
-  return Object.fromEntries(EMOTION_QUESTIONS.map(q => [q.key, q.positive ? MAX_INTENSITY : 0]))
-}
-/** Every question answered with the worst possible answer */
-function worst(): EmotionAnswers {
-  return Object.fromEntries(EMOTION_QUESTIONS.map(q => [q.key, q.positive ? 0 : MAX_INTENSITY]))
-}
+const all = (v: number): CheckinAnswers => ({ mood: v, stress: v, energy: v, focus: v, connection: v })
+const day = (logDate: string, checkin: CheckinAnswers): CheckinSource => ({ logDate, checkin })
 
-describe('questionnaire shape', () => {
-  it('asks about real feelings, not just school', () => {
-    const keys = EMOTION_QUESTIONS.map(q => q.key)
-    for (const k of ['happy', 'sad', 'angry', 'anxious', 'focused'] as const) expect(keys).toContain(k)
-  })
-
-  it('has several phases and no duplicate questions', () => {
-    expect(EMOTION_PHASES.length).toBeGreaterThan(1)
-    const keys = EMOTION_QUESTIONS.map(q => q.key)
-    expect(new Set(keys).size).toBe(keys.length)
+describe('the questions', () => {
+  it('are five, on one screen', () => {
+    expect(CHECKIN_QUESTIONS.map(q => q.key)).toEqual(['mood', 'stress', 'energy', 'focus', 'connection'])
   })
 })
 
-describe('wellbeingFor', () => {
-  it('scores positive feelings up and negative feelings down', () => {
-    expect(wellbeingFor('happy', 4)).toBe(100)
-    expect(wellbeingFor('happy', 0)).toBe(0)
-    expect(wellbeingFor('sad', 0)).toBe(100)
-    expect(wellbeingFor('sad', 4)).toBe(0)
-    expect(wellbeingFor('angry', 2)).toBe(50)
+describe('category scores', () => {
+  it('maps 1–10 onto 0–100', () => {
+    expect(toScore(1)).toBe(0)
+    expect(toScore(10)).toBe(100)
+    expect(toScore(5)).toBe(44)
   })
 
-  it('clamps out-of-range intensities', () => {
-    expect(wellbeingFor('happy', 9)).toBe(100)
-    expect(wellbeingFor('sad', -3)).toBe(100)
-  })
-})
-
-describe('scoreCheckin', () => {
-  it('averages to 100 for the best answers and 0 for the worst', () => {
-    expect(scoreCheckin(best()).overall).toBe(100)
-    expect(scoreCheckin(worst()).overall).toBe(0)
+  it('counts stress the other way round for wellbeing — and shows it as stress', () => {
+    expect(wellbeingOf('mood', 10)).toBe(100)
+    expect(wellbeingOf('stress', 10)).toBe(0)
+    expect(wellbeingOf('stress', 1)).toBe(100)
+    const stress = categoryScores({ stress: 9 })[0]
+    expect(stress.score).toBe(89)
+    expect(stress.band).toBe('High')
+    expect(stress.tone).toBe('bad')
   })
 
-  it('returns null overall with nothing answered', () => {
-    expect(scoreCheckin({}).overall).toBeNull()
-    expect(scoreCheckin(undefined).overall).toBeNull()
+  it('names each band in the category\'s own terms', () => {
+    expect(bandLabel('mood', 90)).toBe('Good')
+    expect(bandLabel('mood', 10)).toBe('Very low')
+    expect(bandLabel('stress', 10)).toBe('Low')
   })
 
-  it('averages only the questions answered', () => {
-    const r = scoreCheckin({ happy: 4, sad: 4 })
-    expect(r.areas).toHaveLength(2)
-    expect(r.overall).toBe(50)
+  it('an overall score needs at least three answers', () => {
+    expect(overallScore({ stress: 2, energy: 9 })).toBeNull()
+    expect(overallScore({ mood: 10, stress: 1, energy: 10 })).toBe(100)
+    expect(overallScore({ mood: 1, stress: 10, energy: 1 })).toBe(0)
   })
 
-  it('ignores garbage values instead of counting them as zero', () => {
-    const r = scoreCheckin({ happy: 4, sad: NaN as number, angry: 'x' as unknown as number })
-    expect(r.areas.map(a => a.key)).toEqual(['happy'])
-    expect(r.overall).toBe(100)
-  })
-
-  it('names the lowest areas, worst first, capped', () => {
-    const a = best()
-    a.sad = 4        // 0
-    a.anxious = 3    // 25
-    a.focused = 1    // 25
-    a.lonely = 3     // 25
-    a.energy = 2     // 50 — not below NEEDS_WORK
-    const r = scoreCheckin(a)
-    expect(r.focusAreas.length).toBe(MAX_FOCUS_AREAS)
-    expect(r.focusAreas[0].key).toBe('sad')
-    expect(r.focusAreas.every(f => f.wellbeing < NEEDS_WORK)).toBe(true)
-    expect(r.focusAreas.map(f => f.key)).not.toContain('energy')
-    // Ties keep questionnaire order, so the same answers always give the same list.
-    expect(r.focusAreas.map(f => f.key)).toEqual(['sad', 'anxious', 'focused'])
-  })
-
-  it('has no focus areas on a good day, and lists strengths', () => {
-    const r = scoreCheckin(best())
-    expect(r.focusAreas).toEqual([])
-    expect(r.strengths.length).toBe(EMOTION_QUESTIONS.length)
+  it('ignores garbage rather than counting it as zero', () => {
+    expect(categoryScores({ mood: NaN, energy: 'x' as unknown as number, focus: 10 }).map(c => c.key)).toEqual(['focus'])
+    expect(categoryScores({ mood: 42 })[0].score).toBe(100)
   })
 })
 
-describe('averageCheckins', () => {
-  it('averages across days and skips days without a check-in', () => {
-    const t = averageCheckins([{ emotions: best() }, { emotions: worst() }, {}])
-    expect(t.days).toBe(2)
-    expect(t.overall).toBe(50)
+describe('reading a log', () => {
+  it('reads slider answers as they are', () => {
+    const log = { logDate: '2026-10-20', stressLevel: 3, energyLevel: 3, checkin: all(7) }
+    expect(answersFromLog(log)).toEqual(all(7))
+    expect(hasFullCheckin(log)).toBe(true)
   })
 
-  it('lists areas lowest first', () => {
-    const low = { ...best(), sad: 4 }
-    const t = averageCheckins([{ emotions: low }, { emotions: low }])
-    expect(t.areas[0].key).toBe('sad')
-    expect(t.areas[0].wellbeing).toBe(0)
+  it('maps an old twelve-question check-in onto the five categories', () => {
+    const a = answersFromLog({
+      logDate: '2026-10-01',
+      emotions: { happy: 4, sad: 0, anxious: 4, overwhelmed: 4, angry: 4, energy: 0, rested: 0, focused: 2, connected: 4, lonely: 0 },
+    })
+    expect(a).toEqual({ mood: 10, stress: 10, energy: 1, focus: 6, connection: 10 })
   })
 
-  it('averages an area only over days that answered it', () => {
-    const t = averageCheckins([{ emotions: { happy: 4 } }, { emotions: { sad: 0 } }])
-    expect(t.areas.find(a => a.key === 'happy')!.wellbeing).toBe(100)
-    expect(t.areas.find(a => a.key === 'sad')!.wellbeing).toBe(100)
+  it('a mood-only day still has its stress and energy', () => {
+    const log = { logDate: '2026-09-01', stressLevel: 8, energyLevel: 2 }
+    expect(answersFromLog(log)).toEqual({ stress: 8, energy: 2 })
+    expect(hasFullCheckin(log)).toBe(false)
   })
 })
 
-describe('stress and energy for a check-in-only day', () => {
-  it('maps a bad day to high stress, low energy — and a burnout-looking mood', () => {
-    const { stressLevel, energyLevel } = stressEnergyFromCheckin(worst())
-    expect(stressLevel).toBe(10)
-    expect(energyLevel).toBe(1)
-    expect(nearestMood(stressLevel, energyLevel).key).toBe('drained')
+describe('compared with your usual', () => {
+  const date = '2026-10-27'
+  const history = [1, 2, 3, 4, 5].map(n => day(addDaysISO(date, -n), all(5)))
+
+  it('compares today with the days before it, never with itself', () => {
+    const withToday = [...history, day(date, all(10))]
+    const mood = compareToUsual(date, all(10), withToday).find(c => c.key === 'mood')!
+    expect(mood.avg30).toBe(44)
+    expect(mood.delta).toBe(56)
+    expect(mood.better).toBe(true)
+    expect(mood.notable).toBe(true)
+    expect(describeDelta(mood)).toBe('56 above your usual')
   })
 
-  it('maps a good day to low stress, high energy', () => {
-    const { stressLevel, energyLevel } = stressEnergyFromCheckin(best())
-    expect(stressLevel).toBe(1)
-    expect(energyLevel).toBe(10)
-    expect(['thriving', 'energized']).toContain(nearestMood(stressLevel, energyLevel).key)
+  it('more stress than usual is worse, not better', () => {
+    const stress = compareToUsual(date, { stress: 9 }, history)[0]
+    expect(stress.delta).toBeGreaterThan(0)
+    expect(stress.better).toBe(false)
   })
 
-  it('falls back to the middle when nothing relevant was answered', () => {
-    expect(stressEnergyFromCheckin({})).toEqual({ stressLevel: 5, energyLevel: 5 })
+  it('says nothing until there are enough days to call it usual', () => {
+    const c = compareToUsual(date, all(9), history.slice(0, 2))[0]
+    expect(c.delta).toBeNull()
+    expect(describeDelta(c)).toBeNull()
   })
 
-  it('always produces a mood the rest of the page can show', () => {
+  it('a small difference is "about your usual"', () => {
+    const c = compareToUsual(date, all(5), history)[0]
+    expect(describeDelta(c)).toBe('About your usual')
+  })
+
+  it('the chart series is oldest first and skips days without an overall', () => {
+    const s = wellbeingSeries([day('2026-10-26', all(10)), { logDate: '2026-10-25', stressLevel: 5, energyLevel: 5 }, day('2026-10-20', all(1))], date)
+    expect(s.map(p => p.date)).toEqual(['2026-10-20', '2026-10-26'])
+  })
+})
+
+describe('links to your other data', () => {
+  // Ten days: the even ones had a workout and felt better.
+  const dates = Array.from({ length: 10 }, (_, i) => addDaysISO('2026-10-01', i))
+  const workout = new Set(dates.filter((_, i) => i % 2 === 0))
+  const history = dates.map((d, i) => day(d, i % 2 === 0
+    ? { mood: 6, stress: 4, energy: 9, focus: 6, connection: 6 }
+    : { mood: 6, stress: 4, energy: 3, focus: 6, connection: 6 }))
+
+  it('reports the metric that moves most, as a plain sentence', () => {
+    const [link] = findLinks(history, { workout })
+    expect(link.factor).toBe('workout')
+    expect(link.metric).toBe('energy')
+    expect(link.diff).toBe(67)
+    expect(link.better).toBe(true)
+    expect(link.sentence).toBe('On days you work out, your energy averages 67 points higher.')
+    expect(link.withDays).toBe(5)
+    expect(link.withoutDays).toBe(5)
+  })
+
+  it('needs enough days on both sides', () => {
+    const few = new Set(dates.slice(0, MIN_DAYS_PER_SIDE - 1))
+    expect(findLinks(history, { workout: few })).toEqual([])
+  })
+
+  it('stays quiet about small differences', () => {
+    const flat = dates.map(d => day(d, all(6)))
+    expect(findLinks(flat, { workout })).toEqual([])
+  })
+
+  it('a link with more stress is marked as the worse side', () => {
+    const busy = new Set(dates.slice(0, 5))
+    const h = dates.map((d, i) => day(d, { ...all(6), stress: i < 5 ? 9 : 3 }))
+    const [link] = findLinks(h, { busy })
+    expect(link.metric).toBe('stress')
+    expect(link.better).toBe(false)
+    expect(link.sentence).toBe('On days with 3+ tasks due, your stress averages 67 points higher.')
+  })
+
+  it('only counts check-in days inside the window', () => {
+    expect(findLinks(history, { workout }, { from: '2026-10-08' })).toEqual([])
+  })
+})
+
+describe('building the factor days', () => {
+  it('a busy day is three or more tasks due; habits kept means most of them', () => {
+    const f = buildFactorDays({
+      workoutDates: ['2026-10-01'], focusDates: [], readingDates: [],
+      taskDueDates: ['2026-10-02', '2026-10-02T23:59', '2026-10-02', '2026-10-03', 'garbage'],
+      habitDays: [
+        { date: '2026-10-01', scheduled: 4, done: 3 },
+        { date: '2026-10-02', scheduled: 4, done: 2 },
+        { date: '2026-10-03', scheduled: 0, done: 0 },
+      ],
+    })
+    expect([...f.busy!]).toEqual(['2026-10-02'])
+    expect([...f.habits!]).toEqual(['2026-10-01'])
+    expect(f.workout!.has('2026-10-01')).toBe(true)
+  })
+
+  it('habit days follow the schedule, the creation date and stay-under goals', () => {
+    const base = { frequency: 'daily', streakCount: 0, lastCompletedDate: null, category: '', activeDays: [] } as unknown as Habit
+    const habits = [
+      { ...base, id: 1, name: 'walk', targetCompletions: 1, createdAt: new Date(2026, 9, 1).getTime() },
+      { ...base, id: 2, name: 'no soda', targetCompletions: 0, goalType: 'at_most', createdAt: new Date(2026, 9, 1).getTime() },
+      { ...base, id: 3, name: 'new', targetCompletions: 1, createdAt: new Date(2026, 9, 3).getTime() },
+      { ...base, id: 4, name: 'skipped', targetCompletions: 1, createdAt: new Date(2026, 9, 1).getTime(), skippedDates: ['2026-10-02'] },
+    ] as Habit[]
+    const stats = habitDayStats(habits, [
+      { habitId: 1, date: '2026-10-02', count: 1 },
+      { habitId: 2, date: '2026-10-02', count: 2 },
+    ], '2026-10-02', '2026-10-03')
+    expect(stats[0]).toEqual({ date: '2026-10-02', scheduled: 2, done: 1 })
+    expect(stats[1]).toEqual({ date: '2026-10-03', scheduled: 4, done: 1 })
+  })
+})
+
+describe('saving', () => {
+  it('a check-in always has a mood the calendar can show', () => {
     for (let s = 1; s <= 10; s++) for (let e = 1; e <= 10; e++) {
       expect(MOOD_MAP[nearestMood(s, e).key]).toBeDefined()
     }
   })
-})
 
-describe('overallLabel', () => {
-  it('puts words to every score', () => {
-    for (const v of [0, 19, 20, 40, 60, 80, 100]) expect(overallLabel(v).length).toBeGreaterThan(0)
-    expect(overallLabel(90)).toBe('Doing well')
-    expect(overallLabel(5)).toBe('Having a hard time')
-  })
-})
-
-describe('isLoggableDate — past days stay editable after midnight', () => {
-  const today = '2026-10-20'
-  it('accepts today, yesterday and any earlier day', () => {
-    expect(isLoggableDate('2026-10-20', today)).toBe(true)
-    expect(isLoggableDate('2026-10-19', today)).toBe(true)
-    expect(isLoggableDate('2025-01-01', today)).toBe(true)
-  })
-  it('refuses the future and malformed dates', () => {
-    expect(isLoggableDate('2026-10-21', today)).toBe(false)
-    expect(isLoggableDate('', today)).toBe(false)
-    expect(isLoggableDate('yesterday', today)).toBe(false)
+  it('any past day stays editable, the future does not', () => {
+    expect(isLoggableDate('2026-10-26', '2026-10-27')).toBe(true)
+    expect(isLoggableDate('2026-10-28', '2026-10-27')).toBe(false)
+    expect(isLoggableDate('yesterday', '2026-10-27')).toBe(false)
   })
 })

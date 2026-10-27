@@ -1,22 +1,20 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useLiveQuery }       from 'dexie-react-hooks'
 import { db }                 from '@/lib/db'
 import { useMentalHealthLog } from '@/lib/hooks/useMentalHealthLog'
 import {
-  MOOD_VECTORS,
   MOOD_MAP,
   relativeDateLabel,
   type MoodKey,
-  type MoodVector,
 } from '@/utils/mentalHealthLog'
 import type { MentalHealthLog } from '@/lib/db'
 import styles from './SlopeDayHypeTracker.module.css'
 import Icon from '@/components/ui/Icon'
 import EmotionCheckin from '@/components/EmotionCheckin'
-import { scoreCheckin, overallLabel } from '@/utils/emotionCheckin'
-import { todayISO, toLocalDateStr, addDaysISO } from '@/utils/localDate'
+import { answersFromLog, categoryScores, hasFullCheckin, overallLabel, overallScore } from '@/utils/emotionCheckin'
+import { todayISO, addDaysISO } from '@/utils/localDate'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -91,41 +89,8 @@ export default function WellnessTracker() {
   // while you are still in it stays reachable, and so does any earlier day.
   const todayStr = todayISO()
   const [logDate, setLogDate] = useState(todayStr)
-  const [mode,    setMode]    = useState<'mood' | 'checkin'>('mood')
   const dayLog   = logMap.get(logDate) ?? null
   const isPast   = logDate < todayStr
-
-  /* ── Mood logging state ───────────────────────────────────── */
-  const [selectedMood, setSelectedMood] = useState<MoodVector | null>(null)
-  const [notes,        setNotes]        = useState('')
-  const [justLogged,   setJustLogged]   = useState(false)
-
-  // Load the chosen day's entry into the form — once per day, and once more
-  // when that day's row first appears. Re-running on every live-query result
-  // would wipe a journal entry mid-sentence whenever anything else is saved.
-  const prefilled = useRef<string>('')
-  useEffect(() => {
-    const key = `${logDate}:${dayLog?.id ?? 'none'}`
-    if (prefilled.current === key) return
-    prefilled.current = key
-    const m = dayLog ? MOOD_MAP[dayLog.moodVector as MoodKey] ?? null : null
-    setSelectedMood(m)
-    setNotes(dayLog?.qualitativeNotes ?? '')
-    setJustLogged(false)
-  }, [logDate, dayLog])
-
-  const handleLog = useCallback(async () => {
-    if (!selectedMood || mh.submitting) return
-    await mh.logMood(selectedMood, notes, logDate)
-    setJustLogged(true)
-    setTimeout(() => setJustLogged(false), 2200)
-  }, [selectedMood, notes, logDate, mh])
-
-  // The week ending on the logged day — what the check-in averages against.
-  const weekLogs = useMemo(() => {
-    const from = addDaysISO(logDate, -6)
-    return allLogs.filter(l => l.logDate >= from && l.logDate <= logDate)
-  }, [allLogs, logDate])
 
   const logPaneRef = useRef<HTMLDivElement>(null)
   const editDay = useCallback((date: string) => {
@@ -144,7 +109,9 @@ export default function WellnessTracker() {
   const selectedLog = selectedDay ? (logMap.get(selectedDay) ?? null) : null
   const monthLabel  = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const dateDisplay = new Date(logDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-  const selectedCheckin = selectedLog?.emotions ? scoreCheckin(selectedLog.emotions) : null
+  const selectedAnswers = selectedLog ? answersFromLog(selectedLog) : null
+  const selectedOverall = selectedAnswers ? overallScore(selectedAnswers) : null
+  const selectedCats    = selectedAnswers && selectedLog && hasFullCheckin(selectedLog) ? categoryScores(selectedAnswers) : []
 
   const prevMonth = useCallback(() => {
     setSelectedDay(null)
@@ -157,13 +124,6 @@ export default function WellnessTracker() {
     if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
     else setCalMonth(m => m + 1)
   }, [calMonth])
-
-  /* ── 3-day trend data ─────────────────────────────────────── */
-  const last3Days = [0, 1, 2].map(dAgo => {
-    const d = new Date(); d.setDate(d.getDate() - dAgo)
-    const dateStr = toLocalDateStr(d)
-    return { dateStr, label: relativeDateLabel(dateStr), log: mh.logs.find(l => l.logDate === dateStr) ?? null }
-  })
 
   return (
     <div className={styles.tracker}>
@@ -217,137 +177,13 @@ export default function WellnessTracker() {
             </div>
           )}
 
-          {/* Quick mood, or the longer feelings check-in */}
-          <div className={styles.modeTabs} role="tablist" aria-label="Log type">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'mood'}
-              className={`${styles.modeTab} ${mode === 'mood' ? styles.modeTabOn : ''}`}
-              onClick={() => setMode('mood')}
-            >
-              Quick mood
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'checkin'}
-              className={`${styles.modeTab} ${mode === 'checkin' ? styles.modeTabOn : ''}`}
-              onClick={() => setMode('checkin')}
-            >
-              Feelings check-in
-              {dayLog?.emotions && <span className={styles.modeTabDot} aria-label="saved" />}
-            </button>
-          </div>
-
-          {mode === 'checkin' ? (
-            <EmotionCheckin
-              date={logDate}
-              saved={dayLog?.emotions}
-              savedAt={dayLog?.checkinAt}
-              recent={weekLogs}
-              submitting={mh.submitting}
-              onSave={answers => mh.saveCheckin(answers, logDate)}
-            />
-          ) : (<>
-
-          {justLogged && (
-            <div className={`${styles.todayChip} anim-scale-in`}>
-              <span className={styles.todayChipDot} aria-hidden="true" />
-              Logged for {dayPhrase(logDate)}
-            </div>
-          )}
-
-          <div className={styles.moodGrid} role="group" aria-label="Select your emotional state">
-            {MOOD_VECTORS.map(m => {
-              const isBurnout = m.stressLevel >= 8 && m.energyLevel <= 3
-              return (
-                <button
-                  key={m.key}
-                  type="button"
-                  className={[
-                    styles.moodBtn,
-                    selectedMood?.key === m.key ? styles.moodBtnSelected : '',
-                    isBurnout ? styles.moodBtnBurnout : '',
-                  ].join(' ')}
-                  onClick={() => setSelectedMood(m)}
-                  aria-pressed={selectedMood?.key === m.key}
-                  aria-label={`${m.label}: stress ${m.stressLevel}, energy ${m.energyLevel}`}
-                  style={{ '--mood-hue': String(m.hue) } as CSSProperties}
-                >
-                  <span className={styles.moodEmoji} aria-hidden="true"><Icon name={m.icon} size={28} /></span>
-                  <span className={styles.moodLabel}>{m.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className={styles.notesWrap}>
-            <label htmlFor="mh-notes" className={styles.notesLabel}>
-              Journal (optional)
-            </label>
-            <textarea
-              id="mh-notes"
-              className={styles.notesInput}
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Write down whatever's on your mind — clear your head, reflect on the day, or just let it out."
-              maxLength={2000}
-              rows={5}
-            />
-            <span className={styles.notesCount}>{notes.length}/2000</span>
-          </div>
-
-          <button
-            type="button"
-            className={styles.logBtn}
-            onClick={handleLog}
-            disabled={!selectedMood || mh.submitting}
-          >
-            {mh.submitting ? 'Logging…' : justLogged ? '✓ Logged' : dayLog ? 'Update Entry' : 'Log Entry'}
-          </button>
-
-          </>)}
-
-          <div className={styles.divider} aria-hidden="true" />
-
-          <div className={styles.trendSection}>
-            <p className={styles.trendHeading}>3-Day Trend</p>
-            {last3Days.map(({ dateStr, label, log }) => (
-              <div
-                key={dateStr}
-                className={`${styles.dayEntry} ${log ? '' : styles.dayEntryMissing}`}
-              >
-                <div className={styles.dayRow}>
-                  <span className={styles.dayLabel}>{label}</span>
-                  {log
-                    ? (
-                      <span className={styles.dayMood}>
-                        <span className={styles.dayMoodEmoji}>
-                          <Icon name={MOOD_MAP[log.moodVector as MoodKey]?.icon ?? 'moodNeutral'} size={18} />
-                        </span>
-                        <span className={styles.dayMoodLabel}>
-                          {MOOD_MAP[log.moodVector as MoodKey]?.label ?? log.moodVector}
-                        </span>
-                      </span>
-                    )
-                    : <span className={styles.dayNoLog}>No entry</span>
-                  }
-                </div>
-                {log && (
-                  <>
-                    <div className={styles.statBars}>
-                      <StatBar name="Stress" value={log.stressLevel} variant="stress" />
-                      <StatBar name="Energy" value={log.energyLevel} variant="energy" />
-                    </div>
-                    {log.qualitativeNotes && (
-                      <p className={styles.dayNotes}>&ldquo;{log.qualitativeNotes}&rdquo;</p>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+          <EmotionCheckin
+            date={logDate}
+            log={dayLog}
+            history={allLogs}
+            submitting={mh.submitting}
+            onSave={(answers, notes) => mh.saveCheckin(answers, notes, logDate)}
+          />
 
         </div>
 
@@ -469,11 +305,11 @@ export default function WellnessTracker() {
                     <StatBar name="Stress" value={selectedLog.stressLevel} variant="stress" />
                     <StatBar name="Energy" value={selectedLog.energyLevel} variant="energy" />
                   </div>
-                  {selectedCheckin?.overall != null && (
+                  {selectedOverall != null && (
                     <p className={styles.calDetailCheckin}>
-                      Check-in: <strong>{selectedCheckin.overall}/100</strong> · {overallLabel(selectedCheckin.overall)}
-                      {selectedCheckin.focusAreas.length > 0 && (
-                        <> · lowest: {selectedCheckin.focusAreas.map(a => a.label).join(', ')}</>
+                      Wellbeing: <strong>{selectedOverall}/100</strong> · {overallLabel(selectedOverall)}
+                      {selectedCats.length > 0 && (
+                        <> · {selectedCats.filter(c => c.key !== 'stress' && c.key !== 'energy').map(c => `${c.label} ${c.score}`).join(' · ')}</>
                       )}
                     </p>
                   )}

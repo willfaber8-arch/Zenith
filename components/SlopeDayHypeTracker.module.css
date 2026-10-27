@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════
    WellnessTracker (SlopeDayHypeTracker.module.css)
-   Two-pane dashboard: Mood Logging + Mood History Calendar
+   Two-pane dashboard: Daily Check-in + Mood History Calendar
    ════════════════════════════════════════════════════════════ */
 
 /* ── Local tokens ──────────────────────────────────────────── */
@@ -76,226 +76,11 @@
   padding-top:    2px;
 }
 
-/* ── Logged-today chip ─────────────────────────────────────── */
-.todayChip {
-  display:        flex;
-  align-items:    center;
-  gap:            var(--sp-2);
-  padding:        var(--sp-2) var(--sp-3);
-  border-radius:  var(--r-md);
-  background:     rgba(82, 204, 163, 0.10);
-  border:         1px solid rgba(82, 204, 163, 0.25);
-  font-family:    var(--font-body);
-  font-size:      12px;
-  color:          var(--v-sage);
-}
-
-.todayChipDot {
-  display:       block;
-  width:         6px;
-  height:        6px;
-  border-radius: 50%;
-  background:    var(--v-sage);
-  flex-shrink:   0;
-}
-
-/* ── Mood emoji grid ───────────────────────────────────────── */
-.moodGrid {
-  display:               grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap:                   var(--sp-3);
-}
-
-.moodBtn {
-  display:        flex;
-  flex-direction: column;
-  align-items:    center;
-  gap:            var(--sp-2);
-  padding:        var(--sp-4) var(--sp-3);
-  border-radius:  var(--r-lg);
-  background:     var(--v-inner);
-  border:         1px solid var(--v-border);
-  cursor:         pointer;
-  /* Ambient hue glow — subtle always-on warmth */
-  box-shadow:     0 0 12px hsla(var(--mood-hue, 210), 55%, 60%, 0.07);
-  transition:     border-color 180ms ease, box-shadow 200ms ease, background 180ms ease, transform 100ms ease;
-}
-
-.moodBtn:hover {
-  background:   hsla(var(--mood-hue, 210), 55%, 50%, 0.07);
-  border-color: hsla(var(--mood-hue, 210), 65%, 65%, 0.40);
-  box-shadow:   0 0 18px hsla(var(--mood-hue, 210), 65%, 62%, 0.22);
-  transform:    translateY(-1px);
-}
-
-.moodBtn:active {
-  transform: translateY(0);
-}
-
-.moodBtnSelected {
-  background:   hsla(var(--mood-hue, 210), 60%, 50%, 0.12) !important;
-  border-color: hsla(var(--mood-hue, 210), 70%, 68%, 0.55) !important;
-  box-shadow:   0 0 20px hsla(var(--mood-hue, 210), 65%, 62%, 0.28) !important;
-}
-
-.moodBtnBurnout:not(.moodBtnSelected) {
-  border-color: rgba(248, 113, 113, 0.22);
-}
-
-.moodEmoji {
-  display:     flex;
-  align-items: center;
-  /*
-   * The icon takes the mood's own hue.
-   *
-   * The emoji these replaced were distinguishable by colour before you
-   * read them; eight monochrome faces in a grid are not. The hue that
-   * already tints each button now tints its icon too, so the set stays
-   * one family of line drawings while each member is still findable at
-   * a glance.
-   */
-  color:       hsl(var(--mood-hue, 210) 62% 66%);
-  filter:      drop-shadow(0 0 6px hsla(var(--mood-hue, 210), 65%, 62%, 0.30));
-}
-
-.moodBtnSelected .moodEmoji {
-  filter: drop-shadow(0 0 10px hsla(var(--mood-hue, 210), 70%, 65%, 0.55));
-}
-
-.moodLabel {
-  font-family:    var(--font-body);
-  font-size:      11px;
-  font-weight:    500;
-  color:          var(--text-muted);
-  letter-spacing: 0.02em;
-}
-
-.moodBtnSelected .moodLabel {
-  color: var(--text-primary);
-}
-
-/* ── Notes textarea ────────────────────────────────────────── */
-.notesWrap {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-2);
-}
-
-.notesLabel {
-  font-family:    var(--font-body);
-  font-size:      11px;
-  font-weight:    500;
-  color:          var(--text-dark);
-  letter-spacing: 0.04em;
-}
-
-.notesInput {
-  width:         100%;
-  resize:        vertical;
-  min-height:    96px;
-  line-height:   1.55;
-  background:    var(--v-inner);
-  border:        1px solid var(--v-border);
-  border-radius: var(--r-md);
-  padding:       var(--sp-3);
-  font-family:   var(--font-body);
-  font-size:     13px;
-  color:         var(--text-primary);
-  outline:       none;
-  transition:    border-color 160ms ease;
-}
-
-.notesInput:focus {
-  border-color: rgba(124, 149, 255, 0.40);
-}
-
-.notesInput::placeholder { color: var(--text-dark); }
-
-.notesCount {
-  align-self: flex-end;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--text-dark);
-  letter-spacing: 0.04em;
-}
-
-/* ── Log button ────────────────────────────────────────────── */
-.logBtn {
-  align-self:     stretch;
-  padding:        var(--sp-3) var(--sp-4);
-  border-radius:  var(--r-md);
-  background:     var(--v-accent);
-  border:         none;
-  font-family:    var(--font-body);
-  font-size:      13px;
-  font-weight:    600;
-  color:          #0b0d13;
-  cursor:         pointer;
-  transition:     opacity 160ms ease, transform 100ms ease;
-}
-
-.logBtn:hover:not(:disabled)  { opacity: 0.85; }
-.logBtn:active:not(:disabled) { transform: scale(0.98); }
-.logBtn:disabled               { opacity: 0.38; cursor: not-allowed; }
-
 /* ── Divider ───────────────────────────────────────────────── */
 .divider {
   height:     1px;
   background: var(--v-border);
 }
-
-/* ── 3-day trend section ───────────────────────────────────── */
-.trendSection {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-3);
-}
-
-.trendHeading {
-  font-family:    var(--font-body);
-  font-size:      11px;
-  font-weight:    600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color:          var(--text-dark);
-}
-
-.dayEntry {
-  background:    var(--v-inner);
-  border:        1px solid var(--v-border);
-  border-radius: var(--r-md);
-  padding:       var(--sp-3);
-  display:       flex;
-  flex-direction: column;
-  gap:           var(--sp-2);
-}
-
-.dayEntryMissing {
-  opacity: 0.55;
-}
-
-.dayRow {
-  display:         flex;
-  justify-content: space-between;
-  align-items:     center;
-}
-
-.dayLabel {
-  font-family: var(--font-body);
-  font-size:   12px;
-  font-weight: 600;
-  color:       var(--text-muted);
-}
-
-.dayMood {
-  display:     flex;
-  align-items: center;
-  gap:         var(--sp-1);
-}
-
-.dayMoodEmoji  { font-size: 14px; line-height: 1; }
-.dayMoodLabel  { font-family: var(--font-body); font-size: 12px; color: var(--text-muted); }
-.dayNoLog      { font-family: var(--font-body); font-size: 11px; color: var(--text-dark); }
 
 /* ── Stat bars ─────────────────────────────────────────────── */
 .statBars {
@@ -344,19 +129,6 @@
   width:       14px;
   text-align:  right;
   flex-shrink: 0;
-}
-
-.dayNotes {
-  font-family: var(--font-body);
-  font-size:   11px;
-  color:       var(--text-muted);
-  font-style:  italic;
-  line-height: 1.5;
-  margin:      0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height:  120px;
-  overflow-y:  auto;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -576,7 +348,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   DAY PICKER · MODE TABS · PAST-DAY EDITING
+   DAY PICKER · PAST-DAY EDITING
    ══════════════════════════════════════════════════════════════ */
 
 .dayPicker {
@@ -629,47 +401,6 @@
   font-family:   var(--font-body);
   font-size:     12px;
   color:         var(--text-primary);
-}
-
-.modeTabs {
-  display:       grid;
-  grid-template-columns: 1fr 1fr;
-  gap:           var(--sp-1);
-  padding:       var(--sp-1);
-  border-radius: var(--r-md);
-  background:    var(--v-inner);
-  border:        1px solid var(--v-border);
-}
-
-.modeTab {
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  gap:             var(--sp-2);
-  padding:         var(--sp-2);
-  border-radius:   var(--r-sm);
-  background:      transparent;
-  border:          none;
-  font-family:     var(--font-body);
-  font-size:       12px;
-  font-weight:     500;
-  color:           var(--text-muted);
-  cursor:          pointer;
-  transition:      background var(--dur-fast) var(--ease-smooth), color var(--dur-fast) var(--ease-smooth);
-}
-
-.modeTab:hover { color: var(--text-primary); }
-
-.modeTabOn {
-  background: var(--bg-active);
-  color:      var(--text-primary);
-}
-
-.modeTabDot {
-  width:         6px;
-  height:        6px;
-  border-radius: 50%;
-  background:    var(--v-sage);
 }
 
 .calDetailCheckin {
