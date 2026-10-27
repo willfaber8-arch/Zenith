@@ -1,7 +1,7 @@
 
 import type { IconName } from '@/components/ui/Icon'
 import { todayISO, toLocalDateStr } from '@/utils/localDate'
-import type { EmotionAnswers } from '@/utils/emotionCheckin'
+import type { CheckinAnswers } from '@/utils/emotionCheckin'
 /**
  * utils/mentalHealthLog.ts — Mental Health Log Schema & Evaluator
  * Phase 5 · Step 5.7 — Mental Health Mapping & Slope Day Hype Tracker
@@ -29,11 +29,15 @@ export interface MentalHealthLog {
   moodVector:       string   //   MoodKey stored as string
   createdAt:        number   // * indexed — Unix ms
   /**
-   * Emotion check-in answers, intensity 0–4 per question
-   * (utils/emotionCheckin.ts). Optional and non-indexed — logs written
-   * before the check-in existed simply have none.
+   * The daily check-in: five 1–10 sliders (utils/emotionCheckin.ts).
+   * Optional and non-indexed — older logs simply have none.
    */
-  emotions?:        EmotionAnswers
+  checkin?:         CheckinAnswers
+  /**
+   * The earlier twelve-question check-in (intensity 0–4 per feeling).
+   * No longer written; still read, so those days stay in your history.
+   */
+  emotions?:        Record<string, number>
   /** Unix ms the check-in was last saved */
   checkinAt?:       number
 }

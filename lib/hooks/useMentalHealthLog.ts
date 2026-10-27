@@ -19,16 +19,14 @@ import { db }                             from '@/lib/db'
 import { syncHabitSource }                from '@/lib/habitSync'
 import { currentDayISO }                from '@/utils/dayBoundary'
 import {
-  stressEnergyFromCheckin,
-  type EmotionAnswers,
+  cleanAnswers,
+  DEFAULT_ANSWER,
+  type CheckinAnswers,
 } from '@/utils/emotionCheckin'
 import {
   evaluateMentalState,
   isLoggableDate,
   nearestMood,
-  MOOD_MAP,
-  type MoodKey,
-  type MoodVector,
   type MentalStateEvaluation,
 } from '@/utils/mentalHealthLog'
 import type { MentalHealthLog } from '@/lib/db'
@@ -66,22 +64,13 @@ export interface MentalHealthLogState {
   /** True while an IDB write is in-flight */
   submitting:    boolean
   /**
-   * Log a mood for a day (default today).
-   * If a log already exists for that day, it is updated atomically.
-   * notes defaults to '' if omitted.
+   * Save the day's check-in (default today): the five sliders, and the
+   * journal beside them. The stress and energy sliders are the log's
+   * stressLevel/energyLevel — both already 1–10 — and the mood shown in
+   * the calendar is the nearest preset to them, so everything else that
+   * reads a log (burnout banner, calendar colour, Co-Pilot) keeps working.
    */
-  logMood:       (mood: MoodVector, notes?: string, date?: string) => Promise<void>
-  /**
-   * Quick one-tap log by MoodKey — resolves the vector automatically.
-   * This is what the emoji grid buttons call.
-   */
-  quickLog:      (key: MoodKey, notes?: string, date?: string) => Promise<void>
-  /**
-   * Save an emotion check-in for a day (default today). An existing log
-   * keeps its mood, stress, energy and journal; a day with no log gets
-   * stress/energy derived from the answers and the nearest mood.
-   */
-  saveCheckin:   (answers: EmotionAnswers, date?: string) => Promise<void>
+  saveCheckin:   (answers: CheckinAnswers, notes?: string, date?: string) => Promise<void>
 }
 
 /* ── Hook ────────────────────────────────────────────────────── */
@@ -115,31 +104,29 @@ export function useMentalHealthLog(): MentalHealthLogState {
     [logs],
   )
 
-  /* ── Core write operation ─────────────────────────────────── */
+  /* ── Daily check-in ──────────────────────────────────────── */
 
-  const logMood = useCallback(async (mood: MoodVector, notes = '', date = todayISO()) => {
+  const saveCheckin = useCallback(async (raw: CheckinAnswers, notes = '', date = todayISO()) => {
     if (!isLoggableDate(date)) return
+    const answers = cleanAnswers(raw)
+    const stressLevel = answers.stress ?? DEFAULT_ANSWER
+    const energyLevel = answers.energy ?? DEFAULT_ANSWER
+    const fields = {
+      stressLevel,
+      energyLevel,
+      moodVector:       nearestMood(stressLevel, energyLevel).key,
+      qualitativeNotes: notes,
+      checkin:          answers,
+      checkinAt:        Date.now(),
+    }
     setSubmitting(true)
     try {
       const existing = await db.mentalHealthLogs
         .where('logDate').equals(date).first()
-
       if (existing?.id !== undefined) {
-        await db.mentalHealthLogs.update(existing.id, {
-          stressLevel:      mood.stressLevel,
-          energyLevel:      mood.energyLevel,
-          qualitativeNotes: notes,
-          moodVector:       mood.key,
-        })
+        await db.mentalHealthLogs.update(existing.id, fields)
       } else {
-        await db.mentalHealthLogs.add({
-          logDate:          date,
-          stressLevel:      mood.stressLevel,
-          energyLevel:      mood.energyLevel,
-          qualitativeNotes: notes,
-          moodVector:       mood.key,
-          createdAt:        Date.now(),
-        })
+        await db.mentalHealthLogs.add({ logDate: date, createdAt: Date.now(), ...fields })
       }
       syncMoodHabit(date)
     } finally {
@@ -147,50 +134,5 @@ export function useMentalHealthLog(): MentalHealthLogState {
     }
   }, [])
 
-  /* ── Emotion check-in ─────────────────────────────────────── */
-
-  const saveCheckin = useCallback(async (answers: EmotionAnswers, date = todayISO()) => {
-    if (!isLoggableDate(date)) return
-    setSubmitting(true)
-    try {
-      const existing = await db.mentalHealthLogs
-        .where('logDate').equals(date).first()
-
-      if (existing?.id !== undefined) {
-        // The mood and journal were chosen by hand — the check-in sits
-        // beside them rather than overwriting them.
-        await db.mentalHealthLogs.update(existing.id, {
-          emotions:  answers,
-          checkinAt: Date.now(),
-        })
-      } else {
-        const { stressLevel, energyLevel } = stressEnergyFromCheckin(answers)
-        await db.mentalHealthLogs.add({
-          logDate:          date,
-          stressLevel,
-          energyLevel,
-          qualitativeNotes: '',
-          moodVector:       nearestMood(stressLevel, energyLevel).key,
-          createdAt:        Date.now(),
-          emotions:         answers,
-          checkinAt:        Date.now(),
-        })
-      }
-      syncMoodHabit(date)
-    } finally {
-      setSubmitting(false)
-    }
-  }, [])
-
-  /* ── Quick log by key ─────────────────────────────────────── */
-
-  const quickLog = useCallback(
-    async (key: MoodKey, notes = '', date?: string) => {
-      const mood = MOOD_MAP[key]
-      if (mood) await logMood(mood, notes, date)
-    },
-    [logMood],
-  )
-
-  return { logs, todayLog, evaluation, submitting, logMood, quickLog, saveCheckin }
+  return { logs, todayLog, evaluation, submitting, saveCheckin }
 }

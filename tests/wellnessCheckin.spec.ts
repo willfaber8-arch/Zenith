@@ -1,11 +1,10 @@
 /**
- * tests/wellnessCheckin.spec.ts — the feelings check-in and past-day edits.
+ * tests/wellnessCheckin.spec.ts — the daily check-in, end to end.
  *
- * Two things asked for together: a questionnaire about how you actually
- * feel (not just how school is going) that averages your answers and says
- * where to improve, and a way to edit a day once midnight has passed —
- * the form used to be welded to "today", so yesterday's entry became
- * read-only the moment the clock rolled over.
+ * Five sliders and a journal on one screen; saving shows what they add up
+ * to (category scores, your usual, links to what else you did that day);
+ * and any earlier day can be opened and changed, including yesterday once
+ * midnight has passed.
  */
 
 import { test, expect, type Page } from '@playwright/test'
@@ -13,7 +12,7 @@ import { injectAuth, waitForBridge, navigateTo } from './helpers/bridge'
 
 interface StoredLog {
   logDate: string; moodVector: string; qualitativeNotes: string
-  stressLevel: number; energyLevel: number; emotions?: Record<string, number>
+  stressLevel: number; energyLevel: number; checkin?: Record<string, number>
 }
 
 async function logs(page: Page): Promise<StoredLog[]> {
@@ -28,72 +27,99 @@ async function isoDaysAgo(page: Page, n: number): Promise<string> {
   }, n)
 }
 
-test.describe('Mental Wellness', () => {
-  test.beforeEach(async ({ page }) => {
-    await injectAuth(page.context())
-    await page.context().addInitScript(() => {
-      localStorage.setItem('zenith_onboarding_completed_v1', 'true')
-      localStorage.setItem('zenith_tutorial_v1', JSON.stringify({ sessionsShown: 9 }))
-      localStorage.setItem('zenith_tour_v2', JSON.stringify({ seenAt: Date.now() }))
-    })
-    await page.goto('/')
-    await waitForBridge(page)
+async function open(page: Page) {
+  await injectAuth(page.context())
+  await page.context().addInitScript(() => {
+    localStorage.setItem('zenith_onboarding_completed_v1', 'true')
+    localStorage.setItem('zenith_tutorial_v1', JSON.stringify({ sessionsShown: 9 }))
+    localStorage.setItem('zenith_tour_v2', JSON.stringify({ seenAt: Date.now() }))
+  })
+  await page.goto('/')
+  await waitForBridge(page)
+}
+
+test.describe('Mental Wellness check-in', () => {
+  test('five sliders save, and the results say what they add up to', async ({ page }) => {
+    await open(page)
     await navigateTo(page, 'Mental Wellness')
+
+    await expect(page.locator('input[type="range"]')).toHaveCount(5)
+    await page.locator('#ci-mood').fill('9')
+    await page.locator('#ci-stress').fill('8')
+    await page.locator('#ci-energy').fill('3')
+    await page.locator('#ci-focus').fill('6')
+    await page.locator('#ci-connection').fill('7')
+    await page.getByRole('button', { name: 'Save check-in' }).click()
+
+    const today = await isoDaysAgo(page, 0)
+    await expect.poll(async () => (await logs(page)).find(l => l.logDate === today)?.checkin)
+      .toEqual({ mood: 9, stress: 8, energy: 3, focus: 6, connection: 7 })
+    const row = (await logs(page)).find(l => l.logDate === today)!
+    // The sliders are the log's stress and energy, so everything else that reads them keeps working.
+    expect(row.stressLevel).toBe(8)
+    expect(row.energyLevel).toBe(3)
+    expect(row.moodVector).toBeTruthy()
+
+    const results = page.getByRole('region', { name: 'Check-in results' })
+    await expect(results.getByText(/^Overall wellbeing/)).toBeVisible()
+    await expect(results.getByText('High', { exact: true })).toBeVisible()   // stress 78
+    await expect(results.getByText('What lines up with how you feel')).toBeVisible()
+  })
+
+  test('shows a link once there are enough days on both sides', async ({ page }) => {
+    await open(page)
+    // Ten days of check-ins; workouts on alternate days, which were the better ones.
+    const days = await Promise.all(Array.from({ length: 10 }, (_, i) => isoDaysAgo(page, i + 1)))
+    await page.evaluate(async (days) => {
+      const db = window.__zenith!.db
+      for (const [i, d] of days.entries()) {
+        const good = i % 2 === 0
+        await db.mentalHealthLogs.add({
+          logDate: d, stressLevel: 4, energyLevel: good ? 9 : 3, qualitativeNotes: '', moodVector: 'neutral',
+          createdAt: Date.now(), checkin: { mood: 6, stress: 4, energy: good ? 9 : 3, focus: 6, connection: 6 },
+        })
+        if (good) {
+          await db.cardioSessions.add({
+            activityType: 'run', durationMinutes: 30, vitalityEarned: 35, logDate: d, completedAt: Date.now(),
+          })
+        }
+      }
+    }, days)
+
+    await navigateTo(page, 'Mental Wellness')
+    await page.getByRole('button', { name: 'Save check-in' }).click()
+
+    // Today's own check-in (energy 5, no workout) joins the days without.
+    await expect(page.getByText('On days you work out, your energy averages 63 points higher.')).toBeVisible()
+    await expect(page.getByText('5 days with · 6 without')).toBeVisible()
   })
 
   test('edits yesterday after midnight without touching today', async ({ page }) => {
+    await open(page)
     const yesterday = await isoDaysAgo(page, 1)
-    // An entry already logged for yesterday, as if written before midnight.
     await page.evaluate(async (date) => {
       await window.__zenith!.db.mentalHealthLogs.add({
         logDate: date, stressLevel: 5, energyLevel: 5, qualitativeNotes: 'before',
         moodVector: 'neutral', createdAt: Date.now(),
       })
     }, yesterday)
+    await navigateTo(page, 'Mental Wellness')
 
     await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
     await expect(page.getByText(/Editing yesterday/)).toBeVisible()
     await expect(page.locator('#mh-notes')).toHaveValue('before')
+    // A day logged before the sliders opens on what it recorded.
+    await expect(page.locator('#ci-stress')).toHaveValue('5')
 
-    await page.getByRole('button', { name: /^Stressed:/ }).click()
+    await page.locator('#ci-stress').fill('9')
     await page.locator('#mh-notes').fill('after')
-    await page.getByRole('button', { name: 'Update Entry' }).click()
+    await page.getByRole('button', { name: 'Update check-in' }).click()
 
     await expect.poll(async () => (await logs(page)).find(l => l.logDate === yesterday)?.qualitativeNotes)
       .toBe('after')
     const all = await logs(page)
     expect(all).toHaveLength(1)
-    expect(all[0].moodVector).toBe('stressed')
-  })
-
-  test('the check-in walks every phase, saves, and names what to work on', async ({ page }) => {
-    await page.getByRole('tab', { name: /Feelings check-in/ }).click()
-
-    // Answer each phase: "Extremely" to the first question (happy, anxious,
-    // energy, motivated), "Not at all" to the rest.
-    for (let step = 0; step < 4; step++) {
-      const questions = page.locator('fieldset')
-      const n = await questions.count()
-      for (let i = 0; i < n; i++) {
-        await questions.nth(i).getByRole('button', { name: i === 0 ? 'Extremely' : 'Not at all' }).click()
-      }
-      await page.getByRole('button', { name: step === 3 ? 'See results' : 'Next', exact: true }).click()
-    }
-
-    await expect(page.getByText('Where to improve')).toBeVisible()
-    await expect(page.getByText(/^Average wellbeing across 12 feelings/)).toBeVisible()
-
-    const today = await isoDaysAgo(page, 0)
-    await expect.poll(async () => Object.keys((await logs(page)).find(l => l.logDate === today)?.emotions ?? {}).length)
-      .toBe(12)
-    const row = (await logs(page)).find(l => l.logDate === today)!
-    expect(row.emotions!.happy).toBe(4)
-    expect(row.emotions!.anxious).toBe(4)
-    // A check-in-only day still gets the numbers the rest of the page reads.
-    expect(row.stressLevel).toBeGreaterThanOrEqual(1)
-    expect(row.moodVector).toBeTruthy()
-
-    // Anxiety at "Extremely" is the clearest low area.
-    await expect(page.getByText(/^Anxiety/).first()).toBeVisible()
+    expect(all[0].stressLevel).toBe(9)
+    expect(all[0].checkin?.stress).toBe(9)
   })
 })
